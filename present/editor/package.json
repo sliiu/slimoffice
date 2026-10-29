@@ -1,0 +1,46 @@
+{
+  "name": "@sliiu/present-editor",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./commands": {
+      "types": "./dist/types/commands-entry.d.ts",
+      "import": "./dist/esm/commands-entry.js",
+      "require": "./dist/cjs/commands-entry.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@paddleocr/paddleocr-js": "^0.4.2",
+    "katex": "^0.18.9",
+    "lucide": "^1.48.0",
+    "tesseract.js": "^7.0.0",
+    "@sliiu/present-animation": "0.1.0",
+    "@sliiu/present-core": "0.1.0",
+    "@sliiu/present-parser": "0.1.0",
+    "@sliiu/present-player": "0.1.0",
+    "@sliiu/present-renderer": "0.1.0",
+    "@sliiu/present-themes": "0.1.0",
+    "@sliiu/present-transition-fx": "0.1.0",
+    "@sliiu/present-ui": "0.1.0"
+  },
+  "module": "./dist/esm/index.js",
+  "files": [
+    "dist",
+    "LICENSE",
+    "COPYRIGHT",
+    "THIRD-PARTY-NOTICES.md"
+  ]
+}

@@ -1,0 +1,408 @@
+[
+  {
+    "layout": "cover",
+    "variant": "title-meta",
+    "elements": [
+      {
+        "name": "slot:plane",
+        "kind": "surface",
+        "x": 842.67,
+        "y": 36,
+        "w": 373.33,
+        "h": 648
+      },
+      {
+        "name": "slot:rule",
+        "kind": "rule",
+        "x": 64,
+        "y": 36,
+        "w": 276,
+        "h": 2
+      },
+      {
+        "name": "slot:title",
+        "kind": "text",
+        "x": 64,
+        "y": 269.28,
+        "w": 762.67,
+        "h": 150.4
+      },
+      {
+        "name": "slot:subtitle",
+        "kind": "text",
+        "x": 64,
+        "y": 439.68,
+        "w": 701.65,
+        "h": 48.4
+      },
+      {
+        "name": "slot:meta",
+        "kind": "text",
+        "x": 64,
+        "y": 662.4,
+        "w": 533.87,
+        "h": 19.2
+      }
+    ]
+  },
+  {
+    "layout": "section",
+    "variant": "num-title",
+    "elements": [
+      {
+        "name": "slot:number",
+        "kind": "text",
+        "x": 64,
+        "y": 36,
+        "w": 373.33,
+        "h": 73.6
+      },
+      {
+        "name": "slot:rule",
+        "kind": "rule",
+        "x": 64,
+        "y": 117.6,
+        "w": 373.33,
+        "h": 2
+      },
+      {
+        "name": "slot:title",
+        "kind": "text",
+        "x": 64,
+        "y": 137.6,
+        "w": 1054.67,
+        "h": 140.8
+      }
+    ]
+  },
+  {
+    "layout": "quote",
+    "variant": "serif-mark",
+    "elements": [
+      {
+        "name": "slot:claim",
+        "kind": "text",
+        "x": 64,
+        "y": 217.44,
+        "w": 957.33,
+        "h": 140.8
+      }
+    ]
+  },
+  {
+    "layout": "cards",
+    "variant": "four",
+    "elements": [
+      {
+        "name": "slot:title",
+        "kind": "text",
+        "x": 64,
+        "y": 36,
+        "w": 1152,
+        "h": 45
+      },
+      {
+        "name": "slot:items:0:panel",
+        "kind": "surface",
+        "x": 64,
+        "y": 101,
+        "w": 568,
+        "h": 283.5
+      },
+      {
+        "name": "slot:index:0",
+        "kind": "text",
+        "x": 88,
+        "y": 125,
+        "w": 520,
+        "h": 22
+      },
+      {
+        "name": "slot:items:0",
+        "kind": "text",
+        "x": 88,
+        "y": 155,
+        "w": 520,
+        "h": 205.5
+      },
+      {
+        "name": "slot:items:1:panel",
+        "kind": "surface",
+        "x": 648,
+        "y": 101,
+        "w": 568,
+        "h": 283.5
+      },
+      {
+        "name": "slot:index:1",
+        "kind": "text",
+        "x": 672,
+        "y": 125,
+        "w": 520,
+        "h": 22
+      },
+      {
+        "name": "slot:items:1",
+        "kind": "text",
+        "x": 672,
+        "y": 155,
+        "w": 520,
+        "h": 205.5
+      },
+      {
+        "name": "slot:items:2:panel",
+        "kind": "surface",
+        "x": 64,
+        "y": 400.5,
+        "w": 568,
+        "h": 283.5
+      },
+      {
+        "name": "slot:index:2",
+        "kind": "text",
+        "x": 88,
+        "y": 424.5,
+        "w": 520,
+        "h": 22
+      },
+      {
+        "name": "slot:items:2",
+        "kind": "text",
+        "x": 88,
+        "y": 454.5,
+        "w": 520,
+        "h": 205.5
+      },
+      {
+        "name": "slot:items:3:panel",
+        "kind": "surface",
+        "x": 648,
+        "y": 400.5,
+        "w": 568,
+        "h": 283.5
+      },
+      {
+        "name": "slot:index:3",
+        "kind": "text",
+        "x": 672,
+        "y": 424.5,
+        "w": 520,
+        "h": 22
+      },
+      {
+        "name": "slot:items:3",
+        "kind": "text",
+        "x": 672,
+        "y": 454.5,
+        "w": 520,
+        "h": 205.5
+      }
+    ]
+  },
+  {
+    "layout": "compare",
+    "variant": "two-col",
+    "elements": [
+      {
+        "name": "slot:title",
+        "kind": "text",
+        "x": 64,
+        "y": 36,
+        "w": 1152,
+        "h": 45
+      },
+      {
+        "name": "slot:leftPanel",
+        "kind": "surface",
+        "x": 64,
+        "y": 90,
+        "w": 568,
+        "h": 594
+      },
+      {
+        "name": "slot:rightPanel",
+        "kind": "surface",
+        "x": 648,
+        "y": 90,
+        "w": 568,
+        "h": 594
+      },
+      {
+        "name": "slot:leftItems:0",
+        "kind": "text",
+        "x": 88,
+        "y": 114,
+        "w": 520,
+        "h": 30.6
+      },
+      {
+        "name": "slot:rightItems:0",
+        "kind": "text",
+        "x": 672,
+        "y": 114,
+        "w": 520,
+        "h": 30.6
+      }
+    ]
+  },
+  {
+    "layout": "split",
+    "variant": "text-text",
+    "elements": [
+      {
+        "name": "slot:title",
+        "kind": "text",
+        "x": 64,
+        "y": 36,
+        "w": 1152,
+        "h": 45
+      },
+      {
+        "name": "slot:leftPanel",
+        "kind": "surface",
+        "x": 64,
+        "y": 101,
+        "w": 665.33,
+        "h": 583
+      },
+      {
+        "name": "slot:rule",
+        "kind": "rule",
+        "x": 737.33,
+        "y": 125,
+        "w": 1,
+        "h": 535
+      },
+      {
+        "name": "slot:leftItems:0",
+        "kind": "text",
+        "x": 88,
+        "y": 125,
+        "w": 617.33,
+        "h": 30.6
+      },
+      {
+        "name": "slot:leftItems:1",
+        "kind": "text",
+        "x": 88,
+        "y": 159,
+        "w": 617.33,
+        "h": 30.6
+      },
+      {
+        "name": "slot:rightPanel",
+        "kind": "surface",
+        "x": 745.33,
+        "y": 101,
+        "w": 470.67,
+        "h": 583
+      },
+      {
+        "name": "slot:rightItems:0",
+        "kind": "text",
+        "x": 769.33,
+        "y": 125,
+        "w": 422.67,
+        "h": 30.6
+      },
+      {
+        "name": "slot:rightItems:1",
+        "kind": "text",
+        "x": 769.33,
+        "y": 159,
+        "w": 422.67,
+        "h": 30.6
+      }
+    ]
+  },
+  {
+    "layout": "figure",
+    "variant": "hero",
+    "elements": [
+      {
+        "name": "slot:image",
+        "kind": "surface",
+        "x": 64,
+        "y": 36,
+        "w": 1152,
+        "h": 543.8
+      },
+      {
+        "name": "slot:title",
+        "kind": "text",
+        "x": 64,
+        "y": 589.8,
+        "w": 1152,
+        "h": 43.2
+      }
+    ]
+  },
+  {
+    "layout": "kpi",
+    "variant": "big-number",
+    "elements": [
+      {
+        "name": "slot:bar",
+        "kind": "bar",
+        "x": 64,
+        "y": 36,
+        "w": 470.67,
+        "h": 648
+      },
+      {
+        "name": "slot:value",
+        "kind": "text",
+        "x": 88,
+        "y": 217.44,
+        "w": 422.67,
+        "h": 80
+      },
+      {
+        "name": "slot:label",
+        "kind": "text",
+        "x": 550.67,
+        "y": 282.24,
+        "w": 665.33,
+        "h": 48.4
+      }
+    ]
+  },
+  {
+    "layout": "close",
+    "variant": "manifesto",
+    "elements": [
+      {
+        "name": "slot:title",
+        "kind": "text",
+        "x": 64,
+        "y": 113.76,
+        "w": 1152,
+        "h": 140.8
+      },
+      {
+        "name": "slot:items:0",
+        "kind": "text",
+        "x": 64,
+        "y": 274.56,
+        "w": 829.44,
+        "h": 27.2
+      },
+      {
+        "name": "slot:items:1",
+        "kind": "text",
+        "x": 64,
+        "y": 305.16,
+        "w": 829.44,
+        "h": 27.2
+      },
+      {
+        "name": "slot:items:2",
+        "kind": "text",
+        "x": 64,
+        "y": 335.76,
+        "w": 829.44,
+        "h": 27.2
+      }
+    ]
+  }
+]

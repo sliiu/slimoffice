@@ -1,0 +1,15 @@
+export type RawNode = Record<string, unknown>;
+export type RawTree = RawNode[];
+export declare function parseXmlPreserveOrder(text: string): RawTree;
+export declare function buildXml(tree: RawTree): string;
+export declare function getAttrs(node: RawNode): Record<string, string>;
+export declare function setAttr(node: RawNode, key: string, value: string | number | undefined | null): void;
+export declare function getTagName(node: RawNode): string | undefined;
+export declare function localName(tag: string): string;
+export declare function getChildren(node: RawNode): RawTree;
+export declare function setChildren(node: RawNode, children: RawTree): void;
+export declare function findChildByLocal(children: RawTree, local: string): RawNode | undefined;
+export declare function findAllChildrenByLocal(children: RawTree, local: string): RawNode[];
+export declare function getText(node: RawNode): string;
+export declare function setText(node: RawNode, text: string): void;
+export declare function parseFragmentAsChildren(xml: string): RawTree;

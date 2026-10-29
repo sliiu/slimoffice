@@ -1,0 +1,116 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LOCALE_EXPLICIT_KEY = exports.LOCALE_STORAGE_KEY = void 0;
+exports.envDefaultLocale = envDefaultLocale;
+exports.normalizeUiLocale = normalizeUiLocale;
+exports.readUrlLocale = readUrlLocale;
+exports.readStoredUiLocale = readStoredUiLocale;
+exports.persistUiLocale = persistUiLocale;
+exports.browserUiLocale = browserUiLocale;
+exports.readBrowserUiLocale = readBrowserUiLocale;
+exports.pickGuestLocale = pickGuestLocale;
+exports.resolveUiLocale = resolveUiLocale;
+exports.LOCALE_STORAGE_KEY = "pp.locale";
+exports.LOCALE_EXPLICIT_KEY = "pp.locale.explicit";
+function envDefaultLocale(raw) {
+    return normalizeUiLocale(raw, "en");
+}
+function normalizeUiLocale(raw, fallback = "en") {
+    const s = (raw ?? "").trim();
+    if (!s)
+        return fallback;
+    const lower = s.toLowerCase();
+    if (lower === "zh-cn" || lower.startsWith("zh"))
+        return "zh-CN";
+    if (lower === "en" || lower.startsWith("en"))
+        return "en";
+    return fallback;
+}
+function readUrlLocale(search) {
+    const params = new URLSearchParams(search.startsWith("?") || search.length === 0 ? search : `?${search}`);
+    const raw = params.get("locale") ?? params.get("lang");
+    return raw?.trim() ? raw : null;
+}
+function readStoredUiLocale() {
+    try {
+        if (typeof localStorage === "undefined")
+            return null;
+        if (localStorage.getItem(exports.LOCALE_EXPLICIT_KEY) !== "1")
+            return null;
+        return localStorage.getItem(exports.LOCALE_STORAGE_KEY);
+    }
+    catch {
+        return null;
+    }
+}
+function persistUiLocale(locale) {
+    try {
+        if (typeof localStorage === "undefined")
+            return;
+        localStorage.setItem(exports.LOCALE_STORAGE_KEY, locale);
+        localStorage.setItem(exports.LOCALE_EXPLICIT_KEY, "1");
+    }
+    catch {
+        return;
+    }
+}
+/**
+ * First language the UI can actually show.
+ * zh* → zh-CN, en* → en. Any other reported language is English,
+ * because those are the only two catalogs. Empty input stays unset.
+ */
+function browserUiLocale(languages) {
+    const list = languages ?? [];
+    let saw = false;
+    for (const raw of list) {
+        const s = (raw ?? "").trim();
+        if (!s)
+            continue;
+        saw = true;
+        const lower = s.toLowerCase();
+        if (lower.startsWith("zh"))
+            return "zh-CN";
+        if (lower.startsWith("en"))
+            return "en";
+    }
+    return saw ? "en" : null;
+}
+function readBrowserUiLocale() {
+    if (typeof navigator === "undefined")
+        return null;
+    const list = navigator.languages?.length
+        ? navigator.languages
+        : navigator.language
+            ? [navigator.language]
+            : [];
+    return browserUiLocale(list);
+}
+/**
+ * Guest surfaces (share, collab invite, live audience).
+ * URL → explicit saved choice → browser → fallback (publisher or env).
+ * A browser language we do not ship still wins over the publisher's language.
+ */
+function pickGuestLocale(input) {
+    const fallback = normalizeUiLocale(input.fallback, "en");
+    if (input.url?.trim())
+        return normalizeUiLocale(input.url, fallback);
+    if (input.storedExplicit && input.stored?.trim())
+        return normalizeUiLocale(input.stored, fallback);
+    const browser = browserUiLocale(input.languages);
+    if (browser)
+        return browser;
+    return fallback;
+}
+/** URL → account → explicit localStorage → browser → env default. */
+function resolveUiLocale(input) {
+    const fallback = envDefaultLocale(input.envDefault);
+    if (input.url?.trim())
+        return normalizeUiLocale(input.url, fallback);
+    if (input.account?.trim())
+        return normalizeUiLocale(input.account, fallback);
+    if (input.stored?.trim())
+        return normalizeUiLocale(input.stored, fallback);
+    if (input.browser?.trim())
+        return normalizeUiLocale(input.browser, fallback);
+    return fallback;
+}

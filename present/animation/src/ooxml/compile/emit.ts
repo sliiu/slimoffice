@@ -1,0 +1,255 @@
+// CompiledStep 构造：按 click 边界把容器/叶子聚合成步骤。
+
+import { getCTn, getChildren, isBehavior, isContainer, isMedia } from "../types";
+import type { TimeNode } from "../types";
+import { condDelay, genId, msOf } from "./helpers";
+import { containsClick, shapeClickTarget, triggerOf } from "./trigger";
+import { resolveHold, resolveIterations } from "./timing-prop";
+import { walkInstances } from "./walk";
+import type {
+  AtomInstance,
+  CompileCtx,
+  CompiledStep,
+  StepTrigger,
+} from "./types";
+
+// §19.5 mainSeq / par 内同级节点的"段聚合"判定。
+//
+// 标准 OOXML 模式：mainSeq.childTnLst 中每个 step 由 1 个段头（click 触发或 onLoad）
+// + 后续连续若干 withEffect/afterEffect 同级节点组成；段头按用户点击/onLoad 触发，段内
+// 同级节点根据 nodeType 在 walkInstances 的 par/seq 同步语义里计算 offset。
+//
+// PowerPoint 出品的 PPT 把每个段头包在 nodeType=undefined 的 wrapper par 里（不会被
+// 判为 attachedSibling），所以原始 emit 行为对它们仍是"每个 children 单独 emit"，未变。
+// AI 生成 / 编辑器写出的 timing 直接把 [clickEffect, afterEffect, afterEffect] 平铺
+// 在 mainSeq 下，必须靠这里识别 attachedSibling 才能把它们合成"一次 click → 串联子动画"。
+function isAttachedSibling(n: TimeNode): boolean {
+  const nt = getCTn(n).nodeType;
+  return (
+    nt === "withEffect" ||
+    nt === "withGroup" ||
+    nt === "withPar" ||
+    nt === "afterEffect" ||
+    nt === "afterGroup"
+  );
+}
+
+// 段内任何节点（含子孙）若带容器级 repeatCount/repeatDur（非默认），就不能简单合段——
+// step.iterations 是 step 级单值，无法表达"段内某个 sub-effect 独立 loop N 次/无限"。
+// 这类节点的循环行为依赖 buildStep 把容器自身 cTn 的 repeat 信息读到 step.iterations，
+// 强行打包会丢循环。回退到原"每个 child 独立 emit"路径，保留各自 iter 行为。
+//
+// 段头自己的 repeat 不在此处检查：段头是 head（外层容器），如果 head 本身是 onClick
+// /onLoad 步骤入口，它的 repeat 由 buildStep(head) 处理；段聚合只把 head 之后的 with
+// /after 兄弟拼到 head 起的 step 里。所以这里只看 attachedSibling（segment[1..]）。
+function hasContainerLevelRepeat(n: TimeNode): boolean {
+  const c = getCTn(n);
+  if (c.repeatCount !== undefined && c.repeatCount !== 1000) return true;
+  if (c.repeatDur !== undefined) return true;
+  // 也要拒绝 autoRev（runtime 的 step.autoReverse 同样是 step 级单值）。
+  if (c.autoRev) return true;
+  for (const child of getChildren(n)) {
+    if (hasContainerLevelRepeat(child)) return true;
+  }
+  return false;
+}
+
+export function buildStep(
+  node: TimeNode,
+  ctx: CompileCtx,
+  trigger: StepTrigger,
+  triggerTargetId?: string,
+): CompiledStep | null {
+  const atoms: AtomInstance[] = [];
+  let duration = 0;
+  walkInstances(
+    node,
+    ctx,
+    atoms,
+    0,
+    undefined,
+    (end) => {
+      if (end > duration) duration = end;
+    },
+    undefined,
+    undefined,
+    undefined,
+    false,
+    true,
+  );
+  if (atoms.length === 0) return null;
+  const cTn = getCTn(node);
+  let iterations = resolveIterations(cTn, duration);
+  const hold = resolveHold(cTn);
+  // §19.5.20 endCondLst：以最早的 delay 截断时间节点总时长（识别 number 与 tn 引用）。
+  // 仅对 finite iterations 生效；indefinite (Infinity) 时也按 endLimit 截断成有限。
+  const endLimit = condDelay(cTn.endCondLst, ctx.tnIndex);
+  if (endLimit > 0 && duration > 0) {
+    const limitSec = endLimit / 1000;
+    const totalSec =
+      iterations === Infinity ? Infinity : duration * iterations;
+    if (limitSec > 0 && limitSec < totalSec) {
+      iterations = Math.max(1, limitSec / duration);
+    }
+  }
+  return {
+    id: genId("step"),
+    trigger,
+    triggerTargetId,
+    delay: condDelay(cTn.stCondLst, ctx.tnIndex) / 1000,
+    duration,
+    iterations,
+    hold,
+    autoReverse: !!cTn.autoRev,
+    source: node,
+    atoms,
+  };
+}
+
+export function appendAutoStep(out: CompiledStep[], step: CompiledStep): void {
+  const last = out[out.length - 1];
+  // 仅当两步都不重复且都不 autoReverse 时合并；带 iterations>1 或 autoReverse 的
+  // 步骤需要独立调度（runtime applyStepAt 用 step 级时间映射）。
+  // Infinity 也视为"重复"，不合并。
+  if (
+    last &&
+    last.trigger === "onLoad" &&
+    last.iterations === 1 &&
+    step.iterations === 1 &&
+    !last.autoReverse &&
+    !step.autoReverse
+  ) {
+    for (const a of step.atoms) last.atoms.push({ atom: a.atom, offset: a.offset + step.delay });
+    const end = step.delay + step.duration;
+    if (end > last.duration) last.duration = end;
+    return;
+  }
+  out.push(step);
+}
+
+export function emit(
+  node: TimeNode,
+  ctx: CompileCtx,
+  mainSteps: CompiledStep[],
+  shapeSteps: CompiledStep[],
+  parentDelay: number,
+): void {
+  const trig = triggerOf(node);
+  // 单位约定：CompiledStep.delay/duration、AtomInstance.offset、Atom.duration 全部为秒。
+  // OOXML 原生时间字段（cTn.delay、cond.delay、tnIndex 条目）单位 ms，需 /1000。
+  const ownDelay =
+    (msOf(getCTn(node).delay) + condDelay(getCTn(node).stCondLst, ctx.tnIndex)) / 1000;
+  if (
+    trig === "onShapeClick" ||
+    trig === "onShapeDblClick" ||
+    trig === "onShapeHover" ||
+    trig === "onShapeMouseOut" ||
+    trig === "onPrev" ||
+    trig === "onNext"
+  ) {
+    const target = shapeClickTarget(getCTn(node).stCondLst);
+    const step = buildStep(node, ctx, trig, target);
+    if (step) shapeSteps.push(step);
+    return;
+  }
+  if (trig === "onClick") {
+    const step = buildStep(node, ctx, "onClick");
+    if (step) mainSteps.push(step);
+    return;
+  }
+  if (isContainer(node)) {
+    const children = getChildren(node);
+    if (children.length === 0) return;
+    const nestedClicks = children.filter((c) => containsClick(c)).length;
+    if (nestedClicks === 0) {
+      const step = buildStep(node, ctx, "onLoad");
+      if (step) {
+        step.delay += parentDelay;
+        appendAutoStep(mainSteps, step);
+      }
+      return;
+    }
+    // 按段聚合：连续的 [head, ...attachedSibling*] 形成一个 step。段头一般是
+    // clickEffect / 嵌着 click 的 wrapper / 普通 par；attachedSibling = nodeType ∈
+    // {withEffect, withGroup, withPar, afterEffect, afterGroup}，按 PPT 语义"附着到
+    // 前一段头"，不能作为新 step。
+    //
+    // 单元素段（segment.length=1）走原有路径（递归 emit），保留 PowerPoint 标准 PPT
+    // 的行为；多元素段必须打包，避免段内 with/after 被当作独立 step 而丢掉 cTn.delay
+    // 与同步关系。但如果段内任意 sibling 含独立 loop/autoRev，回退到原路径，避免
+    // 单一 step.iterations 表达不了多 sub-effect 各自循环。
+    let segStart = 0;
+    while (segStart < children.length) {
+      let segEnd = segStart + 1;
+      while (segEnd < children.length && isAttachedSibling(children[segEnd]!)) {
+        segEnd++;
+      }
+      const segLen = segEnd - segStart;
+      const canMerge =
+        segLen > 1 &&
+        !children
+          .slice(segStart + 1, segEnd)
+          .some((c) => hasContainerLevelRepeat(c));
+      if (canMerge) {
+        emitSegment(
+          children.slice(segStart, segEnd),
+          ctx,
+          mainSteps,
+          parentDelay + ownDelay,
+        );
+      } else {
+        // 单元素段或含独立 loop 的多元素段：每个 child 走原递归路径。
+        for (let i = segStart; i < segEnd; i++) {
+          emit(children[i]!, ctx, mainSteps, shapeSteps, parentDelay + ownDelay);
+        }
+      }
+      segStart = segEnd;
+    }
+    return;
+  }
+  if (isBehavior(node) || isMedia(node)) {
+    const step = buildStep(node, ctx, "onLoad");
+    if (step) {
+      step.delay += parentDelay;
+      appendAutoStep(mainSteps, step);
+    }
+  }
+}
+
+// 把一段 [head, ...attachedSiblings] 编译成一个 step。
+//
+// 段头 trigger 决定 step.trigger：含 click → "onClick"（用户按一次空格即可串联整段
+// 子动画），否则 "onLoad"（页面加载/前一段结束自动播）。段内各节点的同步关系由
+// walkInstances 在 par 容器内按 with/after 语义计算 offset：
+//   - 段头：childBase = 0
+//   - afterEffect：childBase = 前一兄弟 effective_end + own_delay
+//   - withEffect：childBase = chainAnchor + own_delay
+function emitSegment(
+  segment: TimeNode[],
+  ctx: CompileCtx,
+  mainSteps: CompiledStep[],
+  parentDelay: number,
+): void {
+  if (segment.length === 0) return;
+  const head = segment[0]!;
+  // 复用 buildStep + walkInstances 已有的同步计算能力：用一个临时 par 容器把整段
+  // 包起来，cTn 不带任何 delay / iteration 字段，walkInstances 入口 isStepRoot=true
+  // 已经把 own_delay 视为 0，所以 wrapper 自身对时序无贡献。
+  const wrapper: TimeNode = {
+    kind: "par",
+    ctn: {
+      id: `__seg_${genId("wrap")}`,
+      childTnLst: segment,
+    },
+  };
+  const headHasClick = containsClick(head);
+  const trigger: StepTrigger = headHasClick ? "onClick" : "onLoad";
+  const step = buildStep(wrapper, ctx, trigger);
+  if (!step) return;
+  step.delay += parentDelay;
+  if (trigger === "onClick") {
+    mainSteps.push(step);
+  } else {
+    appendAutoStep(mainSteps, step);
+  }
+}

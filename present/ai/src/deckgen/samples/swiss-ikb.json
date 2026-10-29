@@ -1,0 +1,100 @@
+{
+  "system": "swiss",
+  "theme": "ikb",
+  "title": "Why local-first decks win",
+  "slides": [
+    {
+      "quad": "swiss/cover/title-meta/ikb",
+      "layout": "cover",
+      "variant": "title-meta",
+      "slots": {
+        "slot:title": "Why local-first decks win",
+        "slot:subtitle": "Product leads",
+        "slot:meta": "en"
+      }
+    },
+    {
+      "quad": "swiss/section/num-title/ikb",
+      "layout": "section",
+      "variant": "num-title",
+      "slots": {
+        "slot:number": "01",
+        "slot:title": "Own the file, not the tab"
+      }
+    },
+    {
+      "quad": "swiss/quote/serif-mark/ikb",
+      "layout": "quote",
+      "variant": "serif-mark",
+      "slots": {
+        "slot:claim": "Own the file, not the tab"
+      }
+    },
+    {
+      "quad": "swiss/cards/four/ikb",
+      "layout": "cards",
+      "variant": "four",
+      "slots": {
+        "slot:title": "4 holds",
+        "slot:index:0": "01",
+        "slot:items:0": "Offline edit stays authorit…",
+        "slot:index:1": "02",
+        "slot:items:1": "Export remains a round-trip",
+        "slot:index:2": "03",
+        "slot:items:2": "Design tokens lock the look",
+        "slot:index:3": "04",
+        "slot:items:3": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "swiss/compare/two-col/ikb",
+      "layout": "compare",
+      "variant": "two-col",
+      "slots": {
+        "slot:title": "Offline edit st… / Design tokens l…",
+        "slot:leftItems:0": "Design tokens lock the look",
+        "slot:rightItems:0": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "swiss/split/text-text/ikb",
+      "layout": "split",
+      "variant": "text-text",
+      "slots": {
+        "slot:title": "Offline edit st… / Design tokens l…",
+        "slot:leftItems:0": "Design tokens lock the look",
+        "slot:leftItems:1": "Narrative first, then skin",
+        "slot:rightItems:0": "Design tokens lock the look",
+        "slot:rightItems:1": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "swiss/figure/hero/ikb",
+      "layout": "figure",
+      "variant": "hero",
+      "slots": {
+        "slot:title": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "swiss/kpi/big-number/ikb",
+      "layout": "kpi",
+      "variant": "big-number",
+      "slots": {
+        "slot:value": "01",
+        "slot:label": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "swiss/close/manifesto/ikb",
+      "layout": "close",
+      "variant": "manifesto",
+      "slots": {
+        "slot:title": "Why local-first decks win",
+        "slot:items:0": "Offline edit stays authorit…",
+        "slot:items:1": "Export remains a round-trip",
+        "slot:items:2": "Design tokens lock the look"
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+export declare const EMU_PER_PX = 9525;
+export declare const EMU_PER_PT = 12700;
+export declare const emuToPx: (emu: number | string | undefined) => number;
+export declare const ptToPx: (pt: number) => number;
+export declare const stHundredthPtToPx: (v: number | string | undefined) => number;
+export declare const angle60kToDeg: (v: number | string | undefined) => number;
+export declare const percentToFloat: (v: string | number | undefined) => number;
+export declare const msToSec: (v: number | string | undefined, fallback?: number) => number;
+export declare const boolish: (v: unknown) => boolean | undefined;

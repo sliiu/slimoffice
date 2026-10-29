@@ -1,0 +1,227 @@
+"use strict";
+// 版式模板：大纲只使用模板里已有的版式，内容写进占位符。不走自由画布。
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.layoutsFromMasters = layoutsFromMasters;
+exports.layoutsFromTemplate = layoutsFromTemplate;
+exports.templateUsesPlaceholders = templateUsesPlaceholders;
+exports.resolveVisualSource = resolveVisualSource;
+exports.contentLayout = contentLayout;
+exports.assignTemplateLayouts = assignTemplateLayouts;
+exports.presentationFromTemplateOutline = presentationFromTemplateOutline;
+exports.repairTemplateDeck = repairTemplateDeck;
+exports.templateOutlineSystemPrompt = templateOutlineSystemPrompt;
+exports.animateTemplateDeck = animateTemplateDeck;
+const core_1 = require("@sliiu/present-core");
+const animations_1 = require("../animations");
+const reveal_order_1 = require("./reveal-order");
+const copy_voice_1 = require("./copy-voice");
+const registry_1 = require("../skills/registry");
+const prompts_1 = require("./prompts");
+const validate_1 = require("./qa/validate");
+function layoutsFromMasters(masters) {
+    const master = masters?.[0];
+    if (!master)
+        return [];
+    return (master.layouts ?? []).map((layout) => ({
+        id: layout.id,
+        name: layout.name || layout.type || layout.id,
+        type: layout.type || "",
+        placeholders: placeholderTypes(layout),
+    }));
+}
+function layoutsFromTemplate(template) {
+    return layoutsFromMasters(template.masters);
+}
+function templateUsesPlaceholders(template) {
+    return layoutsFromTemplate(template).some((choice) => choice.placeholders.length > 0);
+}
+/**
+ * 有文字占位符就填占位符，页上构图只留下疏密。
+ * 没有文字占位符、但记下了页上构图时，整页走自由画布。
+ * 没有构图说明时，仍按版式模板填（含只有母版、没有幻灯片的上传）。
+ */
+function resolveVisualSource(template, looseComposition) {
+    const text = template?.composition?.trim() || looseComposition?.trim() || undefined;
+    const usesPlaceholders = Boolean(template && templateUsesPlaceholders(template));
+    if (template && (usesPlaceholders || !text)) {
+        return { fillPlaceholders: true, ...(usesPlaceholders && text ? { density: text } : {}) };
+    }
+    if (text)
+        return { fillPlaceholders: false, composition: text };
+    return { fillPlaceholders: false };
+}
+function placeholderTypes(layout) {
+    const types = [];
+    for (const shape of layout.shapes ?? []) {
+        const ph = shape.placeholder?.type;
+        if (ph && shape.kind === "text")
+            types.push(ph);
+    }
+    return types;
+}
+/** 事实放不下专用版式时，写进带正文占位符的那一版；没有就用文字占位符最多的。 */
+function contentLayout(choices) {
+    const withBody = choices.filter((c) => c.placeholders.includes("body"));
+    if (withBody.length) {
+        return withBody.find((c) => c.type === "obj") ?? withBody[0];
+    }
+    return [...choices].sort((a, b) => b.placeholders.length - a.placeholders.length)[0];
+}
+function assignTemplateLayouts(outline, choices) {
+    const fallback = contentLayout(choices);
+    return {
+        ...outline,
+        slides: outline.slides.map((item, index) => {
+            const picked = pickLayout(item, index, outline.slides.length, choices) ?? fallback;
+            return picked ? { ...item, templateLayoutId: picked.id } : item;
+        }),
+    };
+}
+function pickLayout(item, index, total, choices) {
+    if (item.templateLayoutId) {
+        const exact = choices.find((c) => c.id === item.templateLayoutId && c.placeholders.length > 0);
+        if (exact)
+            return exact;
+    }
+    const hint = item.layoutHint;
+    if (index === 0) {
+        const title = choices.find((c) => c.type === "title" || c.placeholders.includes("ctrTitle"));
+        if (title)
+            return title;
+    }
+    if (index === total - 1 && total > 1) {
+        const closing = choices.find((c) => /clos|end|title/i.test(c.type) && c.type !== "title");
+        if (closing && hint === "closing")
+            return closing;
+    }
+    const hinted = matchHint(hint, choices);
+    if (hinted)
+        return hinted;
+    return undefined;
+}
+function matchHint(hint, choices) {
+    if (hint === "section")
+        return choices.find((c) => /section/i.test(c.type));
+    if (hint === "chart")
+        return choices.find((c) => /chart/i.test(`${c.type} ${c.name}`));
+    if (hint === "table")
+        return choices.find((c) => /table|tbl/i.test(`${c.type} ${c.name}`));
+    if (hint === "comparison")
+        return choices.find((c) => c.type === "twoObj" || c.placeholders.filter((p) => p === "body").length >= 2);
+    return undefined;
+}
+function presentationFromTemplateOutline(template, outline) {
+    const choices = layoutsFromTemplate(template);
+    const assigned = assignTemplateLayouts(outline, choices);
+    const masters = template.masters.map((m) => structuredClone(m));
+    const slides = assigned.slides.map((item, index) => {
+        const choice = choices.find((c) => c.id === item.templateLayoutId) ?? contentLayout(choices);
+        const slide = (0, core_1.createSlideFromMaster)(masters, {
+            index,
+            name: item.title || `Slide ${index + 1}`,
+            ...(choice ? { layoutId: choice.id } : {}),
+        });
+        if (choice)
+            writePlaceholders(slide, item, choice.placeholders);
+        if (item.notes)
+            slide.notes = item.notes;
+        return slide;
+    });
+    return {
+        id: `pres_${Date.now().toString(36)}`,
+        size: template.size ?? { width: 1280, height: 720 },
+        slides,
+        masters,
+        ...(template.theme ? { theme: structuredClone(template.theme) } : {}),
+        ...(template.fonts ? { fonts: template.fonts.map((f) => ({ ...f })) } : {}),
+    };
+}
+function writePlaceholders(slide, item, types) {
+    const bodyCount = types.filter((t) => t === "body").length;
+    const bullets = item.bullets ?? [];
+    const subTitleTakesFirst = types.includes("subTitle");
+    const bodyBullets = subTitleTakesFirst ? bullets.slice(1) : bullets;
+    const chunks = splitEven(bodyBullets, Math.max(1, bodyCount));
+    let bodyN = 0;
+    for (const shape of slide.layers[0]?.shapes ?? []) {
+        if (shape.kind !== "text" || !shape.placeholder)
+            continue;
+        const ph = shape.placeholder.type;
+        let text;
+        if (ph === "title" || ph === "ctrTitle")
+            text = item.title;
+        else if (ph === "subTitle")
+            text = bullets[0] ?? "";
+        else if (ph === "body")
+            text = chunks[bodyN++] ?? "";
+        if (text === undefined)
+            continue;
+        setShapePlainText(shape, text);
+    }
+}
+function splitEven(lines, parts) {
+    if (parts <= 1)
+        return [lines.join("\n")];
+    const out = [];
+    const size = Math.ceil(lines.length / parts);
+    for (let i = 0; i < parts; i++)
+        out.push(lines.slice(i * size, (i + 1) * size).join("\n"));
+    return out;
+}
+/**
+ * 占位符填完之后补对比度，以及框里放不下的字。不挪占位符的位置。
+ * 缩排和自由画布走同一套质检。
+ */
+function repairTemplateDeck(pres) {
+    (0, validate_1.validateAndRepairPresentation)(pres);
+}
+function setShapePlainText(shape, text) {
+    const ts = shape;
+    const base = ts.paragraphs?.[0]?.runs?.[0] ?? { text: "" };
+    const lines = text.split("\n");
+    const written = lines.length ? lines : [""];
+    ts.paragraphs = written.map((line) => ({
+        runs: [{ ...base, text: line }],
+    }));
+}
+function templateOutlineSystemPrompt(choices, guidance, host) {
+    const catalog = choices
+        .map((c) => `- id=${c.id} name=${c.name} type=${c.type || "unspecified"} placeholders=${c.placeholders.join(",") || "none"}`)
+        .join("\n");
+    return [
+        "You write a slide outline as JSON. A layout template is attached.",
+        "HARD: every slide's templateLayoutId MUST be one of the ids below. Do not invent a layout the template does not have.",
+        "If the material wants a chart, quote, or other page the template lacks, put those facts in bullets on a layout that already exists. Prefer one with a body placeholder.",
+        "Do not describe visual systems, scrims, or decoration. The template already has them.",
+        "Titles ≤ 24 chars. Bullets are concrete facts, in the order the speaker will say them. When two sources disagree, keep both bullets and start each with [冲突].",
+        'Optional `pace`: one "click" or "chain" per spoken point, in bullet order. click waits; chain follows the previous point. The title is always the first click and is not listed. Example ["click","chain","chain"]. Omit when every point waits. Chart is one flag. Table skips the header. Comparison skips `Left || Right`.',
+        "Do not copy pictures out of the source files. imageIdea may be empty.",
+        (0, prompts_1.guidanceHardConstraints)(guidance),
+        "Layouts:",
+        catalog,
+        copy_voice_1.COPY_VOICE_BLOCK,
+        ...(0, registry_1.getEnabledSkillFragments)({ stage: "outline", host }),
+        'JSON: {"title":"...","subtitle":"...","themeId":"ai","slides":[{"title":"...","templateLayoutId":"...","bullets":["..."],"pace":["click","chain"],"notes":"..."}]}',
+        "No markdown fences.",
+    ].join("\n");
+}
+function animateTemplateDeck(pres, opts, outline) {
+    if (opts.enableAnimations === false)
+        return;
+    (0, animations_1.autoAnimatePresentation)(pres, {
+        ...(opts.motionBundle ? { bundle: opts.motionBundle } : {}),
+        ...(opts.motionBundleId ? { bundleId: opts.motionBundleId } : {}),
+        ...(opts.maxEffectsPerSlide !== undefined ? { maxEffects: opts.maxEffectsPerSlide } : {}),
+        ...(outline
+            ? {
+                revealForSlide: (index) => {
+                    const item = outline.slides[index];
+                    return item ? (0, reveal_order_1.speechPlanFromOutlineItem)(item) : undefined;
+                },
+            }
+            : {}),
+    });
+    for (const slide of pres.slides) {
+        (0, core_1.applyInitialEntranceState)(slide, (0, core_1.computeInitialEntranceState)(slide));
+    }
+}

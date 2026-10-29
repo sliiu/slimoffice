@@ -1,0 +1,145 @@
+// @ppt/ui design tokens.
+//
+// TOKENS_CSS is the runtime-injected mirror of ../tokens.css (the canonical
+// file imported by the React console's Tailwind theme). The vanilla editor /
+// playground cannot import .css through tsc, so the same values live here as a
+// string and is injected via ensureUiStyles(). Keep both files in sync.
+
+export const TOKENS_CSS = `
+:root {
+  color-scheme: light;
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #0070f3;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #09090b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #09090b;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #0070f3;
+  --radius: 0.5rem;
+  --editor-header: #ffffff;
+  --editor-stage: #ececef;
+  --editor-ribbon: #ffffff;
+  --editor-panel: #f4f4f5;
+  --editor-control: #ffffff;
+  --editor-control-border: #e4e4e7;
+  --editor-tab-active: #e4e4e7;
+  --glass-surface: color-mix(in srgb, #000000 4%, transparent);
+  --glass-border: color-mix(in srgb, #000000 10%, transparent);
+  --shadow-stage: 0 1px 0 rgba(0, 0, 0, 0.06) inset;
+
+  --accent-cyan: #3291ff;
+  --accent-violet: #7928ca;
+  --accent-green: #10b981;
+  --accent-amber: #f5a524;
+  --brand-gradient: linear-gradient(135deg, #0070f3 0%, #3291ff 100%);
+
+  --primary-soft: #3291ff;
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --warning: #f5a524;
+  --warning-foreground: #09090b;
+  --overlay-backdrop: rgba(0, 0, 0, 0.65);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Editor chrome density: view bar / command row / status bar. Heights are box-sizing:border-box. */
+  --chrome-view-bar-height: 40px;
+  --chrome-command-bar-height: 40px;
+  --chrome-status-bar-height: 32px;
+  --chrome-bar-gap: 4px;
+  --chrome-bar-icon: 16px;
+  --chrome-bar-font: 12px;
+  --chrome-control-height: 28px;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-button: 8px;
+  --radius-header-btn: 6px;
+  --radius-control: 6px;
+  --radius-modal: 12px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-modal: 1300;
+  --z-toast: 1400;
+  --z-overlay: 1500;
+
+  --font-sans: "Geist", "Inter", "PingFang SC", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #18181a;
+  --foreground: #fafafa;
+  --card: #1c1c1c;
+  --card-foreground: #fafafa;
+  --popover: #242424;
+  --popover-foreground: #fafafa;
+  --primary: #0070f3;
+  --primary-foreground: #ffffff;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a1a1aa;
+  --accent: #333333;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #3a3a3a;
+  --input: #262626;
+  --ring: #3b82f6;
+  --editor-header: #181818;
+  --editor-stage: #141414;
+  --editor-ribbon: #181818;
+  --editor-panel: #191919;
+  --editor-control: #262626;
+  --editor-control-border: #3a3a3a;
+  --editor-tab-active: #333333;
+  --glass-surface: color-mix(in srgb, #ffffff 6%, transparent);
+  --glass-border: color-mix(in srgb, #ffffff 10%, transparent);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --shadow-stage: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --accent-cyan: #3291ff;
+  --accent-violet: #7928ca;
+  --accent-green: #10b981;
+  --primary-soft: #3291ff;
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --warning: #f5a524;
+  --warning-foreground: #09090b;
+  --overlay-backdrop: rgba(0, 0, 0, 0.65);
+  --radius-button: 8px;
+  --radius-header-btn: 6px;
+  --radius-control: 6px;
+  --radius-modal: 12px;
+}
+`;
+
+/** JS-side token accessors for the rare cases needing inline values. */
+export const token = (name: string): string => `var(--${name})`;

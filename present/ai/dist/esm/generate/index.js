@@ -1,0 +1,33 @@
+// 生成模块入口：阶段化流水线 + schema + compile + enrich + qa + template。
+// 主路径 generatePresentation / generateFromOutline 走 deckgen 适配器 + polish。
+export { generateOutline, generateFromOutline, generatePresentation, generateTheme, generateMotionScheme, generateThemeWithMotion, generateLayoutStyle, themeContextFromSpec, ensureConfig, abortError, bindGenerateWallClock, classifyGenerateEndError, GENERATE_PAUSE_KIND, GENERATE_TIMEOUT_KIND, GENERATE_WALL_MS, generatePauseError, generateTimeoutError, isAbortError, isGeneratePauseError, isGenerateTimeoutError, shouldCommitGeneratedDeck, startGenerateWallClock, throwIfAborted, withGenerateWallClock, formatGenerateProgress, formatUsageAmounts, hasRealGenerateUsage, UsageCounter, } from "./pipeline.js";
+export { isDeckgenGenerateEnabled, resolveDeckgenSystem, resolveDeckgenTheme, toDeckgenInput, assertDeckgenBoundary, compileDeckgenPresentation, generatePresentationViaDeckgen, } from "./deckgen-adapter.js";
+export { clampOutlineToDeckgenSlots, specFromOutlineImagery, enrichOutlineContent, polishGeneratedDeck, } from "./polish.js";
+export { convertImageIdeaToEnglish } from "./convert-image-idea.js";
+export { DeckgenUserError, formatDeckgenUserError, sanitizeDeckgenErrorCopy, looksLikeStackDump, colorThemeOptions, isThemeAllowedForSystem, layoutVariantOptions, isWhitelistedLayoutVariant, defaultVariantFor, defaultOutlinePageLock, applyOutlinePageLock, readOutlinePageLock, pagesFromOutline, formatResultBadge, badgeFromSlideTags, pickBadgeForeground, contrastRatio, DECKGEN_CAPTION_PX, } from "./deckgen-ui.js";
+export { LayoutStyleSpecSchema, clampLayoutStyle, layoutStyleSystemPrompt, layoutStyleUserPrompt, LAYOUT_STYLE_ARCHETYPES, } from "./layout-style.js";
+export { OutlineSchema, SlideSpecSchema, PresentationSpecSchema, BUILTIN_THEME_IDS, OUTLINE_THEME_IDS, OUTLINE_LAYOUT_HINTS, STYLE_FAMILY_IDS, STYLE_FAMILY_STYLE_HINTS, STYLE_FAMILY_LAYOUT_POLICY, STYLE_FAMILY_IMAGERY, bannedLayoutsForFamily, imageryForFamily, clampOutlineToStyleFamily, diversifyOutlineLayouts, inferStyleFamilyFromGuidance, } from "./schema.js";
+export { renderLayout, LAYOUT_KINDS } from "./compile/layouts.js";
+export { compilePresentation, outlineToFallbackSpec } from "./compile/compile.js";
+export { applyCompileConstraints, GENERATE_BRIEF_CONSTRAINTS, } from "./compile/constraints.js";
+export { runGatePassRateHarness, formatPassRateMarkdown, printGatePassRateReport, darkLaunchWizardOutline, DARK_LAUNCH_WIZARD_GUIDANCE, GATE_PASS_RATE_SEEDS, GATE_PASS_RATE_TARGET, } from "./compile/constraints-harness.js";
+export { LIVE_GATE_SKIP_REASON, LIVE_GATE_AUTH_FAIL_REASON, LIVE_GATE_NO_LLM_REASON, resolveLiveGateConfig, runLiveGatePassRateHarness, formatLivePassRateMarkdown, evaluateLiveGatePassRate, formatWallClock, parseLiveGateSeeds, extractGateResult, isLiveGateAuthOrProviderError, liveSeedEvidencedPass, liveGenerateContentGate, } from "./qa/live-gate-pass-rate.js";
+export { tallyGateFindings, GATE_KINDS } from "./qa/gates.js";
+export { reportGateResult, formatGatePassMarkdown } from "./qa/gates-report.js";
+export { buildBadDeckFixture } from "./qa/fixtures.js";
+export { PIPELINE_P2_STAGES, PIPELINE_P2_WHOLE_JOB_STAGES, isPipelineP2WholeJobStage, isPipelineP2MotionSoftEnd, mapDetailKeyToPipelineP2Stage, pipelineP2StepIndex, resumeSkipFlags, resumeStageFromProgress, PipelineP2StageError, throwIfPipelineP2Inject, } from "./qa/pipeline-p2-policy.js";
+export { runDesignGates, DESIGN_LAYOUT_CATALOG, DESIGN_GATE_KINDS, tallyDesignGateFindings, } from "./qa/design-gates.js";
+export { VISUAL_SYSTEM_IDS, VISUAL_SYSTEMS, resolveVisualSystem, visualSystemPalette, } from "./visual-system.js";
+export { GENERATE_MODEL_CALL_BUDGET, ModelCallBudget, plannedGenerateModelCalls, } from "./call-budget.js";
+export { outlineSystemPrompt, outlineUserPrompt, slideSystemPrompt, slideUserPrompt, slotFillSystemPrompt, slotFillUserPrompt, themeSystemPrompt, themeUserPrompt, motionSystemPrompt, motionUserPrompt, guidanceStyleHint, guidanceHardConstraints, resolveGuidanceLanguage, } from "./prompts.js";
+export { DesignSpecSchema, buildDesignSpecSchema, designSpecSystemPrompt, designSpecUserPrompt, clampDesignSpec, renderDesignBrief, } from "./design-spec.js";
+export { enrichImagesInPresentation, } from "./enrich/images.js";
+export { DEFAULT_IMAGE_ENRICHMENT_PRIORITY, imageEnrichmentAvailable, imageEnrichmentSources, resolveImageGenConcurrency, } from "./enrich/fetch-enrichment-image.js";
+export { fillImagePlaceholdersViaCommands, collectInlinePlaceholderTasksFromPres, findInlineImagePlaceholder, } from "./enrich/placeholders.js";
+export { applyNoImageryAtmosphere } from "./enrich/atmosphere-fallback.js";
+export { validateAndRepairPresentation, } from "./qa/validate.js";
+export { ensureSlideSpecQuality, defaultImageQuery } from "./qa/ensure-spec-quality.js";
+export { reviewPresentation, resolveReviewLanguage, applyArtDirectorEdits, ArtDirectorReportSchema, } from "./qa/art-director.js";
+export { generateTemplate, generatePresentationFromTemplate, templateFromThemeDef, } from "./template/generate-template.js";
+export { snapshotThemeShapes } from "./template/snapshot.js";
+export { induceSlotsFromSlide, induceSlideSchema, induceReferenceSchemas, induceSlotsFromPresentation, fillSlotsOnSlide, fillSlotsByShapeId, mapOutlineToReference, assembleReferencePresentation, cloneReferenceSlideWithIdMap, formatSlotsForPrompt, } from "./template/slots.js";

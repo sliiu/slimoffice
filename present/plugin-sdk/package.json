@@ -1,0 +1,32 @@
+{
+  "name": "@sliiu/present-plugin-sdk",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "description": "Plugin SDK for the PPT player. Zero runtime dependencies; works in browser (ESM/IIFE) and Node (ESM/CJS).",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./iife": "./dist/plugin-sdk.iife.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "COPYRIGHT",
+    "THIRD-PARTY-NOTICES.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  }
+}

@@ -1,0 +1,23 @@
+"use strict";
+// 控制台 / 轻量宿主专用导出 —— 不含 registry（避免 ?raw builtin .md 进 bundle）。
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.formatCustomVisualSystemBlock = exports.CustomVisualSystemSchema = exports.formatStyleFamiliesCsv = exports.parseStyleFamiliesCsv = exports.formatBriefFieldsCsv = exports.parseBriefFieldsCsv = exports.GENERATE_BRIEF_FIELD_IDS = exports.lintSkill = exports.SkillParseError = exports.MissingFrontmatterError = exports.SkillSpecSchema = exports.composeRawFromUserInput = exports.stringifySkill = exports.parseSkill = void 0;
+var parse_1 = require("./parse");
+Object.defineProperty(exports, "parseSkill", { enumerable: true, get: function () { return parse_1.parseSkill; } });
+Object.defineProperty(exports, "stringifySkill", { enumerable: true, get: function () { return parse_1.stringifySkill; } });
+Object.defineProperty(exports, "composeRawFromUserInput", { enumerable: true, get: function () { return parse_1.composeRawFromUserInput; } });
+Object.defineProperty(exports, "SkillSpecSchema", { enumerable: true, get: function () { return parse_1.SkillSpecSchema; } });
+Object.defineProperty(exports, "MissingFrontmatterError", { enumerable: true, get: function () { return parse_1.MissingFrontmatterError; } });
+Object.defineProperty(exports, "SkillParseError", { enumerable: true, get: function () { return parse_1.SkillParseError; } });
+var lint_1 = require("./lint");
+Object.defineProperty(exports, "lintSkill", { enumerable: true, get: function () { return lint_1.lintSkill; } });
+var brief_fields_1 = require("./brief-fields");
+Object.defineProperty(exports, "GENERATE_BRIEF_FIELD_IDS", { enumerable: true, get: function () { return brief_fields_1.GENERATE_BRIEF_FIELD_IDS; } });
+Object.defineProperty(exports, "parseBriefFieldsCsv", { enumerable: true, get: function () { return brief_fields_1.parseBriefFieldsCsv; } });
+Object.defineProperty(exports, "formatBriefFieldsCsv", { enumerable: true, get: function () { return brief_fields_1.formatBriefFieldsCsv; } });
+var style_families_1 = require("./style-families");
+Object.defineProperty(exports, "parseStyleFamiliesCsv", { enumerable: true, get: function () { return style_families_1.parseStyleFamiliesCsv; } });
+Object.defineProperty(exports, "formatStyleFamiliesCsv", { enumerable: true, get: function () { return style_families_1.formatStyleFamiliesCsv; } });
+var custom_system_1 = require("../deckgen/custom-system");
+Object.defineProperty(exports, "CustomVisualSystemSchema", { enumerable: true, get: function () { return custom_system_1.CustomVisualSystemSchema; } });
+Object.defineProperty(exports, "formatCustomVisualSystemBlock", { enumerable: true, get: function () { return custom_system_1.formatCustomVisualSystemBlock; } });

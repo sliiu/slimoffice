@@ -1,0 +1,19 @@
+{
+  "expect": "ui-gates",
+  "pairing": {
+    "editorial": ["ink", "indigo", "kraft"],
+    "swiss": ["ikb", "signal", "lemon"],
+    "disabledWhenEditorial": ["ikb", "signal", "lemon"],
+    "disabledWhenSwiss": ["ink", "indigo", "kraft"]
+  },
+  "whitelist": {
+    "layouts": ["cover", "section", "statement", "quote", "bullets", "steps", "timeline", "cards", "bars", "loop", "split", "figure", "gallery", "kpi", "compare", "banner", "close"],
+    "illegal": ["masonry/title-5", "cards/title-5", "bullets/stacked"]
+  },
+  "errors": {
+    "pairing": "That color theme cannot be used with this type system.",
+    "invented-page-type": "That page type is not in the allowed list.",
+    "over-slots": "This page has more items than the layout allows."
+  },
+  "badge": "editorial · cover · ink"
+}

@@ -1,0 +1,11 @@
+{
+  "expect": "fail",
+  "gate": "pairing",
+  "reason": "ColorTheme \"ink\" cannot pair with VisualSystem \"swiss\". Allowed: ikb, signal, lemon.",
+  "quad": "swiss/*/ink",
+  "input": {
+    "topic": "Wrong pairing fixture",
+    "systemId": "swiss",
+    "themeId": "ink"
+  }
+}

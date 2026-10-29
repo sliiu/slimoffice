@@ -1,0 +1,100 @@
+{
+  "system": "editorial",
+  "theme": "indigo",
+  "title": "Why local-first decks win",
+  "slides": [
+    {
+      "quad": "editorial/cover/title-meta/indigo",
+      "layout": "cover",
+      "variant": "title-meta",
+      "slots": {
+        "slot:title": "Why local-first decks win",
+        "slot:subtitle": "Product leads",
+        "slot:meta": "en"
+      }
+    },
+    {
+      "quad": "editorial/section/num-title/indigo",
+      "layout": "section",
+      "variant": "num-title",
+      "slots": {
+        "slot:number": "01",
+        "slot:title": "Own the file, not the tab"
+      }
+    },
+    {
+      "quad": "editorial/quote/serif-mark/indigo",
+      "layout": "quote",
+      "variant": "serif-mark",
+      "slots": {
+        "slot:claim": "Own the file, not the tab"
+      }
+    },
+    {
+      "quad": "editorial/cards/four/indigo",
+      "layout": "cards",
+      "variant": "four",
+      "slots": {
+        "slot:title": "4 holds",
+        "slot:index:0": "01",
+        "slot:items:0": "Offline edit stays authorit…",
+        "slot:index:1": "02",
+        "slot:items:1": "Export remains a round-trip",
+        "slot:index:2": "03",
+        "slot:items:2": "Design tokens lock the look",
+        "slot:index:3": "04",
+        "slot:items:3": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "editorial/compare/two-col/indigo",
+      "layout": "compare",
+      "variant": "two-col",
+      "slots": {
+        "slot:title": "Offline edit st… / Design tokens l…",
+        "slot:leftItems:0": "Design tokens lock the look",
+        "slot:rightItems:0": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "editorial/split/text-text/indigo",
+      "layout": "split",
+      "variant": "text-text",
+      "slots": {
+        "slot:title": "Offline edit st… / Design tokens l…",
+        "slot:leftItems:0": "Design tokens lock the look",
+        "slot:leftItems:1": "Narrative first, then skin",
+        "slot:rightItems:0": "Design tokens lock the look",
+        "slot:rightItems:1": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "editorial/figure/hero/indigo",
+      "layout": "figure",
+      "variant": "hero",
+      "slots": {
+        "slot:title": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "editorial/kpi/big-number/indigo",
+      "layout": "kpi",
+      "variant": "big-number",
+      "slots": {
+        "slot:value": "01",
+        "slot:label": "Narrative first, then skin"
+      }
+    },
+    {
+      "quad": "editorial/close/manifesto/indigo",
+      "layout": "close",
+      "variant": "manifesto",
+      "slots": {
+        "slot:title": "Why local-first decks win",
+        "slot:items:0": "Offline edit stays authorit…",
+        "slot:items:1": "Export remains a round-trip",
+        "slot:items:2": "Design tokens lock the look"
+      }
+    }
+  ]
+}

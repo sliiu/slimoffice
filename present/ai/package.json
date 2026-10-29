@@ -1,0 +1,56 @@
+{
+  "name": "@sliiu/present-ai",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./skills": {
+      "types": "./dist/types/skills/console-export.d.ts",
+      "import": "./dist/esm/skills/console-export.js",
+      "require": "./dist/cjs/skills/console-export.js"
+    },
+    "./config": {
+      "types": "./dist/types/config/index.d.ts",
+      "import": "./dist/esm/config/index.js",
+      "require": "./dist/cjs/config/index.js"
+    },
+    "./mcp-server": {
+      "types": "./dist/types/mcp/server/index.d.ts",
+      "import": "./dist/esm/mcp/server/index.js",
+      "require": "./dist/cjs/mcp/server/index.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.62",
+    "@ai-sdk/google": "^4.0.79",
+    "@ai-sdk/mcp": "^2.0.57",
+    "@ai-sdk/openai": "^4.0.74",
+    "@ai-sdk/openai-compatible": "^3.0.55",
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "ai": "^7.0.113",
+    "fflate": "^0.8.3",
+    "lucide": "^1.48.0",
+    "zod": "^4.6.5",
+    "@sliiu/present-animation": "0.1.0",
+    "@sliiu/present-core": "0.1.0",
+    "@sliiu/present-editor": "0.1.0",
+    "@sliiu/present-themes": "0.1.0"
+  },
+  "module": "./dist/esm/index.js",
+  "files": [
+    "dist",
+    "LICENSE",
+    "COPYRIGHT",
+    "THIRD-PARTY-NOTICES.md"
+  ]
+}

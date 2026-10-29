@@ -1,0 +1,41 @@
+{
+  "name": "@sliiu/present-serializer",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./source-json": {
+      "types": "./dist/types/source-json.d.ts",
+      "import": "./dist/esm/source-json.js",
+      "require": "./dist/cjs/source-json.js"
+    },
+    "./reattach": {
+      "types": "./dist/types/reattach-source.d.ts",
+      "import": "./dist/esm/reattach-source.js",
+      "require": "./dist/cjs/reattach-source.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.11.1",
+    "fflate": "^0.8.3",
+    "@sliiu/present-animation": "0.1.0",
+    "@sliiu/present-core": "0.1.0"
+  },
+  "module": "./dist/esm/index.js",
+  "files": [
+    "dist",
+    "LICENSE",
+    "COPYRIGHT",
+    "THIRD-PARTY-NOTICES.md"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "expect": "fail",
+  "gate": "variant-whitelist",
+  "reason": "Variant \"stacked\" is not valid for Layout \"bullets\". Allowed: title-5.",
+  "quad": "editorial/bullets/stacked/ink",
+  "plan": [
+    {
+      "layout": "bullets",
+      "variant": "stacked",
+      "title": "Invented variant",
+      "items": ["one", "two"]
+    }
+  ]
+}

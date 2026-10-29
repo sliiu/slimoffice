@@ -1,0 +1,213 @@
+// MCP server（对外方向，Node-only）：把 PPT 编辑能力暴露给外部 Agent
+//（Cursor / Claude / 任何 MCP 客户端）。
+//
+// 架构：
+//   - 工具集 = tools/ 的 ToolDef 全集（与浏览器对话共用同一套定义）+ 会话工具
+//     （list/open/save/close presentation）。
+//   - 文档通道 = createHeadlessPort：deck 由宿主 DeckStore 载入内存，编辑经
+//     EditCommand 命令栈执行，save 时由宿主写回（gateway 场景 = 加密后写云存储）。
+//   - 无状态传输友好：McpServer 实例可每请求新建（Streamable HTTP stateless
+//     模式），"当前打开的 deck"存在宿主注入的 PptMcpSession 里（gateway 按
+//     用户持有 + 空闲 TTL），与 server 实例生命周期解耦。
+//
+// 不暴露 capability 工具（list_capabilities 等）——那是浏览器宿主的能力管理心智；
+// 外部 Agent 的能力发现走 MCP 协议本身的 tools/list。
+
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import type { Presentation } from "@ppt/core";
+import { createHeadlessPort, type DocumentPort } from "../../kernel/port";
+import { buildEditToolDefs } from "../../tools";
+import { createToolRuntime, type ToolDef } from "../../tools/types";
+import { defaultConfig, type AiConfig } from "../../config/types";
+
+/** 宿主注入的 deck 存取抽象（gateway：云存储 + E2E 解密 / 测试：内存）。 */
+export interface PptMcpDeckStore {
+  list(): Promise<Array<{ deckId: string; name: string; slideCount: number; updatedAt?: number }>>;
+  load(deckId: string): Promise<Presentation>;
+  save(deckId: string, pres: Presentation): Promise<void>;
+}
+
+/**
+ * 会话状态：当前打开的 deck。由宿主持有（gateway 按用户 + TTL），
+ * server 实例每请求新建也能接着编辑。
+ */
+export interface PptMcpSession {
+  deckId: string | null;
+  port: DocumentPort | null;
+  /** 打开后有未保存改动。 */
+  dirty: boolean;
+  /** 最近活动时间（宿主做空闲回收用）。 */
+  lastActiveAt: number;
+}
+
+export function createPptMcpSession(): PptMcpSession {
+  return { deckId: null, port: null, dirty: false, lastActiveAt: Date.now() };
+}
+
+export interface CreatePptMcpServerOptions {
+  decks: PptMcpDeckStore;
+  session: PptMcpSession;
+  /** LLM/图库配置（generateAndApplyTheme / generateImage 等 llm 工具用）；缺省为空配置（相关工具会返回"未配置"）。 */
+  getConfig?: () => AiConfig;
+  serverInfo?: { name?: string; version?: string };
+}
+
+type McpToolResult = {
+  content: Array<{ type: "text"; text: string }>;
+  isError?: boolean;
+};
+
+function jsonResult(v: unknown): McpToolResult {
+  const isErr = !!v && typeof v === "object" && (v as { ok?: unknown }).ok === false;
+  return {
+    content: [{ type: "text", text: typeof v === "string" ? v : JSON.stringify(v, null, 2) }],
+    ...(isErr ? { isError: true } : {}),
+  };
+}
+
+/** 从 ToolDef 的 z.object schema 取 raw shape（MCP SDK registerTool 需要）。 */
+function rawShapeOf(def: ToolDef): z.ZodRawShape {
+  const schema = def.inputSchema;
+  if (schema instanceof z.ZodObject) {
+    return schema.shape;
+  }
+  // 理论上不会走到：所有 ToolDef 的顶层 schema 都是 z.object。
+  return {};
+}
+
+export function createPptMcpServer(opts: CreatePptMcpServerOptions): McpServer {
+  const { decks, session } = opts;
+  const getConfig = opts.getConfig ?? (() => defaultConfig());
+
+  const server = new McpServer({
+    name: opts.serverInfo?.name ?? "slimppt",
+    version: opts.serverInfo?.version ?? "2.0.0",
+  });
+
+  const touch = () => {
+    session.lastActiveAt = Date.now();
+  };
+
+  // ---- 会话工具 -------------------------------------------------------------
+
+  server.registerTool(
+    "list_presentations",
+    {
+      description:
+        "List the user's cloud presentations (deckId, name, slideCount). Call this first, then open_presentation with a deckId.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      touch();
+      try {
+        const items = await decks.list();
+        return jsonResult({ ok: true, count: items.length, decks: items });
+      } catch (e) {
+        return jsonResult({ ok: false, error: (e as Error).message });
+      }
+    },
+  );
+
+  server.registerTool(
+    "open_presentation",
+    {
+      description:
+        "Open a cloud presentation for editing (loads it into this session). All edit tools operate on the currently open presentation. Unsaved changes of a previously open deck are discarded — call save_presentation first if needed.",
+      inputSchema: {
+        deckId: z.string().min(1).describe("Deck id from list_presentations."),
+      },
+    },
+    async ({ deckId }: { deckId: string }) => {
+      touch();
+      try {
+        const pres = await decks.load(deckId);
+        session.deckId = deckId;
+        session.port = createHeadlessPort(pres);
+        session.dirty = false;
+        return jsonResult({
+          ok: true,
+          deckId,
+          slideCount: pres.slides.length,
+          size: pres.size,
+          themeId: pres.theme?.id,
+          note: "Presentation loaded. Use getPresentationSummary to inspect, then edit tools. Call save_presentation to persist changes.",
+        });
+      } catch (e) {
+        return jsonResult({ ok: false, error: `open failed: ${(e as Error).message}` });
+      }
+    },
+  );
+
+  server.registerTool(
+    "save_presentation",
+    {
+      description: "Persist the currently open presentation back to cloud storage. Call after finishing your edits.",
+      inputSchema: {},
+    },
+    async () => {
+      touch();
+      if (!session.deckId || !session.port) {
+        return jsonResult({ ok: false, error: "No presentation open. Call open_presentation first." });
+      }
+      try {
+        await decks.save(session.deckId, session.port.getPres());
+        session.dirty = false;
+        return jsonResult({ ok: true, deckId: session.deckId, saved: true });
+      } catch (e) {
+        return jsonResult({ ok: false, error: `save failed: ${(e as Error).message}` });
+      }
+    },
+  );
+
+  server.registerTool(
+    "close_presentation",
+    {
+      description:
+        "Close the currently open presentation WITHOUT saving (discards unsaved changes). Use save_presentation first to persist.",
+      inputSchema: {},
+    },
+    async () => {
+      touch();
+      const had = session.deckId;
+      session.deckId = null;
+      session.port = null;
+      session.dirty = false;
+      return jsonResult({ ok: true, closed: had ?? null });
+    },
+  );
+
+  // ---- 编辑工具（与浏览器对话共用同一套 ToolDef）------------------------------
+
+  for (const def of buildEditToolDefs()) {
+    const isRead = def.tags.includes("read");
+    server.registerTool(
+      def.name,
+      {
+        description: def.description,
+        inputSchema: rawShapeOf(def),
+        annotations: isRead ? { readOnlyHint: true } : { destructiveHint: true },
+      },
+      async (args: Record<string, unknown>) => {
+        touch();
+        if (!session.port) {
+          return jsonResult({
+            ok: false,
+            error: "No presentation open. Call list_presentations then open_presentation first.",
+          });
+        }
+        const rt = createToolRuntime({ port: session.port, getConfig });
+        try {
+          const result = await def.execute(rt, args as never);
+          if (!def.tags.includes("read")) session.dirty = true;
+          return jsonResult(result);
+        } catch (e) {
+          return jsonResult({ ok: false, error: (e as Error).message ?? String(e) });
+        }
+      },
+    );
+  }
+
+  return server;
+}

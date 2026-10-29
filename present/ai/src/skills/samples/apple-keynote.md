@@ -1,0 +1,81 @@
+---
+name: apple_keynote
+displayName: Apple keynote
+description: Apple product-keynote look — white or true-black paper, one product accent, semibold display type with tight tracking, one idea per page, translucent materials only over solid color, critically damped motion. Registers the `apple_keynote` visual system.
+stage: both
+---
+
+## Look
+<!-- stage: generate -->
+
+Use systemId=apple_keynote for this look. It is a product keynote, not a magazine and not a dashboard:
+
+- One idea per page. The title states the idea in plain words; at most one supporting line of copy below it. Everything else is a product image, a single number, or a device that carries the relationship.
+- Whitespace is the layout. Leave at least 40% of the canvas empty on content pages; anchor pages are mostly paper with one display line.
+- One accent hue for the whole deck (product blue by default; a brand hex replaces it). Accent goes on ONE element per page — a number, a key phrase run, a chip — never on titles and never on two things at once.
+- Paper is pure white or true black. Pick one for the deck and keep it; a single full-bleed photo page may flip to the other tone.
+- Surfaces are quiet: large-radius cards with `surface` fill and no border, or a hairline rule. No shadow, no glow, no gradient fills, no outlined text.
+- Photography: product on plain ground, soft studio light, no props, no people-at-desks stock. When no such photo exists, prefer typeOnly over a mismatched image.
+
+## Typography
+<!-- stage: generate -->
+
+- Build hierarchy from weight + size + leading together, never size alone. Emphasis is a weight step (semibold), not a colour change.
+- Display and h1 are semibold with negative tracking; body is regular with tracking near zero and comfortable leading. The system ramp already encodes this — never override fontWeight on titles, and never set caps: "all" (Apple labels are sentence case).
+- Titles are short: ≤ 6 words / ≤ 12 CJK characters. Split a long claim into title + one body line rather than a two-line display.
+- Numbers are the loudest thing on a page: a KPI value may take display size and the accent; its label is body size in muted.
+- Chinese decks keep the same voice: PingFang / Noto Sans SC, semibold headings, no letter-spacing on CJK.
+
+## Materials and depth
+<!-- stage: generate -->
+
+- Translucency is a hierarchy tool, not decoration. A translucent overlay (fillAlpha 0.6–0.8) may sit on a photo to hold type; never stack a light translucent surface on another one.
+- Colour lives on solid layers. Text on a translucent surface is ink or onPhoto, never accent.
+- Depth comes from tone steps (bg → surface), not from shadows. Big surfaces read as thicker by being larger and more spaced, not by heavier effects.
+
+## Motion
+
+- Entrances are critically damped: fade + a short slide (≤ 24 px) along one axis, 350–450 ms, no overshoot, no bounce, no spin, no zoom-in from nothing.
+- Objects that enter together belong together: stagger siblings by 60–90 ms; unrelated objects do not share a build.
+- Enter and exit along the same path; anchor a build to the element it explains (a number appears at its own position, not from the slide edge).
+- Prefer no animation over a busy one. One build per page is the default; a chart may draw in once.
+
+## Checklist
+<!-- checklist -->
+
+- Every content page: one title (h1), ≤ 1 body line, ≥ 40% empty canvas.
+- Accent appears on exactly one element per page; titles are ink.
+- No shadows, glows, gradient fills, outlined or all-caps text anywhere.
+- Paper tone is consistent across the deck (one exception allowed for a full-bleed photo).
+- Photos show a product or place on plain ground; no whiteboards, desks, or stock-office scenes.
+- Builds are single-axis fades ≤ 450 ms with no overshoot.
+
+```visual-system
+{
+  "id": "apple_keynote",
+  "name": "Apple keynote",
+  "extends": "soft-rounded",
+  "voice": "neo-grotesk",
+  "typeScale": { "display": 84, "displayCjk": 66, "h1": 40, "h2": 24, "body": 18, "caption": 13 },
+  "grid": { "columns": 12, "gutter": 24, "margin": 0.06 },
+  "density": "airy",
+  "bans": { "roundedCorners": false, "shadows": true, "gradients": true, "centeredDisplay": false },
+  "fonts": {
+    "display": "\"Inter\", \"SF Pro Display\", \"PingFang SC\", \"Noto Sans SC\", \"Helvetica Neue\", sans-serif",
+    "body": "\"Inter\", \"SF Pro Text\", \"PingFang SC\", \"Noto Sans SC\", \"Helvetica Neue\", sans-serif",
+    "mono": "\"JetBrains Mono\", \"SF Mono\", \"Menlo\", monospace"
+  },
+  "fontFamilies": ["Inter", "Noto Sans SC", "JetBrains Mono"],
+  "canvas": {
+    "radius": 18,
+    "shadow": false,
+    "glow": false,
+    "tone": "light",
+    "ruleWidth": 1,
+    "displayTreatment": "none",
+    "character": "pure white paper, semibold display with tight tracking, one product-blue accent on one element, large-radius quiet surfaces, one idea per page, mostly whitespace"
+  },
+  "palette": { "bg": "#FFFFFF", "surface": "#F5F5F7", "ink": "#1D1D1F", "muted": "#6E6E73", "line": "#D2D2D7", "accent": "#0071E3", "accentSoft": "#E8F1FC" },
+  "aliases": ["apple", "keynote", "cupertino"]
+}
+```

@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createMockEditorPluginContext = exports.mergeEditorPluginCatalog = exports.BUILTIN_EDITOR_PLUGIN_CATALOG = exports.speakerNotesEditorPlugin = exports.slideStatsEditorPlugin = exports.createEditorPluginRuntime = exports.withEditorPluginErrorBoundary = exports.defineEditorPlugin = void 0;
+var define_1 = require("./define");
+Object.defineProperty(exports, "defineEditorPlugin", { enumerable: true, get: function () { return define_1.defineEditorPlugin; } });
+Object.defineProperty(exports, "withEditorPluginErrorBoundary", { enumerable: true, get: function () { return define_1.withEditorPluginErrorBoundary; } });
+var manager_1 = require("./manager");
+Object.defineProperty(exports, "createEditorPluginRuntime", { enumerable: true, get: function () { return manager_1.createEditorPluginRuntime; } });
+var slide_stats_1 = require("./builtin/slide-stats");
+Object.defineProperty(exports, "slideStatsEditorPlugin", { enumerable: true, get: function () { return slide_stats_1.slideStatsEditorPlugin; } });
+var speaker_notes_1 = require("./builtin/speaker-notes");
+Object.defineProperty(exports, "speakerNotesEditorPlugin", { enumerable: true, get: function () { return speaker_notes_1.speakerNotesEditorPlugin; } });
+var catalog_1 = require("./catalog");
+Object.defineProperty(exports, "BUILTIN_EDITOR_PLUGIN_CATALOG", { enumerable: true, get: function () { return catalog_1.BUILTIN_EDITOR_PLUGIN_CATALOG; } });
+Object.defineProperty(exports, "mergeEditorPluginCatalog", { enumerable: true, get: function () { return catalog_1.mergeEditorPluginCatalog; } });
+var testing_1 = require("./testing");
+Object.defineProperty(exports, "createMockEditorPluginContext", { enumerable: true, get: function () { return testing_1.createMockEditorPluginContext; } });

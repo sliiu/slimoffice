@@ -1,0 +1,12 @@
+export { parsePptx, parseFromArchive, applyMediaAutoplayFromTiming, PptxOpenError } from "./parse.js";
+export { parsePhotoAlbum, photoAlbumSnapshot } from "./photo-album.js";
+export { recomputeSlideInheritance } from "./recompute.js";
+export { rebuildOriginsFromSource } from "./rebuild-origins.js";
+export { loadArchive, ZipBombError } from "./zip.js";
+export { MediaResolver } from "./media.js";
+export { extractOmmlFrom, ommlToLatex, ommlToPlain, inspectMathMarkup } from "./omml.js";
+export { presetToShape, pathHasSubPaths, officialPresetAdjDefaults, listOfficialAdjustHandles, dragOfficialAdjustHandle, } from "./preset-geom.js";
+export { guessOleProgId, oleBadgeColor, oleBadgeText, oleTypeLabel, OLE_GRAPHIC_URI, parseOleGraphicFrame, } from "./ole.js";
+export { extractOlePreviewPayload } from "./ole-preview.js";
+export { parseVbaProjectMetadata, readVbaModuleSource, parseVbaModuleProcedures, formatVbaBasExport, searchVbaProceduresInProject, exportAllVbaModulesBas, indexVbaProceduresInProject, } from "./vba-project-parse.js";
+export { decompressVbaStream } from "./vba-decompress.js";

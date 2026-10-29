@@ -1,0 +1,13 @@
+{
+  "expect": "fail",
+  "gate": "layout-whitelist",
+  "reason": "Unknown Layout \"masonry\". Whitelist: cover, section, statement, quote, bullets, steps, timeline, cards, bars, loop, split, figure, gallery, kpi, compare, banner, close.",
+  "quad": "editorial/masonry/title-5/ink",
+  "plan": [
+    {
+      "layout": "masonry",
+      "variant": "title-5",
+      "title": "Invented layout"
+    }
+  ]
+}

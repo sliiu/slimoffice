@@ -1,0 +1,11 @@
+{
+  "expect": "fail",
+  "gate": "pairing",
+  "reason": "ColorTheme \"ikb\" cannot pair with VisualSystem \"editorial\". Allowed: ink, indigo, kraft.",
+  "quad": "editorial/*/ikb",
+  "input": {
+    "topic": "Wrong pairing fixture",
+    "systemId": "editorial",
+    "themeId": "ikb"
+  }
+}

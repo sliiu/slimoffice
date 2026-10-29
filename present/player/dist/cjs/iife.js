@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.screenshotPlugin = exports.thumbnailBarPlugin = exports.notesPanelPlugin = exports.outlinePlugin = exports.laserPointerPlugin = exports.whiteboardPlugin = exports.pickBuiltinPlugins = exports.BUILTIN_PLUGINS = exports.withErrorBoundary = exports.composePlugins = exports.definePlugin = exports.mount = void 0;
+var player_1 = require("./player");
+Object.defineProperty(exports, "mount", { enumerable: true, get: function () { return player_1.mount; } });
+var define_plugin_1 = require("./define-plugin");
+Object.defineProperty(exports, "definePlugin", { enumerable: true, get: function () { return define_plugin_1.definePlugin; } });
+Object.defineProperty(exports, "composePlugins", { enumerable: true, get: function () { return define_plugin_1.composePlugins; } });
+Object.defineProperty(exports, "withErrorBoundary", { enumerable: true, get: function () { return define_plugin_1.withErrorBoundary; } });
+var builtin_1 = require("./builtin");
+Object.defineProperty(exports, "BUILTIN_PLUGINS", { enumerable: true, get: function () { return builtin_1.BUILTIN_PLUGINS; } });
+Object.defineProperty(exports, "pickBuiltinPlugins", { enumerable: true, get: function () { return builtin_1.pickBuiltinPlugins; } });
+Object.defineProperty(exports, "whiteboardPlugin", { enumerable: true, get: function () { return builtin_1.whiteboardPlugin; } });
+Object.defineProperty(exports, "laserPointerPlugin", { enumerable: true, get: function () { return builtin_1.laserPointerPlugin; } });
+Object.defineProperty(exports, "outlinePlugin", { enumerable: true, get: function () { return builtin_1.outlinePlugin; } });
+Object.defineProperty(exports, "notesPanelPlugin", { enumerable: true, get: function () { return builtin_1.notesPanelPlugin; } });
+Object.defineProperty(exports, "thumbnailBarPlugin", { enumerable: true, get: function () { return builtin_1.thumbnailBarPlugin; } });
+Object.defineProperty(exports, "screenshotPlugin", { enumerable: true, get: function () { return builtin_1.screenshotPlugin; } });

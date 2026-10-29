@@ -1,0 +1,115 @@
+{
+  "system": "editorial",
+  "theme": "indigo",
+  "title": "Overflow must never shrink type",
+  "slides": [
+    {
+      "quad": "editorial/cover/poster/indigo",
+      "layout": "cover",
+      "variant": "poster",
+      "slots": {
+        "slot:title": "Overflow must never shrin…"
+      }
+    },
+    {
+      "quad": "editorial/section/num-title/indigo",
+      "layout": "section",
+      "variant": "num-title",
+      "slots": {
+        "slot:number": "01",
+        "slot:title": "This statement is intentionally far longer than eighteen …"
+      }
+    },
+    {
+      "quad": "editorial/quote/serif-mark/indigo",
+      "layout": "quote",
+      "variant": "serif-mark",
+      "slots": {
+        "slot:claim": "This statement is intentionally far longe…"
+      }
+    },
+    {
+      "quad": "editorial/bullets/title-5/indigo",
+      "layout": "bullets",
+      "variant": "title-5",
+      "slots": {
+        "slot:title": "7 holds",
+        "slot:index:0": "01",
+        "slot:items:0": "First evidence bullet that …",
+        "slot:index:1": "02",
+        "slot:items:1": "Second evidence bullet that…",
+        "slot:index:2": "03",
+        "slot:items:2": "Third evidence bullet that …",
+        "slot:index:3": "04",
+        "slot:items:3": "Fourth evidence bullet that…",
+        "slot:index:4": "05",
+        "slot:items:4": "Fifth evidence bullet that …"
+      }
+    },
+    {
+      "quad": "editorial/bullets/title-5/indigo",
+      "layout": "bullets",
+      "variant": "title-5",
+      "slots": {
+        "slot:title": "7 holds",
+        "slot:index:0": "01",
+        "slot:items:0": "Sixth evidence bullet that …",
+        "slot:index:1": "02",
+        "slot:items:1": "Seventh leftover bullet aft…"
+      }
+    },
+    {
+      "quad": "editorial/compare/two-col/indigo",
+      "layout": "compare",
+      "variant": "two-col",
+      "slots": {
+        "slot:title": "First evidence … / Fifth evidence …",
+        "slot:leftItems:0": "Fifth evidence bullet that …",
+        "slot:leftItems:1": "Sixth evidence bullet that …",
+        "slot:rightItems:0": "Seventh leftover bullet aft…"
+      }
+    },
+    {
+      "quad": "editorial/split/text-text/indigo",
+      "layout": "split",
+      "variant": "text-text",
+      "slots": {
+        "slot:title": "First evidence … / Fifth evidence …",
+        "slot:leftItems:0": "Fifth evidence bullet that …",
+        "slot:leftItems:1": "Sixth evidence bullet that …",
+        "slot:leftItems:2": "Seventh leftover bullet aft…",
+        "slot:rightItems:0": "Fifth evidence bullet that …",
+        "slot:rightItems:1": "Sixth evidence bullet that …",
+        "slot:rightItems:2": "Seventh leftover bullet aft…"
+      }
+    },
+    {
+      "quad": "editorial/figure/hero/indigo",
+      "layout": "figure",
+      "variant": "hero",
+      "slots": {
+        "slot:title": "Seventh leftover bullet after the five-item cap"
+      }
+    },
+    {
+      "quad": "editorial/kpi/big-number/indigo",
+      "layout": "kpi",
+      "variant": "big-number",
+      "slots": {
+        "slot:value": "01",
+        "slot:label": "Seventh leftover bullet aft…"
+      }
+    },
+    {
+      "quad": "editorial/close/manifesto/indigo",
+      "layout": "close",
+      "variant": "manifesto",
+      "slots": {
+        "slot:title": "Overflow must never shrink type",
+        "slot:items:0": "First evidence bullet that …",
+        "slot:items:1": "Second evidence bullet that…",
+        "slot:items:2": "Third evidence bullet that …"
+      }
+    }
+  ]
+}
