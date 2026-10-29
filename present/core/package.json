@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -16,11 +16,21 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sliiu/present-animation": "0.1.0"
+    "@sliiu/present-animation": "0.1.1"
   },
   "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "present/core"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/present/core",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
   "files": [
     "dist",
+    "README.md",
     "LICENSE",
     "COPYRIGHT",
     "THIRD-PARTY-NOTICES.md"

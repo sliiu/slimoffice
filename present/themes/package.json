@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-themes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -17,11 +17,21 @@
   },
   "dependencies": {
     "zod": "^4.6.5",
-    "@sliiu/present-core": "0.1.0"
+    "@sliiu/present-core": "0.1.1"
   },
   "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "present/themes"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/present/themes",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
   "files": [
     "dist",
+    "README.md",
     "LICENSE",
     "COPYRIGHT",
     "THIRD-PARTY-NOTICES.md"

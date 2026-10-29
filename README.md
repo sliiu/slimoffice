@@ -4,8 +4,6 @@ English | [中文](./README.zh-CN.md)
 
 The present tree lives in `present/`. Open a `.pptx`, edit and present it in the browser, then write `.pptx`, HTML, PDF, or PNG.
 
-License: [AGPL-3.0-or-later](LICENSE). Copyright holder: Sliiu Inc, see [COPYRIGHT](COPYRIGHT). A closed-source embed requires a commercial license. See [COMMERCIAL.md](COMMERCIAL.md).
-
 ## Install
 
 | Task | Package |
@@ -92,3 +90,5 @@ Install, import, and HTML playback are in the docs: [Open source](https://docs.s
 Accounts, online sharing, online storage, live broadcast, collaboration, and the hosted model are outside these packages.
 
 Video export loads `@ffmpeg/core` from unpkg in the browser. That build is GPL-2.0-or-later and is outside the commercial contract. Other third-party licenses are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+License: [AGPL-3.0-or-later](LICENSE). Copyright holder: Sliiu Inc, see [COPYRIGHT](COPYRIGHT). A closed-source embed requires a commercial license. See [COMMERCIAL.md](COMMERCIAL.md).

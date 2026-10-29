@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-renderer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -18,16 +18,26 @@
   "dependencies": {
     "emf-converter": "^4.8.0",
     "three": "^0.186.0",
-    "@sliiu/present-animation": "0.1.0",
-    "@sliiu/present-core": "0.1.0",
-    "@sliiu/present-three-bake": "0.1.0"
+    "@sliiu/present-animation": "0.1.1",
+    "@sliiu/present-core": "0.1.1",
+    "@sliiu/present-three-bake": "0.1.1"
   },
   "devDependencies": {
     "@types/three": "^0.186.0"
   },
   "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "present/renderer"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/present/renderer",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
   "files": [
     "dist",
+    "README.md",
     "LICENSE",
     "COPYRIGHT",
     "THIRD-PARTY-NOTICES.md"

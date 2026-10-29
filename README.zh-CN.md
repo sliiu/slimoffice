@@ -4,8 +4,6 @@
 
 演示部分在 `present/`。用它打开 `.pptx`，在浏览器里编辑和放映，再写出 `.pptx`、HTML、PDF 或 PNG。
 
-许可证是 [AGPL-3.0-or-later](LICENSE)。版权人是 Sliiu Inc，见 [COPYRIGHT](COPYRIGHT)。闭源嵌入需要商业授权，见 [COMMERCIAL.md](COMMERCIAL.md)。
-
 ## 安装
 
 | 要做的事 | 包 |
@@ -92,3 +90,5 @@ const { parsePptx } = require("@sliiu/present-parser");
 账号、在线分享、在线存储、直播放映、协作和系统模型不在这些包里。
 
 视频导出在浏览器里从 unpkg 加载 `@ffmpeg/core`。这段是 GPL-2.0-or-later，不在商业授权里。其余第三方库见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
+许可证是 [AGPL-3.0-or-later](LICENSE)。版权人是 Sliiu Inc，见 [COPYRIGHT](COPYRIGHT)。闭源嵌入需要商业授权，见 [COMMERCIAL.md](COMMERCIAL.md)。

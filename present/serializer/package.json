@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-serializer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -28,12 +28,22 @@
   "dependencies": {
     "fast-xml-parser": "^5.11.1",
     "fflate": "^0.8.3",
-    "@sliiu/present-animation": "0.1.0",
-    "@sliiu/present-core": "0.1.0"
+    "@sliiu/present-animation": "0.1.1",
+    "@sliiu/present-core": "0.1.1"
   },
   "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "present/serializer"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/present/serializer",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
   "files": [
     "dist",
+    "README.md",
     "LICENSE",
     "COPYRIGHT",
     "THIRD-PARTY-NOTICES.md"

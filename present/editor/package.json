@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-editor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -27,18 +27,28 @@
     "katex": "^0.18.9",
     "lucide": "^1.48.0",
     "tesseract.js": "^7.0.0",
-    "@sliiu/present-animation": "0.1.0",
-    "@sliiu/present-core": "0.1.0",
-    "@sliiu/present-parser": "0.1.0",
-    "@sliiu/present-player": "0.1.0",
-    "@sliiu/present-renderer": "0.1.0",
-    "@sliiu/present-themes": "0.1.0",
-    "@sliiu/present-transition-fx": "0.1.0",
-    "@sliiu/present-ui": "0.1.0"
+    "@sliiu/present-animation": "0.1.1",
+    "@sliiu/present-core": "0.1.1",
+    "@sliiu/present-parser": "0.1.1",
+    "@sliiu/present-player": "0.1.1",
+    "@sliiu/present-renderer": "0.1.1",
+    "@sliiu/present-themes": "0.1.1",
+    "@sliiu/present-transition-fx": "0.1.1",
+    "@sliiu/present-ui": "0.1.1"
   },
   "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "present/editor"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/present/editor",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
   "files": [
     "dist",
+    "README.md",
     "LICENSE",
     "COPYRIGHT",
     "THIRD-PARTY-NOTICES.md"

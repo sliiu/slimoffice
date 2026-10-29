@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-plugin-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "description": "Plugin SDK for the PPT player. Zero runtime dependencies; works in browser (ESM/IIFE) and Node (ESM/CJS).",
   "type": "module",
@@ -17,10 +17,10 @@
   },
   "files": [
     "dist",
+    "README.md",
     "LICENSE",
     "COPYRIGHT",
-    "THIRD-PARTY-NOTICES.md",
-    "README.md"
+    "THIRD-PARTY-NOTICES.md"
   ],
   "scripts": {
     "build": "vite build",
@@ -28,5 +28,14 @@
   },
   "devDependencies": {
     "vite": "^8.3.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "present/plugin-sdk"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/present/plugin-sdk",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
   }
 }

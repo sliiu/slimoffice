@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-ai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -41,14 +41,24 @@
     "fflate": "^0.8.3",
     "lucide": "^1.48.0",
     "zod": "^4.6.5",
-    "@sliiu/present-animation": "0.1.0",
-    "@sliiu/present-core": "0.1.0",
-    "@sliiu/present-editor": "0.1.0",
-    "@sliiu/present-themes": "0.1.0"
+    "@sliiu/present-animation": "0.1.1",
+    "@sliiu/present-core": "0.1.1",
+    "@sliiu/present-editor": "0.1.1",
+    "@sliiu/present-themes": "0.1.1"
   },
   "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "present/ai"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/present/ai",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
   "files": [
     "dist",
+    "README.md",
     "LICENSE",
     "COPYRIGHT",
     "THIRD-PARTY-NOTICES.md"

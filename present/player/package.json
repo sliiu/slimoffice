@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-player",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -39,19 +39,29 @@
   },
   "dependencies": {
     "lucide": "^1.48.0",
-    "@sliiu/present-animation": "0.1.0",
-    "@sliiu/present-core": "0.1.0",
-    "@sliiu/present-plugin-sdk": "0.1.0",
-    "@sliiu/present-renderer": "0.1.0",
-    "@sliiu/present-three-bake": "0.1.0",
-    "@sliiu/present-transition-fx": "0.1.0"
+    "@sliiu/present-animation": "0.1.1",
+    "@sliiu/present-core": "0.1.1",
+    "@sliiu/present-plugin-sdk": "0.1.1",
+    "@sliiu/present-renderer": "0.1.1",
+    "@sliiu/present-three-bake": "0.1.1",
+    "@sliiu/present-transition-fx": "0.1.1"
   },
   "devDependencies": {
     "vite": "^8.3.1"
   },
   "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "present/player"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/present/player",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
   "files": [
     "dist",
+    "README.md",
     "LICENSE",
     "COPYRIGHT",
     "THIRD-PARTY-NOTICES.md"
