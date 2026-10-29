@@ -65,9 +65,27 @@ const { parsePptx } = require("@sliiu/present-parser");
 
 插件单文件是 `dist/plugin-sdk.iife.js`，全局名 `PPTPluginSDK`。放映脚本里已经有 `PPTPlayer.definePlugin`。
 
-## 目录
+## 包
 
-`present/` 里每个目录是一个包：`animation`、`core`、`parser`、`serializer`、`three-bake`、`renderer`、`transition-fx`、`plugin-sdk`、`themes`、`ui`、`player`、`editor`、`ai`。
+`@sliiu/present-player` 和 `@sliiu/present-editor` 会装上它们依赖的包。要直接调用某一层时，再单独安装。
+
+| 包 | 作用 |
+|---|---|
+| `@sliiu/present-animation` | 页内动画的时间线和缓动 |
+| `@sliiu/present-core` | 幻灯片、形状和颜色的数据结构 |
+| `@sliiu/present-parser` | 读 `.pptx` |
+| `@sliiu/present-serializer` | 写 `.pptx` |
+| `@sliiu/present-three-bake` | 把立体形状准备成渲染器用的场景 |
+| `@sliiu/present-renderer` | 把幻灯片画到 SVG、Canvas 或 WebGL |
+| `@sliiu/present-transition-fx` | 翻页切换和 Morph |
+| `@sliiu/present-plugin-sdk` | 放映插件 |
+| `@sliiu/present-themes` | 主题、配色和装饰 |
+| `@sliiu/present-ui` | 界面变量和控件。样式文件是 `tokens.css` |
+| `@sliiu/present-player` | 放映，以及 HTML / PDF / PNG |
+| `@sliiu/present-editor` | 编辑界面 |
+| `@sliiu/present-ai` | 自备密钥调用模型 |
+
+安装、引入和 HTML 放映见文档站的[开源版本](https://docs.slimppt.com/zh-cn/guide/open-source)。英文说明在 [Open source](https://docs.slimppt.com/guide/open-source)。
 
 账号、在线分享、在线存储、直播放映、协作和系统模型不在这些包里。
 
