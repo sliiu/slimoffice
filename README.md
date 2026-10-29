@@ -1,25 +1,27 @@
+English | [中文](./README.zh-CN.md)
+
 # Slim Office
 
-演示部分在 `present/`。用它打开 `.pptx`，在浏览器里编辑和放映，再写出 `.pptx`、HTML、PDF 或 PNG。
+The present tree lives in `present/`. Open a `.pptx`, edit and present it in the browser, then write `.pptx`, HTML, PDF, or PNG.
 
-许可证是 [AGPL-3.0-or-later](LICENSE)。版权人是 Sliiu Inc，见 [COPYRIGHT](COPYRIGHT)。闭源嵌入需要商业授权，见 [COMMERCIAL.md](COMMERCIAL.md)。
+License: [AGPL-3.0-or-later](LICENSE). Copyright holder: Sliiu Inc, see [COPYRIGHT](COPYRIGHT). A closed-source embed requires a commercial license. See [COMMERCIAL.md](COMMERCIAL.md).
 
-## 安装
+## Install
 
-| 要做的事 | 包 |
+| Task | Package |
 |---|---|
-| 读 `.pptx` | `@sliiu/present-parser` |
-| 写 `.pptx` | `@sliiu/present-serializer` |
-| 放映，或导出 HTML / PDF / PNG | `@sliiu/present-player` |
-| 编辑 | `@sliiu/present-editor` |
-| 放映插件 | `@sliiu/present-plugin-sdk` |
-| 自备密钥调用模型 | `@sliiu/present-ai` |
+| Read a `.pptx` | `@sliiu/present-parser` |
+| Write a `.pptx` | `@sliiu/present-serializer` |
+| Present, or export HTML / PDF / PNG | `@sliiu/present-player` |
+| Edit | `@sliiu/present-editor` |
+| Playback plugins | `@sliiu/present-plugin-sdk` |
+| Call a model with your own key | `@sliiu/present-ai` |
 
-只放映时安装 player。editor 会带上文字识别、OpenCV 和公式渲染。
+Install player to present. editor also installs text recognition, OpenCV, and math rendering.
 
-## 引入
+## Import
 
-每个入口都带类型、ESM 和 CJS。
+Each entry has types, ESM, and CJS.
 
 ```ts
 import { parsePptx } from "@sliiu/present-parser";
@@ -37,24 +39,24 @@ const pptx = writePptx(pres);
 const { parsePptx } = require("@sliiu/present-parser");
 ```
 
-常用子路径：
+Common subpaths:
 
-| 路径 | 用途 |
+| Path | Use |
 |---|---|
-| `@sliiu/present-player/export` | `buildHtml`、`buildHtmlBundle` |
-| `@sliiu/present-player/pdf` | PDF 页尺寸 |
-| `@sliiu/present-player/iife` | 浏览器单文件 |
-| `@sliiu/present-serializer/source-json` | 原始压缩包的 JSON 形式 |
-| `@sliiu/present-editor/commands` | 编辑命令 |
-| `@sliiu/present-ai/config` | 自备密钥的配置 |
-| `@sliiu/present-ui/tokens.css` | 界面变量 |
-| `@sliiu/present-plugin-sdk/iife` | 插件单文件 |
+| `@sliiu/present-player/export` | `buildHtml`, `buildHtmlBundle` |
+| `@sliiu/present-player/pdf` | PDF page size |
+| `@sliiu/present-player/iife` | The browser file |
+| `@sliiu/present-serializer/source-json` | The original package as JSON |
+| `@sliiu/present-editor/commands` | Editor commands |
+| `@sliiu/present-ai/config` | Your own model settings |
+| `@sliiu/present-ui/tokens.css` | UI variables |
+| `@sliiu/present-plugin-sdk/iife` | The plugin file |
 
-`buildHtml` 的第二个参数是 player 的脚本正文，用 `dist/player.iife.js` 里的文本。
+The second argument to `buildHtml` is the text of `dist/player.iife.js`.
 
-## 页面里放映
+## Present in a page
 
-`dist/player.iife.js` 用普通 script 引入，全局名是 `PPTPlayer`。`mount` 接收的是已经解析好的演示文稿，不是 `.pptx` 文件本身。
+Load `dist/player.iife.js` with a script tag. The global is `PPTPlayer`. `mount` takes a parsed presentation, not a `.pptx` file.
 
 ```html
 <script src="node_modules/@sliiu/present-player/dist/player.iife.js"></script>
@@ -63,30 +65,30 @@ const { parsePptx } = require("@sliiu/present-parser");
 </script>
 ```
 
-插件单文件是 `dist/plugin-sdk.iife.js`，全局名 `PPTPluginSDK`。放映脚本里已经有 `PPTPlayer.definePlugin`。
+The plugin file is `dist/plugin-sdk.iife.js`, global `PPTPluginSDK`. The player script already includes `PPTPlayer.definePlugin`.
 
-## 包
+## Packages
 
-`@sliiu/present-player` 和 `@sliiu/present-editor` 会装上它们依赖的包。要直接调用某一层时，再单独安装。
+`@sliiu/present-player` and `@sliiu/present-editor` install the packages they depend on. Install one of these on its own when you call that layer directly.
 
-| 包 | 作用 |
+| Package | Role |
 |---|---|
-| `@sliiu/present-animation` | 页内动画的时间线和缓动 |
-| `@sliiu/present-core` | 幻灯片、形状和颜色的数据结构 |
-| `@sliiu/present-parser` | 读 `.pptx` |
-| `@sliiu/present-serializer` | 写 `.pptx` |
-| `@sliiu/present-three-bake` | 把立体形状准备成渲染器用的场景 |
-| `@sliiu/present-renderer` | 把幻灯片画到 SVG、Canvas 或 WebGL |
-| `@sliiu/present-transition-fx` | 翻页切换和 Morph |
-| `@sliiu/present-plugin-sdk` | 放映插件 |
-| `@sliiu/present-themes` | 主题、配色和装饰 |
-| `@sliiu/present-ui` | 界面变量和控件。样式文件是 `tokens.css` |
-| `@sliiu/present-player` | 放映，以及 HTML / PDF / PNG |
-| `@sliiu/present-editor` | 编辑界面 |
-| `@sliiu/present-ai` | 自备密钥调用模型 |
+| `@sliiu/present-animation` | Timing and easing for on-slide animation |
+| `@sliiu/present-core` | Slides, shapes, and color |
+| `@sliiu/present-parser` | Read `.pptx` |
+| `@sliiu/present-serializer` | Write `.pptx` |
+| `@sliiu/present-three-bake` | Prepare 3D shapes for the renderer |
+| `@sliiu/present-renderer` | Draw a slide to SVG, Canvas, or WebGL |
+| `@sliiu/present-transition-fx` | Slide transitions and Morph |
+| `@sliiu/present-plugin-sdk` | Playback plugins |
+| `@sliiu/present-themes` | Themes, palettes, and decoration |
+| `@sliiu/present-ui` | UI variables and controls. The stylesheet is `tokens.css` |
+| `@sliiu/present-player` | Present, and export HTML / PDF / PNG |
+| `@sliiu/present-editor` | The editing surface |
+| `@sliiu/present-ai` | Call a model with your own key |
 
-安装、引入和 HTML 放映见文档站的[开源版本](https://docs.slimppt.com/zh-cn/guide/open-source)。英文说明在 [Open source](https://docs.slimppt.com/guide/open-source)。
+Install, import, and HTML playback are in the docs: [Open source](https://docs.slimppt.com/guide/open-source).
 
-账号、在线分享、在线存储、直播放映、协作和系统模型不在这些包里。
+Accounts, online sharing, online storage, live broadcast, collaboration, and the hosted model are outside these packages.
 
-视频导出在浏览器里从 unpkg 加载 `@ffmpeg/core`。这段是 GPL-2.0-or-later，不在商业授权里。其余第三方库见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+Video export loads `@ffmpeg/core` from unpkg in the browser. That build is GPL-2.0-or-later and is outside the commercial contract. Other third-party licenses are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
