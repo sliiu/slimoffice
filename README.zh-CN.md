@@ -74,7 +74,7 @@ npx skills add sliiu/slimoffice --skill slimppt-local
 npm install @sliiu/present-ai
 ```
 
-用 `node` 启动 `@sliiu/present-ai` 里的 `dist/esm/mcp/server/stdio.js`。`SLIMPPT_ROOT` 是文稿所在的文件夹。MCP 配置写在技能文件里。`render_slide` 只在装好 player 的 SlimPPT 检出里有。
+用 `node` 启动 `@sliiu/present-ai` 里的 `dist/esm/mcp/server/stdio.js`。这个文件是 `0.1.2` 的 `./mcp-local` 出口，`0.1.1` 里没有。`SLIMPPT_ROOT` 是文稿所在的文件夹。MCP 配置写在技能文件里。`render_slide` 只在装好 player 的 SlimPPT 检出里有。
 
 ## 包
 

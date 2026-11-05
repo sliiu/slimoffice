@@ -14,7 +14,7 @@ npx skills add sliiu/slimoffice --skill slimppt-local
 npm install @sliiu/present-ai
 ```
 
-That copies this file into the agent skill directory. It does not start the server. The server is the installed package, not the TypeScript sources in this repository.
+That copies this file into the agent skill directory. It does not start the server. The server is the installed package, not the TypeScript sources in this repository. `@sliiu/present-ai@0.1.1` does not include this file. It ships as the `./mcp-local` export from `0.1.2`.
 
 ## Start
 

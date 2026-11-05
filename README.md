@@ -74,7 +74,7 @@ npx skills add sliiu/slimoffice --skill slimppt-local
 npm install @sliiu/present-ai
 ```
 
-Start the server with `node` on `@sliiu/present-ai`'s `dist/esm/mcp/server/stdio.js`. `SLIMPPT_ROOT` is the folder of deck files. The skill file has the MCP config. `render_slide` exists only in a SlimPPT checkout where the player is built.
+Start the server with `node` on `@sliiu/present-ai`'s `dist/esm/mcp/server/stdio.js`. That file is the `./mcp-local` export from version 0.1.2. `0.1.1` does not include it. `SLIMPPT_ROOT` is the folder of deck files. The skill file has the MCP config. `render_slide` exists only in a SlimPPT checkout where the player is built.
 
 ## Packages
 
