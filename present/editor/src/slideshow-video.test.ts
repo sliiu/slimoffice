@@ -4,12 +4,13 @@ import type { Slide } from "@ppt/core";
 import {
   DEFAULT_VIDEO_OPTIONS,
   framesFor,
+  narrationClips,
   slideFadeSeconds,
   slideHoldSeconds,
   slideshowVideoSlides,
   videoOutputSize,
 } from "./slideshow-video.js";
-import { sanitizeVideoSettings } from "./slideshow-video-dialog.js";
+import { sanitizeVideoSettings, videoTimingCheckboxState } from "./slideshow-video-dialog.js";
 
 function slide(over: Partial<Slide> = {}): Slide {
   return { id: "s", layers: [], ...over } as Slide;
@@ -69,6 +70,12 @@ describe("slideshow video settings", () => {
     assert.equal(sanitizeVideoSettings({ format: "avi" as never }).format, "mp4");
   });
 
+  it("leaves the rehearsed-timing box unchecked when the deck has none", () => {
+    assert.deepEqual(videoTimingCheckboxState(false, true), { checked: false, disabled: true });
+    assert.deepEqual(videoTimingCheckboxState(true, true), { checked: true, disabled: false });
+    assert.deepEqual(videoTimingCheckboxState(undefined, false), { checked: false, disabled: false });
+  });
+
   it("keeps valid choices", () => {
     assert.deepEqual(sanitizeVideoSettings({ fps: 30, height: 720, speed: 1.5, slideHold: 4, clickGap: 0.2 }), {
       fps: 30,
@@ -79,5 +86,24 @@ describe("slideshow video settings", () => {
       useTimings: true,
       format: "mp4",
     });
+  });
+});
+
+describe("slideshow narration clips", () => {
+  it("keeps narration audio and skips other media", () => {
+    const timed = slide({
+      layers: [
+        {
+          id: "l",
+          shapes: [
+            { id: "n", kind: "audio", src: "data:audio/webm;base64,AA", isNarration: true, volume: 0.5 },
+            { id: "m", kind: "audio", src: "data:audio/webm;base64,BB" },
+            { id: "v", kind: "video", src: "data:video/webm;base64,CC" },
+            { id: "rid", kind: "audio", src: "rId3", isNarration: true },
+          ],
+        },
+      ],
+    } as Partial<Slide>);
+    assert.deepEqual(narrationClips(timed), [{ src: "data:audio/webm;base64,AA", volume: 0.5 }]);
   });
 });

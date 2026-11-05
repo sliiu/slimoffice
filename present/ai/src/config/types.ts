@@ -119,8 +119,22 @@ export const ImageryConfigSchema = z.object({
 });
 export type ImageryConfig = z.infer<typeof ImageryConfigSchema>;
 
+/**
+ * 看图评审模型（可选）。生成后截全部页给它看，挑最差的几页重排。文本模型本身能看图时
+ * 可以不配；文本模型看不了图（DeepSeek 等）时，配一个能看图的模型才有这一轮。
+ * provider 空 = 不单独配置。apiKey / baseURL 留空且 provider 与文本模型相同时沿用文本模型的。
+ */
+export const ReviewConfigSchema = z.object({
+  provider: z.enum(["", ...TEXT_PROVIDER_KINDS]).default("").catch(""),
+  model: z.string().default(""),
+  apiKey: z.string().default(""),
+  baseURL: z.string().default(""),
+});
+export type ReviewConfig = z.infer<typeof ReviewConfigSchema>;
+
 export const AiConfigSchema = z.object({
   text: TextConfigSchema.prefault({}),
+  review: ReviewConfigSchema.optional(),
   image: ImageConfigSchema.prefault({}),
   imagery: ImageryConfigSchema.prefault({}),
   lockLayouts: z.boolean().default(true).catch(true),

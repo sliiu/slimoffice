@@ -14,8 +14,11 @@ import { coerceDeckBrief, coercePageBrief, defaultFolio, defaultPhotoRhythm, fol
 import { authorCanvasDeck, canvasChunkIndexes, canvasExtraChunks } from "./canvas-author.js";
 import { copyTargetsFromSlides, isCopyVoiceIssue, mirrorOutlineCopy, rewriteCopyVoice } from "./copy-rewrite.js";
 import { acquirePageImages } from "./enrich/acquire-page-images.js";
+import { applyArtDirectorEdits, reviewPresentation } from "./qa/art-director.js";
+import { resolveGuidanceLanguage } from "./prompts.js";
+import { visualReviewRound } from "./visual-review.js";
 import { defaultConfig } from "../config/types.js";
-import { isConfigUsable } from "../config/presets.js";
+import { isConfigUsable, visionReviewTextConfig } from "../config/presets.js";
 import { createLlm } from "../llm/client.js";
 import { autoAnimatePresentation } from "../animations.js";
 import { speechPlanFromOutlineItem } from "./reveal-order.js";
@@ -374,6 +377,8 @@ export async function generatePresentationViaDeckgen(guidance, outline, opts = {
     const config = opts.config ?? defaultConfig();
     const brand = parseBrandHex(guidance.extraNotes);
     let pres = skipLayout && opts.resume?.presentation ? structuredClone(opts.resume.presentation) : undefined;
+    /** Set when the canvas path already ran the vision review; polish reports it instead of a second call. */
+    let visualReview;
     const canvasExtras = canvasExtraChunks(working?.slides.length ?? 0, ctx.budget.remaining());
     if (!pres && working?.slides.length && isConfigUsable(config) && ctx.budget.tryConsume()) {
         try {
@@ -424,6 +429,7 @@ export async function generatePresentationViaDeckgen(guidance, outline, opts = {
                 ...(opts.signal ? { signal: opts.signal } : {}),
                 onUsage: ctx.recordUsage,
                 ...(opts.sampleComposition ? { sampleComposition: opts.sampleComposition } : {}),
+                ...(opts.canvasLayout === "slots" ? { slots: true } : {}),
             };
             const slideSlots = new Array(jobs.length);
             const placeChunk = (indexes, slides) => {
@@ -483,16 +489,16 @@ export async function generatePresentationViaDeckgen(guidance, outline, opts = {
             let repaired = false;
             if (opts.debug)
                 logCanvasPass("author", authored.systemId, compiled);
-            const structural = compiled.reflect.findings.filter((f) => !isCopyVoiceIssue(f.issue));
-            if (structural.length && ctx.budget.tryConsume()) {
-                repaired = true;
-                const repair = structural.map((f) => `[${f.kind} #${f.slideIdx}] ${f.issue}`).join("; ");
+            // One re-author pass over the pages `findings` name (the whole deck when a finding does not
+            // name its pages), merged per page against the current deck so a repair cannot regress a
+            // page that was fine. Shared by the structural gate round and the visual review round.
+            const repairPass = async (findings, label) => {
+                const repair = findings.map((f) => `[${f.kind} #${f.slideIdx}] ${f.issue}`).join("; ");
                 const firstPass = { compiled, slides: authored.slides };
                 // Page-scoped repair whenever every finding names its pages: only those pages are
                 // re-authored (cheaper, faster, and the pages that passed cannot regress). A deck-level
                 // finding without pages (e.g. "every page uses the same composition") forces a full pass.
-                // Copy-voice findings are not in this list — those strings are rewritten in place later.
-                const scope = repairScope(structural, authored.slides.length);
+                const scope = repairScope(findings, authored.slides.length);
                 const scopedRepair = await authorCanvasDeck({
                     model,
                     topic: working.title || guidance.topic,
@@ -510,6 +516,7 @@ export async function generatePresentationViaDeckgen(guidance, outline, opts = {
                     ...(opts.signal ? { signal: opts.signal } : {}),
                     onUsage: ctx.recordUsage,
                     ...(opts.sampleComposition ? { sampleComposition: opts.sampleComposition } : {}),
+                    ...(opts.canvasLayout === "slots" ? { slots: true } : {}),
                     ...(opts.onCanvasAuthored
                         ? { onRaw: (raw) => opts.onCanvasAuthored?.(scope && raw && typeof raw === "object" ? { ...raw, repairPages: scope } : raw, "repair") }
                         : {}),
@@ -549,12 +556,76 @@ export async function generatePresentationViaDeckgen(guidance, outline, opts = {
                 compiled = repairedCompiled;
                 if (merged) {
                     const mergedCompiled = compileCanvasDeck({ system, theme, slides: merged, title: working.title || guidance.topic, briefs, ...(folio != null ? { folio } : {}) });
-                    if (mergedCompiled.reflect.findings.length < repairedCompiled.reflect.findings.length)
+                    if (mergedCompiled.reflect.findings.length < repairedCompiled.reflect.findings.length) {
                         compiled = mergedCompiled;
+                        authored = { ...authored, slides: merged };
+                    }
                 }
                 if (opts.debug) {
-                    console.log(`[ai] canvas repair scope: ${scope ? `pages ${scope.join(", ")}` : "full deck"}`);
-                    logCanvasPass("repair", authored.systemId, compiled);
+                    console.log(`[ai] canvas ${label} scope: ${scope ? `pages ${scope.join(", ")}` : "full deck"}`);
+                    logCanvasPass(label === "visual" ? "repair" : label, authored.systemId, compiled);
+                }
+            };
+            // Copy-voice findings are not in this list — those strings are rewritten in place later.
+            const structural = compiled.reflect.findings.filter((f) => !isCopyVoiceIssue(f.issue));
+            if (structural.length && ctx.budget.tryConsume()) {
+                repaired = true;
+                await repairPass(structural, "repair");
+            }
+            // Look at the pages: render every one, let a vision model judge the pixels, and re-author the
+            // worst (≤ 3) it marks high / medium in a layout category. Needs a host that can render
+            // (`captureReviewShots`), a model that can see, and two calls left (review + repair).
+            const visualRetry = (opts.enableArtDirectorRetry ?? opts.enableArtDirector) !== false;
+            // The reviewer is a model that can see: the configured review model, else the text model when
+            // it can read images. Neither → skip the round rather than send pixels to a text-only model.
+            const visionText = visionReviewTextConfig(config);
+            if (visualRetry && opts.enableArtDirector !== false && opts.captureReviewShots && visionText && ctx.budget.remaining() >= 2) {
+                try {
+                    throwIfAborted(opts.signal);
+                    ctx.emit({ stage: "compile", progress: 0.6, detailKey: "artDirector.reviewing" });
+                    const reviewModel = visionText === config.text ? model : createLlm(visionText).model;
+                    const capture = opts.captureReviewShots;
+                    const round = await visualReviewRound({
+                        pageCount: () => authored.slides.length,
+                        capture: async () => {
+                            const shots = (await capture(compiled.presentation, { all: true })) ?? [];
+                            throwIfAborted(opts.signal);
+                            return shots;
+                        },
+                        // The first review only picks pages to re-author; the final one (after the repair, or the
+                        // only one when nothing was repaired) may also apply its safe recolor edits.
+                        review: (screenshots) => reviewPresentation(compiled.presentation, {
+                            model: reviewModel,
+                            ...(opts.signal ? { signal: opts.signal } : {}),
+                            language: resolveGuidanceLanguage(guidance),
+                            ...(guidance.topic ? { topic: guidance.topic } : {}),
+                            screenshots,
+                            applyEdits: false,
+                            onUsage: ctx.recordUsage,
+                        }),
+                        repair: async (findings) => {
+                            repaired = true;
+                            await repairPass(findings, "visual");
+                        },
+                        tryConsume: () => ctx.budget.tryConsume(),
+                        remaining: () => ctx.budget.remaining(),
+                        // keep one call for the copy rewrite after this round
+                        reserveAfter: 1,
+                    });
+                    if (round) {
+                        // Recolor edits name shape ids of the deck that was reviewed: apply them only when that
+                        // deck is the one being shipped (no repair after the review that produced them).
+                        const current = round.scoreBefore != null || !round.repairedPages.length;
+                        const edits = current && round.report.edits?.length ? applyArtDirectorEdits(compiled.presentation, round.report.edits) : { applied: 0, skipped: 0 };
+                        visualReview = { ...round.report, ...edits, repairedPages: round.repairedPages, ...(round.scoreBefore != null ? { scoreBefore: round.scoreBefore } : {}) };
+                        if (opts.debug)
+                            console.log(`[ai] visual review: score ${round.scoreBefore != null ? `${round.scoreBefore} → ` : ""}${round.report.score}${round.repairedPages.length ? ` · re-authored pages ${round.repairedPages.join(", ")}` : ""}`);
+                    }
+                }
+                catch (e) {
+                    rethrowIfAborted(opts.signal, e);
+                    if (opts.debug)
+                        console.warn("[ai] visual review failed (non-fatal):", e);
                 }
             }
             if (compiled.reflect.findings.some((f) => isCopyVoiceIssue(f.issue)) &&
@@ -600,7 +671,7 @@ export async function generatePresentationViaDeckgen(guidance, outline, opts = {
     if (shouldCommitGeneratedDeck(opts.signal))
         opts.onPresentationDraft?.(pres);
     if (!skipWrite) {
-        await polishGeneratedDeck(pres, working, guidance, opts, ctx);
+        await polishGeneratedDeck(pres, working, guidance, opts, ctx, visualReview);
         throwIfPipelineP2Inject(opts.pipelineP2Inject, "write");
     }
     throwIfAborted(opts.signal);

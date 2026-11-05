@@ -1,6 +1,6 @@
 import { bindEditorModal } from "./dialog";
 import { t, type MessageKey } from "./i18n";
-import { listCaptureDevices } from "./lecture-devices";
+import { listCaptureDevices, preferredCaptureDeviceId } from "./lecture-devices";
 import { computePipDrawRect } from "./record-composite";
 import {
   cameraCanFlip,
@@ -36,7 +36,7 @@ import {
   recordModeSupportsPip,
 } from "./record-meta";
 import { copyTextToClipboard } from "./insert-meta";
-import { DIALOG_INPUT_CSS, DIALOG_OVERLAY_CSS, createDevOnlyActionSelect } from "./ui-style";
+import { DEV_ONLY_CLASS, DIALOG_INPUT_CSS, DIALOG_OVERLAY_CSS, createDevOnlyActionSelect } from "./ui-style";
 import {
   downloadBlob,
   ensureExportRecordingBlob,
@@ -517,7 +517,7 @@ export function openRecordDialog(
 
     const preview = doc.createElement("video");
     preview.style.cssText = "width:100%;max-height:240px;background:#000;border-radius:6px";
-    preview.controls = true;
+    preview.controls = false;
     preview.playsInline = true;
     modal.appendChild(preview);
 
@@ -563,13 +563,14 @@ export function openRecordDialog(
     const readinessLine = doc.createElement("div");
     readinessLine.style.cssText =
       "font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35;word-break:break-word";
-    modal.appendChild(readinessLine);
-
     const pipDetailLine = doc.createElement("div");
     pipDetailLine.style.cssText =
       "font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35;word-break:break-word";
     pipDetailLine.hidden = true;
-    modal.appendChild(pipDetailLine);
+    const diagLines = doc.createElement("div");
+    diagLines.className = DEV_ONLY_CLASS;
+    diagLines.append(readinessLine, pipDetailLine);
+    modal.appendChild(diagLines);
 
     const footer = doc.createElement("div");
     footer.style.cssText = "display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap";
@@ -919,6 +920,10 @@ export function openRecordDialog(
         sel.appendChild(opt);
       }
       if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
+      else {
+        const preferred = preferredCaptureDeviceId(devices);
+        if (preferred && [...sel.options].some((o) => o.value === preferred)) sel.value = preferred;
+      }
     };
 
     const stopLivePreview = (): void => {

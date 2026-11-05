@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.seriesXyPoints = seriesXyPoints;
 exports.linearFit = linearFit;
 exports.estimateTextWidth = estimateTextWidth;
+exports.chartLeftPad = chartLeftPad;
 exports.chartPadding = chartPadding;
 exports.barGeometry = barGeometry;
 exports.barLabelAnchor = barLabelAnchor;
@@ -52,6 +53,21 @@ function estimateTextWidth(text, size) {
     for (const ch of text)
         w += /[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? size : size * 0.58;
     return w;
+}
+/**
+ * Left padding of the plot. 40px holds value-axis ticks; a horizontal bar chart puts its category
+ * names there instead (right-aligned at plot.x − 6), and "查找信息时间占比" ran off the chart's left
+ * edge — and off the slide when the chart sat at the margin. Sized to the longest category, capped
+ * at 40 % of the chart width.
+ */
+function chartLeftPad(def, textSize, width) {
+    const base = 40;
+    const combo = def.series.some((s) => s.chartType && s.chartType !== def.type);
+    if (def.type !== "bar" || combo)
+        return base;
+    const cats = "categories" in def && Array.isArray(def.categories) ? def.categories : [];
+    const longest = cats.reduce((m, c) => Math.max(m, estimateTextWidth(String(c ?? ""), textSize)), 0);
+    return Math.round(Math.max(base, Math.min(width * 0.4, longest + 14)));
 }
 /** Chart types whose category labels run along the bottom edge of the plot. */
 /** Types that carry a labelled axis along the bottom edge — categories for most, the value axis for a horizontal bar chart. */

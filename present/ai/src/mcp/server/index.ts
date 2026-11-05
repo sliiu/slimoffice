@@ -20,6 +20,9 @@ import { createHeadlessPort, type DocumentPort } from "../../kernel/port";
 import { buildEditToolDefs } from "../../tools";
 import { createToolRuntime, type ToolDef } from "../../tools/types";
 import { defaultConfig, type AiConfig } from "../../config/types";
+import { isConfigUsable } from "../../config/presets";
+import { generateFromOutline, generateOutline } from "../../generate/index";
+import type { ReviewResult } from "../../generate/qa/art-director";
 
 /** 宿主注入的 deck 存取抽象（gateway：云存储 + E2E 解密 / 测试：内存）。 */
 export interface PptMcpDeckStore {
@@ -51,12 +54,27 @@ export interface CreatePptMcpServerOptions {
   /** LLM/图库配置（generateAndApplyTheme / generateImage 等 llm 工具用）；缺省为空配置（相关工具会返回"未配置"）。 */
   getConfig?: () => AiConfig;
   serverInfo?: { name?: string; version?: string };
+  /**
+   * Register `generate_presentation` (topic → full deck through the same pipeline as the online
+   * generator). Spends the host's model budget, so it is opt-in: the local stdio server turns it on;
+   * the gateway leaves it off until generation over MCP is metered.
+   */
+  enableGenerate?: boolean;
+  /**
+   * Rasterize one slide to PNG. When set, `render_slide` is registered (an agent can look at what
+   * it built) and `generate_presentation` gets the visual review round.
+   */
+  renderSlide?: (pres: Presentation, slideIdx: number, opts: { width: number }) => Promise<Uint8Array>;
 }
 
 type McpToolResult = {
-  content: Array<{ type: "text"; text: string }>;
+  content: Array<{ type: "text"; text: string } | { type: "image"; data: string; mimeType: string }>;
   isError?: boolean;
 };
+
+function toBase64(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("base64");
+}
 
 function jsonResult(v: unknown): McpToolResult {
   const isErr = !!v && typeof v === "object" && (v as { ok?: unknown }).ok === false;
@@ -177,6 +195,118 @@ export function createPptMcpServer(opts: CreatePptMcpServerOptions): McpServer {
       return jsonResult({ ok: true, closed: had ?? null });
     },
   );
+
+  // ---- 看效果 / 整份生成 ------------------------------------------------------
+
+  const renderSlide = opts.renderSlide;
+  if (renderSlide) {
+    server.registerTool(
+      "render_slide",
+      {
+        description:
+          "Render one slide of the open presentation to a PNG and return the image. Use it after edits to check the result the way a viewer sees it: overlap, empty areas, stranded words, contrast. Edit, render, look, fix.",
+        inputSchema: {
+          slideIdx: z.number().int().min(0).describe("0-based slide index."),
+          width: z.number().int().min(320).max(1920).optional().describe("Output width in px (default 960)."),
+        },
+        annotations: { readOnlyHint: true },
+      },
+      async ({ slideIdx, width }: { slideIdx: number; width?: number }) => {
+        touch();
+        if (!session.port) return jsonResult({ ok: false, error: "No presentation open. Call open_presentation first." });
+        const pres = session.port.getPres();
+        if (slideIdx >= pres.slides.length) return jsonResult({ ok: false, error: `slideIdx ${slideIdx} out of range (0–${pres.slides.length - 1}).` });
+        try {
+          const png = await renderSlide(pres, slideIdx, { width: width ?? 960 });
+          return {
+            content: [
+              { type: "image", data: toBase64(png), mimeType: "image/png" },
+              { type: "text", text: `slide ${slideIdx} of ${pres.slides.length}` },
+            ],
+          };
+        } catch (e) {
+          return jsonResult({ ok: false, error: `render failed: ${(e as Error).message}` });
+        }
+      },
+    );
+  }
+
+  if (opts.enableGenerate) {
+    server.registerTool(
+      "generate_presentation",
+      {
+        description:
+          "Generate a complete designed presentation from a topic with SlimPPT's own pipeline (outline → research → per-page layout → layout gates → repair → visual review), and open it in this session as a new deck. Prefer this over building a deck shape by shape. Takes one to a few minutes. Then inspect with getPresentationSummary / render_slide, refine with edit tools, and call save_presentation to write it.",
+        inputSchema: {
+          topic: z.string().min(2).describe("What the deck is about."),
+          deckId: z.string().min(1).describe("Id for the new deck. For a local folder, a new file name such as \"talk.pptx\"."),
+          slideCount: z.number().int().min(3).max(30).optional().describe("Target number of slides (default 8)."),
+          language: z.string().optional().describe("Deck language, e.g. zh-CN or en."),
+          audience: z.string().optional(),
+          notes: z.string().optional().describe("Extra requirements: tone, must-include facts, brand color, page numbers…"),
+          sourceMaterial: z.string().optional().describe("Source text the numbers and claims must come from."),
+        },
+      },
+      async (args: { topic: string; deckId: string; slideCount?: number; language?: string; audience?: string; notes?: string; sourceMaterial?: string }) => {
+        touch();
+        const config = getConfig();
+        if (!isConfigUsable(config)) return jsonResult({ ok: false, error: "Text model is not configured (AI_API_KEY / provider settings)." });
+        const guidance = {
+          topic: args.topic,
+          slideCount: args.slideCount ?? 8,
+          ...(args.language ? { language: args.language } : {}),
+          ...(args.audience ? { audience: args.audience } : {}),
+          ...(args.notes ? { extraNotes: args.notes } : {}),
+          ...(args.sourceMaterial ? { sourceMaterial: args.sourceMaterial, sourceBound: true } : {}),
+        };
+        try {
+          const outline = await generateOutline(guidance, { config });
+          let review: ReviewResult | undefined;
+          const pres = await generateFromOutline(outline, guidance, {
+            config,
+            onArtDirectorReport: (r) => {
+              review = r;
+            },
+            ...(renderSlide
+              ? {
+                  captureReviewShots: async (p: Presentation) => {
+                    const out: Array<{ slideIdx: number; dataUrl: string }> = [];
+                    for (let i = 0; i < Math.min(p.slides.length, 16); i++) {
+                      out.push({ slideIdx: i, dataUrl: `data:image/png;base64,${toBase64(await renderSlide(p, i, { width: 640 }))}` });
+                    }
+                    return out;
+                  },
+                }
+              : {}),
+          });
+          touch();
+          session.deckId = args.deckId;
+          session.port = createHeadlessPort(pres);
+          session.dirty = true;
+          const deckgen = (pres.meta as { deckgen?: { passed?: boolean; repaired?: boolean } } | undefined)?.deckgen;
+          return jsonResult({
+            ok: true,
+            deckId: args.deckId,
+            slideCount: pres.slides.length,
+            titles: outline.slides.map((s) => s.title),
+            gatesPassed: deckgen?.passed ?? null,
+            ...(review
+              ? {
+                  review: {
+                    score: review.score,
+                    overall: review.overall,
+                    findings: review.findings.slice(0, 12).map((f) => `#${f.slideIdx} [${f.severity}/${f.category}] ${f.issue} → ${f.suggestion}`),
+                  },
+                }
+              : {}),
+            note: `Not saved yet. ${renderSlide ? "Look at pages with render_slide, fix" : "Fix"} what the review lists with the edit tools, then call save_presentation.`,
+          });
+        } catch (e) {
+          return jsonResult({ ok: false, error: `generate failed: ${(e as Error).message}` });
+        }
+      },
+    );
+  }
 
   // ---- 编辑工具（与浏览器对话共用同一套 ToolDef）------------------------------
 

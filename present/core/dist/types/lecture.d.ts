@@ -23,6 +23,19 @@ export interface Lecture {
     frame?: LectureFrame;
 }
 export declare function lectureTakeFor(lecture: Lecture | undefined, slideId: string): LectureTake | undefined;
+/**
+ * 出镜在幻灯片坐标里的位置。宽度按短边的 18% / 26% / 36%，和放映层的 vmin 一致；画面 4:3。
+ * 没写角落和大小时用右下、中号。
+ */
+export declare function lecturePipRect(size: {
+    width: number;
+    height: number;
+}, frame?: LectureFrame): {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+};
 /** 两个开关都开着才播出镜、旁白、自动翻页和讲解点击。 */
 export declare function lecturePlaybackEnabled(useTimings: boolean, playNarrations: boolean): boolean;
 export declare function lectureCameraIdbRef(slideId: string): string;

@@ -2,6 +2,7 @@
 /** 一场讲解里某一页的记录。摄像头字节不在这里，只留一个短引用。 */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.lectureTakeFor = lectureTakeFor;
+exports.lecturePipRect = lecturePipRect;
 exports.lecturePlaybackEnabled = lecturePlaybackEnabled;
 exports.lectureCameraIdbRef = lectureCameraIdbRef;
 exports.lectureCameraSlideId = lectureCameraSlideId;
@@ -15,6 +16,21 @@ exports.withLectureFrame = withLectureFrame;
 exports.withoutLectureCamera = withoutLectureCamera;
 function lectureTakeFor(lecture, slideId) {
     return lecture?.takes.find((t) => t.slideId === slideId);
+}
+/**
+ * 出镜在幻灯片坐标里的位置。宽度按短边的 18% / 26% / 36%，和放映层的 vmin 一致；画面 4:3。
+ * 没写角落和大小时用右下、中号。
+ */
+function lecturePipRect(size, frame) {
+    const vmin = Math.min(size.width, size.height);
+    const frac = frame?.size === "s" ? 0.18 : frame?.size === "l" ? 0.36 : 0.26;
+    const w = vmin * frac;
+    const h = w * 0.75;
+    const pad = vmin * (16 / 720);
+    const corner = frame?.corner ?? "br";
+    const x = corner === "tl" || corner === "bl" ? pad : size.width - pad - w;
+    const y = corner === "tl" || corner === "tr" ? pad : size.height - pad - h;
+    return { x, y, w, h };
 }
 /** 两个开关都开着才播出镜、旁白、自动翻页和讲解点击。 */
 function lecturePlaybackEnabled(useTimings, playNarrations) {

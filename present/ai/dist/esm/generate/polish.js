@@ -10,7 +10,7 @@
  * cover photos, web-exclusive quota) and would fail every whitelist deck.
  */
 import { defaultConfig } from "../config/types.js";
-import { isConfigUsable } from "../config/presets.js";
+import { isConfigUsable, visionReviewTextConfig } from "../config/presets.js";
 import { createLlm } from "../llm/client.js";
 import { SLOT_CAPS } from "../deckgen/ids.js";
 import { truncateChars } from "../deckgen/text-measure.js";
@@ -191,7 +191,9 @@ export async function enrichOutlineContent(outlineInput, guidance, opts, ctx) {
     return clampOutlineToDeckgenSlots(outline);
 }
 /** Images → QA repair → art director. Mutates `pres`. Motion stays in the adapter. */
-export async function polishGeneratedDeck(pres, outline, guidance, opts, ctx) {
+export async function polishGeneratedDeck(pres, outline, guidance, opts, ctx, 
+/** The canvas path's vision review, already run on the deck; reported instead of a second call. */
+priorReview) {
     const config = opts.config ?? defaultConfig();
     const allowImagery = opts.enableImageEnrichment !== false && imageEnrichmentAvailable(config);
     const canvasDone = Boolean(pres.meta?.deckgen?.canvas);
@@ -243,12 +245,20 @@ export async function polishGeneratedDeck(pres, outline, guidance, opts, ctx) {
                 console.warn("[ai] qa pass failed (non-fatal):", e);
         }
     }
+    if (priorReview) {
+        opts.onArtDirectorReport?.(priorReview);
+        return;
+    }
     if (opts.enableArtDirector !== false && isConfigUsable(config) && ctx.budget.tryConsume()) {
         try {
             throwIfAborted(opts.signal);
             ctx.emit({ stage: "compile", progress: 0.88, detailKey: "artDirector.reviewing" });
-            const { model } = createLlm(config.text);
-            const screenshots = (await opts.captureReviewShots?.(pres)) ?? [];
+            // Screenshots go to a model that can see (the configured review model, else a vision-capable
+            // text model). A text-only model (DeepSeek chat, …) rejects image parts — sending them only
+            // buys a failed call and a retry — so it reviews from the deck summary alone.
+            const visionText = visionReviewTextConfig(config);
+            const { model } = createLlm(visionText ?? config.text);
+            const screenshots = visionText ? ((await opts.captureReviewShots?.(pres)) ?? []) : [];
             throwIfAborted(opts.signal);
             const report = await reviewPresentation(pres, {
                 model,

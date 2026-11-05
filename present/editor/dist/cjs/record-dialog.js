@@ -436,7 +436,7 @@ function openRecordDialog(doc, opts) {
         modal.appendChild(modeRow);
         const preview = doc.createElement("video");
         preview.style.cssText = "width:100%;max-height:240px;background:#000;border-radius:6px";
-        preview.controls = true;
+        preview.controls = false;
         preview.playsInline = true;
         modal.appendChild(preview);
         const deviceStack = doc.createElement("div");
@@ -479,12 +479,14 @@ function openRecordDialog(doc, opts) {
         const readinessLine = doc.createElement("div");
         readinessLine.style.cssText =
             "font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35;word-break:break-word";
-        modal.appendChild(readinessLine);
         const pipDetailLine = doc.createElement("div");
         pipDetailLine.style.cssText =
             "font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35;word-break:break-word";
         pipDetailLine.hidden = true;
-        modal.appendChild(pipDetailLine);
+        const diagLines = doc.createElement("div");
+        diagLines.className = ui_style_1.DEV_ONLY_CLASS;
+        diagLines.append(readinessLine, pipDetailLine);
+        modal.appendChild(diagLines);
         const footer = doc.createElement("div");
         footer.style.cssText = "display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap";
         const startBtn = doc.createElement("button");
@@ -780,6 +782,11 @@ function openRecordDialog(doc, opts) {
             }
             if (prev && [...sel.options].some((o) => o.value === prev))
                 sel.value = prev;
+            else {
+                const preferred = (0, lecture_devices_1.preferredCaptureDeviceId)(devices);
+                if (preferred && [...sel.options].some((o) => o.value === preferred))
+                    sel.value = preferred;
+            }
         };
         const stopLivePreview = () => {
             previewGen += 1;

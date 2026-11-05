@@ -168,6 +168,12 @@ export interface GenerateOptions {
   enableArtDirector?: boolean;
   /** 艺术总监发现版式问题时对高严重度页换 layout 单页重生成（最多 3 页）。默认跟随 enableArtDirector。 */
   enableArtDirectorRetry?: boolean;
+  /**
+   * Canvas page geometry. "author" (default): the model writes every bbox. "slots": content pages
+   * are written as composition + slots and laid out by code (`deckgen/page-layout.ts`); cover,
+   * close, section, statement and photo pages stay authored.
+   */
+  canvasLayout?: "author" | "slots";
   /** 艺术总监评审报告回调。UI 可展示"AI 设计建议"。 */
   onArtDirectorReport?: (report: ReviewResult) => void;
   /**
@@ -194,8 +200,14 @@ export interface GenerateOptions {
   referencePresentation?: Presentation;
   /** 填槽时相对参考原文的长度系数，默认 1.25。 */
   referenceLengthFactor?: number;
+  /**
+   * Render slides for the art director. Without options a host may sample (cover / middle / close);
+   * `{ all: true }` asks for every page (the canvas path's visual review re-authors the pages it
+   * flags, so it must see them all). Only called when the text model can see images.
+   */
   captureReviewShots?: (
     pres: Presentation,
+    opts?: { all?: boolean },
   ) => Promise<Array<{ slideIdx: number; dataUrl: string }>> | Array<{ slideIdx: number; dataUrl: string }>;
   /**
    * 生成过程中的中间 Presentation（骨架编译后、每页绘制后、配图后）。

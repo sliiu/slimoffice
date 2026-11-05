@@ -23,7 +23,7 @@ import {
   layoutWaterfall,
   normalizeChartExSlices,
 } from "./chart-ex-render";
-import { applyValueAxisScale, barGeometry, barLabelAnchor, chart3DOffset, chartPadding, chartTextStyle, comboXyPlotX, linearFit, niceTicks, pointLabelText, seriesXyPoints, shadeHex, surfaceIsoQuads, type ChartTextStyle } from "./chart-geom";
+import { applyValueAxisScale, barGeometry, barLabelAnchor, chart3DOffset, chartLeftPad, chartPadding, chartTextStyle, comboXyPlotX, linearFit, niceTicks, pointLabelText, seriesXyPoints, shadeHex, surfaceIsoQuads, type ChartTextStyle } from "./chart-geom";
 
 /** Text / line colours of the chart being drawn; set once per `drawChartCanvas` (drawing is synchronous). */
 let ts: ChartTextStyle = chartTextStyle({});
@@ -42,7 +42,7 @@ export function drawChartCanvas(ctx: CanvasRenderingContext2D, shape: ChartShape
   const padTop = def.title ? 28 : 8;
   const pads = chartPadding(def, ts.size);
   const padBottom = pads.bottom;
-  const padLeft = 40;
+  const padLeft = chartLeftPad(def, ts.size, w);
   const padRight = 12;
   ctx.save();
   ctx.fillStyle = ts.text;

@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-ai",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -25,6 +25,11 @@
       "types": "./dist/types/mcp/server/index.d.ts",
       "import": "./dist/esm/mcp/server/index.js",
       "require": "./dist/cjs/mcp/server/index.js"
+    },
+    "./mcp-local": {
+      "types": "./dist/types/mcp/server/stdio.d.ts",
+      "import": "./dist/esm/mcp/server/stdio.js",
+      "require": "./dist/cjs/mcp/server/stdio.js"
     }
   },
   "scripts": {
@@ -41,10 +46,12 @@
     "fflate": "^0.8.3",
     "lucide": "^1.48.0",
     "zod": "^4.6.5",
-    "@sliiu/present-animation": "0.1.1",
-    "@sliiu/present-core": "0.1.1",
-    "@sliiu/present-editor": "0.1.1",
-    "@sliiu/present-themes": "0.1.1"
+    "@sliiu/present-animation": "0.1.2",
+    "@sliiu/present-core": "0.1.2",
+    "@sliiu/present-editor": "0.1.2",
+    "@sliiu/present-parser": "0.1.2",
+    "@sliiu/present-serializer": "0.1.2",
+    "@sliiu/present-themes": "0.1.2"
   },
   "module": "./dist/esm/index.js",
   "repository": {

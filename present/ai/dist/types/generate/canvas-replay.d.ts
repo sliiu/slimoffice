@@ -11,7 +11,7 @@ export interface ReplayCanvasInput {
     /** Raw model JSON as dumped (pre-normalize). */
     raw: unknown;
     /** The outline the author was given (dump dir `outline.json`). */
-    outline: Pick<Outline, "title" | "slides">;
+    outline: Pick<Outline, "title" | "slides"> & Partial<Pick<Outline, "designBrief">>;
     /** Optional page → image src map; missing entries mean "no photo for this page". */
     images?: Map<number, string>;
     brand?: string;

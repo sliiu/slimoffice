@@ -15,6 +15,7 @@ import { dragOfficialAdjustHandle, listOfficialAdjustHandles } from "@sliiu/pres
 import { mountInspector } from "./inspector.js";
 import { buildRibbon } from "./ribbon.js";
 import { mountLecturePanel } from "./lecture-panel.js";
+import { mountLectureStagePip } from "./lecture-stage-pip.js";
 import { mountCommentsPanel } from "./comments-panel.js";
 import { commentMentionsAi } from "./comment-assign.js";
 import { AddCommentCmd, genCommentId, ResolveSlideCommentsCmd, SetCommentAnchorCmd } from "./comment-commands.js";
@@ -1479,6 +1480,12 @@ export function mountEditor(host, initialPres, opts = {}) {
     // 备注面板的"立即提交"句柄，在备注面板初始化时赋值（见下方 Speaker Notes 区块）。
     // drawSlide 切页前调用它，把上一页待提交的备注先落库。
     let flushNotesCommit;
+    const lectureStagePip = mountLectureStagePip(stage, overlay, {
+        getPres: () => pres,
+        getSlide: () => pres.slides[index],
+        hidden: () => isMasterEditContext(editorContext) || !opts.lectureCameraSrc,
+        cameraSrc: opts.lectureCameraSrc,
+    });
     const drawSlide = (i) => {
         // 双缓冲式切换：先构造新 backend 并同步刷新到 DOM，再销毁旧 backend；
         // 避免"先空一帧再绘制"的闪屏（拖动 / undo / redo / 频繁重绘场景）。
@@ -1518,6 +1525,7 @@ export function mountEditor(host, initialPres, opts = {}) {
             if (oldRuntime)
                 oldRuntime.detach();
             runtime = null;
+            lectureStagePip.sync();
             return;
         }
         // 编辑器舞台是"编辑视图"而不是放映视图：用户切页时希望立即看到新 slide 的
@@ -1563,6 +1571,7 @@ export function mountEditor(host, initialPres, opts = {}) {
         renderOverlay();
         // 旧 backend 已拆掉，扫描只会落到新场景的 <video>/<audio> 上。
         adaptMediaForEditor(stage, slide);
+        lectureStagePip.sync();
         // slide 切换时通知右侧/底部面板刷新（drawSlide 自身不会触发 stack，因此面板的
         // stack.subscribe 不会被调用）。Inspector 由 selection 订阅驱动，无需手动刷新。
         // 这些刷新不参与舞台首帧：排到绘制之后，避免全稿审计和功能区重建挡住新页。
@@ -7467,6 +7476,7 @@ export function mountEditor(host, initialPres, opts = {}) {
                     showToast(t("ribbon.record.saveVideoWorking"), 60_000);
                     const out = await exportSlideshowVideo(pres, {
                         ...settings,
+                        resolveLectureCamera: opts.lectureCameraSrc,
                         onProgress: (p) => showToast(p.phase === "render"
                             ? t("ribbon.record.saveVideoProgress", { done: p.done, total: p.total })
                             : t("ribbon.record.saveVideoConverting"), 600_000),

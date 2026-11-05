@@ -1,5 +1,5 @@
 import { layoutBoxWhisker, layoutFunnel, layoutHistogram, layoutPareto, layoutRegion, layoutSunburst, layoutTreemap, layoutWaterfall, normalizeChartExSlices, polygonPath, sunburstArcPath, } from "./chart-ex-render.js";
-import { applyValueAxisScale, barGeometry, barLabelAnchor, chart3DOffset, chartPadding, chartTextStyle, estimateTextWidth, comboXyPlotX, linearFit, niceTicks, pointLabelText, seriesXyPoints, shadeHex, surfaceIsoQuads } from "./chart-geom.js";
+import { applyValueAxisScale, barGeometry, barLabelAnchor, chart3DOffset, chartLeftPad, chartPadding, chartTextStyle, estimateTextWidth, comboXyPlotX, linearFit, niceTicks, pointLabelText, seriesXyPoints, shadeHex, surfaceIsoQuads } from "./chart-geom.js";
 /** Text / line colours of the chart being drawn; set once per `renderChart` (drawing is synchronous). */
 let ts = chartTextStyle({});
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -31,7 +31,7 @@ export function renderChart(g, shape) {
     const padTop = shape.chart.title ? 28 : 8;
     const pads = chartPadding(shape.chart, ts.size);
     const padBottom = pads.bottom;
-    const padLeft = 40;
+    const padLeft = chartLeftPad(shape.chart, ts.size, w);
     const padRight = 12;
     if (shape.chart.title) {
         const t = document.createElementNS(SVG_NS, "text");

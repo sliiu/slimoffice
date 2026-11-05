@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   lectureCameraSlideId,
+  lecturePipRect,
   lectureTailSlideIds,
   nextLectureClickMs,
   replaceLectureSlide,
@@ -149,5 +150,24 @@ describe("lectureCameraSlideId", () => {
   it("reads the slide id out of an idb ref", () => {
     assert.equal(lectureCameraSlideId("idb:slide%201"), "slide 1");
     assert.equal(lectureCameraSlideId("/api/share/camera/x/y"), null);
+  });
+});
+
+describe("lecturePipRect", () => {
+  const size = { width: 1280, height: 720 };
+
+  it("defaults to a medium picture in the bottom-right", () => {
+    const rect = lecturePipRect(size);
+    assert.equal(rect.w, 720 * 0.26);
+    assert.equal(rect.h, rect.w * 0.75);
+    assert.ok(rect.x > size.width / 2);
+    assert.ok(rect.y > size.height / 2);
+  });
+
+  it("moves a large picture to the top-left", () => {
+    const rect = lecturePipRect(size, { corner: "tl", size: "l" });
+    assert.equal(rect.w, 720 * 0.36);
+    assert.ok(rect.x < 40);
+    assert.ok(rect.y < 40);
   });
 });

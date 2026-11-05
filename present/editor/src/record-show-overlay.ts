@@ -5,6 +5,7 @@ import {
   OVERLAY_ICON_BTN_BG_ACTIVE,
   OVERLAY_ICON_BTN_BG_DANGER,
   OVERLAY_ICON_BTN_CSS,
+  DEV_ONLY_FLEX_CLASS,
   createDevOnlyToolbar,
 } from "./ui-style";
 import {
@@ -241,11 +242,11 @@ export async function mountRecordShowOverlay(
     camBtn,
     sizeBtn,
     cornerBtn,
-    largestPipBtn,
-    smallestPipBtn,
-    largestCornerBtn,
     createDevOnlyToolbar(
       doc,
+      largestPipBtn,
+      smallestPipBtn,
+      largestCornerBtn,
       copyPipBtn,
       copyPipCompactBtn,
       copyPipReadinessBtn,
@@ -262,12 +263,16 @@ export async function mountRecordShowOverlay(
   const pipStats = doc.createElement("div");
   pipStats.style.cssText =
     "font:10px var(--font-sans,system-ui,sans-serif);color:var(--foreground);background:color-mix(in srgb, var(--popover) 82%, transparent);border:1px solid var(--border);padding:3px 8px;border-radius:var(--radius-sm,6px);pointer-events:none;max-width:min(360px,90vw);line-height:1.35";
-  pipPanel.appendChild(pipStats);
 
   const pipSpreadStats = doc.createElement("div");
   pipSpreadStats.style.cssText =
-    "font:10px var(--font-sans,system-ui,sans-serif);color:var(--muted-foreground);background:color-mix(in srgb, var(--popover) 72%, transparent);border:1px solid var(--border);padding:3px 8px;border-radius:var(--radius-sm,6px);pointer-events:none;max-width:min(360px,90vw);line-height:1.35;margin-top:4px";
-  pipPanel.appendChild(pipSpreadStats);
+    "font:10px var(--font-sans,system-ui,sans-serif);color:var(--muted-foreground);background:color-mix(in srgb, var(--popover) 72%, transparent);border:1px solid var(--border);padding:3px 8px;border-radius:var(--radius-sm,6px);pointer-events:none;max-width:min(360px,90vw);line-height:1.35";
+  const pipDiag = doc.createElement("div");
+  pipDiag.className = DEV_ONLY_FLEX_CLASS;
+  pipDiag.style.flexDirection = "column";
+  pipDiag.style.alignItems = "flex-end";
+  pipDiag.append(pipStats, pipSpreadStats);
+  pipPanel.appendChild(pipDiag);
 
   const videoWrap = doc.createElement("div");
   videoWrap.style.cssText =

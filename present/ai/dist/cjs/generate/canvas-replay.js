@@ -12,6 +12,7 @@ const pipeline_js_1 = require("../deckgen/pipeline.js");
 const visual_system_js_1 = require("../deckgen/visual-system.js");
 const color_theme_js_1 = require("../deckgen/color-theme.js");
 const jobs_js_1 = require("../deckgen/jobs.js");
+const brief_js_1 = require("../deckgen/brief.js");
 const canvas_schema_js_1 = require("./canvas-schema.js");
 const canvas_author_js_1 = require("./canvas-author.js");
 const deckgen_adapter_js_1 = require("./deckgen-adapter.js");
@@ -45,7 +46,12 @@ function replayCanvasDump(input) {
         ...(deck.palette ? { palette: deck.palette } : {}),
         ...(input.brand ? { brand: input.brand } : {}),
     });
-    const compiled = (0, pipeline_js_1.compileCanvasDeck)({ system, theme, slides, title: input.outline.title, briefs });
+    // The live path hands snap the deck's folio decision (`withFolioDecision`); without it the
+    // replay keeps every numeral the model drew and shows two page-number systems the live deck
+    // never had.
+    const db = input.outline.designBrief;
+    const folio = db?.folio ?? (0, brief_js_1.defaultFolio)((0, brief_js_1.coerceDeckBrief)(db).mode, slides.length);
+    const compiled = (0, pipeline_js_1.compileCanvasDeck)({ system, theme, slides, title: input.outline.title, briefs, folio });
     const meta = (compiled.presentation.meta ?? {});
     const stats = meta.deckgen?.canvasStats ?? { pages: slides.length, kinds: {}, devices: {}, scrimPages: 0, photoPages: 0, drops: [], findings: compiled.reflect.findings.length };
     return { systemId: deck.systemId, compiled, stats, schemaIssues: [] };

@@ -100,6 +100,15 @@ export async function listCaptureDevices(ask?: {
   };
 }
 
+/**
+ * 还没选过时用系统默认。Chrome 的默认麦克风 deviceId 是 "default"，
+ * 但 enumerateDevices 常把 Teams / 虚拟声卡排在它前面。
+ */
+export function preferredCaptureDeviceId(devices: readonly { deviceId: string }[]): string {
+  const usable = devices.filter((d) => d.deviceId);
+  return usable.find((d) => d.deviceId === "default")?.deviceId ?? usable[0]?.deviceId ?? "";
+}
+
 function fillSelect(
   sel: HTMLSelectElement,
   devices: MediaDeviceInfo[],
@@ -117,7 +126,10 @@ function fillSelect(
     opt.value = "";
     opt.textContent = unnamed(1);
     sel.appendChild(opt);
+    return;
   }
+  const preferred = preferredCaptureDeviceId(devices);
+  if (preferred) sel.value = preferred;
 }
 
 export function openLectureDeviceDialog(doc: Document): Promise<LectureDeviceChoice | null> {

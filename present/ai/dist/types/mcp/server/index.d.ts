@@ -35,5 +35,18 @@ export interface CreatePptMcpServerOptions {
         name?: string;
         version?: string;
     };
+    /**
+     * Register `generate_presentation` (topic → full deck through the same pipeline as the online
+     * generator). Spends the host's model budget, so it is opt-in: the local stdio server turns it on;
+     * the gateway leaves it off until generation over MCP is metered.
+     */
+    enableGenerate?: boolean;
+    /**
+     * Rasterize one slide to PNG. When set, `render_slide` is registered (an agent can look at what
+     * it built) and `generate_presentation` gets the visual review round.
+     */
+    renderSlide?: (pres: Presentation, slideIdx: number, opts: {
+        width: number;
+    }) => Promise<Uint8Array>;
 }
 export declare function createPptMcpServer(opts: CreatePptMcpServerOptions): McpServer;

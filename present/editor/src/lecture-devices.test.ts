@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import * as assert from "node:assert/strict";
-import { captureProbeNeeded } from "./lecture-devices";
+import { captureProbeNeeded, preferredCaptureDeviceId } from "./lecture-devices";
 
 const named = (kind: "audioinput" | "videoinput", label: string) => ({ kind, label });
 const blank = (kind: "audioinput" | "videoinput") => ({ kind, label: "" });
@@ -32,5 +32,28 @@ describe("lecture device list", () => {
 
   it("does not ask again after a refusal", () => {
     assert.deepEqual(captureProbeNeeded([], { microphone: "denied", camera: "denied" }), { mic: false, camera: false });
+  });
+});
+
+describe("preferred capture device", () => {
+  it("picks the system default when virtual devices are listed first", () => {
+    assert.equal(
+      preferredCaptureDeviceId([
+        { deviceId: "teams" },
+        { deviceId: "oray" },
+        { deviceId: "default" },
+        { deviceId: "built-in" },
+      ]),
+      "default",
+    );
+  });
+
+  it("keeps the first real device when the browser has no default id", () => {
+    assert.equal(preferredCaptureDeviceId([{ deviceId: "iphone" }, { deviceId: "mac" }]), "iphone");
+  });
+
+  it("returns empty when nothing can be selected", () => {
+    assert.equal(preferredCaptureDeviceId([]), "");
+    assert.equal(preferredCaptureDeviceId([{ deviceId: "" }]), "");
   });
 });

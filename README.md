@@ -2,7 +2,7 @@ English | [中文](./README.zh-CN.md)
 
 # Slim Office
 
-The present tree lives in `present/`. Open a `.pptx`, edit and present it in the browser, then write `.pptx`, HTML, PDF, or PNG.
+The present tree lives in `present/`. Open a `.pptx`, edit and present it in the browser, then write `.pptx`, HTML, PDF, PNG, or video.
 
 ## Install
 
@@ -11,11 +11,11 @@ The present tree lives in `present/`. Open a `.pptx`, edit and present it in the
 | Read a `.pptx` | `@sliiu/present-parser` |
 | Write a `.pptx` | `@sliiu/present-serializer` |
 | Present, or export HTML / PDF / PNG | `@sliiu/present-player` |
-| Edit | `@sliiu/present-editor` |
+| Edit, or export a video | `@sliiu/present-editor` |
 | Playback plugins | `@sliiu/present-plugin-sdk` |
 | Call a model with your own key | `@sliiu/present-ai` |
 
-Install player to present. editor also installs text recognition, OpenCV, and math rendering.
+Install player to present. editor also installs video export (ffmpeg.wasm), text recognition, OpenCV, and math rendering.
 
 ## Import
 
@@ -65,6 +65,17 @@ Load `dist/player.iife.js` with a script tag. The global is `PPTPlayer`. `mount`
 
 The plugin file is `dist/plugin-sdk.iife.js`, global `PPTPluginSDK`. The player script already includes `PPTPlayer.definePlugin`.
 
+## Local decks
+
+An agent edits `.pptx` and `.pptm` files in one folder with the same tools as the online deck MCP. Saving writes the file. That file is the export.
+
+```bash
+npx skills add sliiu/slimoffice --skill slimppt-local
+npm install @sliiu/present-ai
+```
+
+Start the server with `node` on `@sliiu/present-ai`'s `dist/esm/mcp/server/stdio.js`. `SLIMPPT_ROOT` is the folder of deck files. The skill file has the MCP config. `render_slide` exists only in a SlimPPT checkout where the player is built.
+
 ## Packages
 
 `@sliiu/present-player` and `@sliiu/present-editor` install the packages they depend on. Install one of these on its own when you call that layer directly.
@@ -82,7 +93,7 @@ The plugin file is `dist/plugin-sdk.iife.js`, global `PPTPluginSDK`. The player 
 | `@sliiu/present-themes` | Themes, palettes, and decoration |
 | `@sliiu/present-ui` | UI variables and controls. The stylesheet is `tokens.css` |
 | `@sliiu/present-player` | Present, and export HTML / PDF / PNG |
-| `@sliiu/present-editor` | The editing surface |
+| `@sliiu/present-editor` | The editing surface, and video export with narration and the lecture camera |
 | `@sliiu/present-ai` | Call a model with your own key |
 
 Install, import, and HTML playback are in the docs: [Open source](https://docs.slimppt.com/guide/open-source).

@@ -37,12 +37,17 @@ class CreateSlideFromSpecCmd {
         const layout = (0, layouts_1.renderLayout)(this.spec, pres.size, theme);
         // 背景优先级同 compile.ts：layout 显式 > theme.backgroundPaint > solid(theme.palette.bg)。
         const background = layout.background ?? theme.backgroundPaint ?? { kind: "solid", color: theme.palette.bg };
+        // 生成流水线在 compile.ts 里把 spec.notes 抄到 slide.notes。
+        // 这里走的是同一个 renderLayout，之前漏了这一步，createSlide 带的备注不会进文件。
+        // 部分版式的类型没声明 notes，schema 里每个版式都有，所以从对象上读。
+        const notes = this.spec.notes?.trim();
         const slide = {
             id: (0, commands_1.newSlideId)(),
             name: titleOfSpec(this.spec),
             index: 0,
             background,
             layers: [{ ...blankLayer(), shapes: layout.shapes }],
+            ...(notes ? { notes } : {}),
         };
         const at = Math.max(0, Math.min(this.idx, pres.slides.length));
         pres.slides.splice(at, 0, slide);

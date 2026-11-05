@@ -12,7 +12,7 @@ function drawChartCanvas(ctx, shape) {
     const padTop = def.title ? 28 : 8;
     const pads = (0, chart_geom_1.chartPadding)(def, ts.size);
     const padBottom = pads.bottom;
-    const padLeft = 40;
+    const padLeft = (0, chart_geom_1.chartLeftPad)(def, ts.size, w);
     const padRight = 12;
     ctx.save();
     ctx.fillStyle = ts.text;

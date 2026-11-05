@@ -40,6 +40,7 @@ export function browserConfigStore(storageKey: string = BROWSER_STORAGE_KEY): Co
  * 变量映射（均可省略）：
  *   AI_PROVIDER / AI_MODEL / AI_API_KEY / AI_BASE_URL / AI_PROXY_URL / AI_TEXT_CONCURRENCY
  *   AI_IMAGE_PROVIDER / AI_IMAGE_API_KEY / AI_IMAGE_BASE_URL / AI_IMAGE_MODEL / AI_IMAGE_SIZE
+ *   AI_REVIEW_PROVIDER / AI_REVIEW_MODEL / AI_REVIEW_API_KEY / AI_REVIEW_BASE_URL（看图评审模型，可选）
  *   UNSPLASH_KEY / PEXELS_KEY
  */
 export function envConfigStore(env: Record<string, string | undefined> = process.env): ConfigStore {
@@ -65,6 +66,16 @@ export function envConfigStore(env: Record<string, string | undefined> = process
           model: pick("AI_IMAGE_MODEL"),
           size: pick("AI_IMAGE_SIZE"),
         },
+        ...(pick("AI_REVIEW_PROVIDER") || pick("AI_REVIEW_MODEL")
+          ? {
+              review: {
+                provider: pick("AI_REVIEW_PROVIDER"),
+                model: pick("AI_REVIEW_MODEL"),
+                apiKey: pick("AI_REVIEW_API_KEY"),
+                baseURL: pick("AI_REVIEW_BASE_URL"),
+              },
+            }
+          : {}),
         imagery: {
           unsplashKey: pick("UNSPLASH_KEY"),
           pexelsKey: pick("PEXELS_KEY"),

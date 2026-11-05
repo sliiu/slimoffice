@@ -20,6 +20,8 @@ exports.clampTextRequestConcurrency = clampTextRequestConcurrency;
 exports.isLocalLlmEndpoint = isLocalLlmEndpoint;
 exports.isConfigUsable = isConfigUsable;
 exports.textModelSupportsVision = textModelSupportsVision;
+exports.reviewTextConfig = reviewTextConfig;
+exports.visionReviewTextConfig = visionReviewTextConfig;
 const offline_route_1 = require("../llm/offline-route");
 const types_1 = require("./types");
 exports.PROVIDER_PRESETS = {
@@ -398,10 +400,44 @@ function textModelSupportsVision(text) {
         return false;
     if (resolved.provider === "anthropic" || resolved.provider === "google")
         return true;
-    if (resolved.provider === "openai") {
+    // provider "openai" with a non-OpenAI baseURL is an OpenAI-compatible gateway (OpenRouter, a
+    // local proxy …) serving other vendors' models, e.g. "cursor/grok-4.7": judge by the model name.
+    const officialOpenAI = !base || /api\.openai\.com/.test(base);
+    if (resolved.provider === "openai" && officialOpenAI) {
         return /gpt-4o|gpt-4\.1|gpt-4-turbo|gpt-4-vision|gpt-5/.test(model);
     }
     if (resolved.provider === "ollama")
         return /llava|vision|vl/.test(model);
-    return /vl|vision|gpt-4o|gpt-4\.1|gpt-4-turbo|claude|gemini|pixtral|llava|kimi-k3/.test(hay);
+    return /vl|vision|gpt-4o|gpt-4\.1|gpt-4-turbo|gpt-5|claude|gemini|pixtral|llava|kimi-k3|grok-[4-9]/.test(hay);
+}
+/**
+ * 单独配置的看图评审模型解析成一份完整 TextConfig；没配（provider 和 model 都空）时 undefined。
+ * apiKey / baseURL 留空且与文本模型同一 provider 时沿用文本模型的；代理、header 跟随文本模型。
+ */
+function reviewTextConfig(config) {
+    const r = config.review;
+    if (!r || (!r.provider && !r.model.trim()))
+        return undefined;
+    const provider = (r.provider || config.text.provider);
+    const same = provider === config.text.provider;
+    return resolveTextConfig({
+        ...config.text,
+        provider,
+        model: r.model.trim(),
+        apiKey: r.apiKey.trim() || (same ? config.text.apiKey : ""),
+        baseURL: r.baseURL.trim() || (same ? config.text.baseURL : ""),
+    });
+}
+/**
+ * 看图评审用哪份文本配置：单独配置且能看图的评审模型 → 能看图的文本模型 → 都不行时 undefined
+ * （这一轮跳过，不往看不了图的模型发截图）。
+ */
+function visionReviewTextConfig(config) {
+    const review = reviewTextConfig(config);
+    if (review && review.model && (review.apiKey || getProviderPreset(review.provider).requiresApiKey === false || isLocalLlmEndpoint(review.baseURL)) && textModelSupportsVision(review)) {
+        return review;
+    }
+    if (isConfigUsable(config) && textModelSupportsVision(config.text))
+        return config.text;
+    return undefined;
 }

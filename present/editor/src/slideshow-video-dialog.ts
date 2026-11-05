@@ -17,6 +17,18 @@ export type SlideshowVideoSettings = Required<
   Pick<SlideshowVideoOptions, "fps" | "height" | "slideHold" | "useTimings" | "clickGap" | "speed" | "format">
 >;
 
+/**
+ * 「使用排练计时」在文稿没有任何排练计时时不能勾上。
+ * 勾着又禁用，读起来像是选中了「本文稿没有排练计时」。
+ */
+export function videoTimingCheckboxState(
+  hasTimings: boolean | undefined,
+  useTimings: boolean,
+): { checked: boolean; disabled: boolean } {
+  const disabled = hasTimings === false;
+  return { checked: useTimings && !disabled, disabled };
+}
+
 /** Clamp free-form numeric fields into ranges the exporter handles well. */
 export function sanitizeVideoSettings(raw: Partial<SlideshowVideoSettings>): SlideshowVideoSettings {
   const num = (v: unknown, fallback: number, min: number, max: number): number => {
@@ -120,15 +132,16 @@ export function openSlideshowVideoDialog(
       const holdInput = number(doc, init.slideHold, 0.4, 600, 0.5);
       const gapInput = number(doc, init.clickGap, 0, 60, 0.1);
 
+      const timingState = videoTimingCheckboxState(initial.hasTimings, init.useTimings);
       const timingWrap = doc.createElement("label");
-      timingWrap.style.cssText = "display:inline-flex;align-items:center;gap:6px;color:var(--foreground);cursor:pointer;margin-bottom:10px";
+      timingWrap.style.cssText = `display:inline-flex;align-items:center;gap:6px;color:var(--foreground);cursor:${timingState.disabled ? "default" : "pointer"};margin-bottom:10px`;
       const timingCb = doc.createElement("input");
       timingCb.type = "checkbox";
       timingCb.className = CHECK_CLASS;
-      timingCb.checked = init.useTimings;
-      timingCb.disabled = initial.hasTimings === false;
+      timingCb.checked = timingState.checked;
+      timingCb.disabled = timingState.disabled;
       const timingText = doc.createElement("span");
-      timingText.textContent = initial.hasTimings === false ? t("videoExport.useTimingsNone") : t("videoExport.useTimings");
+      timingText.textContent = timingState.disabled ? t("videoExport.useTimingsNone") : t("videoExport.useTimings");
       timingWrap.append(timingCb, timingText);
 
       const hint = doc.createElement("div");

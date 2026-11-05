@@ -69,6 +69,37 @@ export declare const ImageryConfigSchema: z.ZodObject<{
     pexelsKey: z.ZodDefault<z.ZodString>;
 }, z.core.$strip>;
 export type ImageryConfig = z.infer<typeof ImageryConfigSchema>;
+/**
+ * 看图评审模型（可选）。生成后截全部页给它看，挑最差的几页重排。文本模型本身能看图时
+ * 可以不配；文本模型看不了图（DeepSeek 等）时，配一个能看图的模型才有这一轮。
+ * provider 空 = 不单独配置。apiKey / baseURL 留空且 provider 与文本模型相同时沿用文本模型的。
+ */
+export declare const ReviewConfigSchema: z.ZodObject<{
+    provider: z.ZodCatch<z.ZodDefault<z.ZodEnum<{
+        "": "";
+        anthropic: "anthropic";
+        custom: "custom";
+        dashscope: "dashscope";
+        deepseek: "deepseek";
+        google: "google";
+        groq: "groq";
+        huggingface: "huggingface";
+        mistral: "mistral";
+        moonshot: "moonshot";
+        ollama: "ollama";
+        openai: "openai";
+        openrouter: "openrouter";
+        siliconflow: "siliconflow";
+        together: "together";
+        volcengine: "volcengine";
+        xai: "xai";
+        zhipu: "zhipu";
+    }>>>;
+    model: z.ZodDefault<z.ZodString>;
+    apiKey: z.ZodDefault<z.ZodString>;
+    baseURL: z.ZodDefault<z.ZodString>;
+}, z.core.$strip>;
+export type ReviewConfig = z.infer<typeof ReviewConfigSchema>;
 export declare const AiConfigSchema: z.ZodObject<{
     text: z.ZodPrefault<z.ZodObject<{
         provider: z.ZodCatch<z.ZodDefault<z.ZodEnum<{
@@ -97,6 +128,31 @@ export declare const AiConfigSchema: z.ZodObject<{
         systemPrefix: z.ZodDefault<z.ZodString>;
         customHeaders: z.ZodDefault<z.ZodString>;
         concurrency: z.ZodDefault<z.ZodCatch<z.ZodNumber>>;
+    }, z.core.$strip>>;
+    review: z.ZodOptional<z.ZodObject<{
+        provider: z.ZodCatch<z.ZodDefault<z.ZodEnum<{
+            "": "";
+            anthropic: "anthropic";
+            custom: "custom";
+            dashscope: "dashscope";
+            deepseek: "deepseek";
+            google: "google";
+            groq: "groq";
+            huggingface: "huggingface";
+            mistral: "mistral";
+            moonshot: "moonshot";
+            ollama: "ollama";
+            openai: "openai";
+            openrouter: "openrouter";
+            siliconflow: "siliconflow";
+            together: "together";
+            volcengine: "volcengine";
+            xai: "xai";
+            zhipu: "zhipu";
+        }>>>;
+        model: z.ZodDefault<z.ZodString>;
+        apiKey: z.ZodDefault<z.ZodString>;
+        baseURL: z.ZodDefault<z.ZodString>;
     }, z.core.$strip>>;
     image: z.ZodPrefault<z.ZodObject<{
         provider: z.ZodCatch<z.ZodDefault<z.ZodEnum<{

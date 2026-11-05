@@ -21,6 +21,13 @@ export declare function listCaptureDevices(ask?: {
     cameras: MediaDeviceInfo[];
     cameraOk: boolean;
 }>;
+/**
+ * 还没选过时用系统默认。Chrome 的默认麦克风 deviceId 是 "default"，
+ * 但 enumerateDevices 常把 Teams / 虚拟声卡排在它前面。
+ */
+export declare function preferredCaptureDeviceId(devices: readonly {
+    deviceId: string;
+}[]): string;
 export declare function openLectureDeviceDialog(doc: Document): Promise<LectureDeviceChoice | null>;
 export interface LectureSaveNotice {
     /** 保存结束。等用户点「知道了」。 */

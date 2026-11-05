@@ -2,7 +2,7 @@ import { bindEditorModal } from "./dialog.js";
 import { t } from "./i18n/index.js";
 import { copyTextToClipboard } from "./insert-meta.js";
 import { exportNarrationReadinessText, exportNarrationRehearseBreakdownText, exportNarrationSessionCompactText, exportNarrationSessionText, formatNarrationReadinessLine, isLargeRecording, } from "./record-meta.js";
-import { DIALOG_OVERLAY_CSS, createDevOnlyActionSelect } from "./ui-style.js";
+import { DEV_ONLY_CLASS, DIALOG_OVERLAY_CSS, createDevOnlyActionSelect } from "./ui-style.js";
 import { downloadBlob, ensureExportRecordingBlob, formatRecordingDuration, formatRecordingFileSize, isAudioRecordingBlob, suggestedRecordingFilename, } from "./video-export.js";
 function blobToDataUrl(blob) {
     return new Promise((resolve, reject) => {
@@ -46,6 +46,7 @@ export function openNarrationCompleteDialog(doc, blob, onInsert, opts) {
     durationEl.style.cssText = "margin:0;font-size:12px;color:var(--muted-foreground,#a1a1aa)";
     modal.appendChild(durationEl);
     const readinessLine = doc.createElement("p");
+    readinessLine.className = DEV_ONLY_CLASS;
     readinessLine.style.cssText = "margin:0;font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35";
     readinessLine.textContent = formatNarrationReadinessLine({ bytes: blob.size, rehearse: opts?.rehearse });
     modal.appendChild(readinessLine);

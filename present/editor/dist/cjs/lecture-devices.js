@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.captureProbeNeeded = captureProbeNeeded;
 exports.listCaptureDevices = listCaptureDevices;
+exports.preferredCaptureDeviceId = preferredCaptureDeviceId;
 exports.openLectureDeviceDialog = openLectureDeviceDialog;
 exports.openLectureSaveNotice = openLectureSaveNotice;
 const dialog_1 = require("./dialog");
@@ -85,6 +86,14 @@ async function listCaptureDevices(ask) {
         cameraOk,
     };
 }
+/**
+ * 还没选过时用系统默认。Chrome 的默认麦克风 deviceId 是 "default"，
+ * 但 enumerateDevices 常把 Teams / 虚拟声卡排在它前面。
+ */
+function preferredCaptureDeviceId(devices) {
+    const usable = devices.filter((d) => d.deviceId);
+    return usable.find((d) => d.deviceId === "default")?.deviceId ?? usable[0]?.deviceId ?? "";
+}
 function fillSelect(sel, devices, unnamed) {
     sel.replaceChildren();
     devices.forEach((d, i) => {
@@ -98,7 +107,11 @@ function fillSelect(sel, devices, unnamed) {
         opt.value = "";
         opt.textContent = unnamed(1);
         sel.appendChild(opt);
+        return;
     }
+    const preferred = preferredCaptureDeviceId(devices);
+    if (preferred)
+        sel.value = preferred;
 }
 function openLectureDeviceDialog(doc) {
     return (0, dialog_1.showDialog)(doc, {

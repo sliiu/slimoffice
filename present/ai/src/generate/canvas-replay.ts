@@ -10,6 +10,7 @@ import { compileCanvasDeck, type CanvasStats } from "../deckgen/pipeline.js";
 import { resolveVisualSystem } from "../deckgen/visual-system.js";
 import { themeFromAuthoredLook } from "../deckgen/color-theme.js";
 import { briefsFromJobs } from "../deckgen/jobs.js";
+import { coerceDeckBrief, defaultFolio } from "../deckgen/brief.js";
 import { CanvasDeckSchema, normalizeCanvasDeck } from "./canvas-schema.js";
 import { toFilled } from "./canvas-author.js";
 import { jobsFromOutline } from "./deckgen-adapter.js";
@@ -23,7 +24,7 @@ export interface ReplayCanvasInput {
   /** Raw model JSON as dumped (pre-normalize). */
   raw: unknown;
   /** The outline the author was given (dump dir `outline.json`). */
-  outline: Pick<Outline, "title" | "slides">;
+  outline: Pick<Outline, "title" | "slides"> & Partial<Pick<Outline, "designBrief">>;
   /** Optional page → image src map; missing entries mean "no photo for this page". */
   images?: Map<number, string>;
   brand?: string;
@@ -64,7 +65,12 @@ export function replayCanvasDump(input: ReplayCanvasInput): ReplayCanvasResult {
     ...(deck.palette ? { palette: deck.palette } : {}),
     ...(input.brand ? { brand: input.brand } : {}),
   });
-  const compiled = compileCanvasDeck({ system, theme, slides, title: input.outline.title, briefs });
+  // The live path hands snap the deck's folio decision (`withFolioDecision`); without it the
+  // replay keeps every numeral the model drew and shows two page-number systems the live deck
+  // never had.
+  const db = input.outline.designBrief;
+  const folio = db?.folio ?? defaultFolio(coerceDeckBrief(db).mode, slides.length);
+  const compiled = compileCanvasDeck({ system, theme, slides, title: input.outline.title, briefs, folio });
   const meta = (compiled.presentation.meta ?? {}) as { deckgen?: { canvasStats?: CanvasStats } };
   const stats = meta.deckgen?.canvasStats ?? { pages: slides.length, kinds: {}, devices: {}, scrimPages: 0, photoPages: 0, drops: [], findings: compiled.reflect.findings.length };
   return { systemId: deck.systemId, compiled, stats, schemaIssues: [] };

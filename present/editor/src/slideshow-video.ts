@@ -1,5 +1,5 @@
 import { ooxml } from "@ppt/animation";
-import type { Presentation, Slide } from "@ppt/core";
+import { lecturePipRect, lectureTakeFor, type Presentation, type Slide } from "@ppt/core";
 import { buildOoxmlPlayback, createBake3DRuntime } from "@ppt/player";
 import {
   applyEntranceHideToScene,
@@ -34,6 +34,8 @@ export interface SlideshowVideoOptions {
   speed?: number;
   /** `mp4` converts the recording in the browser with ffmpeg.wasm; `webm` returns the recording as is. */
   format?: VideoFormat;
+  /** 讲解出镜的 `idb:` 引用由调用方换成可播放地址。http(s) / blob 引用直接用。 */
+  resolveLectureCamera?: (ref: string) => Promise<string | null>;
   onProgress?: (progress: SlideshowVideoProgress) => void;
 }
 
@@ -96,8 +98,10 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function pickRecorderMime(): string {
-  const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+function pickRecorderMime(withAudio: boolean): string {
+  const candidates = withAudio
+    ? ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm;codecs=vp9", "video/webm"]
+    : ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
   if (typeof MediaRecorder === "undefined") return "";
   for (const m of candidates) {
     if (MediaRecorder.isTypeSupported(m)) return m;
@@ -173,13 +177,111 @@ async function openLiveSlide(slide: Slide, pres: Presentation, scale: number): P
 }
 
 /**
+ * 旁白音轨。页内普通音频和嵌入视频的声音不在这里。
+ */
+export function narrationClips(slide: Slide): { src: string; volume: number }[] {
+  const clips: { src: string; volume: number }[] = [];
+  for (const layer of slide.layers) {
+    for (const sh of layer.shapes) {
+      if (sh.kind !== "audio" || !sh.isNarration || !sh.src || /^rId\d+/i.test(sh.src)) continue;
+      clips.push({ src: sh.src, volume: typeof sh.volume === "number" ? sh.volume : 1 });
+    }
+  }
+  return clips;
+}
+
+interface DecodedClip {
+  buffer: AudioBuffer;
+  volume: number;
+}
+
+async function decodeNarration(ctx: AudioContext, clips: { src: string; volume: number }[]): Promise<DecodedClip[]> {
+  const out: DecodedClip[] = [];
+  for (const clip of clips) {
+    try {
+      const raw = await (await fetch(clip.src)).arrayBuffer();
+      out.push({ buffer: await ctx.decodeAudioData(raw.slice(0)), volume: clip.volume });
+    } catch {
+      // 这一条解不出来就跳过，画面照常导出。
+    }
+  }
+  return out;
+}
+
+function startDecoded(ctx: AudioContext, dest: AudioNode, clips: DecodedClip[], speed: number): { stop(): void } {
+  const nodes: AudioBufferSourceNode[] = [];
+  for (const clip of clips) {
+    const src = ctx.createBufferSource();
+    src.buffer = clip.buffer;
+    src.playbackRate.value = speed;
+    const gain = ctx.createGain();
+    gain.gain.value = Math.max(0, clip.volume);
+    src.connect(gain);
+    gain.connect(dest);
+    src.start();
+    nodes.push(src);
+  }
+  return {
+    stop(): void {
+      for (const node of nodes) {
+        try {
+          node.stop();
+        } catch {
+          // 已经播完。
+        }
+      }
+    },
+  };
+}
+
+function drawCover(
+  ctx: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  rect: { x: number; y: number; w: number; h: number },
+): void {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh || video.readyState < 2) return;
+  const scale = Math.max(rect.w / vw, rect.h / vh);
+  const sw = rect.w / scale;
+  const sh = rect.h / scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(rect.x, rect.y, rect.w, rect.h, Math.min(10, rect.w / 8, rect.h / 8));
+  ctx.clip();
+  ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, rect.x, rect.y, rect.w, rect.h);
+  ctx.restore();
+}
+
+async function openLectureVideo(src: string): Promise<HTMLVideoElement | null> {
+  const video = document.createElement("video");
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "auto";
+  const ready = new Promise<boolean>((resolve) => {
+    video.onloadeddata = () => resolve(video.videoWidth > 0);
+    video.onerror = () => resolve(false);
+  });
+  video.src = src;
+  const ok = await ready;
+  video.pause();
+  if (!ok) {
+    video.removeAttribute("src");
+    return null;
+  }
+  return video;
+}
+
+/**
  * Render the deck as a video by playing it: every visible slide's on-load animations run,
  * each click is advanced once the previous one settles (`clickGap` apart), the slide then
  * holds for its rehearsed time (or `slideHold`), and non-cut transitions crossfade into the
  * next slide. Animations are sampled at `fps` through a manual ticker, so the timeline is
- * exact regardless of render cost. `speed` scales animations, holds and fades alike.
+ * exact regardless of render cost. `speed` scales animations, holds, fades, narration and
+ * the lecture camera alike.
  *
- * Not captured: audio, and video shapes (they stay on their poster frame).
+ * Narration audio (`isNarration`) is mixed into the recording. A lecture camera plays in
+ * the same corner as slideshow. Other video shapes stay on their poster frame.
  */
 export async function exportSlideshowVideo(
   pres: Presentation,
@@ -190,7 +292,8 @@ export async function exportSlideshowVideo(
   }
   const slides = slideshowVideoSlides(pres);
   if (!slides.length) throw new Error("no slides");
-  const mime = pickRecorderMime();
+  const wantAudio = slides.some((slide) => narrationClips(slide).length > 0);
+  const mime = pickRecorderMime(wantAudio);
   if (!mime) throw new Error("MediaRecorder has no video mime");
 
   const fps = opts?.fps ?? DEFAULT_VIDEO_OPTIONS.fps;
@@ -206,7 +309,51 @@ export async function exportSlideshowVideo(
   const ctx = canvas.getContext("2d");
   if (!ctx || typeof canvas.captureStream !== "function") throw new Error("canvas capture unavailable");
 
+  let audioCtx: AudioContext | null = null;
+  let audioDest: MediaStreamAudioDestinationNode | null = null;
+  const decoded = new Map<string, DecodedClip[]>();
+  if (wantAudio && typeof AudioContext !== "undefined") {
+    try {
+      audioCtx = new AudioContext();
+      await audioCtx.resume().catch(() => undefined);
+      audioDest = audioCtx.createMediaStreamDestination();
+      const osc = audioCtx.createOscillator();
+      const silent = audioCtx.createGain();
+      silent.gain.value = 0;
+      osc.connect(silent);
+      silent.connect(audioDest);
+      osc.start();
+      for (const slide of slides) {
+        const clips = narrationClips(slide);
+        if (clips.length) decoded.set(slide.id, await decodeNarration(audioCtx, clips));
+      }
+    } catch {
+      audioCtx = null;
+      audioDest = null;
+      decoded.clear();
+    }
+  }
+
+  const pipRect = lecturePipRect({ width: canvas.width, height: canvas.height }, pres.lecture?.frame);
+  const cameras = new Map<string, HTMLVideoElement>();
+  const ownedUrls: string[] = [];
+  for (const slide of slides) {
+    const ref = lectureTakeFor(pres.lecture, slide.id)?.cameraRef;
+    if (!ref) continue;
+    const src = ref.startsWith("idb:") ? (await opts?.resolveLectureCamera?.(ref)) ?? null : ref;
+    if (!src) continue;
+    const video = await openLectureVideo(src);
+    if (!video) {
+      if (src.startsWith("blob:")) URL.revokeObjectURL(src);
+      continue;
+    }
+    if (src.startsWith("blob:")) ownedUrls.push(src);
+    cameras.set(slide.id, video);
+  }
+
   const stream = canvas.captureStream(fps);
+  const audioTrack = audioDest?.stream.getAudioTracks()[0];
+  if (audioTrack) stream.addTrack(audioTrack);
   const recorder = new MediaRecorder(stream, { mimeType: mime });
   const chunks: Blob[] = [];
   recorder.ondataavailable = (ev) => {
@@ -224,6 +371,10 @@ export async function exportSlideshowVideo(
     ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = 1;
   };
+  let pip: HTMLVideoElement | null = null;
+  const paintPip = (): void => {
+    if (pip) drawCover(ctx, pip, pipRect);
+  };
 
   // Advance the live slide by one frame and paint it. Holds keep ticking so looping
   // emphasis effects stay alive instead of freezing on a still.
@@ -232,6 +383,7 @@ export async function exportSlideshowVideo(
     live.flush();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     blit(live.canvas);
+    paintPip();
     await pacer.frame();
   };
   const hold = async (live: LiveSlide, seconds: number): Promise<void> => {
@@ -243,11 +395,11 @@ export async function exportSlideshowVideo(
     let f = 0;
     while (live.runtime?.isPlaying() && f++ < cap) await step(live);
   };
-  const snapshot = (live: LiveSlide): HTMLCanvasElement => {
+  const snapshot = (): HTMLCanvasElement => {
     const copy = document.createElement("canvas");
-    copy.width = live.canvas.width;
-    copy.height = live.canvas.height;
-    copy.getContext("2d")?.drawImage(live.canvas, 0, 0);
+    copy.width = canvas.width;
+    copy.height = canvas.height;
+    copy.getContext("2d")?.drawImage(canvas, 0, 0);
     return copy;
   };
 
@@ -258,6 +410,21 @@ export async function exportSlideshowVideo(
     for (let s = 0; s < slides.length; s++) {
       const slide = slides[s]!;
       const live = await openLiveSlide(slide, pres, out.scale);
+      const camera = cameras.get(slide.id) ?? null;
+      pip = camera;
+      if (camera) {
+        camera.playbackRate = speed;
+        try {
+          camera.currentTime = 0;
+        } catch {
+          // 还没到能 seek 的时候就从当前帧画。
+        }
+        await camera.play().catch(() => undefined);
+      }
+      const narration =
+        audioCtx && audioDest
+          ? startDecoded(audioCtx, audioDest, decoded.get(slide.id) ?? [], speed)
+          : { stop(): void {} };
       try {
         // Transition: crossfade from the previous slide's last frame into this slide's
         // initial state (entrance targets still hidden), before any animation starts.
@@ -269,12 +436,14 @@ export async function exportSlideshowVideo(
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             blit(prevFrame, 1 - t);
             blit(live.canvas, t);
+            paintPip();
             await pacer.frame();
           }
         } else {
           live.flush();
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           blit(live.canvas);
+          paintPip();
           await pacer.frame();
         }
 
@@ -293,14 +462,23 @@ export async function exportSlideshowVideo(
           }
         }
         await hold(live, slideHoldSeconds(slide, slideHold, useTimings));
-        prevFrame = snapshot(live);
+        prevFrame = snapshot();
       } finally {
+        narration.stop();
+        camera?.pause();
+        pip = null;
         live.destroy();
       }
       opts?.onProgress?.({ phase: "render", done: s + 1, total: slides.length });
     }
   } finally {
     recorder.stop();
+    for (const video of cameras.values()) {
+      video.pause();
+      video.removeAttribute("src");
+    }
+    for (const url of ownedUrls) URL.revokeObjectURL(url);
+    void audioCtx?.close();
   }
   const raw = await stopped;
   if ((opts?.format ?? DEFAULT_VIDEO_OPTIONS.format) === "webm") return { blob: raw, ext: "webm" };

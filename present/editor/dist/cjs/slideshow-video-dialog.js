@@ -3,12 +3,21 @@
 // 对齐 PowerPoint「导出 → 创建视频」的两组选项（质量、是否使用录制的计时），
 // 再补上导出视频特有的点击间隔与速度。
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.videoTimingCheckboxState = videoTimingCheckboxState;
 exports.sanitizeVideoSettings = sanitizeVideoSettings;
 exports.openSlideshowVideoDialog = openSlideshowVideoDialog;
 const dialog_1 = require("./dialog");
 const i18n_1 = require("./i18n");
 const ui_style_1 = require("./ui-style");
 const slideshow_video_1 = require("./slideshow-video");
+/**
+ * 「使用排练计时」在文稿没有任何排练计时时不能勾上。
+ * 勾着又禁用，读起来像是选中了「本文稿没有排练计时」。
+ */
+function videoTimingCheckboxState(hasTimings, useTimings) {
+    const disabled = hasTimings === false;
+    return { checked: useTimings && !disabled, disabled };
+}
 /** Clamp free-form numeric fields into ranges the exporter handles well. */
 function sanitizeVideoSettings(raw) {
     const num = (v, fallback, min, max) => {
@@ -89,15 +98,16 @@ function openSlideshowVideoDialog(doc, initial) {
             ], init.format);
             const holdInput = number(doc, init.slideHold, 0.4, 600, 0.5);
             const gapInput = number(doc, init.clickGap, 0, 60, 0.1);
+            const timingState = videoTimingCheckboxState(initial.hasTimings, init.useTimings);
             const timingWrap = doc.createElement("label");
-            timingWrap.style.cssText = "display:inline-flex;align-items:center;gap:6px;color:var(--foreground);cursor:pointer;margin-bottom:10px";
+            timingWrap.style.cssText = `display:inline-flex;align-items:center;gap:6px;color:var(--foreground);cursor:${timingState.disabled ? "default" : "pointer"};margin-bottom:10px`;
             const timingCb = doc.createElement("input");
             timingCb.type = "checkbox";
             timingCb.className = ui_style_1.CHECK_CLASS;
-            timingCb.checked = init.useTimings;
-            timingCb.disabled = initial.hasTimings === false;
+            timingCb.checked = timingState.checked;
+            timingCb.disabled = timingState.disabled;
             const timingText = doc.createElement("span");
-            timingText.textContent = initial.hasTimings === false ? (0, i18n_1.t)("videoExport.useTimingsNone") : (0, i18n_1.t)("videoExport.useTimings");
+            timingText.textContent = timingState.disabled ? (0, i18n_1.t)("videoExport.useTimingsNone") : (0, i18n_1.t)("videoExport.useTimings");
             timingWrap.append(timingCb, timingText);
             const hint = doc.createElement("div");
             hint.textContent = (0, i18n_1.t)("videoExport.hint");

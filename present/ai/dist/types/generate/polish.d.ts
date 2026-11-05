@@ -11,6 +11,7 @@
  */
 import type { Presentation } from "@sliiu/present-core";
 import type { LlmUsage } from "../llm/usage.js";
+import { type ReviewResult } from "./qa/art-director.js";
 import { ModelCallBudget } from "./call-budget.js";
 import type { GuidanceInput, Outline, PresentationSpec } from "./schema.js";
 import type { GenerateOptions, PipelineEvent } from "./types.js";
@@ -31,4 +32,6 @@ export declare function specFromOutlineImagery(outline: Outline): PresentationSp
  */
 export declare function enrichOutlineContent(outlineInput: Outline, guidance: GuidanceInput, opts: GenerateOptions, ctx: PolishContext): Promise<Outline>;
 /** Images → QA repair → art director. Mutates `pres`. Motion stays in the adapter. */
-export declare function polishGeneratedDeck(pres: Presentation, outline: Outline | undefined, guidance: GuidanceInput, opts: GenerateOptions, ctx: PolishContext): Promise<void>;
+export declare function polishGeneratedDeck(pres: Presentation, outline: Outline | undefined, guidance: GuidanceInput, opts: GenerateOptions, ctx: PolishContext, 
+/** The canvas path's vision review, already run on the deck; reported instead of a second call. */
+priorReview?: ReviewResult): Promise<void>;

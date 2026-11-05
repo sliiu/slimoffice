@@ -34,6 +34,8 @@ export {
   isConfigUsable,
   isLocalLlmEndpoint,
   textModelSupportsVision,
+  reviewTextConfig,
+  visionReviewTextConfig,
   type ProviderPreset,
   type ImageProviderPreset,
   type ImageApiKind,

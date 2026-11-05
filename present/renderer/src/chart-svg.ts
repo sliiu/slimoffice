@@ -25,7 +25,7 @@ import {
   polygonPath,
   sunburstArcPath,
 } from "./chart-ex-render";
-import { applyValueAxisScale, barGeometry, barLabelAnchor, chart3DOffset, chartPadding, chartTextStyle, estimateTextWidth, comboXyPlotX, linearFit, niceTicks, pointLabelText, seriesXyPoints, shadeHex, surfaceIsoQuads, type ChartTextStyle } from "./chart-geom";
+import { applyValueAxisScale, barGeometry, barLabelAnchor, chart3DOffset, chartLeftPad, chartPadding, chartTextStyle, estimateTextWidth, comboXyPlotX, linearFit, niceTicks, pointLabelText, seriesXyPoints, shadeHex, surfaceIsoQuads, type ChartTextStyle } from "./chart-geom";
 
 /** Text / line colours of the chart being drawn; set once per `renderChart` (drawing is synchronous). */
 let ts: ChartTextStyle = chartTextStyle({});
@@ -76,7 +76,7 @@ export function renderChart(g: SVGGElement, shape: ChartShape): void {
   const padTop = shape.chart.title ? 28 : 8;
   const pads = chartPadding(shape.chart, ts.size);
   const padBottom = pads.bottom;
-  const padLeft = 40;
+  const padLeft = chartLeftPad(shape.chart, ts.size, w);
   const padRight = 12;
   if (shape.chart.title) {
     const t = document.createElementNS(SVG_NS, "text");

@@ -8,6 +8,7 @@ import { compileCanvasDeck } from "../deckgen/pipeline.js";
 import { resolveVisualSystem } from "../deckgen/visual-system.js";
 import { themeFromAuthoredLook } from "../deckgen/color-theme.js";
 import { briefsFromJobs } from "../deckgen/jobs.js";
+import { coerceDeckBrief, defaultFolio } from "../deckgen/brief.js";
 import { CanvasDeckSchema, normalizeCanvasDeck } from "./canvas-schema.js";
 import { toFilled } from "./canvas-author.js";
 import { jobsFromOutline } from "./deckgen-adapter.js";
@@ -41,7 +42,12 @@ export function replayCanvasDump(input) {
         ...(deck.palette ? { palette: deck.palette } : {}),
         ...(input.brand ? { brand: input.brand } : {}),
     });
-    const compiled = compileCanvasDeck({ system, theme, slides, title: input.outline.title, briefs });
+    // The live path hands snap the deck's folio decision (`withFolioDecision`); without it the
+    // replay keeps every numeral the model drew and shows two page-number systems the live deck
+    // never had.
+    const db = input.outline.designBrief;
+    const folio = db?.folio ?? defaultFolio(coerceDeckBrief(db).mode, slides.length);
+    const compiled = compileCanvasDeck({ system, theme, slides, title: input.outline.title, briefs, folio });
     const meta = (compiled.presentation.meta ?? {});
     const stats = meta.deckgen?.canvasStats ?? { pages: slides.length, kinds: {}, devices: {}, scrimPages: 0, photoPages: 0, drops: [], findings: compiled.reflect.findings.length };
     return { systemId: deck.systemId, compiled, stats, schemaIssues: [] };

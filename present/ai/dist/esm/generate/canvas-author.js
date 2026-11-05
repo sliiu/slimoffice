@@ -5,7 +5,8 @@
  * (text runs, presets, icons, diagrams, devices). Geometry expansion, type
  * ramp, scrim direction, and whitelists are deterministic (snap / emit).
  */
-import { CANVAS, listCanvasSystems } from "../deckgen/visual-system.js";
+import { CANVAS, listCanvasSystems, resolveVisualSystem } from "../deckgen/visual-system.js";
+import { isSlotComposition, layoutPage } from "../deckgen/page-layout.js";
 import { sampleCanvasRule } from "./sample-composition.js";
 import { COPY_VOICE_BLOCK } from "./copy-voice.js";
 import { COMPOSITION_HINTS, DECK_MODE_HINTS, PHOTO_RHYTHM_HINTS, RELATIONSHIP_CARRIERS } from "../deckgen/brief.js";
@@ -14,7 +15,13 @@ import { MAX_COPY_BLOCKS, READING_CAP } from "../deckgen/reflect-canvas.js";
 import { generateJson } from "../llm/json.js";
 import { CanvasDeckSchema, normalizeCanvasDeck } from "./canvas-schema.js";
 import { getEnabledSkillFragments } from "../skills/registry.js";
-function pageBrief(jobs, images, only) {
+/** Jobs that are never slot pages: they carry display type or a photograph, which the author composes. */
+const AUTHORED_JOBS = new Set(["cover", "close", "agenda", "section", "quote", "statement"]);
+/** Is this page written as slots (geometry by code) in slot mode? */
+export function isSlotPage(job, images) {
+    return isSlotComposition(job.composition) && !images.has(job.index) && job.rhythm !== "anchor" && job.carrier !== "photo" && !AUTHORED_JOBS.has(job.job);
+}
+function pageBrief(jobs, images, only, slots = false) {
     return jobs
         .filter((j) => !only || only.has(j.index))
         .map((j) => {
@@ -29,6 +36,7 @@ function pageBrief(jobs, images, only) {
         const rel = j.relationships;
         return [
             `PAGE ${j.index} job=${j.job} rhythm=${j.rhythm} relationships=${rel}${j.carrier ? ` carrier=${j.carrier}` : ""} composition=${j.composition}`,
+            slots && isSlotPage(j, images) ? "WRITE THIS PAGE AS SLOTS (no elements, no bbox)." : "",
             `composition ${j.composition}: ${COMPOSITION_HINTS[j.composition]}`,
             `title: ${j.title}`,
             j.coreMessage ? `coreMessage: ${j.coreMessage}` : "",
@@ -55,7 +63,21 @@ const PALETTE_RULES = [
     "Pairing: text on accent fill uses bg or ink (whichever contrasts more) — never muted; text on accentSoft or surface uses ink; on a photo use onPhoto. Numbers / KPI values may take accent only when accent reads ≥ 3:1 on their carrier.",
     "Every palette is re-checked and nudged to these floors automatically, but a palette that already obeys them keeps YOUR hues; one that ignores them gets shifted toward grey.",
 ].join("\n");
-export function canvasAuthorSystemPrompt(brand, lock, brief, host, sample = false) {
+/** Slot-mode contract appended to the author prompt. */
+const SLOTS_RULE = [
+    "",
+    "SLOT PAGES. A page marked \"WRITE THIS PAGE AS SLOTS\" is laid out by the compiler from its composition: you choose content, never coordinates. Write it as",
+    '{ job, slots: { eyebrow?, title, lede?, carrier, side?, takeaway?, footnote? } } — no elements, no bbox, no fontSize, no background.',
+    "- title: the page title (one line where possible: ≤ 14 CJK characters or ≤ 40 latin). eyebrow: a 2–6 word label above it. lede: one sentence under it, optional.",
+    "- carrier: ONE element without bbox that carries the page's points — a device {kind:\"device\", device:{type, items|left/right}} (stepStrip for order, kpiRow for 2–4 numbers, iconLabelGrid for 3–6 parallel parts, numberedList for ranked points, comparePlanes for two sides), a chart {kind:\"chart\", chart:{…}}, a table {kind:\"table\", table:{…}} or a diagram {kind:\"diagram\", diagram:{…}}. Follow the page's carrier / relationships.",
+    "- side (split / sidebar pages only, optional): a calloutNote {kind:\"device\", device:{type:\"calloutNote\", text}} or a short text — the one caveat or definition the reader needs beside the carrier.",
+    "- takeaway: the page's conclusion in one sentence (becomes a band under the carrier); footnote: source / method / \"示意数据\" line.",
+    "- composition=grid: the carrier is tiled — iconLabelGrid, kpiRow or a table. Numbers a reader should compare are a kpiRow (value + label), not tile titles.",
+    "- Prefer a device over a diagram: steps / phases → stepStrip, parallel parts → iconLabelGrid. Use a diagram only for a cycle, hierarchy or overlap that no device draws.",
+    "- Put enough on the page to fill it: 3–6 items in a device, each with a one-phrase body; a chart with every category; never a single short line as the carrier.",
+    "Other pages (cover, close, section, statement, photo pages) are authored with elements and bbox as above.",
+].join("\n");
+export function canvasAuthorSystemPrompt(brand, lock, brief, host, sample = false, slots = false) {
     // Reading the skills first also registers any custom visual systems they define,
     // so the whitelist below already contains them.
     const skillFragments = getEnabledSkillFragments({ stage: "slide", host });
@@ -101,7 +123,7 @@ export function canvasAuthorSystemPrompt(brand, lock, brief, host, sample = fals
         "text: {text | runs, fontSize (REQUIRED, px from the system ramp display/h1/h2/body/caption), fontWeight?, align? start|middle|end, caps? \"all\", treatment? gradient|outline|shadow|glow}.",
         "text.treatment = art type for ONE display-size element per anchor page (cover / section / statement / close): outline = hollow stroked glyphs (editorial, swiss, brutalist), gradient = ink→accent sweep (dark-tech, soft-rounded), shadow = lift off a photo (photo-editorial). Never on body copy, never more than one per page, never on data-dense. Left unset, anchor display type gets the system default.",
         "text.runs[]: [{text, emphasis?: bold|accent|mono}] — at most 2 emphasised spans per element; use on the core sentence of each page.",
-        'chart: {chart:{type: column|bar|line|area|pie|doughnut, categories:[2–8 strings], series:[{name, values:[numbers, same length as categories]}]}} — numbers from the points; if the brief has none, use clearly plausible illustrative values and label the series honestly.',
+        'chart: {chart:{type: column|bar|line|area|pie|doughnut, categories:[2–8 strings], series:[{name, values:[numbers, same length as categories]}]}} — numbers from the points; if the brief has none, use clearly plausible illustrative values, label the series honestly, and say so in a caption on the page ("示意数据" / "illustrative").',
         "table: {table:{headers:[2–5 strings], rows:[[strings…] × ≤6]}} — every cell a string; no nested objects.",
         "line: dash solid|dash|dot, arrow none|end|both. shape: {kind:\"shape\", preset:\"<id>\", text?, strokeOnly?} — preset is a plain string on the element.",
         'background (optional per slide): {kind: solid, paintRole} | {kind: image, src, scrim} | {kind: linear, paintRole, toRole, angle}. Omit it for plain paper; never kind "color".',
@@ -113,7 +135,8 @@ export function canvasAuthorSystemPrompt(brand, lock, brief, host, sample = fals
         "Rhythm: anchor pages carry display type (≥ 1.4 × h1) or a photo field and few words; dense pages may stack a device + chart/table; breathing pages hold one idea and lots of paper.",
         COPY_VOICE_BLOCK,
         `Copy budget per page (text below h2): ≤ ${READING_CAP.default} CJK-equivalent characters (dense ≤ ${READING_CAP.dense}, breathing ≤ ${READING_CAP.breathing}, 30% less on a photo canvas) in ≤ ${MAX_COPY_BLOCKS} blocks — one phrase per step / tile description; provenance and method notes go to speaker notes, not the canvas.`,
-        "Devices: at least one device or diagram on every evidence / sequence / compare / data page. Icons: ≥ 3 across the deck, always beside a label. Presets: ≥ 2 across the deck (chevron / callout / bracket / arrow, not decoration on its own).",
+        "Devices: at least one device or diagram on every evidence / sequence / compare / data page. An icon only beside a label it clarifies; a preset (chevron / callout / bracket / arrow) only where it carries a relation. There is no count to reach — never add an element to satisfy a rule.",
+        "Layout (checked on the rendered page): on content pages no empty block larger than about a quarter of the page — grow the carrier (taller cards, a second row, a larger chart) instead of leaving half the page under a short row of steps; copy sits directly under its title (24–40px), never a void between them in one column; a heading fits one line or breaks evenly — never one or two characters alone on its last line (shorten it or widen its box); one carrier per figure — do not chart the numbers that are already KPI tiles or table cells; no decoration that restates what the page already shows (a \"4 steps total\" counter beside four steps).",
         "Speech order is the outline bullet array, not the visual path. Device items[] follow that array (step 1 first, even on a bottom-up timeline). Each item's visible title or body must include that bullet's words.",
         "Agenda (job=agenda): title (\"Contents\" / \"目录\" / \"Agenda\" in the deck language) + ONE agendaList device whose rows are the section pages in order — items[{title: section title, body?: one short line, target: that page's 1-based number = otherPages index + 1}]. Rows become click-to-jump links; never list the cover, the agenda itself, or the close. Any element may carry link:<page number> to jump there (e.g. a small \"↩ contents\" mark on section pages).",
         'Photography-as-canvas: when a page says PHOTO available, set background:{kind:"image", src:"PHOTO", scrim:{direction: the side the type sits on (left|right|bottom|top|radial), strength 0.6–0.85}} and put the type on the scrimmed side. Never a uniform overlay, never invent an image URL.',
@@ -121,6 +144,7 @@ export function canvasAuthorSystemPrompt(brand, lock, brief, host, sample = fals
         "Rounded corners, shadows, glow, and linear gradients are allowed only where the system says so; ≤ 2 floating (shadow/glow) objects per page.",
         "Charts and tables are native OOXML objects. No fake image src. Never write hex on elements — only paintRole.",
         'Return JSON { systemId, palette:{bg,ink,accent,...}, slides:[{ job, background?, elements:[{ kind, bbox:{x,y,w,h}, paintRole, ...}] }] }. bbox is always an object, never an array.',
+        slots ? SLOTS_RULE : "",
         sample ? sampleCanvasRule() : "",
         ...(skillFragments.length
             ? [
@@ -165,6 +189,42 @@ function toDevice(d) {
         ...(d.right ? { right: d.right } : {}),
     };
 }
+/** One authored canvas element → the deckgen IR (bbox defaults to a placeholder the slot layout replaces). */
+function toFilledEl(el, n) {
+    return {
+        slot: el.slot || `${el.kind}-${n}`,
+        kind: el.kind,
+        name: `slot:${el.slot || el.kind}:${n}`,
+        bbox: el.bbox ?? { x: 0, y: 0, w: 1, h: 1 },
+        paintRole: el.paintRole ?? (el.kind === "text" ? "ink" : "accent"),
+        ...(el.text ? { text: el.text } : {}),
+        ...(el.runs?.length ? { runs: el.runs } : {}),
+        ...(el.fontSize != null ? { fontSize: el.fontSize } : {}),
+        ...(el.fontWeight != null ? { fontWeight: el.fontWeight } : {}),
+        ...(el.align ? { align: el.align } : {}),
+        ...(el.src ? { src: el.src } : {}),
+        ...(el.rx != null ? { rx: el.rx } : {}),
+        ...(el.fillAlpha != null ? { fillAlpha: el.fillAlpha } : {}),
+        ...(el.italic ? { italic: true } : {}),
+        ...(el.caps ? { caps: el.caps } : {}),
+        ...(el.glow ? { glow: true } : {}),
+        ...(el.treatment ? { treatment: el.treatment } : {}),
+        ...(el.gradient ? { gradient: el.gradient } : {}),
+        ...(el.shadow ? { shadow: el.shadow } : {}),
+        ...(el.chart ? { chart: el.chart } : {}),
+        ...(el.table ? { table: el.table } : {}),
+        ...(el.x2 != null ? { x2: el.x2 } : {}),
+        ...(el.y2 != null ? { y2: el.y2 } : {}),
+        ...(el.dash ? { dash: el.dash } : {}),
+        ...(el.arrow ? { arrow: el.arrow } : {}),
+        ...(el.preset ? { preset: el.preset } : {}),
+        ...(el.strokeOnly ? { strokeOnly: true } : {}),
+        ...(el.icon ? { icon: el.icon } : {}),
+        ...(el.link != null ? { link: el.link } : {}),
+        ...(el.diagram ? { diagram: toDiagram(el.diagram) } : {}),
+        ...(el.device ? { device: toDevice(el.device) } : {}),
+    };
+}
 export function toFilled(deck, jobs, images) {
     return deck.slides.slice(0, jobs.length).map((slide, i) => {
         const job = jobs[i];
@@ -195,39 +255,21 @@ export function toFilled(deck, jobs, images) {
             // Always substitute the real fetched src, keep the model's scrim / overlay choices.
             background = { ...background, src: photo, ...(background.scrim || background.overlay != null ? {} : { overlay: 0.48 }) };
         }
-        const elements = slide.elements.map((el, n) => ({
-            slot: el.slot || `${el.kind}-${n}`,
-            kind: el.kind,
-            name: `slot:${el.slot || el.kind}:${n}`,
-            bbox: el.bbox,
-            paintRole: el.paintRole ?? (el.kind === "text" ? "ink" : "accent"),
-            ...(el.text ? { text: el.text } : {}),
-            ...(el.runs?.length ? { runs: el.runs } : {}),
-            ...(el.fontSize != null ? { fontSize: el.fontSize } : {}),
-            ...(el.fontWeight != null ? { fontWeight: el.fontWeight } : {}),
-            ...(el.align ? { align: el.align } : {}),
-            ...(el.src ? { src: el.src } : {}),
-            ...(el.rx != null ? { rx: el.rx } : {}),
-            ...(el.fillAlpha != null ? { fillAlpha: el.fillAlpha } : {}),
-            ...(el.italic ? { italic: true } : {}),
-            ...(el.caps ? { caps: el.caps } : {}),
-            ...(el.glow ? { glow: true } : {}),
-            ...(el.treatment ? { treatment: el.treatment } : {}),
-            ...(el.gradient ? { gradient: el.gradient } : {}),
-            ...(el.shadow ? { shadow: el.shadow } : {}),
-            ...(el.chart ? { chart: el.chart } : {}),
-            ...(el.table ? { table: el.table } : {}),
-            ...(el.x2 != null ? { x2: el.x2 } : {}),
-            ...(el.y2 != null ? { y2: el.y2 } : {}),
-            ...(el.dash ? { dash: el.dash } : {}),
-            ...(el.arrow ? { arrow: el.arrow } : {}),
-            ...(el.preset ? { preset: el.preset } : {}),
-            ...(el.strokeOnly ? { strokeOnly: true } : {}),
-            ...(el.icon ? { icon: el.icon } : {}),
-            ...(el.link != null ? { link: el.link } : {}),
-            ...(el.diagram ? { diagram: toDiagram(el.diagram) } : {}),
-            ...(el.device ? { device: toDevice(el.device) } : {}),
-        }));
+        const sys = resolveVisualSystem(deck.systemId);
+        // Slot page: the composition decides geometry (the brief's composition wins when it is one the
+        // slot layout handles, so reflect's composition check and the layout agree).
+        const elements = slide.slots
+            ? layoutPage({
+                composition: isSlotComposition(job?.composition) ? job.composition : (slide.slots.composition ?? "header-stack"),
+                title: slide.slots.title,
+                ...(slide.slots.eyebrow ? { eyebrow: slide.slots.eyebrow } : {}),
+                ...(slide.slots.lede ? { lede: slide.slots.lede } : {}),
+                ...(slide.slots.carrier ? { carrier: toFilledEl(slide.slots.carrier, 0) } : {}),
+                ...(slide.slots.side ? { side: toFilledEl(slide.slots.side, 1) } : {}),
+                ...(slide.slots.takeaway ? { takeaway: slide.slots.takeaway } : {}),
+                ...(slide.slots.footnote ? { footnote: slide.slots.footnote } : {}),
+            }, sys)
+            : slide.elements.map((el, n) => toFilledEl(el, n));
         return {
             layout: slide.job || job?.job || `page-${i}`,
             variant: slide.variant || "canvas",
@@ -282,7 +324,7 @@ export async function authorCanvasDeck(input) {
         `Topic: ${input.topic}`,
         input.repair ? `Repair these issues${only ? "" : ", keep the same page count"}:\n${input.repair}` : "",
         scope,
-        pageBrief(input.jobs, input.images, only ? new Set(only) : undefined),
+        pageBrief(input.jobs, input.images, only ? new Set(only) : undefined, Boolean(input.slots) && !input.sampleComposition),
         input.sampleComposition ? `SAMPLE COMPOSITION:\n${input.sampleComposition}` : "",
     ]
         .filter(Boolean)
@@ -290,7 +332,7 @@ export async function authorCanvasDeck(input) {
     const deck = await generateJson({
         model: input.model,
         schema: CanvasDeckSchema,
-        system: canvasAuthorSystemPrompt(input.brand, input.lock, input.brief, input.host, Boolean(input.sampleComposition)),
+        system: canvasAuthorSystemPrompt(input.brand, input.lock, input.brief, input.host, Boolean(input.sampleComposition), Boolean(input.slots) && !input.sampleComposition),
         prompt,
         signal: input.signal,
         normalize: normalizeCanvasDeck,

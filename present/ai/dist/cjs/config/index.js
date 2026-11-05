@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.memoryConfigStore = exports.envConfigStore = exports.browserConfigStore = exports.textModelSupportsVision = exports.isLocalLlmEndpoint = exports.isConfigUsable = exports.clampTextRequestConcurrency = exports.clampImageGenConcurrency = exports.applyProxyUrl = exports.resolveImageConfig = exports.resolveTextConfig = exports.getImageProviderPreset = exports.getProviderPreset = exports.IMAGE_PROVIDER_PRESETS = exports.PROVIDER_PRESETS = exports.parseCustomHeaders = exports.parseConfig = exports.defaultConfig = exports.TEXT_REQUEST_CONCURRENCY_DEFAULT = exports.TEXT_REQUEST_CONCURRENCY_MAX = exports.TEXT_REQUEST_CONCURRENCY_MIN = exports.IMAGE_GEN_CONCURRENCY_DEFAULT = exports.IMAGE_GEN_CONCURRENCY_MAX = exports.IMAGE_GEN_CONCURRENCY_MIN = exports.IMAGE_PROVIDER_KINDS = exports.TEXT_PROVIDER_KINDS = exports.ImageryConfigSchema = exports.ImageConfigSchema = exports.TextConfigSchema = exports.AiConfigSchema = void 0;
+exports.memoryConfigStore = exports.envConfigStore = exports.browserConfigStore = exports.visionReviewTextConfig = exports.reviewTextConfig = exports.textModelSupportsVision = exports.isLocalLlmEndpoint = exports.isConfigUsable = exports.clampTextRequestConcurrency = exports.clampImageGenConcurrency = exports.applyProxyUrl = exports.resolveImageConfig = exports.resolveTextConfig = exports.getImageProviderPreset = exports.getProviderPreset = exports.IMAGE_PROVIDER_PRESETS = exports.PROVIDER_PRESETS = exports.parseCustomHeaders = exports.parseConfig = exports.defaultConfig = exports.TEXT_REQUEST_CONCURRENCY_DEFAULT = exports.TEXT_REQUEST_CONCURRENCY_MAX = exports.TEXT_REQUEST_CONCURRENCY_MIN = exports.IMAGE_GEN_CONCURRENCY_DEFAULT = exports.IMAGE_GEN_CONCURRENCY_MAX = exports.IMAGE_GEN_CONCURRENCY_MIN = exports.IMAGE_PROVIDER_KINDS = exports.TEXT_PROVIDER_KINDS = exports.ImageryConfigSchema = exports.ImageConfigSchema = exports.TextConfigSchema = exports.AiConfigSchema = void 0;
 var types_1 = require("./types");
 Object.defineProperty(exports, "AiConfigSchema", { enumerable: true, get: function () { return types_1.AiConfigSchema; } });
 Object.defineProperty(exports, "TextConfigSchema", { enumerable: true, get: function () { return types_1.TextConfigSchema; } });
@@ -30,6 +30,8 @@ Object.defineProperty(exports, "clampTextRequestConcurrency", { enumerable: true
 Object.defineProperty(exports, "isConfigUsable", { enumerable: true, get: function () { return presets_1.isConfigUsable; } });
 Object.defineProperty(exports, "isLocalLlmEndpoint", { enumerable: true, get: function () { return presets_1.isLocalLlmEndpoint; } });
 Object.defineProperty(exports, "textModelSupportsVision", { enumerable: true, get: function () { return presets_1.textModelSupportsVision; } });
+Object.defineProperty(exports, "reviewTextConfig", { enumerable: true, get: function () { return presets_1.reviewTextConfig; } });
+Object.defineProperty(exports, "visionReviewTextConfig", { enumerable: true, get: function () { return presets_1.visionReviewTextConfig; } });
 var store_1 = require("./store");
 Object.defineProperty(exports, "browserConfigStore", { enumerable: true, get: function () { return store_1.browserConfigStore; } });
 Object.defineProperty(exports, "envConfigStore", { enumerable: true, get: function () { return store_1.envConfigStore; } });

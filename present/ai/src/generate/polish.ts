@@ -12,7 +12,7 @@
 
 import type { Presentation } from "@ppt/core";
 import { defaultConfig } from "../config/types";
-import { isConfigUsable } from "../config/presets";
+import { isConfigUsable, visionReviewTextConfig } from "../config/presets";
 import { createLlm } from "../llm/client";
 import type { LlmUsage } from "../llm/usage";
 import { SLOT_CAPS } from "../deckgen/ids.js";
@@ -21,7 +21,7 @@ import { imageEnrichmentAvailable } from "./enrich/fetch-enrichment-image";
 import { enrichImagesInPresentation } from "./enrich/images";
 import { outlineToFallbackSpec } from "./compile/compile";
 import { validateAndRepairPresentation } from "./qa/validate";
-import { reviewPresentation } from "./qa/art-director";
+import { reviewPresentation, type ReviewResult } from "./qa/art-director";
 import { resolveGuidanceLanguage } from "./prompts";
 import { rethrowIfAborted, shouldCommitGeneratedDeck, throwIfAborted } from "./abort";
 import { GENERATE_MODEL_CALL_BUDGET, ModelCallBudget } from "./call-budget";
@@ -226,6 +226,8 @@ export async function polishGeneratedDeck(
   guidance: GuidanceInput,
   opts: GenerateOptions,
   ctx: PolishContext,
+  /** The canvas path's vision review, already run on the deck; reported instead of a second call. */
+  priorReview?: ReviewResult,
 ): Promise<void> {
   const config = opts.config ?? defaultConfig();
   const allowImagery = opts.enableImageEnrichment !== false && imageEnrichmentAvailable(config);
@@ -275,12 +277,20 @@ export async function polishGeneratedDeck(
     }
   }
 
+  if (priorReview) {
+    opts.onArtDirectorReport?.(priorReview);
+    return;
+  }
   if (opts.enableArtDirector !== false && isConfigUsable(config) && ctx.budget.tryConsume()) {
     try {
       throwIfAborted(opts.signal);
       ctx.emit({ stage: "compile", progress: 0.88, detailKey: "artDirector.reviewing" });
-      const { model } = createLlm(config.text);
-      const screenshots = (await opts.captureReviewShots?.(pres)) ?? [];
+      // Screenshots go to a model that can see (the configured review model, else a vision-capable
+      // text model). A text-only model (DeepSeek chat, …) rejects image parts — sending them only
+      // buys a failed call and a retry — so it reviews from the deck summary alone.
+      const visionText = visionReviewTextConfig(config);
+      const { model } = createLlm(visionText ?? config.text);
+      const screenshots = visionText ? ((await opts.captureReviewShots?.(pres)) ?? []) : [];
       throwIfAborted(opts.signal);
       const report = await reviewPresentation(pres, {
         model,

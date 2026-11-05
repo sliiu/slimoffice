@@ -2,7 +2,7 @@
 
 # Slim Office
 
-演示部分在 `present/`。用它打开 `.pptx`，在浏览器里编辑和放映，再写出 `.pptx`、HTML、PDF 或 PNG。
+演示部分在 `present/`。用它打开 `.pptx`，在浏览器里编辑和放映，再写出 `.pptx`、HTML、PDF、PNG 或视频。
 
 ## 安装
 
@@ -11,11 +11,11 @@
 | 读 `.pptx` | `@sliiu/present-parser` |
 | 写 `.pptx` | `@sliiu/present-serializer` |
 | 放映，或导出 HTML / PDF / PNG | `@sliiu/present-player` |
-| 编辑 | `@sliiu/present-editor` |
+| 编辑，或导出视频 | `@sliiu/present-editor` |
 | 放映插件 | `@sliiu/present-plugin-sdk` |
 | 自备密钥调用模型 | `@sliiu/present-ai` |
 
-只放映时安装 player。editor 会带上文字识别、OpenCV 和公式渲染。
+只放映时安装 player。editor 会带上视频导出（ffmpeg.wasm）、文字识别、OpenCV 和公式渲染。
 
 ## 引入
 
@@ -65,6 +65,17 @@ const { parsePptx } = require("@sliiu/present-parser");
 
 插件单文件是 `dist/plugin-sdk.iife.js`，全局名 `PPTPluginSDK`。放映脚本里已经有 `PPTPlayer.definePlugin`。
 
+## 本地文稿
+
+Agent 用和在线文稿 MCP 同一组工具改一个文件夹里的 `.pptx` 和 `.pptm`。保存会写回这个文件，这个文件就是导出。
+
+```bash
+npx skills add sliiu/slimoffice --skill slimppt-local
+npm install @sliiu/present-ai
+```
+
+用 `node` 启动 `@sliiu/present-ai` 里的 `dist/esm/mcp/server/stdio.js`。`SLIMPPT_ROOT` 是文稿所在的文件夹。MCP 配置写在技能文件里。`render_slide` 只在装好 player 的 SlimPPT 检出里有。
+
 ## 包
 
 `@sliiu/present-player` 和 `@sliiu/present-editor` 会装上它们依赖的包。要直接调用某一层时，再单独安装。
@@ -82,7 +93,7 @@ const { parsePptx } = require("@sliiu/present-parser");
 | `@sliiu/present-themes` | 主题、配色和装饰 |
 | `@sliiu/present-ui` | 界面变量和控件。样式文件是 `tokens.css` |
 | `@sliiu/present-player` | 放映，以及 HTML / PDF / PNG |
-| `@sliiu/present-editor` | 编辑界面 |
+| `@sliiu/present-editor` | 编辑界面，以及带旁白和讲解出镜的视频导出 |
 | `@sliiu/present-ai` | 自备密钥调用模型 |
 
 安装、引入和 HTML 放映见文档站的[开源版本](https://docs.slimppt.com/zh-cn/guide/open-source)。

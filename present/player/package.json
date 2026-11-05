@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-player",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -39,12 +39,12 @@
   },
   "dependencies": {
     "lucide": "^1.48.0",
-    "@sliiu/present-animation": "0.1.1",
-    "@sliiu/present-core": "0.1.1",
-    "@sliiu/present-plugin-sdk": "0.1.1",
-    "@sliiu/present-renderer": "0.1.1",
-    "@sliiu/present-three-bake": "0.1.1",
-    "@sliiu/present-transition-fx": "0.1.1"
+    "@sliiu/present-animation": "0.1.2",
+    "@sliiu/present-core": "0.1.2",
+    "@sliiu/present-plugin-sdk": "0.1.2",
+    "@sliiu/present-renderer": "0.1.2",
+    "@sliiu/present-three-bake": "0.1.2",
+    "@sliiu/present-transition-fx": "0.1.2"
   },
   "devDependencies": {
     "vite": "^8.3.1"

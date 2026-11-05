@@ -12,6 +12,7 @@ import { NUMERIC_VALUE, canvasTypeRamp, contentTitleSize, findContentTitle, isCo
 import { structureOf } from "./compare.js";
 import { COMPOSITION_HINTS, RELATIONSHIP_CARRIERS } from "./brief.js";
 import { formatCopyVoiceHits, lintCopyVoice } from "../generate/copy-voice.js";
+import { layoutFindings } from "./layout-gates.js";
 /** Element kinds that carry a relationship in geometry (not just type). */
 const GEOMETRY_KINDS = new Set(["shape", "line", "diagram", "chart", "ellipse"]);
 /** Share of the smaller text box that another free text box may cover before it counts as a collision. */
@@ -244,6 +245,9 @@ export function reflectCanvas(slides, system, theme, briefs) {
             }
         }
     }
+    // What a reviewer sees on the rendered page: dead space, a column split by a void, a heading
+    // with one or two characters stranded on its last line, the same figures charted twice.
+    findings.push(...layoutFindings(slides, system, briefs));
     const fingerprints = slides.map((s) => JSON.stringify(structureOf([s])[0]?.elements.map((e) => `${e.kind}:${Math.round(e.w)}x${Math.round(e.h)}`)));
     const unique = new Set(fingerprints);
     if (slides.length >= 3 && unique.size === 1) {
@@ -494,11 +498,18 @@ function mode(nums) {
 }
 /** Text elements in the top third: count, snapped sizes, left edge — the "header stack" signature. */
 function headerFingerprint(s) {
+    // A header set inside a full-width band or a full-height side panel reads as a different page
+    // head from bare type on paper, even when the type stack itself is the same.
+    const ground = s.elements.some((e) => e.kind === "surface" && e.bbox.y <= 1 && e.bbox.w >= CANVAS.width * 0.9 && e.bbox.h < CANVAS.height / 2)
+        ? "band:"
+        : s.elements.some((e) => e.kind === "surface" && e.bbox.x <= 1 && e.bbox.h >= CANVAS.height * 0.9 && e.bbox.w < CANVAS.width / 2)
+            ? "panel:"
+            : "";
     const top = s.elements
         .filter((e) => e.kind === "text" && e.text && e.bbox.y + e.bbox.h / 2 < CANVAS.height / 3)
         .sort((a, b) => a.bbox.y - b.bbox.y)
         .map((e) => `${e.fontSize ?? 0}@${Math.round(e.bbox.x / 16)}`);
-    return top.length ? top.join("|") : "";
+    return top.length ? ground + top.join("|") : "";
 }
 /**
  * split / sidebar = two columns separated by a vertical gutter. True when some x divides the

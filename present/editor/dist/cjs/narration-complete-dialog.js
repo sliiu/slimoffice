@@ -49,6 +49,7 @@ function openNarrationCompleteDialog(doc, blob, onInsert, opts) {
     durationEl.style.cssText = "margin:0;font-size:12px;color:var(--muted-foreground,#a1a1aa)";
     modal.appendChild(durationEl);
     const readinessLine = doc.createElement("p");
+    readinessLine.className = ui_style_1.DEV_ONLY_CLASS;
     readinessLine.style.cssText = "margin:0;font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35";
     readinessLine.textContent = (0, record_meta_1.formatNarrationReadinessLine)({ bytes: blob.size, rehearse: opts?.rehearse });
     modal.appendChild(readinessLine);

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CanvasDeckSchema = exports.CanvasSlideSchema = exports.CanvasElementSchema = exports.CANVAS_ELEMENT_KINDS = exports.normalizeSystemId = void 0;
+exports.CanvasDeckSchema = exports.CanvasSlideSchema = exports.CanvasSlotsSchema = exports.CanvasElementSchema = exports.CANVAS_ELEMENT_KINDS = exports.normalizeSystemId = void 0;
 exports.normalizeCanvasDeck = normalizeCanvasDeck;
 const zod_1 = require("zod");
 const ids_js_1 = require("../deckgen/ids.js");
@@ -124,6 +124,19 @@ exports.CanvasElementSchema = zod_1.z.object({
     })
         .optional(),
 });
+/** A slot element: a canvas element whose geometry the slot layout decides (bbox optional, ignored). */
+const SlotElementSchema = exports.CanvasElementSchema.extend({ bbox: BBoxSchema.optional() });
+/** Content page as composition + slots; `deckgen/page-layout.ts` computes every coordinate. */
+exports.CanvasSlotsSchema = zod_1.z.object({
+    composition: zod_1.z.enum(["header-stack", "split", "sidebar", "band", "grid"]).optional(),
+    eyebrow: zod_1.z.string().optional(),
+    title: zod_1.z.string().min(1),
+    lede: zod_1.z.string().optional(),
+    carrier: SlotElementSchema.optional(),
+    side: SlotElementSchema.optional(),
+    takeaway: zod_1.z.string().optional(),
+    footnote: zod_1.z.string().optional(),
+});
 exports.CanvasSlideSchema = zod_1.z.object({
     job: zod_1.z.string(),
     variant: zod_1.z.string().optional(),
@@ -144,8 +157,10 @@ exports.CanvasSlideSchema = zod_1.z.object({
         toRole: PaintRoleSchema.optional(),
     })
         .optional(),
-    elements: zod_1.z.array(exports.CanvasElementSchema).min(1),
-});
+    elements: zod_1.z.array(exports.CanvasElementSchema).default([]),
+    /** Slot page: geometry is computed; `elements` may be empty. */
+    slots: exports.CanvasSlotsSchema.optional(),
+}).refine((s) => s.elements.length > 0 || s.slots != null, { message: "slide needs elements or slots" });
 const HexSchema = zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 const NAMED_THEME = new Set(["ink", "indigo", "kraft", "ikb", "signal", "lemon"]);
 function coerceHex(v) {
@@ -234,10 +249,89 @@ function normalizeCanvasDeck(raw) {
                 s.elements = s.shapes;
             if (Array.isArray(s.elements))
                 s.elements = s.elements.map(normalizeElement);
+            const slots = normalizeSlots(s.slots ?? s.slot ?? s.content, s);
+            delete s.slot;
+            delete s.content;
+            if (slots)
+                s.slots = slots;
+            else
+                delete s.slots;
+            if (slots && !Array.isArray(s.elements))
+                s.elements = [];
             return s;
         })
-            .filter((s) => s && Array.isArray(s.elements) && s.elements.length);
+            .filter((s) => {
+            if (!s)
+                return false;
+            const o = s;
+            return (Array.isArray(o.elements) && o.elements.length > 0) || o.slots != null;
+        });
     }
+    return o;
+}
+/**
+ * Slots as the model writes them: composition under `layout` / `template` or on the slide itself,
+ * the carrier under `main` / `body` / `visual`, a bare string takeaway object, a carrier given as a
+ * device payload without `kind`. Returns undefined when there is no title (not a slot page).
+ */
+function normalizeSlots(raw, slide) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return undefined;
+    const o = { ...raw };
+    for (const k of Object.keys(o))
+        if (o[k] === null)
+            delete o[k];
+    const comp = String(o.composition ?? o.layout ?? o.template ?? slide.composition ?? "").trim().toLowerCase();
+    delete o.layout;
+    delete o.template;
+    if (["header-stack", "split", "sidebar", "band", "grid"].includes(comp))
+        o.composition = comp;
+    else
+        delete o.composition;
+    for (const [from, to] of [["kicker", "eyebrow"], ["subtitle", "lede"], ["deck", "lede"], ["main", "carrier"], ["body", "carrier"], ["visual", "carrier"], ["aside", "side"], ["note", "footnote"], ["source", "footnote"], ["conclusion", "takeaway"]]) {
+        if (o[to] == null && o[from] != null)
+            o[to] = o[from];
+        delete o[from];
+    }
+    for (const k of ["eyebrow", "title", "lede", "takeaway", "footnote"]) {
+        const v = o[k];
+        if (v && typeof v === "object" && typeof v.text === "string")
+            o[k] = v.text;
+        if (o[k] != null && typeof o[k] !== "string")
+            delete o[k];
+    }
+    for (const k of ["carrier", "side"]) {
+        const v = o[k];
+        if (typeof v === "string") {
+            o[k] = { kind: "text", text: v };
+            continue;
+        }
+        if (!v || typeof v !== "object") {
+            delete o[k];
+            continue;
+        }
+        const e = { ...v };
+        // `{type: "stepStrip", items}` or `{device: {...}}` without kind → device; `{chart:{…}}` → chart.
+        if (!e.kind) {
+            if (e.device || (typeof e.type === "string" && vocab_js_1.DEVICE_KINDS.includes((0, vocab_js_1.normalizeDeviceType)(e.type))))
+                e.kind = "device";
+            else if (e.chart)
+                e.kind = "chart";
+            else if (e.table)
+                e.kind = "table";
+            else if (e.diagram)
+                e.kind = "diagram";
+        }
+        const n = normalizeElement(e);
+        if (n.bbox && typeof n.bbox === "object") {
+            const b = n.bbox;
+            if (![b.x, b.y, b.w, b.h].every((x) => typeof x === "number"))
+                delete n.bbox;
+        }
+        o[k] = n;
+    }
+    if (typeof o.title !== "string" || !o.title.trim())
+        return undefined;
     return o;
 }
 /** Field aliases the model reaches for: `presetId`/`shape` → preset, `name` → icon, `smartArt` → diagram. */

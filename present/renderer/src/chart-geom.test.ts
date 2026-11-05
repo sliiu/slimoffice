@@ -83,3 +83,14 @@ describe("chart-geom", () => {
     assert.equal(chartPadding({ ...def, type: "bar", legend: false }, 13).bottom, 23);
   });
 });
+
+describe("chartLeftPad", () => {
+  it("keeps 40px for column charts and widens a horizontal bar chart to its longest category", async () => {
+    const { chartLeftPad } = await import("./chart-geom");
+    const col = { type: "column", categories: ["查找信息时间占比"], series: [{ name: "s", values: [1] }] } as never;
+    const bar = { type: "bar", categories: ["找", "查找信息时间占比"], series: [{ name: "s", values: [1, 2] }] } as never;
+    assert.equal(chartLeftPad(col, 12, 600), 40);
+    assert.equal(chartLeftPad(bar, 12, 600), 8 * 12 + 14);
+    assert.equal(chartLeftPad(bar, 12, 200), 80, "capped at 40% of the chart width");
+  });
+});

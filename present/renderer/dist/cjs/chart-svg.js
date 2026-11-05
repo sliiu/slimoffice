@@ -34,7 +34,7 @@ function renderChart(g, shape) {
     const padTop = shape.chart.title ? 28 : 8;
     const pads = (0, chart_geom_1.chartPadding)(shape.chart, ts.size);
     const padBottom = pads.bottom;
-    const padLeft = 40;
+    const padLeft = (0, chart_geom_1.chartLeftPad)(shape.chart, ts.size, w);
     const padRight = 12;
     if (shape.chart.title) {
         const t = document.createElementNS(SVG_NS, "text");

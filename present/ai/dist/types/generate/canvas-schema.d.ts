@@ -157,6 +157,332 @@ export declare const CanvasElementSchema: z.ZodObject<{
         }, z.core.$strip>>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
+/** Content page as composition + slots; `deckgen/page-layout.ts` computes every coordinate. */
+export declare const CanvasSlotsSchema: z.ZodObject<{
+    composition: z.ZodOptional<z.ZodEnum<{
+        band: "band";
+        grid: "grid";
+        "header-stack": "header-stack";
+        sidebar: "sidebar";
+        split: "split";
+    }>>;
+    eyebrow: z.ZodOptional<z.ZodString>;
+    title: z.ZodString;
+    lede: z.ZodOptional<z.ZodString>;
+    carrier: z.ZodOptional<z.ZodObject<{
+        slot: z.ZodOptional<z.ZodString>;
+        kind: z.ZodEnum<{
+            bar: "bar";
+            chart: "chart";
+            device: "device";
+            diagram: "diagram";
+            ellipse: "ellipse";
+            icon: "icon";
+            image: "image";
+            line: "line";
+            overlay: "overlay";
+            rule: "rule";
+            shape: "shape";
+            surface: "surface";
+            table: "table";
+            text: "text";
+        }>;
+        paintRole: z.ZodOptional<z.ZodEnum<{
+            accent: "accent";
+            accentSoft: "accentSoft";
+            bg: "bg";
+            ink: "ink";
+            line: "line";
+            muted: "muted";
+            surface: "surface";
+        }>>;
+        text: z.ZodOptional<z.ZodString>;
+        runs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            text: z.ZodString;
+            emphasis: z.ZodOptional<z.ZodEnum<{
+                accent: "accent";
+                bold: "bold";
+                mono: "mono";
+            }>>;
+        }, z.core.$strip>>>;
+        fontSize: z.ZodOptional<z.ZodNumber>;
+        fontWeight: z.ZodOptional<z.ZodNumber>;
+        align: z.ZodOptional<z.ZodEnum<{
+            end: "end";
+            middle: "middle";
+            start: "start";
+        }>>;
+        src: z.ZodOptional<z.ZodString>;
+        rx: z.ZodOptional<z.ZodNumber>;
+        fillAlpha: z.ZodOptional<z.ZodNumber>;
+        italic: z.ZodOptional<z.ZodBoolean>;
+        caps: z.ZodOptional<z.ZodLiteral<"all">>;
+        glow: z.ZodOptional<z.ZodBoolean>;
+        treatment: z.ZodOptional<z.ZodEnum<{
+            [x: string]: string;
+        }>>;
+        gradient: z.ZodOptional<z.ZodObject<{
+            angle: z.ZodNumber;
+            toRole: z.ZodEnum<{
+                accent: "accent";
+                accentSoft: "accentSoft";
+                bg: "bg";
+                ink: "ink";
+                line: "line";
+                muted: "muted";
+                surface: "surface";
+            }>;
+            fromAlpha: z.ZodOptional<z.ZodNumber>;
+            toAlpha: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>>;
+        shadow: z.ZodOptional<z.ZodObject<{
+            blur: z.ZodNumber;
+            dx: z.ZodNumber;
+            dy: z.ZodNumber;
+            alpha: z.ZodNumber;
+        }, z.core.$strip>>;
+        chart: z.ZodOptional<z.ZodObject<{
+            type: z.ZodEnum<{
+                area: "area";
+                bar: "bar";
+                column: "column";
+                doughnut: "doughnut";
+                line: "line";
+                pie: "pie";
+            }>;
+            categories: z.ZodArray<z.ZodString>;
+            series: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                values: z.ZodArray<z.ZodNumber>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        table: z.ZodOptional<z.ZodObject<{
+            headers: z.ZodArray<z.ZodString>;
+            rows: z.ZodArray<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>>;
+        x2: z.ZodOptional<z.ZodNumber>;
+        y2: z.ZodOptional<z.ZodNumber>;
+        dash: z.ZodOptional<z.ZodEnum<{
+            dash: "dash";
+            dot: "dot";
+            solid: "solid";
+        }>>;
+        arrow: z.ZodOptional<z.ZodEnum<{
+            both: "both";
+            end: "end";
+            none: "none";
+        }>>;
+        preset: z.ZodOptional<z.ZodString>;
+        strokeOnly: z.ZodOptional<z.ZodBoolean>;
+        icon: z.ZodOptional<z.ZodString>;
+        link: z.ZodOptional<z.ZodNumber>;
+        diagram: z.ZodOptional<z.ZodObject<{
+            layout: z.ZodEnum<{
+                [x: string]: string;
+            }>;
+            items: z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                title: z.ZodString;
+                body: z.ZodOptional<z.ZodString>;
+            }, z.core.$strip>]>>;
+        }, z.core.$strip>>;
+        device: z.ZodOptional<z.ZodObject<{
+            type: z.ZodEnum<{
+                agendaList: "agendaList";
+                calloutNote: "calloutNote";
+                comparePlanes: "comparePlanes";
+                iconLabelGrid: "iconLabelGrid";
+                kpiRow: "kpiRow";
+                numberedList: "numberedList";
+                quoteBlock: "quoteBlock";
+                stepStrip: "stepStrip";
+                takeawayBand: "takeawayBand";
+            }>;
+            items: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                title: z.ZodOptional<z.ZodString>;
+                body: z.ZodOptional<z.ZodString>;
+                value: z.ZodOptional<z.ZodString>;
+                note: z.ZodOptional<z.ZodString>;
+                icon: z.ZodOptional<z.ZodString>;
+                target: z.ZodOptional<z.ZodNumber>;
+            }, z.core.$strip>]>>>;
+            text: z.ZodOptional<z.ZodString>;
+            attribution: z.ZodOptional<z.ZodString>;
+            icon: z.ZodOptional<z.ZodString>;
+            left: z.ZodOptional<z.ZodObject<{
+                title: z.ZodString;
+                points: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+            right: z.ZodOptional<z.ZodObject<{
+                title: z.ZodString;
+                points: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        bbox: z.ZodOptional<z.ZodObject<{
+            x: z.ZodNumber;
+            y: z.ZodNumber;
+            w: z.ZodNumber;
+            h: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    side: z.ZodOptional<z.ZodObject<{
+        slot: z.ZodOptional<z.ZodString>;
+        kind: z.ZodEnum<{
+            bar: "bar";
+            chart: "chart";
+            device: "device";
+            diagram: "diagram";
+            ellipse: "ellipse";
+            icon: "icon";
+            image: "image";
+            line: "line";
+            overlay: "overlay";
+            rule: "rule";
+            shape: "shape";
+            surface: "surface";
+            table: "table";
+            text: "text";
+        }>;
+        paintRole: z.ZodOptional<z.ZodEnum<{
+            accent: "accent";
+            accentSoft: "accentSoft";
+            bg: "bg";
+            ink: "ink";
+            line: "line";
+            muted: "muted";
+            surface: "surface";
+        }>>;
+        text: z.ZodOptional<z.ZodString>;
+        runs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            text: z.ZodString;
+            emphasis: z.ZodOptional<z.ZodEnum<{
+                accent: "accent";
+                bold: "bold";
+                mono: "mono";
+            }>>;
+        }, z.core.$strip>>>;
+        fontSize: z.ZodOptional<z.ZodNumber>;
+        fontWeight: z.ZodOptional<z.ZodNumber>;
+        align: z.ZodOptional<z.ZodEnum<{
+            end: "end";
+            middle: "middle";
+            start: "start";
+        }>>;
+        src: z.ZodOptional<z.ZodString>;
+        rx: z.ZodOptional<z.ZodNumber>;
+        fillAlpha: z.ZodOptional<z.ZodNumber>;
+        italic: z.ZodOptional<z.ZodBoolean>;
+        caps: z.ZodOptional<z.ZodLiteral<"all">>;
+        glow: z.ZodOptional<z.ZodBoolean>;
+        treatment: z.ZodOptional<z.ZodEnum<{
+            [x: string]: string;
+        }>>;
+        gradient: z.ZodOptional<z.ZodObject<{
+            angle: z.ZodNumber;
+            toRole: z.ZodEnum<{
+                accent: "accent";
+                accentSoft: "accentSoft";
+                bg: "bg";
+                ink: "ink";
+                line: "line";
+                muted: "muted";
+                surface: "surface";
+            }>;
+            fromAlpha: z.ZodOptional<z.ZodNumber>;
+            toAlpha: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>>;
+        shadow: z.ZodOptional<z.ZodObject<{
+            blur: z.ZodNumber;
+            dx: z.ZodNumber;
+            dy: z.ZodNumber;
+            alpha: z.ZodNumber;
+        }, z.core.$strip>>;
+        chart: z.ZodOptional<z.ZodObject<{
+            type: z.ZodEnum<{
+                area: "area";
+                bar: "bar";
+                column: "column";
+                doughnut: "doughnut";
+                line: "line";
+                pie: "pie";
+            }>;
+            categories: z.ZodArray<z.ZodString>;
+            series: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                values: z.ZodArray<z.ZodNumber>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        table: z.ZodOptional<z.ZodObject<{
+            headers: z.ZodArray<z.ZodString>;
+            rows: z.ZodArray<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>>;
+        x2: z.ZodOptional<z.ZodNumber>;
+        y2: z.ZodOptional<z.ZodNumber>;
+        dash: z.ZodOptional<z.ZodEnum<{
+            dash: "dash";
+            dot: "dot";
+            solid: "solid";
+        }>>;
+        arrow: z.ZodOptional<z.ZodEnum<{
+            both: "both";
+            end: "end";
+            none: "none";
+        }>>;
+        preset: z.ZodOptional<z.ZodString>;
+        strokeOnly: z.ZodOptional<z.ZodBoolean>;
+        icon: z.ZodOptional<z.ZodString>;
+        link: z.ZodOptional<z.ZodNumber>;
+        diagram: z.ZodOptional<z.ZodObject<{
+            layout: z.ZodEnum<{
+                [x: string]: string;
+            }>;
+            items: z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                title: z.ZodString;
+                body: z.ZodOptional<z.ZodString>;
+            }, z.core.$strip>]>>;
+        }, z.core.$strip>>;
+        device: z.ZodOptional<z.ZodObject<{
+            type: z.ZodEnum<{
+                agendaList: "agendaList";
+                calloutNote: "calloutNote";
+                comparePlanes: "comparePlanes";
+                iconLabelGrid: "iconLabelGrid";
+                kpiRow: "kpiRow";
+                numberedList: "numberedList";
+                quoteBlock: "quoteBlock";
+                stepStrip: "stepStrip";
+                takeawayBand: "takeawayBand";
+            }>;
+            items: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                title: z.ZodOptional<z.ZodString>;
+                body: z.ZodOptional<z.ZodString>;
+                value: z.ZodOptional<z.ZodString>;
+                note: z.ZodOptional<z.ZodString>;
+                icon: z.ZodOptional<z.ZodString>;
+                target: z.ZodOptional<z.ZodNumber>;
+            }, z.core.$strip>]>>>;
+            text: z.ZodOptional<z.ZodString>;
+            attribution: z.ZodOptional<z.ZodString>;
+            icon: z.ZodOptional<z.ZodString>;
+            left: z.ZodOptional<z.ZodObject<{
+                title: z.ZodString;
+                points: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+            right: z.ZodOptional<z.ZodObject<{
+                title: z.ZodString;
+                points: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        bbox: z.ZodOptional<z.ZodObject<{
+            x: z.ZodNumber;
+            y: z.ZodNumber;
+            w: z.ZodNumber;
+            h: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    takeaway: z.ZodOptional<z.ZodString>;
+    footnote: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export type CanvasSlots = z.infer<typeof CanvasSlotsSchema>;
 export declare const CanvasSlideSchema: z.ZodObject<{
     job: z.ZodString;
     variant: z.ZodOptional<z.ZodString>;
@@ -208,7 +534,7 @@ export declare const CanvasSlideSchema: z.ZodObject<{
             surface: "surface";
         }>>;
     }, z.core.$strip>>;
-    elements: z.ZodArray<z.ZodObject<{
+    elements: z.ZodDefault<z.ZodArray<z.ZodObject<{
         slot: z.ZodOptional<z.ZodString>;
         kind: z.ZodEnum<{
             bar: "bar";
@@ -362,6 +688,330 @@ export declare const CanvasSlideSchema: z.ZodObject<{
                 points: z.ZodArray<z.ZodString>;
             }, z.core.$strip>>;
         }, z.core.$strip>>;
+    }, z.core.$strip>>>;
+    slots: z.ZodOptional<z.ZodObject<{
+        composition: z.ZodOptional<z.ZodEnum<{
+            band: "band";
+            grid: "grid";
+            "header-stack": "header-stack";
+            sidebar: "sidebar";
+            split: "split";
+        }>>;
+        eyebrow: z.ZodOptional<z.ZodString>;
+        title: z.ZodString;
+        lede: z.ZodOptional<z.ZodString>;
+        carrier: z.ZodOptional<z.ZodObject<{
+            slot: z.ZodOptional<z.ZodString>;
+            kind: z.ZodEnum<{
+                bar: "bar";
+                chart: "chart";
+                device: "device";
+                diagram: "diagram";
+                ellipse: "ellipse";
+                icon: "icon";
+                image: "image";
+                line: "line";
+                overlay: "overlay";
+                rule: "rule";
+                shape: "shape";
+                surface: "surface";
+                table: "table";
+                text: "text";
+            }>;
+            paintRole: z.ZodOptional<z.ZodEnum<{
+                accent: "accent";
+                accentSoft: "accentSoft";
+                bg: "bg";
+                ink: "ink";
+                line: "line";
+                muted: "muted";
+                surface: "surface";
+            }>>;
+            text: z.ZodOptional<z.ZodString>;
+            runs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                text: z.ZodString;
+                emphasis: z.ZodOptional<z.ZodEnum<{
+                    accent: "accent";
+                    bold: "bold";
+                    mono: "mono";
+                }>>;
+            }, z.core.$strip>>>;
+            fontSize: z.ZodOptional<z.ZodNumber>;
+            fontWeight: z.ZodOptional<z.ZodNumber>;
+            align: z.ZodOptional<z.ZodEnum<{
+                end: "end";
+                middle: "middle";
+                start: "start";
+            }>>;
+            src: z.ZodOptional<z.ZodString>;
+            rx: z.ZodOptional<z.ZodNumber>;
+            fillAlpha: z.ZodOptional<z.ZodNumber>;
+            italic: z.ZodOptional<z.ZodBoolean>;
+            caps: z.ZodOptional<z.ZodLiteral<"all">>;
+            glow: z.ZodOptional<z.ZodBoolean>;
+            treatment: z.ZodOptional<z.ZodEnum<{
+                [x: string]: string;
+            }>>;
+            gradient: z.ZodOptional<z.ZodObject<{
+                angle: z.ZodNumber;
+                toRole: z.ZodEnum<{
+                    accent: "accent";
+                    accentSoft: "accentSoft";
+                    bg: "bg";
+                    ink: "ink";
+                    line: "line";
+                    muted: "muted";
+                    surface: "surface";
+                }>;
+                fromAlpha: z.ZodOptional<z.ZodNumber>;
+                toAlpha: z.ZodOptional<z.ZodNumber>;
+            }, z.core.$strip>>;
+            shadow: z.ZodOptional<z.ZodObject<{
+                blur: z.ZodNumber;
+                dx: z.ZodNumber;
+                dy: z.ZodNumber;
+                alpha: z.ZodNumber;
+            }, z.core.$strip>>;
+            chart: z.ZodOptional<z.ZodObject<{
+                type: z.ZodEnum<{
+                    area: "area";
+                    bar: "bar";
+                    column: "column";
+                    doughnut: "doughnut";
+                    line: "line";
+                    pie: "pie";
+                }>;
+                categories: z.ZodArray<z.ZodString>;
+                series: z.ZodArray<z.ZodObject<{
+                    name: z.ZodString;
+                    values: z.ZodArray<z.ZodNumber>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+            table: z.ZodOptional<z.ZodObject<{
+                headers: z.ZodArray<z.ZodString>;
+                rows: z.ZodArray<z.ZodArray<z.ZodString>>;
+            }, z.core.$strip>>;
+            x2: z.ZodOptional<z.ZodNumber>;
+            y2: z.ZodOptional<z.ZodNumber>;
+            dash: z.ZodOptional<z.ZodEnum<{
+                dash: "dash";
+                dot: "dot";
+                solid: "solid";
+            }>>;
+            arrow: z.ZodOptional<z.ZodEnum<{
+                both: "both";
+                end: "end";
+                none: "none";
+            }>>;
+            preset: z.ZodOptional<z.ZodString>;
+            strokeOnly: z.ZodOptional<z.ZodBoolean>;
+            icon: z.ZodOptional<z.ZodString>;
+            link: z.ZodOptional<z.ZodNumber>;
+            diagram: z.ZodOptional<z.ZodObject<{
+                layout: z.ZodEnum<{
+                    [x: string]: string;
+                }>;
+                items: z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                    title: z.ZodString;
+                    body: z.ZodOptional<z.ZodString>;
+                }, z.core.$strip>]>>;
+            }, z.core.$strip>>;
+            device: z.ZodOptional<z.ZodObject<{
+                type: z.ZodEnum<{
+                    agendaList: "agendaList";
+                    calloutNote: "calloutNote";
+                    comparePlanes: "comparePlanes";
+                    iconLabelGrid: "iconLabelGrid";
+                    kpiRow: "kpiRow";
+                    numberedList: "numberedList";
+                    quoteBlock: "quoteBlock";
+                    stepStrip: "stepStrip";
+                    takeawayBand: "takeawayBand";
+                }>;
+                items: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                    title: z.ZodOptional<z.ZodString>;
+                    body: z.ZodOptional<z.ZodString>;
+                    value: z.ZodOptional<z.ZodString>;
+                    note: z.ZodOptional<z.ZodString>;
+                    icon: z.ZodOptional<z.ZodString>;
+                    target: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>]>>>;
+                text: z.ZodOptional<z.ZodString>;
+                attribution: z.ZodOptional<z.ZodString>;
+                icon: z.ZodOptional<z.ZodString>;
+                left: z.ZodOptional<z.ZodObject<{
+                    title: z.ZodString;
+                    points: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>>;
+                right: z.ZodOptional<z.ZodObject<{
+                    title: z.ZodString;
+                    points: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+            bbox: z.ZodOptional<z.ZodObject<{
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                w: z.ZodNumber;
+                h: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        side: z.ZodOptional<z.ZodObject<{
+            slot: z.ZodOptional<z.ZodString>;
+            kind: z.ZodEnum<{
+                bar: "bar";
+                chart: "chart";
+                device: "device";
+                diagram: "diagram";
+                ellipse: "ellipse";
+                icon: "icon";
+                image: "image";
+                line: "line";
+                overlay: "overlay";
+                rule: "rule";
+                shape: "shape";
+                surface: "surface";
+                table: "table";
+                text: "text";
+            }>;
+            paintRole: z.ZodOptional<z.ZodEnum<{
+                accent: "accent";
+                accentSoft: "accentSoft";
+                bg: "bg";
+                ink: "ink";
+                line: "line";
+                muted: "muted";
+                surface: "surface";
+            }>>;
+            text: z.ZodOptional<z.ZodString>;
+            runs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                text: z.ZodString;
+                emphasis: z.ZodOptional<z.ZodEnum<{
+                    accent: "accent";
+                    bold: "bold";
+                    mono: "mono";
+                }>>;
+            }, z.core.$strip>>>;
+            fontSize: z.ZodOptional<z.ZodNumber>;
+            fontWeight: z.ZodOptional<z.ZodNumber>;
+            align: z.ZodOptional<z.ZodEnum<{
+                end: "end";
+                middle: "middle";
+                start: "start";
+            }>>;
+            src: z.ZodOptional<z.ZodString>;
+            rx: z.ZodOptional<z.ZodNumber>;
+            fillAlpha: z.ZodOptional<z.ZodNumber>;
+            italic: z.ZodOptional<z.ZodBoolean>;
+            caps: z.ZodOptional<z.ZodLiteral<"all">>;
+            glow: z.ZodOptional<z.ZodBoolean>;
+            treatment: z.ZodOptional<z.ZodEnum<{
+                [x: string]: string;
+            }>>;
+            gradient: z.ZodOptional<z.ZodObject<{
+                angle: z.ZodNumber;
+                toRole: z.ZodEnum<{
+                    accent: "accent";
+                    accentSoft: "accentSoft";
+                    bg: "bg";
+                    ink: "ink";
+                    line: "line";
+                    muted: "muted";
+                    surface: "surface";
+                }>;
+                fromAlpha: z.ZodOptional<z.ZodNumber>;
+                toAlpha: z.ZodOptional<z.ZodNumber>;
+            }, z.core.$strip>>;
+            shadow: z.ZodOptional<z.ZodObject<{
+                blur: z.ZodNumber;
+                dx: z.ZodNumber;
+                dy: z.ZodNumber;
+                alpha: z.ZodNumber;
+            }, z.core.$strip>>;
+            chart: z.ZodOptional<z.ZodObject<{
+                type: z.ZodEnum<{
+                    area: "area";
+                    bar: "bar";
+                    column: "column";
+                    doughnut: "doughnut";
+                    line: "line";
+                    pie: "pie";
+                }>;
+                categories: z.ZodArray<z.ZodString>;
+                series: z.ZodArray<z.ZodObject<{
+                    name: z.ZodString;
+                    values: z.ZodArray<z.ZodNumber>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+            table: z.ZodOptional<z.ZodObject<{
+                headers: z.ZodArray<z.ZodString>;
+                rows: z.ZodArray<z.ZodArray<z.ZodString>>;
+            }, z.core.$strip>>;
+            x2: z.ZodOptional<z.ZodNumber>;
+            y2: z.ZodOptional<z.ZodNumber>;
+            dash: z.ZodOptional<z.ZodEnum<{
+                dash: "dash";
+                dot: "dot";
+                solid: "solid";
+            }>>;
+            arrow: z.ZodOptional<z.ZodEnum<{
+                both: "both";
+                end: "end";
+                none: "none";
+            }>>;
+            preset: z.ZodOptional<z.ZodString>;
+            strokeOnly: z.ZodOptional<z.ZodBoolean>;
+            icon: z.ZodOptional<z.ZodString>;
+            link: z.ZodOptional<z.ZodNumber>;
+            diagram: z.ZodOptional<z.ZodObject<{
+                layout: z.ZodEnum<{
+                    [x: string]: string;
+                }>;
+                items: z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                    title: z.ZodString;
+                    body: z.ZodOptional<z.ZodString>;
+                }, z.core.$strip>]>>;
+            }, z.core.$strip>>;
+            device: z.ZodOptional<z.ZodObject<{
+                type: z.ZodEnum<{
+                    agendaList: "agendaList";
+                    calloutNote: "calloutNote";
+                    comparePlanes: "comparePlanes";
+                    iconLabelGrid: "iconLabelGrid";
+                    kpiRow: "kpiRow";
+                    numberedList: "numberedList";
+                    quoteBlock: "quoteBlock";
+                    stepStrip: "stepStrip";
+                    takeawayBand: "takeawayBand";
+                }>;
+                items: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                    title: z.ZodOptional<z.ZodString>;
+                    body: z.ZodOptional<z.ZodString>;
+                    value: z.ZodOptional<z.ZodString>;
+                    note: z.ZodOptional<z.ZodString>;
+                    icon: z.ZodOptional<z.ZodString>;
+                    target: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>]>>>;
+                text: z.ZodOptional<z.ZodString>;
+                attribution: z.ZodOptional<z.ZodString>;
+                icon: z.ZodOptional<z.ZodString>;
+                left: z.ZodOptional<z.ZodObject<{
+                    title: z.ZodString;
+                    points: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>>;
+                right: z.ZodOptional<z.ZodObject<{
+                    title: z.ZodString;
+                    points: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+            bbox: z.ZodOptional<z.ZodObject<{
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                w: z.ZodNumber;
+                h: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        takeaway: z.ZodOptional<z.ZodString>;
+        footnote: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
 /**
@@ -441,7 +1091,7 @@ export declare const CanvasDeckSchema: z.ZodObject<{
                 surface: "surface";
             }>>;
         }, z.core.$strip>>;
-        elements: z.ZodArray<z.ZodObject<{
+        elements: z.ZodDefault<z.ZodArray<z.ZodObject<{
             slot: z.ZodOptional<z.ZodString>;
             kind: z.ZodEnum<{
                 bar: "bar";
@@ -595,6 +1245,330 @@ export declare const CanvasDeckSchema: z.ZodObject<{
                     points: z.ZodArray<z.ZodString>;
                 }, z.core.$strip>>;
             }, z.core.$strip>>;
+        }, z.core.$strip>>>;
+        slots: z.ZodOptional<z.ZodObject<{
+            composition: z.ZodOptional<z.ZodEnum<{
+                band: "band";
+                grid: "grid";
+                "header-stack": "header-stack";
+                sidebar: "sidebar";
+                split: "split";
+            }>>;
+            eyebrow: z.ZodOptional<z.ZodString>;
+            title: z.ZodString;
+            lede: z.ZodOptional<z.ZodString>;
+            carrier: z.ZodOptional<z.ZodObject<{
+                slot: z.ZodOptional<z.ZodString>;
+                kind: z.ZodEnum<{
+                    bar: "bar";
+                    chart: "chart";
+                    device: "device";
+                    diagram: "diagram";
+                    ellipse: "ellipse";
+                    icon: "icon";
+                    image: "image";
+                    line: "line";
+                    overlay: "overlay";
+                    rule: "rule";
+                    shape: "shape";
+                    surface: "surface";
+                    table: "table";
+                    text: "text";
+                }>;
+                paintRole: z.ZodOptional<z.ZodEnum<{
+                    accent: "accent";
+                    accentSoft: "accentSoft";
+                    bg: "bg";
+                    ink: "ink";
+                    line: "line";
+                    muted: "muted";
+                    surface: "surface";
+                }>>;
+                text: z.ZodOptional<z.ZodString>;
+                runs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    text: z.ZodString;
+                    emphasis: z.ZodOptional<z.ZodEnum<{
+                        accent: "accent";
+                        bold: "bold";
+                        mono: "mono";
+                    }>>;
+                }, z.core.$strip>>>;
+                fontSize: z.ZodOptional<z.ZodNumber>;
+                fontWeight: z.ZodOptional<z.ZodNumber>;
+                align: z.ZodOptional<z.ZodEnum<{
+                    end: "end";
+                    middle: "middle";
+                    start: "start";
+                }>>;
+                src: z.ZodOptional<z.ZodString>;
+                rx: z.ZodOptional<z.ZodNumber>;
+                fillAlpha: z.ZodOptional<z.ZodNumber>;
+                italic: z.ZodOptional<z.ZodBoolean>;
+                caps: z.ZodOptional<z.ZodLiteral<"all">>;
+                glow: z.ZodOptional<z.ZodBoolean>;
+                treatment: z.ZodOptional<z.ZodEnum<{
+                    [x: string]: string;
+                }>>;
+                gradient: z.ZodOptional<z.ZodObject<{
+                    angle: z.ZodNumber;
+                    toRole: z.ZodEnum<{
+                        accent: "accent";
+                        accentSoft: "accentSoft";
+                        bg: "bg";
+                        ink: "ink";
+                        line: "line";
+                        muted: "muted";
+                        surface: "surface";
+                    }>;
+                    fromAlpha: z.ZodOptional<z.ZodNumber>;
+                    toAlpha: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>>;
+                shadow: z.ZodOptional<z.ZodObject<{
+                    blur: z.ZodNumber;
+                    dx: z.ZodNumber;
+                    dy: z.ZodNumber;
+                    alpha: z.ZodNumber;
+                }, z.core.$strip>>;
+                chart: z.ZodOptional<z.ZodObject<{
+                    type: z.ZodEnum<{
+                        area: "area";
+                        bar: "bar";
+                        column: "column";
+                        doughnut: "doughnut";
+                        line: "line";
+                        pie: "pie";
+                    }>;
+                    categories: z.ZodArray<z.ZodString>;
+                    series: z.ZodArray<z.ZodObject<{
+                        name: z.ZodString;
+                        values: z.ZodArray<z.ZodNumber>;
+                    }, z.core.$strip>>;
+                }, z.core.$strip>>;
+                table: z.ZodOptional<z.ZodObject<{
+                    headers: z.ZodArray<z.ZodString>;
+                    rows: z.ZodArray<z.ZodArray<z.ZodString>>;
+                }, z.core.$strip>>;
+                x2: z.ZodOptional<z.ZodNumber>;
+                y2: z.ZodOptional<z.ZodNumber>;
+                dash: z.ZodOptional<z.ZodEnum<{
+                    dash: "dash";
+                    dot: "dot";
+                    solid: "solid";
+                }>>;
+                arrow: z.ZodOptional<z.ZodEnum<{
+                    both: "both";
+                    end: "end";
+                    none: "none";
+                }>>;
+                preset: z.ZodOptional<z.ZodString>;
+                strokeOnly: z.ZodOptional<z.ZodBoolean>;
+                icon: z.ZodOptional<z.ZodString>;
+                link: z.ZodOptional<z.ZodNumber>;
+                diagram: z.ZodOptional<z.ZodObject<{
+                    layout: z.ZodEnum<{
+                        [x: string]: string;
+                    }>;
+                    items: z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                        title: z.ZodString;
+                        body: z.ZodOptional<z.ZodString>;
+                    }, z.core.$strip>]>>;
+                }, z.core.$strip>>;
+                device: z.ZodOptional<z.ZodObject<{
+                    type: z.ZodEnum<{
+                        agendaList: "agendaList";
+                        calloutNote: "calloutNote";
+                        comparePlanes: "comparePlanes";
+                        iconLabelGrid: "iconLabelGrid";
+                        kpiRow: "kpiRow";
+                        numberedList: "numberedList";
+                        quoteBlock: "quoteBlock";
+                        stepStrip: "stepStrip";
+                        takeawayBand: "takeawayBand";
+                    }>;
+                    items: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                        title: z.ZodOptional<z.ZodString>;
+                        body: z.ZodOptional<z.ZodString>;
+                        value: z.ZodOptional<z.ZodString>;
+                        note: z.ZodOptional<z.ZodString>;
+                        icon: z.ZodOptional<z.ZodString>;
+                        target: z.ZodOptional<z.ZodNumber>;
+                    }, z.core.$strip>]>>>;
+                    text: z.ZodOptional<z.ZodString>;
+                    attribution: z.ZodOptional<z.ZodString>;
+                    icon: z.ZodOptional<z.ZodString>;
+                    left: z.ZodOptional<z.ZodObject<{
+                        title: z.ZodString;
+                        points: z.ZodArray<z.ZodString>;
+                    }, z.core.$strip>>;
+                    right: z.ZodOptional<z.ZodObject<{
+                        title: z.ZodString;
+                        points: z.ZodArray<z.ZodString>;
+                    }, z.core.$strip>>;
+                }, z.core.$strip>>;
+                bbox: z.ZodOptional<z.ZodObject<{
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    w: z.ZodNumber;
+                    h: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+            side: z.ZodOptional<z.ZodObject<{
+                slot: z.ZodOptional<z.ZodString>;
+                kind: z.ZodEnum<{
+                    bar: "bar";
+                    chart: "chart";
+                    device: "device";
+                    diagram: "diagram";
+                    ellipse: "ellipse";
+                    icon: "icon";
+                    image: "image";
+                    line: "line";
+                    overlay: "overlay";
+                    rule: "rule";
+                    shape: "shape";
+                    surface: "surface";
+                    table: "table";
+                    text: "text";
+                }>;
+                paintRole: z.ZodOptional<z.ZodEnum<{
+                    accent: "accent";
+                    accentSoft: "accentSoft";
+                    bg: "bg";
+                    ink: "ink";
+                    line: "line";
+                    muted: "muted";
+                    surface: "surface";
+                }>>;
+                text: z.ZodOptional<z.ZodString>;
+                runs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    text: z.ZodString;
+                    emphasis: z.ZodOptional<z.ZodEnum<{
+                        accent: "accent";
+                        bold: "bold";
+                        mono: "mono";
+                    }>>;
+                }, z.core.$strip>>>;
+                fontSize: z.ZodOptional<z.ZodNumber>;
+                fontWeight: z.ZodOptional<z.ZodNumber>;
+                align: z.ZodOptional<z.ZodEnum<{
+                    end: "end";
+                    middle: "middle";
+                    start: "start";
+                }>>;
+                src: z.ZodOptional<z.ZodString>;
+                rx: z.ZodOptional<z.ZodNumber>;
+                fillAlpha: z.ZodOptional<z.ZodNumber>;
+                italic: z.ZodOptional<z.ZodBoolean>;
+                caps: z.ZodOptional<z.ZodLiteral<"all">>;
+                glow: z.ZodOptional<z.ZodBoolean>;
+                treatment: z.ZodOptional<z.ZodEnum<{
+                    [x: string]: string;
+                }>>;
+                gradient: z.ZodOptional<z.ZodObject<{
+                    angle: z.ZodNumber;
+                    toRole: z.ZodEnum<{
+                        accent: "accent";
+                        accentSoft: "accentSoft";
+                        bg: "bg";
+                        ink: "ink";
+                        line: "line";
+                        muted: "muted";
+                        surface: "surface";
+                    }>;
+                    fromAlpha: z.ZodOptional<z.ZodNumber>;
+                    toAlpha: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>>;
+                shadow: z.ZodOptional<z.ZodObject<{
+                    blur: z.ZodNumber;
+                    dx: z.ZodNumber;
+                    dy: z.ZodNumber;
+                    alpha: z.ZodNumber;
+                }, z.core.$strip>>;
+                chart: z.ZodOptional<z.ZodObject<{
+                    type: z.ZodEnum<{
+                        area: "area";
+                        bar: "bar";
+                        column: "column";
+                        doughnut: "doughnut";
+                        line: "line";
+                        pie: "pie";
+                    }>;
+                    categories: z.ZodArray<z.ZodString>;
+                    series: z.ZodArray<z.ZodObject<{
+                        name: z.ZodString;
+                        values: z.ZodArray<z.ZodNumber>;
+                    }, z.core.$strip>>;
+                }, z.core.$strip>>;
+                table: z.ZodOptional<z.ZodObject<{
+                    headers: z.ZodArray<z.ZodString>;
+                    rows: z.ZodArray<z.ZodArray<z.ZodString>>;
+                }, z.core.$strip>>;
+                x2: z.ZodOptional<z.ZodNumber>;
+                y2: z.ZodOptional<z.ZodNumber>;
+                dash: z.ZodOptional<z.ZodEnum<{
+                    dash: "dash";
+                    dot: "dot";
+                    solid: "solid";
+                }>>;
+                arrow: z.ZodOptional<z.ZodEnum<{
+                    both: "both";
+                    end: "end";
+                    none: "none";
+                }>>;
+                preset: z.ZodOptional<z.ZodString>;
+                strokeOnly: z.ZodOptional<z.ZodBoolean>;
+                icon: z.ZodOptional<z.ZodString>;
+                link: z.ZodOptional<z.ZodNumber>;
+                diagram: z.ZodOptional<z.ZodObject<{
+                    layout: z.ZodEnum<{
+                        [x: string]: string;
+                    }>;
+                    items: z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                        title: z.ZodString;
+                        body: z.ZodOptional<z.ZodString>;
+                    }, z.core.$strip>]>>;
+                }, z.core.$strip>>;
+                device: z.ZodOptional<z.ZodObject<{
+                    type: z.ZodEnum<{
+                        agendaList: "agendaList";
+                        calloutNote: "calloutNote";
+                        comparePlanes: "comparePlanes";
+                        iconLabelGrid: "iconLabelGrid";
+                        kpiRow: "kpiRow";
+                        numberedList: "numberedList";
+                        quoteBlock: "quoteBlock";
+                        stepStrip: "stepStrip";
+                        takeawayBand: "takeawayBand";
+                    }>;
+                    items: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodObject<{
+                        title: z.ZodOptional<z.ZodString>;
+                        body: z.ZodOptional<z.ZodString>;
+                        value: z.ZodOptional<z.ZodString>;
+                        note: z.ZodOptional<z.ZodString>;
+                        icon: z.ZodOptional<z.ZodString>;
+                        target: z.ZodOptional<z.ZodNumber>;
+                    }, z.core.$strip>]>>>;
+                    text: z.ZodOptional<z.ZodString>;
+                    attribution: z.ZodOptional<z.ZodString>;
+                    icon: z.ZodOptional<z.ZodString>;
+                    left: z.ZodOptional<z.ZodObject<{
+                        title: z.ZodString;
+                        points: z.ZodArray<z.ZodString>;
+                    }, z.core.$strip>>;
+                    right: z.ZodOptional<z.ZodObject<{
+                        title: z.ZodString;
+                        points: z.ZodArray<z.ZodString>;
+                    }, z.core.$strip>>;
+                }, z.core.$strip>>;
+                bbox: z.ZodOptional<z.ZodObject<{
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    w: z.ZodNumber;
+                    h: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+            takeaway: z.ZodOptional<z.ZodString>;
+            footnote: z.ZodOptional<z.ZodString>;
         }, z.core.$strip>>;
     }, z.core.$strip>>;
 }, z.core.$strip>;

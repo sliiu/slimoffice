@@ -43,14 +43,22 @@ export interface AuthorCanvasInput {
     unchanged?: string;
     /** Debug tap: raw model JSON before normalize / zod. */
     onRaw?: (parsed: unknown) => void;
+    /**
+     * Slot layout: content pages (header-stack / split / sidebar / band / grid, no photo, not an
+     * anchor) are written as `slots` and laid out by `deckgen/page-layout.ts`; anchor and photo
+     * pages stay authored. Off = every page is authored with bboxes.
+     */
+    slots?: boolean;
 }
+/** Is this page written as slots (geometry by code) in slot mode? */
+export declare function isSlotPage(job: PageJob, images: Map<number, string>): boolean;
 export interface AuthorCanvasResult {
     systemId: CanvasSystemId;
     slides: FilledSlide[];
     palette?: CanvasDeck["palette"];
     themeId?: CanvasDeck["themeId"];
 }
-export declare function canvasAuthorSystemPrompt(brand?: string, lock?: AuthorCanvasInput["lock"], brief?: DeckBrief, host?: HostSkillStore, sample?: boolean): string;
+export declare function canvasAuthorSystemPrompt(brand?: string, lock?: AuthorCanvasInput["lock"], brief?: DeckBrief, host?: HostSkillStore, sample?: boolean, slots?: boolean): string;
 export declare function toFilled(deck: CanvasDeck, jobs: PageJob[], images: Map<number, string>): FilledSlide[];
 /** 少于此页数仍一次写完。再短的稿分段没有收益。 */
 export declare const CANVAS_CHUNK_MIN_PAGES = 10;

@@ -315,3 +315,52 @@ describe("canvas chunks", () => {
     ]);
   });
 });
+
+describe("slot pages", () => {
+  it("marks content pages as slots in the prompt and lays them out in code", async () => {
+    const jobs = jobsFromPages(
+      [
+        { title: "Cover", bullets: [] },
+        { title: "Four steps", bullets: ["a", "b", "c", "d"], composition: "band", rhythm: "dense", relationships: "order" },
+        { title: "Close", bullets: [] },
+      ],
+      "T",
+    );
+    let prompt = "";
+    let system = "";
+    const model = new MockLanguageModelV3({
+      doGenerate: async (opts) => {
+        const user = opts.prompt.find((m) => m.role === "user");
+        const sys = opts.prompt.find((m) => m.role === "system");
+        prompt = user && Array.isArray(user.content) ? user.content.map((c) => ("text" in c ? c.text : "")).join("") : "";
+        system = sys && typeof sys.content === "string" ? sys.content : "";
+        return textResult(
+          JSON.stringify({
+            systemId: "data-dense",
+            slides: [
+              { job: "cover", elements: [{ kind: "text", bbox: { x: 64, y: 300, w: 900, h: 80 }, text: "Cover", fontSize: 56 }] },
+              { job: "sequence", slots: { title: "Four steps", carrier: { type: "stepStrip", items: ["Ingest", "Evaluate", "Embed", "Narrow"] }, takeaway: "Evaluate before rollout." } },
+              { job: "close", elements: [{ kind: "text", bbox: { x: 64, y: 300, w: 900, h: 80 }, text: "Close", fontSize: 56 }] },
+            ],
+          }),
+        );
+      },
+    });
+    const out = await authorCanvasDeck({ model: model as never, topic: "T", jobs, images: new Map(), slots: true });
+    assert.match(system, /SLOT PAGES/, `system prompt: ${system.slice(0, 80)}`);
+    assert.match(prompt, /WRITE THIS PAGE AS SLOTS/, prompt.slice(0, 300));
+    const marks = prompt.split(/(?=^PAGE \d)/m).filter((p) => /WRITE THIS PAGE AS SLOTS/.test(p));
+    assert.equal(marks.length, 1, "only the content page is a slot page");
+    assert.match(marks[0]!, /^PAGE 1 job=/);
+    const page = out.slides[1]!;
+    const title = page.elements.find((e) => e.slot === "title");
+    assert.equal(title?.text, "Four steps");
+    assert.ok(page.elements.some((e) => e.slot === "band" && e.kind === "surface"), "band composition from the brief");
+    assert.ok(page.elements.some((e) => e.slot === "carrier" && e.device?.type === "stepStrip" && e.bbox.w > 600));
+    assert.ok(page.elements.some((e) => e.slot === "takeaway" && e.device?.type === "takeawayBand"));
+  });
+
+  it("off by default: no slot rules, no slot markers", () => {
+    assert.doesNotMatch(canvasAuthorSystemPrompt(), /SLOT PAGES/);
+  });
+});

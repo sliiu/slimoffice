@@ -57,3 +57,13 @@ export declare function isConfigUsable(config: AiConfig): boolean;
  * if we send a vision payload — skip those and fall back to on-device OCR.
  */
 export declare function textModelSupportsVision(text: TextConfig): boolean;
+/**
+ * 单独配置的看图评审模型解析成一份完整 TextConfig；没配（provider 和 model 都空）时 undefined。
+ * apiKey / baseURL 留空且与文本模型同一 provider 时沿用文本模型的；代理、header 跟随文本模型。
+ */
+export declare function reviewTextConfig(config: AiConfig): TextConfig | undefined;
+/**
+ * 看图评审用哪份文本配置：单独配置且能看图的评审模型 → 能看图的文本模型 → 都不行时 undefined
+ * （这一轮跳过，不往看不了图的模型发截图）。
+ */
+export declare function visionReviewTextConfig(config: AiConfig): TextConfig | undefined;

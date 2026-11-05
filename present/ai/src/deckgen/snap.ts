@@ -188,9 +188,14 @@ const NUMERAL_ONLY = /^[\d０-９.,%+\-–—×x\s·/]+$/;
  * ("04"), not a KPI value ("41%"), not an eyebrow. Shared by snap (forces) and reflect (checks).
  */
 export function findContentTitle(elements: FilledEl[], sys: VisualSystem): FilledEl | undefined {
+  // A slot page (and any author who named it) says which text is the title.
+  const named = elements.find((e) => e.kind === "text" && e.slot === "title" && e.text?.trim());
+  if (named) return named;
   let best: FilledEl | undefined;
   for (const e of elements) {
     if (e.kind !== "text" || !e.text) continue;
+    // Device parts (KPI values such as "4.1 分", tile titles) are never the page title.
+    if (e.slot.includes(".")) continue;
     // Judge by the first line, not the box centre: a two-line title in a generous sidebar box
     // (y=180, h=150) is still the section title even though the box centre is past the third.
     const firstLine = Math.min(e.bbox.h, (e.fontSize ?? sys.typeScale.h2) * 1.4);

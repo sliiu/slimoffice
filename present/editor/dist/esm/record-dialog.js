@@ -1,12 +1,12 @@
 import { bindEditorModal } from "./dialog.js";
 import { t } from "./i18n/index.js";
-import { listCaptureDevices } from "./lecture-devices.js";
+import { listCaptureDevices, preferredCaptureDeviceId } from "./lecture-devices.js";
 import { computePipDrawRect } from "./record-composite.js";
 import { cameraCanFlip, exactFacingConstraints, modeUsesCamera, micCanBeDisabled, modeUsesMic, recordPreviewVisible, oppositeFacing, otherCameraId, recordAudioConstraints, recordPreviewMirrored, recordVideoConstraints, } from "./record-devices.js";
 import { loadPipPreferences } from "./record-show-overlay.js";
 import { exportPipCornerCoverageBreakdownText, exportPipCoverageSpreadText, exportRecordModeReadinessText, exportRecordReadinessText, exportRecordingCompactText, exportRecordingSummaryText, exportRecordSettingsCompactText, exportRecordSettingsText, exportRecordWorkspaceCompactText, exportRecordWorkspaceSummaryText, formatPipCornerCoverageBreakdownLine, formatPipCoverageSpreadLine, formatRecordModePipLine, formatRecordReadinessLine, formatRecordWorkspaceStatsLine, recordModeSupportsPip, } from "./record-meta.js";
 import { copyTextToClipboard } from "./insert-meta.js";
-import { DIALOG_INPUT_CSS, DIALOG_OVERLAY_CSS, createDevOnlyActionSelect } from "./ui-style.js";
+import { DEV_ONLY_CLASS, DIALOG_INPUT_CSS, DIALOG_OVERLAY_CSS, createDevOnlyActionSelect } from "./ui-style.js";
 import { downloadBlob, ensureExportRecordingBlob, formatRecordingDuration, formatRecordingFileSize, RECORDING_LARGE_BYTES, } from "./video-export.js";
 const RECORD_MODE_STORAGE_KEY = "pp.record.mode";
 export function loadRecordMode() {
@@ -429,7 +429,7 @@ export function openRecordDialog(doc, opts) {
         modal.appendChild(modeRow);
         const preview = doc.createElement("video");
         preview.style.cssText = "width:100%;max-height:240px;background:#000;border-radius:6px";
-        preview.controls = true;
+        preview.controls = false;
         preview.playsInline = true;
         modal.appendChild(preview);
         const deviceStack = doc.createElement("div");
@@ -472,12 +472,14 @@ export function openRecordDialog(doc, opts) {
         const readinessLine = doc.createElement("div");
         readinessLine.style.cssText =
             "font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35;word-break:break-word";
-        modal.appendChild(readinessLine);
         const pipDetailLine = doc.createElement("div");
         pipDetailLine.style.cssText =
             "font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35;word-break:break-word";
         pipDetailLine.hidden = true;
-        modal.appendChild(pipDetailLine);
+        const diagLines = doc.createElement("div");
+        diagLines.className = DEV_ONLY_CLASS;
+        diagLines.append(readinessLine, pipDetailLine);
+        modal.appendChild(diagLines);
         const footer = doc.createElement("div");
         footer.style.cssText = "display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap";
         const startBtn = doc.createElement("button");
@@ -773,6 +775,11 @@ export function openRecordDialog(doc, opts) {
             }
             if (prev && [...sel.options].some((o) => o.value === prev))
                 sel.value = prev;
+            else {
+                const preferred = preferredCaptureDeviceId(devices);
+                if (preferred && [...sel.options].some((o) => o.value === preferred))
+                    sel.value = preferred;
+            }
         };
         const stopLivePreview = () => {
             previewGen += 1;

@@ -1,5 +1,5 @@
 import { layoutBoxWhisker, layoutFunnel, layoutHistogram, layoutPareto, layoutRegion, layoutSunburst, layoutTreemap, layoutWaterfall, normalizeChartExSlices, } from "./chart-ex-render.js";
-import { applyValueAxisScale, barGeometry, barLabelAnchor, chart3DOffset, chartPadding, chartTextStyle, comboXyPlotX, linearFit, niceTicks, pointLabelText, seriesXyPoints, shadeHex, surfaceIsoQuads } from "./chart-geom.js";
+import { applyValueAxisScale, barGeometry, barLabelAnchor, chart3DOffset, chartLeftPad, chartPadding, chartTextStyle, comboXyPlotX, linearFit, niceTicks, pointLabelText, seriesXyPoints, shadeHex, surfaceIsoQuads } from "./chart-geom.js";
 /** Text / line colours of the chart being drawn; set once per `drawChartCanvas` (drawing is synchronous). */
 let ts = chartTextStyle({});
 export function drawChartCanvas(ctx, shape) {
@@ -9,7 +9,7 @@ export function drawChartCanvas(ctx, shape) {
     const padTop = def.title ? 28 : 8;
     const pads = chartPadding(def, ts.size);
     const padBottom = pads.bottom;
-    const padLeft = 40;
+    const padLeft = chartLeftPad(def, ts.size, w);
     const padRight = 12;
     ctx.save();
     ctx.fillStyle = ts.text;

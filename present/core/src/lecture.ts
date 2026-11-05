@@ -31,6 +31,25 @@ export function lectureTakeFor(lecture: Lecture | undefined, slideId: string): L
   return lecture?.takes.find((t) => t.slideId === slideId);
 }
 
+/**
+ * 出镜在幻灯片坐标里的位置。宽度按短边的 18% / 26% / 36%，和放映层的 vmin 一致；画面 4:3。
+ * 没写角落和大小时用右下、中号。
+ */
+export function lecturePipRect(
+  size: { width: number; height: number },
+  frame?: LectureFrame,
+): { x: number; y: number; w: number; h: number } {
+  const vmin = Math.min(size.width, size.height);
+  const frac = frame?.size === "s" ? 0.18 : frame?.size === "l" ? 0.36 : 0.26;
+  const w = vmin * frac;
+  const h = w * 0.75;
+  const pad = vmin * (16 / 720);
+  const corner = frame?.corner ?? "br";
+  const x = corner === "tl" || corner === "bl" ? pad : size.width - pad - w;
+  const y = corner === "tl" || corner === "tr" ? pad : size.height - pad - h;
+  return { x, y, w, h };
+}
+
 /** 两个开关都开着才播出镜、旁白、自动翻页和讲解点击。 */
 export function lecturePlaybackEnabled(useTimings: boolean, playNarrations: boolean): boolean {
   return useTimings && playNarrations;

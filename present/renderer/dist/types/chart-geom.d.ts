@@ -26,6 +26,13 @@ export declare function linearFit(xs: number[], ys: number[]): {
 /** Rough advance of `text` at `size` px: CJK glyphs are square, Latin about 0.58em. Legend rows used `length × 6` and overprinted CJK series names. */
 export declare function estimateTextWidth(text: string, size: number): number;
 /**
+ * Left padding of the plot. 40px holds value-axis ticks; a horizontal bar chart puts its category
+ * names there instead (right-aligned at plot.x − 6), and "查找信息时间占比" ran off the chart's left
+ * edge — and off the slide when the chart sat at the margin. Sized to the longest category, capped
+ * at 40 % of the chart width.
+ */
+export declare function chartLeftPad(def: ChartDef, textSize: number, width: number): number;
+/**
  * Bottom padding of the plot: room for the category labels (they used to be drawn 14px under
  * the plot into an 8px pad, and the legend was then drawn over them) plus a legend row.
  */

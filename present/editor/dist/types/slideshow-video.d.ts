@@ -1,4 +1,4 @@
-import type { Presentation, Slide } from "@sliiu/present-core";
+import { type Presentation, type Slide } from "@sliiu/present-core";
 /** Cap click steps recorded per slide so a looping timeline cannot run away. */
 export declare const MAX_VIDEO_CLICK_STEPS = 24;
 /** Cap the playing time of one step (seconds, video time) so indefinite loops end. */
@@ -22,6 +22,8 @@ export interface SlideshowVideoOptions {
     speed?: number;
     /** `mp4` converts the recording in the browser with ffmpeg.wasm; `webm` returns the recording as is. */
     format?: VideoFormat;
+    /** 讲解出镜的 `idb:` 引用由调用方换成可播放地址。http(s) / blob 引用直接用。 */
+    resolveLectureCamera?: (ref: string) => Promise<string | null>;
     onProgress?: (progress: SlideshowVideoProgress) => void;
 }
 export type VideoFormat = "mp4" | "webm";
@@ -50,13 +52,22 @@ export declare function videoOutputSize(size: {
 /** Number of frames a duration occupies at `fps` after applying `speed`; at least 1 for positive input. */
 export declare function framesFor(seconds: number, fps: number, speed: number): number;
 /**
+ * 旁白音轨。页内普通音频和嵌入视频的声音不在这里。
+ */
+export declare function narrationClips(slide: Slide): {
+    src: string;
+    volume: number;
+}[];
+/**
  * Render the deck as a video by playing it: every visible slide's on-load animations run,
  * each click is advanced once the previous one settles (`clickGap` apart), the slide then
  * holds for its rehearsed time (or `slideHold`), and non-cut transitions crossfade into the
  * next slide. Animations are sampled at `fps` through a manual ticker, so the timeline is
- * exact regardless of render cost. `speed` scales animations, holds and fades alike.
+ * exact regardless of render cost. `speed` scales animations, holds, fades, narration and
+ * the lecture camera alike.
  *
- * Not captured: audio, and video shapes (they stay on their poster frame).
+ * Narration audio (`isNarration`) is mixed into the recording. A lecture camera plays in
+ * the same corner as slideshow. Other video shapes stay on their poster frame.
  */
 export declare function exportSlideshowVideo(pres: Presentation, opts?: SlideshowVideoOptions): Promise<{
     blob: Blob;

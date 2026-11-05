@@ -9,7 +9,7 @@
 //   3. zod schema 负责解析未知输入（localStorage JSON / env）并补默认值，
 //      调用方拿到的 AiConfig 永远是完整结构。
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AiConfigSchema = exports.ImageryConfigSchema = exports.ImageConfigSchema = exports.TextConfigSchema = exports.TEXT_REQUEST_CONCURRENCY_DEFAULT = exports.TEXT_REQUEST_CONCURRENCY_MAX = exports.TEXT_REQUEST_CONCURRENCY_MIN = exports.IMAGE_GEN_CONCURRENCY_DEFAULT = exports.IMAGE_GEN_CONCURRENCY_MAX = exports.IMAGE_GEN_CONCURRENCY_MIN = exports.IMAGE_PROVIDER_KINDS = exports.TEXT_PROVIDER_KINDS = void 0;
+exports.AiConfigSchema = exports.ReviewConfigSchema = exports.ImageryConfigSchema = exports.ImageConfigSchema = exports.TextConfigSchema = exports.TEXT_REQUEST_CONCURRENCY_DEFAULT = exports.TEXT_REQUEST_CONCURRENCY_MAX = exports.TEXT_REQUEST_CONCURRENCY_MIN = exports.IMAGE_GEN_CONCURRENCY_DEFAULT = exports.IMAGE_GEN_CONCURRENCY_MAX = exports.IMAGE_GEN_CONCURRENCY_MIN = exports.IMAGE_PROVIDER_KINDS = exports.TEXT_PROVIDER_KINDS = void 0;
 exports.defaultConfig = defaultConfig;
 exports.parseConfig = parseConfig;
 exports.parseCustomHeaders = parseCustomHeaders;
@@ -111,8 +111,20 @@ exports.ImageryConfigSchema = zod_1.z.object({
     /** Pexels API Key。 */
     pexelsKey: zod_1.z.string().default(""),
 });
+/**
+ * 看图评审模型（可选）。生成后截全部页给它看，挑最差的几页重排。文本模型本身能看图时
+ * 可以不配；文本模型看不了图（DeepSeek 等）时，配一个能看图的模型才有这一轮。
+ * provider 空 = 不单独配置。apiKey / baseURL 留空且 provider 与文本模型相同时沿用文本模型的。
+ */
+exports.ReviewConfigSchema = zod_1.z.object({
+    provider: zod_1.z.enum(["", ...exports.TEXT_PROVIDER_KINDS]).default("").catch(""),
+    model: zod_1.z.string().default(""),
+    apiKey: zod_1.z.string().default(""),
+    baseURL: zod_1.z.string().default(""),
+});
 exports.AiConfigSchema = zod_1.z.object({
     text: exports.TextConfigSchema.prefault({}),
+    review: exports.ReviewConfigSchema.optional(),
     image: exports.ImageConfigSchema.prefault({}),
     imagery: exports.ImageryConfigSchema.prefault({}),
     lockLayouts: zod_1.z.boolean().default(true).catch(true),

@@ -39,6 +39,8 @@ export {
   clampTextRequestConcurrency,
   isConfigUsable,
   textModelSupportsVision,
+  reviewTextConfig,
+  visionReviewTextConfig,
   browserConfigStore,
   envConfigStore,
   memoryConfigStore,

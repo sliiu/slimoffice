@@ -9,7 +9,7 @@ import {
   formatNarrationReadinessLine,
   isLargeRecording,
 } from "./record-meta";
-import { DIALOG_OVERLAY_CSS, createDevOnlyActionSelect } from "./ui-style";
+import { DEV_ONLY_CLASS, DIALOG_OVERLAY_CSS, createDevOnlyActionSelect } from "./ui-style";
 import {
   downloadBlob,
   ensureExportRecordingBlob,
@@ -75,6 +75,7 @@ export function openNarrationCompleteDialog(
   modal.appendChild(durationEl);
 
   const readinessLine = doc.createElement("p");
+  readinessLine.className = DEV_ONLY_CLASS;
   readinessLine.style.cssText = "margin:0;font-size:11px;color:var(--muted-foreground,#a1a1aa);line-height:1.35";
   readinessLine.textContent = formatNarrationReadinessLine({ bytes: blob.size, rehearse: opts?.rehearse });
   modal.appendChild(readinessLine);

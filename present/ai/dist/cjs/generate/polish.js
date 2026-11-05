@@ -199,7 +199,9 @@ async function enrichOutlineContent(outlineInput, guidance, opts, ctx) {
     return clampOutlineToDeckgenSlots(outline);
 }
 /** Images → QA repair → art director. Mutates `pres`. Motion stays in the adapter. */
-async function polishGeneratedDeck(pres, outline, guidance, opts, ctx) {
+async function polishGeneratedDeck(pres, outline, guidance, opts, ctx, 
+/** The canvas path's vision review, already run on the deck; reported instead of a second call. */
+priorReview) {
     const config = opts.config ?? (0, types_1.defaultConfig)();
     const allowImagery = opts.enableImageEnrichment !== false && (0, fetch_enrichment_image_1.imageEnrichmentAvailable)(config);
     const canvasDone = Boolean(pres.meta?.deckgen?.canvas);
@@ -251,12 +253,20 @@ async function polishGeneratedDeck(pres, outline, guidance, opts, ctx) {
                 console.warn("[ai] qa pass failed (non-fatal):", e);
         }
     }
+    if (priorReview) {
+        opts.onArtDirectorReport?.(priorReview);
+        return;
+    }
     if (opts.enableArtDirector !== false && (0, presets_1.isConfigUsable)(config) && ctx.budget.tryConsume()) {
         try {
             (0, abort_1.throwIfAborted)(opts.signal);
             ctx.emit({ stage: "compile", progress: 0.88, detailKey: "artDirector.reviewing" });
-            const { model } = (0, client_1.createLlm)(config.text);
-            const screenshots = (await opts.captureReviewShots?.(pres)) ?? [];
+            // Screenshots go to a model that can see (the configured review model, else a vision-capable
+            // text model). A text-only model (DeepSeek chat, …) rejects image parts — sending them only
+            // buys a failed call and a retry — so it reviews from the deck summary alone.
+            const visionText = (0, presets_1.visionReviewTextConfig)(config);
+            const { model } = (0, client_1.createLlm)(visionText ?? config.text);
+            const screenshots = visionText ? ((await opts.captureReviewShots?.(pres)) ?? []) : [];
             (0, abort_1.throwIfAborted)(opts.signal);
             const report = await (0, art_director_1.reviewPresentation)(pres, {
                 model,
