@@ -1,0 +1,106 @@
+{
+  "name": "slim-office-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Slim Office desktop. Presentations open from files on this computer.",
+  "author": "Sliiu Inc",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "electron/main.mjs",
+  "scripts": {
+    "dev": "node electron/dev.mjs",
+    "build": "vite build",
+    "start": "electron .",
+    "pack": "pnpm build && electron-builder --mac --win --linux",
+    "pack:mac": "pnpm build && electron-builder --mac",
+    "smoke": "node smoke.mjs"
+  },
+  "dependencies": {
+    "@sliiu/present-core": "^0.1.2",
+    "@sliiu/present-editor": "^0.1.2",
+    "@sliiu/present-parser": "^0.1.2",
+    "@sliiu/present-player": "^0.1.2",
+    "@sliiu/present-renderer": "^0.1.2",
+    "@sliiu/present-serializer": "^0.1.2",
+    "@sliiu/present-ui": "^0.1.2"
+  },
+  "devDependencies": {
+    "electron": "^35.7.5",
+    "electron-builder": "^26.0.12",
+    "vite": "^8.3.1"
+  },
+  "build": {
+    "appId": "com.sliiu.slimppt",
+    "productName": "SlimPPT",
+    "executableName": "SlimPPT",
+    "copyright": "Copyright © Sliiu Inc",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "out"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "pptx",
+        "name": "PowerPoint Presentation",
+        "role": "Editor"
+      },
+      {
+        "ext": "pptm",
+        "name": "PowerPoint Macro-Enabled Presentation",
+        "role": "Editor"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "category": "Office",
+      "artifactName": "SlimPPT-${version}-linux-${arch}.${ext}",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  }
+}
