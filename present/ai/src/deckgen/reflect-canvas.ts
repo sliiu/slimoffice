@@ -205,7 +205,11 @@ export function reflectCanvas(
     const brief = briefs?.[i];
     if (brief) {
       const rel = brief.relationships;
-      if (rel && rel !== "none" && !carriesRelationship(s)) {
+      // Anchor pages (cover / close / section / statement) carry display type, not structure: a
+      // closing page that says "先修数据，再谈模型" has no ordered parts to draw, and the outline
+      // organizes them as `relationships=order` all the same. Asking for geometry there is asking
+      // for a device on a page whose whole job is one sentence.
+      if (rel && rel !== "none" && isContentPage(s.layout, brief) && !carriesRelationship(s)) {
         findings.push({
           kind: "design",
           slideIdx: i,

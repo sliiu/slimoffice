@@ -78,12 +78,38 @@ function extractPptx(bytes: Uint8Array): string {
 function extractDocx(bytes: Uint8Array): string {
   const xml = zipText(bytes, "word/document.xml");
   if (!xml) throw new SourceFileError("docx");
-  const paras = xml.split(/<w:p[ >]/);
+  // Walk paragraphs and tables in document order: a table flattened to one long line ("A B C D E F")
+  // loses which value belongs to which column, and the deck then has to guess — the exact thing a
+  // "read the report into slides" feature cannot afford. Rows come out as `| a | b |`, the same
+  // shape the author prompt uses for tables.
   const lines: string[] = [];
-  for (const para of paras) {
-    const bits = [...para.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => decodeXml(m[1] ?? ""));
+  const blocks = xml.match(/<w:tbl[\s\S]*?<\/w:tbl>|<w:p[ >][\s\S]*?<\/w:p>/g) ?? [];
+  for (const block of blocks) {
+    if (block.startsWith("<w:tbl")) {
+      const rows = block.match(/<w:tr[\s\S]*?<\/w:tr>/g) ?? [];
+      const table: string[] = [];
+      for (const row of rows) {
+        const cells = (row.match(/<w:tc[\s\S]*?<\/w:tc>/g) ?? []).map((cell) =>
+          [...cell.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)]
+            .map((m) => decodeXml(m[1] ?? ""))
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim(),
+        );
+        if (cells.some(Boolean)) table.push(`| ${cells.join(" | ")} |`);
+        // Header separator after the first row, so the model reads the row as a header.
+        if (table.length === 1) table.push(`|${cells.map(() => " --- |").join("")}`);
+      }
+      if (table.length) lines.push(...table);
+      continue;
+    }
+    const bits = [...block.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => decodeXml(m[1] ?? ""));
     const line = bits.join("").trim();
     if (line) lines.push(line);
+  }
+  // Hyperlinks live outside `<w:p>` runs in rare hand-built documents; keep their text too.
+  if (!lines.length) {
+    return [...xml.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => decodeXml(m[1] ?? "")).join("\n");
   }
   return lines.join("\n");
 }

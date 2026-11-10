@@ -7,6 +7,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.jobFromOutlineItem = jobFromOutlineItem;
 exports.jobsFromPages = jobsFromPages;
+exports.gridCapable = gridCapable;
 exports.applyPhotoRhythm = applyPhotoRhythm;
 exports.briefsFromJobs = briefsFromJobs;
 const brief_js_1 = require("./brief.js");
@@ -78,12 +79,36 @@ function jobsFromPages(items, deckTitle = "") {
             composition,
         });
     });
+    // A grid composition is a promise to draw tiles. When the page cannot keep it (fewer than three
+    // points, or a carrier that is one object — a chart, a photo, a single sentence), the promise is
+    // broken before the author ever sees it: `reflect-canvas` would otherwise reject the page and the
+    // repair round would spend a call on a page that no layout can satisfy. Re-derive instead.
+    for (const j of jobs) {
+        if (j.composition !== "grid" || gridCapable(j))
+            continue;
+        const prev = j.index > 0 ? jobs[j.index - 1].composition : undefined;
+        let next = (0, brief_js_1.defaultComposition)(j.job, j.rhythm, j.carrier, prev, j.index);
+        if (next === "grid")
+            next = "header-stack";
+        j.composition = next;
+    }
     // Organizer-authored compositions may still repeat back to back; break the runs.
     const fixed = (0, brief_js_1.breakCompositionRuns)(jobs.map((j) => j.composition), jobs.map((j) => j.job));
     fixed.forEach((c, i) => {
         jobs[i].composition = c;
     });
     return jobs;
+}
+/**
+ * Can this page carry a tile grid? Three points is the floor for a 2×2-ish field; a carrier that is
+ * a single object (chart / table / photo / one short line) is one thing, not a grid of things.
+ */
+function gridCapable(job) {
+    if (job.bullets.length < 3)
+        return false;
+    if (job.carrier === "photo" || job.carrier === "chart" || job.carrier === "typeOnly")
+        return false;
+    return true;
 }
 /** Jobs whose page is an anchor by role, whatever rhythm the organizer wrote. */
 const ANCHOR_JOBS = new Set(["cover", "close", "section"]);

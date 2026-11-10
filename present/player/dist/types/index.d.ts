@@ -8,6 +8,7 @@ export { registerEmbeddedFonts, loadEmbeddedFonts } from "./fonts.js";
 export { snapshotSlide, snapshotAll, snapshotsToZip, snapshotsToPdf, snapshotAllForPdf, exportPresentationPdf, snapshotPixelRatio, PDF_EXPORT_DPI, PDF_EXPORT_DPI_HIGH, SCREEN_DPI, } from "./snapshot.js";
 export type { SnapshotOptions, PdfExportOptions } from "./snapshot.js";
 export { slideSizeToPdfPoints, dataUrlsToPdf } from "./pdf.js";
+export { buildPresenterPageHtml, createPresenterBridge, notesForSlide, type PresenterBridge, type PresenterBridgeOptions, type PresenterSnapshot, type RemoteCommand, type RemoteTarget, } from "./presenter-remote.js";
 export { buildStoredZip } from "./zip-store.js";
 export type { ZipFile } from "./zip-store.js";
 export { buildOoxmlPlayback } from "./ooxml-runtime.js";

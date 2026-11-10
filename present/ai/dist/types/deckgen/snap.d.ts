@@ -30,6 +30,15 @@ export declare function isTitleSlot(slot: unknown): boolean;
 /** Rough CJK-aware glyph width in em. */
 export declare function textUnits(text: string): number;
 /**
+ * Balanced break for a two-line display line (cover / section / statement): the renderer wraps by
+ * width, so "AI 如何重塑企业知识管理" at 80px in a 540px box broke between 企 and 业 — the reviewer
+ * called it the first-impression defect of the deck (live review 2026-11-08, page 01). Choose the
+ * break that balances the two lines instead of filling the first, and never break inside a Latin
+ * word or in front of closing punctuation. Returns the text unchanged when one line fits, when the
+ * author already set a break, or when the line needs three.
+ */
+export declare function balancedBreak(text: string, size: number, w: number): string;
+/**
  * A display sentence the author set at 84px in a 700×220 box ("Masters and layouts come along")
  * wraps to three lines and runs 70px past the box into the subtitle below. Step it down the ramp
  * until the estimated wrapped height fits the box (10% slack). Body copy and below is left as
@@ -123,3 +132,13 @@ export declare function snapCanvas(slides: FilledSlide[], sys: VisualSystem, opt
     briefs?: Array<PageBrief | undefined>;
     folio?: boolean;
 }): FilledSlide[];
+/** The eyebrow of a content page: the `eyebrow` slot, else the smallest short kicker text above the title. */
+export declare function eyebrowOf(elements: FilledEl[], sys?: VisualSystem): FilledEl | undefined;
+/**
+ * One eyebrow system for the deck. Authors write "03 / 08 · 耗时对比" on most pages and then drop
+ * the numbering on the ones they re-authored ("现状 · 认知成本"), which reads as two templates in
+ * one deck (live review 2026-11-08, page 02 and 05). When the majority of content pages carry the
+ * prefix, the rest get it too — same page/total as the folio, one separator. A deck where most
+ * eyebrows are plain is left alone: the check follows the author, it does not impose a style.
+ */
+export declare function applyEyebrowNumbering(slides: FilledSlide[], contentOf: (i: number) => boolean, pad: 1 | 2): void;

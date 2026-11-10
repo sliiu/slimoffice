@@ -24,6 +24,7 @@ export { byteRouteFor, filesNeedingDegrade, unknownSourceNames, responsesAuth, t
 export { extractSourceText, SourceFileError } from "./source-files/extract.js";
 export { resolveSourceDelivery, materialFromParts, SourceDegradeDeclined, type ResolvedSources, } from "./source-files/resolve.js";
 export type { ModelFilePart } from "./source-files/complete.js";
+export { defaultPageFetcher, fetchUrlMaterial, htmlToText, htmlTitle, looksLikeUrl, normalizeSourceUrl, urlMaterialBlock, type FetchedPage, type PageFetcher, type UrlMaterial, } from "./source-files/url.js";
 export { compositionDigest, SampleDeckError, sampleOutlineRule, sampleDensityRule, sampleCanvasRule, withPageComposition, } from "./generate/sample-composition.js";
 export { speechPlanFromOutlineItem } from "./generate/reveal-order.js";
 export { layoutsFromTemplate, layoutsFromMasters, presentationFromTemplateOutline, resolveVisualSource, templateUsesPlaceholders, type ResolvedVisualSource, type TemplateLayoutChoice, } from "./generate/template-fill.js";

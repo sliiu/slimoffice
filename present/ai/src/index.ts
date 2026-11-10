@@ -285,6 +285,18 @@ export {
 } from "./source-files/resolve";
 export type { ModelFilePart } from "./source-files/complete";
 export {
+  defaultPageFetcher,
+  fetchUrlMaterial,
+  htmlToText,
+  htmlTitle,
+  looksLikeUrl,
+  normalizeSourceUrl,
+  urlMaterialBlock,
+  type FetchedPage,
+  type PageFetcher,
+  type UrlMaterial,
+} from "./source-files/url";
+export {
   compositionDigest,
   SampleDeckError,
   sampleOutlineRule,

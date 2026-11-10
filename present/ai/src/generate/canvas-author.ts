@@ -51,6 +51,12 @@ export interface AuthorCanvasInput {
   /** Debug tap: raw model JSON before normalize / zod. */
   onRaw?: (parsed: unknown) => void;
   /**
+   * Screenshots of the pages being re-authored, in `only` order. A visual-review repair is the one
+   * pass where the model is told what is wrong with pixels it cannot see; attaching the page as it
+   * renders now lets it judge its own rewrite against the same evidence the reviewer used.
+   */
+  shots?: Array<{ slideIdx: number; dataUrl: string }>;
+  /**
    * Slot layout: content pages (header-stack / split / sidebar / band / grid, no photo, not an
    * anchor) are written as `slots` and laid out by `deckgen/page-layout.ts`; anchor and photo
    * pages stay authored. Off = every page is authored with bboxes.
@@ -398,23 +404,39 @@ export async function authorCanvasDeck(input: AuthorCanvasInput): Promise<Author
   const prompt = [
     `Topic: ${input.topic}`,
     input.repair ? `Repair these issues${only ? "" : ", keep the same page count"}:\n${input.repair}` : "",
+    input.shots?.length
+      ? `These are the pages as they render now (${input.shots.map((s) => `image ${input.shots!.indexOf(s) + 1} = page ${s.slideIdx + 1}`).join(", ")}). Compare the picture with the issues above: a finding that names a measured gap or an overlap is visible in the image, and the rewrite must remove that visible defect, not just reword the copy. Do not copy the current layout — write the page you would have designed for this content.`
+      : "",
     scope,
     pageBrief(input.jobs, input.images, only ? new Set(only) : undefined, Boolean(input.slots) && !input.sampleComposition),
     input.sampleComposition ? `SAMPLE COMPOSITION:\n${input.sampleComposition}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
-
-  const deck = await generateJson({
-    model: input.model,
-    schema: CanvasDeckSchema,
-    system: canvasAuthorSystemPrompt(input.brand, input.lock, input.brief, input.host, Boolean(input.sampleComposition), Boolean(input.slots) && !input.sampleComposition),
-    prompt,
-    signal: input.signal,
-    normalize: normalizeCanvasDeck,
-    ...(input.onUsage ? { onUsage: input.onUsage } : {}),
-    ...(input.onRaw ? { onRaw: input.onRaw } : {}),
+  // Screenshots travel as file parts: the AI SDK's `image` content part is deprecated, and a
+  // `file` part with a media type renders the same on every provider that reads images.
+  const files = (input.shots ?? []).flatMap((s, n) => {
+    const m = /^data:([^;]+);base64,(.*)$/s.exec(s.dataUrl);
+    if (!m) return [];
+    return [{ name: `page-${s.slideIdx + 1}-${n + 1}.png`, mediaType: m[1]!, bytes: Uint8Array.from(Buffer.from(m[2]!, "base64")), route: "chat" as const }];
   });
+
+  const ask = (withFiles: boolean) =>
+    generateJson({
+      model: input.model,
+      schema: CanvasDeckSchema,
+      system: canvasAuthorSystemPrompt(input.brand, input.lock, input.brief, input.host, Boolean(input.sampleComposition), Boolean(input.slots) && !input.sampleComposition),
+      prompt,
+      signal: input.signal,
+      normalize: normalizeCanvasDeck,
+      ...(withFiles && files.length ? { files } : {}),
+      ...(input.onUsage ? { onUsage: input.onUsage } : {}),
+      ...(input.onRaw ? { onRaw: input.onRaw } : {}),
+    });
+  // Some OpenAI-compatible gateways reject a `file` content part while accepting the same image as
+  // an `image` part (the review call). A repair that carries screenshots is an improvement, not a
+  // requirement: fall back to the text-only repair rather than losing the round.
+  const deck = files.length ? await ask(true).catch(() => ask(false)) : await ask(false);
   return {
     systemId: deck.systemId,
     slides: toFilled(deck, jobs, input.images),

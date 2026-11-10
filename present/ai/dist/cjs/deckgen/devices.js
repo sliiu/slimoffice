@@ -151,6 +151,14 @@ function kpiRow(ctx, dev, box) {
     const cellW = (box.w - g * (n - 1)) / n;
     const out = [];
     const boxed = sys.canvas.radius > 0 || sys.canvas.tone === "dark";
+    // One size for the whole row: fitting each value to its own cell made "12%" 56px next to
+    // "1,280" 36px, which reads as two different kinds of number. The narrowest cell sets the size.
+    const innerW = cellW - (boxed ? 2 * p : 0);
+    const maxValueSize = Math.min(sys.typeScale.display, box.h * 0.42);
+    const rowValueSize = Math.min(...list.map((it) => {
+        const value = (it.value ?? it.title).trim();
+        return fitSize(value, innerW, maxValueSize, sys.typeScale.h1, numeralWeight(sys));
+    }));
     list.forEach((it, i) => {
         const x = box.x + i * (cellW + g);
         const cell = { x, y: box.y, w: cellW, h: box.h };
@@ -159,10 +167,9 @@ function kpiRow(ctx, dev, box) {
         else
             out.push(el(ctx, `kpi${i}.rule`, "rule", { x, y: box.y, w: cellW, h: sys.canvas.ruleWidth }, i === 0 ? "accent" : "line", { hairline: sys.canvas.ruleWidth <= 1 }));
         const innerX = x + (boxed ? p : 0);
-        const innerW = cellW - (boxed ? 2 * p : 0);
         const value = (it.value ?? it.title).trim();
         const label = it.value ? it.title : (it.body ?? "");
-        const valueSize = fitSize(value, innerW, Math.min(sys.typeScale.display, box.h * 0.42), sys.typeScale.h1, numeralWeight(sys));
+        const valueSize = rowValueSize;
         let y = box.y + p;
         const valueEl = text(ctx, `kpi${i}.value`, { x: innerX, y, w: innerW, h: valueSize * 1.1 }, value, { size: valueSize, weight: numeralWeight(sys), role: i === 0 || sys.canvas.glow ? "accent" : "ink", lineHeight: 1 });
         if (sys.canvas.glow)
@@ -182,16 +189,77 @@ function kpiRow(ctx, dev, box) {
     });
     return out;
 }
+/**
+ * A step strip in a narrow column (a split page's right half holding four steps) gives each step
+ * ~160px, so the body wraps to three lines and the row reads as a stack of fragments. Run the steps
+ * down the column instead: one row each, the extra height becoming space between rows.
+ */
+function stepColumn(ctx, dev, box) {
+    const list = items(dev, 2, 6);
+    if (list.length < 2)
+        return [];
+    const { sys } = ctx;
+    const n = list.length;
+    const node = 32;
+    const bs = copy(sys);
+    const lineH = sys.typeScale.h2 * 1.25;
+    const tx = box.x + node + 16;
+    const tw = Math.max(40, box.w - node - 16);
+    const gap = Math.min(24, Math.max(8, box.h * 0.03));
+    const rowH = (box.h - gap * (n - 1)) / n;
+    const out = [];
+    const x = box.x + node / 2;
+    out.push(el(ctx, "line", "line", { x, y: box.y + node / 2, w: 1, h: Math.max(1, (n - 1) * (rowH + gap)) }, "line", {
+        x2: x,
+        y2: box.y + node / 2 + (n - 1) * (rowH + gap),
+        hairline: sys.canvas.ruleWidth <= 1,
+        dash: sys.voice === "grotesk" ? "solid" : "dash",
+        arrow: "end",
+    }));
+    list.forEach((it, i) => {
+        const y = box.y + i * (rowH + gap);
+        let title = fitCopy(it.title, tw, lineH, sys.typeScale.h2, Math.round(sys.typeScale.h2 * 0.85), 1.25);
+        if (/…$/.test(title.text))
+            title = fitCopy(it.title, tw, 2 * lineH, sys.typeScale.h2, Math.round(sys.typeScale.h2 * 0.85), 1.25);
+        const titleH = title.size * 1.25 * Math.min(2, lineCount(title.text, tw, title.size)) + title.size * 0.15;
+        const bodyH = it.body ? Math.min(Math.max(0, rowH - titleH - 6), lineCount(it.body, tw, bs) * bs * 1.5) : 0;
+        out.push(el(ctx, `step${i}.node`, "ellipse", { x: box.x, y, w: node, h: node }, "accent", sys.canvas.glow ? { glow: true } : {}));
+        out.push(text(ctx, `step${i}.num`, { x: box.x, y: y + node * 0.18, w: node, h: node * 0.7 }, String(i + 1), { size: Math.round(node * 0.42), role: "bg", weight: 600, align: "middle", mono: true, lineHeight: 1 }));
+        out.push(text(ctx, `step${i}.title`, { x: tx, y, w: tw, h: titleH }, title.text, { size: title.size, weight: 600, lineHeight: 1.25 }));
+        if (it.body && bodyH > 0)
+            out.push(text(ctx, `step${i}.body`, { x: tx, y: y + titleH + 2, w: tw, h: bodyH }, it.body, { size: bs, role: "muted" }));
+    });
+    return out;
+}
 function stepStrip(ctx, dev, box) {
     const list = items(dev, 2, 6);
     if (list.length < 2)
         return [];
     const { sys } = ctx;
     const n = list.length;
+    // Four steps across a split column wrap every body to three lines. Down the column, each step
+    // gets the full width and the grown height becomes the gap between rows.
+    if (box.w / n < 220)
+        return stepColumn(ctx, dev, box);
     const node = Math.min(44, Math.max(32, box.h * 0.22));
     const colW = box.w / n;
-    const cy = box.y + node / 2;
     const out = [];
+    const tw = colW - 12;
+    const bs = copy(sys);
+    const lineH = sys.typeScale.h2 * 1.25;
+    // Measure the stack (node → title → body) before placing it. The strip used to start at the box
+    // top and run the body box to the box bottom: a grown carrier then showed nodes with a two-line
+    // caption and 160px of blank underneath (live review 2026-11-08, page 06).
+    const specs = list.map((it) => {
+        let title = fitCopy(it.title, tw, lineH, sys.typeScale.h2, Math.round(sys.typeScale.h2 * 0.85), 1.25);
+        if (/…$/.test(title.text))
+            title = fitCopy(it.title, tw, 2 * lineH, sys.typeScale.h2, Math.round(sys.typeScale.h2 * 0.85), 1.25);
+        const titleH = title.size * 1.25 * Math.min(2, lineCount(title.text, tw, title.size)) + title.size * 0.15;
+        const bodyH = it.body ? lineCount(it.body, tw, bs) * bs * 1.5 : 0;
+        return { title, titleH, bodyH };
+    });
+    const stackH = node + 12 + Math.max(...specs.map((s) => s.titleH + 4 + s.bodyH));
+    const cy = box.y + Math.max(0, (box.h - stackH) / 2) + node / 2;
     // connector behind the nodes
     out.push(el(ctx, "line", "line", { x: box.x + colW / 2, y: cy, w: colW * (n - 1), h: 1 }, "line", {
         x2: box.x + colW / 2 + colW * (n - 1),
@@ -207,22 +275,16 @@ function stepStrip(ctx, dev, box) {
         out.push(el(ctx, `step${i}.node`, "ellipse", { x: cx - node / 2, y: cy - node / 2, w: node, h: node }, "accent", sys.canvas.glow ? { glow: true } : {}));
         out.push(text(ctx, `step${i}.num`, { x: cx - node / 2, y: cy - node / 2 + node * 0.18, w: node, h: node * 0.7 }, String(i + 1), { size: Math.round(node * 0.42), role: "bg", weight: 600, align: "middle", mono: true, lineHeight: 1 }));
         const tx = box.x + colW * i + 6;
-        const tw = colW - 12;
-        let y = cy + node / 2 + 12;
         // Narrow columns (a step strip in a split half) wrap a short title and orphan its last
         // character: first step the size down a little (≤15 %) to keep one line, then reserve a second
         // line, and only then clip — the body never starts on top of the title either way.
-        const lineH = sys.typeScale.h2 * 1.25;
-        let title = fitCopy(it.title, tw, lineH, sys.typeScale.h2, Math.round(sys.typeScale.h2 * 0.85), 1.25);
-        if (/…$/.test(title.text))
-            title = fitCopy(it.title, tw, 2 * lineH, sys.typeScale.h2, Math.round(sys.typeScale.h2 * 0.85), 1.25);
-        const titleH = title.size * 1.25 * Math.min(2, lineCount(title.text, tw, title.size)) + title.size * 0.15;
-        out.push(text(ctx, `step${i}.title`, { x: tx, y, w: tw, h: titleH }, title.text, { size: title.size, weight: 600, align: "middle", lineHeight: 1.25 }));
-        y += titleH + 4;
-        if (it.body) {
-            const bs = copy(sys);
-            out.push(text(ctx, `step${i}.body`, { x: tx, y, w: tw, h: Math.max(bs * 3, box.y + box.h - y) }, it.body, { size: bs, role: "muted", align: "middle" }));
-        }
+        const spec = specs[i];
+        const y = cy + node / 2 + 12;
+        out.push(text(ctx, `step${i}.title`, { x: tx, y, w: tw, h: spec.titleH }, spec.title.text, { size: spec.title.size, weight: 600, align: "middle", lineHeight: 1.25 }));
+        // The body box is the copy's own height, not the rest of the carrier: a box that ran to the
+        // box bottom read as a full column of type while the words sat at its top.
+        if (it.body)
+            out.push(text(ctx, `step${i}.body`, { x: tx, y: y + spec.titleH + 4, w: tw, h: spec.bodyH }, it.body, { size: bs, role: "muted", align: "middle" }));
     });
     return out;
 }
@@ -239,15 +301,25 @@ function numberedList(ctx, dev, box) {
         const y = box.y + i * rowH;
         if (i > 0)
             out.push(el(ctx, `row${i}.rule`, "rule", { x: box.x, y: y - 0.5, w: box.w, h: sys.canvas.ruleWidth }, "line", { hairline: sys.canvas.ruleWidth <= 1 }));
-        const by = y + Math.max(6, (rowH - badge) / 2 - (it.body ? rowH * 0.12 : 0));
-        out.push(el(ctx, `row${i}.badge`, sys.canvas.radius > 0 ? "ellipse" : "surface", { x: box.x, y: by, w: badge, h: badge }, "accent"));
-        out.push(text(ctx, `row${i}.num`, { x: box.x, y: by + badge * 0.2, w: badge, h: badge * 0.7 }, String(i + 1).padStart(2, "0"), { size: Math.round(badge * 0.4), role: "bg", weight: 600, align: "middle", mono: true, lineHeight: 1 }));
+        // The row is often taller than its copy — `fitHeight` gives a list air, and the carrier may grow
+        // into page slack on top of that. Pin the stack to the top of a tall row and the extra height
+        // becomes a blank strip under every row (live run 2026-11-08: three cards, type in the top
+        // third). Measure the copy, then centre the stack; the badge centres with it.
         const tx = box.x + badge + 14;
         const tw = box.w - badge - 14;
         const titleH = sys.typeScale.h2 * 1.35;
-        out.push(text(ctx, `row${i}.title`, { x: tx, y: y + 6, w: tw, h: titleH }, it.title, { size: sys.typeScale.h2, weight: 600 }));
+        const bs = copy(sys);
+        const bodyH = it.body ? Math.min(3, lineCount(it.body, tw, bs)) * bs * 1.5 : 0;
+        const contentH = titleH + (it.body ? 4 + bodyH : 0);
+        const ty = y + Math.max(6, (rowH - contentH) / 2);
+        const by = ty + Math.max(0, (contentH - badge) / 2);
+        out.push(el(ctx, `row${i}.badge`, sys.canvas.radius > 0 ? "ellipse" : "surface", { x: box.x, y: by, w: badge, h: badge }, "accent"));
+        out.push(text(ctx, `row${i}.num`, { x: box.x, y: by + badge * 0.2, w: badge, h: badge * 0.7 }, String(i + 1).padStart(2, "0"), { size: Math.round(badge * 0.4), role: "bg", weight: 600, align: "middle", mono: true, lineHeight: 1 }));
+        out.push(text(ctx, `row${i}.title`, { x: tx, y: ty, w: tw, h: titleH }, it.title, { size: sys.typeScale.h2, weight: 600 }));
         if (it.body) {
-            out.push(text(ctx, `row${i}.body`, { x: tx, y: y + 6 + titleH, w: tw, h: Math.max(sys.typeScale.body * 1.5, rowH - titleH - 10) }, it.body, { size: sys.typeScale.body, role: "muted" }));
+            // The box is the text's own height, not the rest of the row: a box that ran to the row bottom
+            // made the row look full of ink while the words sat at its top.
+            out.push(text(ctx, `row${i}.body`, { x: tx, y: ty + titleH + 4, w: tw, h: bodyH }, it.body, { size: bs, role: "muted" }));
         }
     });
     return out;

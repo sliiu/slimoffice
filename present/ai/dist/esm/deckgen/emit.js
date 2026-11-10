@@ -309,12 +309,35 @@ function fillOf(el, pal) {
 }
 function chartDef(el, pal) {
     const c = el.chart;
-    const colors = [pal.accent, pal.ink, pal.muted, pal.line];
     const pie = c.type === "pie" || c.type === "doughnut";
+    // Colour carries meaning in a deck: accent = the answer (takeaway bands, steps, arrows). A chart
+    // with several series therefore keeps its data on the neutral ramp — series 0 used to take the
+    // accent, so a "traditional retrieval (slow)" series was painted in the same orange as the
+    // takeaway band that draws the conclusion (live review 2026-11-08, page 03). One series is the
+    // page's message, so it may wear the accent; pie slices are categories, not a distinction.
+    // A before/after chart is the exception: the series that names the new way ("引入 AI 检索后")
+    // is the answer the page exists to show, and painting both bars the same navy made the reader
+    // unable to tell which half was the change (live review 2026-11-09, page 04). That one series
+    // takes the accent; the rest stay on the ramp, in the author's order.
+    const emphasis = c.series.length <= 1;
+    const AFTER = /\b(after|new|ai|with)\b|之后|改造后|引入|采纳后|上线后|语义|混合/i;
+    const answer = !emphasis && !pie ? c.series.findIndex((s, i) => i > 0 && AFTER.test(s.name ?? "")) : -1;
+    const ramp = emphasis ? [pal.accent, pal.ink, pal.muted, pal.line] : [pal.ink, pal.muted, pal.line, pal.accent];
+    // A legend swatch on paper is a 1px mark: `pal.line` (a hairline grey) all but disappeared on the
+    // third series of a line chart (live review 2026-11-09, page 04: "浅灰线几乎不可见"). Every
+    // series colour clears 3:1 against the page before it is used.
+    const paper = parseHex(pal.bg);
+    const anchor = parseHex(pal.ink);
+    const colors = ramp.map((hex) => {
+        const c = parseHex(hex);
+        if (!c || !paper || !anchor)
+            return hex;
+        return toHex(ensureContrast(c, paper, anchor, 3));
+    });
     const series = c.series.map((s, i) => ({
         name: s.name,
         values: s.values,
-        color: colors[i % colors.length],
+        color: i === answer ? pal.accent : colors[(answer >= 0 && i > answer ? i - 1 : i) % colors.length],
     }));
     // Chart text sits on the slide (transparent chart area), so it takes the page's ink / line
     // colours — the renderer's default greys vanish on a dark system.
@@ -433,6 +456,26 @@ export function animUnitOf(slot) {
         return `${parts[0]}.${parts[1]}`;
     return parts[0];
 }
+/**
+ * Runs → one run list per line. The author's "\n" is a line break ("AI 如何重塑\n企业知识管理"),
+ * and the gates measure it as one; but the renderer, like PowerPoint, breaks only between
+ * paragraphs and draws a "\n" inside a run as a space — the cover then wrapped by width and left
+ * "理" alone on line two (live run 2026-11-05). Each line becomes its own paragraph, same style.
+ */
+export function splitLines(runs) {
+    const lines = [[]];
+    for (const r of runs) {
+        const parts = r.text.split(/\r?\n/);
+        parts.forEach((t, i) => {
+            if (i > 0)
+                lines.push([]);
+            if (t)
+                lines[lines.length - 1].push({ ...r, text: t });
+        });
+    }
+    // An empty line keeps one empty run so the paragraph still has a style (and a height).
+    return lines.map((l, i) => (l.length ? l : [{ ...(runs[Math.min(i, runs.length - 1)] ?? { text: "" }), text: "" }]));
+}
 /** Editor shapes for one canvas element (text / preset / icon / diagram / image / chart / table / ellipse / line / rect). */
 function shapesOf(el, id, pal, sys) {
     const shad = shadowOf(el, pal);
@@ -447,13 +490,11 @@ function shapesOf(el, id, pal, sys) {
             bbox: { ...el.bbox },
             wrap: true,
             vAlign: "top",
-            paragraphs: [
-                {
-                    align: el.align ?? "start",
-                    lineHeight: el.lineHeight ?? tr.lineHeight,
-                    runs: dressRuns(runsOf(el, pal, sys, tr), el, pal),
-                },
-            ],
+            paragraphs: splitLines(dressRuns(runsOf(el, pal, sys, tr), el, pal)).map((runs) => ({
+                align: el.align ?? "start",
+                lineHeight: el.lineHeight ?? tr.lineHeight,
+                runs,
+            })),
             ...(shad ? { shadow: shad } : {}),
             ...effectsOf(el),
         };

@@ -55,6 +55,7 @@ export { classifySourceFile, topicFromSourceName, mediaTypeForKind, } from "./so
 export { byteRouteFor, filesNeedingDegrade, unknownSourceNames, responsesAuth, } from "./source-files/support.js";
 export { extractSourceText, SourceFileError } from "./source-files/extract.js";
 export { resolveSourceDelivery, materialFromParts, SourceDegradeDeclined, } from "./source-files/resolve.js";
+export { defaultPageFetcher, fetchUrlMaterial, htmlToText, htmlTitle, looksLikeUrl, normalizeSourceUrl, urlMaterialBlock, } from "./source-files/url.js";
 export { compositionDigest, SampleDeckError, sampleOutlineRule, sampleDensityRule, sampleCanvasRule, withPageComposition, } from "./generate/sample-composition.js";
 export { speechPlanFromOutlineItem } from "./generate/reveal-order.js";
 export { layoutsFromTemplate, layoutsFromMasters, presentationFromTemplateOutline, resolveVisualSource, templateUsesPlaceholders, } from "./generate/template-fill.js";

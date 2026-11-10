@@ -42,14 +42,14 @@ import {
 } from "../deckgen/index.js";
 import { applyPhotoRhythm, briefsFromJobs, jobsFromPages, type PageJob } from "../deckgen/jobs.js";
 import { coerceDeckBrief, coercePageBrief, defaultFolio, defaultPhotoRhythm, folioFromNotes, notesWantPhotos, photoRhythmFromNotes, type DeckBrief } from "../deckgen/brief.js";
-import { authorCanvasDeck, canvasChunkIndexes, canvasExtraChunks } from "./canvas-author.js";
+import { authorCanvasDeck, canvasChunkIndexes, canvasExtraChunks, isSlotPage } from "./canvas-author.js";
 import { copyTargetsFromSlides, isCopyVoiceIssue, mirrorOutlineCopy, rewriteCopyVoice } from "./copy-rewrite.js";
 import { acquirePageImages } from "./enrich/acquire-page-images.js";
 import { applyArtDirectorEdits, reviewPresentation, type ReviewResult } from "./qa/art-director.js";
 import { resolveGuidanceLanguage } from "./prompts.js";
 import { visualReviewRound } from "./visual-review.js";
 import { defaultConfig } from "../config/types.js";
-import { isConfigUsable, visionReviewTextConfig } from "../config/presets.js";
+import { isConfigUsable, textModelSupportsVision, visionReviewTextConfig } from "../config/presets.js";
 import { createLlm } from "../llm/client.js";
 import { autoAnimatePresentation } from "../animations.js";
 import { speechPlanFromOutlineItem } from "./reveal-order.js";
@@ -58,7 +58,7 @@ import {
   formatDeckgenUserError,
   pagesFromOutline,
 } from "./deckgen-ui.js";
-import { rethrowIfAborted, shouldCommitGeneratedDeck, throwIfAborted } from "./abort.js";
+import { optionalStepBox, rethrowIfAborted, shouldCommitGeneratedDeck, throwIfAborted } from "./abort.js";
 import { throwIfPipelineP2Inject, resumeSkipFlags } from "./qa/pipeline-p2-policy.js";
 import { UsageCounter } from "./usage-counter.js";
 import {
@@ -68,6 +68,15 @@ import {
 } from "./polish.js";
 import type { GuidanceInput, Outline } from "./schema.js";
 import type { GenerateOptions, PipelineEvent } from "./types.js";
+
+/** Wall-clock time kept for copy rewrite + polish after the vision round. */
+const VISUAL_ROUND_RESERVE_MS = 90_000;
+/** Below this much time the vision round (capture, review, repair) is not started. */
+const VISUAL_ROUND_MIN_MS = 120_000;
+/** Time a page-scoped re-author of ≤ 3 pages needs (flash-tier model, measured 2026-11-05: 60–90s). */
+const VISUAL_REPAIR_MIN_MS = 100_000;
+/** Time a second capture + review needs. */
+const VISUAL_REREVIEW_MIN_MS = 60_000;
 
 /** Live generate is always deckgen. `useDeckgen` is a no-op kept for call-site compatibility. */
 export function isDeckgenGenerateEnabled(_opts?: Pick<GenerateOptions, "useDeckgen">): boolean {
@@ -446,7 +455,7 @@ export async function generatePresentationViaDeckgen(
     skipLayout && opts.resume?.presentation ? structuredClone(opts.resume.presentation) : undefined;
 
   /** Set when the canvas path already ran the vision review; polish reports it instead of a second call. */
-  let visualReview: (ReviewResult & { repairedPages: number[]; scoreBefore?: number }) | undefined;
+  let visualReview: (ReviewResult & { repairedPages: number[]; scoreBefore?: number; revertedPages?: number[] }) | undefined;
   const canvasExtras = canvasExtraChunks(working?.slides.length ?? 0, ctx.budget.remaining());
   if (!pres && working?.slides.length && isConfigUsable(config) && ctx.budget.tryConsume()) {
     try {
@@ -493,7 +502,7 @@ export async function generatePresentationViaDeckgen(
         ...(opts.signal ? { signal: opts.signal } : {}),
         onUsage: ctx.recordUsage,
         ...(opts.sampleComposition ? { sampleComposition: opts.sampleComposition } : {}),
-        ...(opts.canvasLayout === "slots" ? { slots: true } : {}),
+        ...(opts.canvasLayout === "author" ? {} : { slots: true }),
       };
       const slideSlots: Array<FilledSlide | undefined> = new Array(jobs.length);
       const placeChunk = (indexes: number[] | undefined, slides: FilledSlide[]) => {
@@ -553,7 +562,12 @@ export async function generatePresentationViaDeckgen(
       // One re-author pass over the pages `findings` name (the whole deck when a finding does not
       // name its pages), merged per page against the current deck so a repair cannot regress a
       // page that was fine. Shared by the structural gate round and the visual review round.
-      const repairPass = async (findings: ReflectFinding[], label: "repair" | "visual"): Promise<void> => {
+      const repairPass = async (
+        findings: ReflectFinding[],
+        label: "repair" | "visual",
+        signal = opts.signal,
+        extra?: { shots?: Array<{ slideIdx: number; dataUrl: string }>; model?: typeof model },
+      ): Promise<void> => {
         const repair = findings.map((f) => `[${f.kind} #${f.slideIdx}] ${f.issue}`).join("; ");
         const firstPass = { compiled, slides: authored.slides };
         // Page-scoped repair whenever every finding names its pages: only those pages are
@@ -561,12 +575,13 @@ export async function generatePresentationViaDeckgen(
         // finding without pages (e.g. "every page uses the same composition") forces a full pass.
         const scope = repairScope(findings, authored.slides.length);
         const scopedRepair = await authorCanvasDeck({
-          model,
+          model: extra?.model ?? model,
           topic: working.title || guidance.topic,
           jobs,
           images,
           brief: deckBrief,
           repair,
+          ...(extra?.shots?.length ? { shots: extra.shots } : {}),
           ...(scope ? { only: scope, unchanged: describeUnchangedPages(firstPass.slides, jobs, scope, system) } : {}),
           lock: {
             systemId: authored.systemId,
@@ -574,10 +589,10 @@ export async function generatePresentationViaDeckgen(
           },
           ...(brand ? { brand } : {}),
           ...(opts.hostSkillStore ? { host: opts.hostSkillStore } : {}),
-          ...(opts.signal ? { signal: opts.signal } : {}),
+          ...(signal ? { signal } : {}),
           onUsage: ctx.recordUsage,
           ...(opts.sampleComposition ? { sampleComposition: opts.sampleComposition } : {}),
-          ...(opts.canvasLayout === "slots" ? { slots: true } : {}),
+          ...(opts.canvasLayout === "author" ? {} : { slots: true }),
           ...(opts.onCanvasAuthored
             ? { onRaw: (raw: unknown) => opts.onCanvasAuthored?.(scope && raw && typeof raw === "object" ? { ...(raw as object), repairPages: scope } : raw, "repair") }
             : {}),
@@ -640,9 +655,18 @@ export async function generatePresentationViaDeckgen(
       // The reviewer is a model that can see: the configured review model, else the text model when
       // it can read images. Neither → skip the round rather than send pixels to a text-only model.
       const visionText = visionReviewTextConfig(config);
-      if (visualRetry && opts.enableArtDirector !== false && opts.captureReviewShots && visionText && ctx.budget.remaining() >= 2) {
+      // The round is optional: it gets the wall-clock time left after a reserve for copy rewrite and
+      // polish, and is skipped or cut short (keeping the deck as it stands) rather than letting a
+      // slow reviewer time out the whole generate.
+      const wantVisual = visualRetry && opts.enableArtDirector !== false && Boolean(opts.captureReviewShots && visionText) && ctx.budget.remaining() >= 2;
+      const box = wantVisual
+        ? optionalStepBox(opts.signal, opts.wallDeadline, { reserveMs: VISUAL_ROUND_RESERVE_MS, minMs: VISUAL_ROUND_MIN_MS })
+        : undefined;
+      if (box && opts.captureReviewShots && visionText) {
+        const signal = box.signal;
+        let beforeVisual: { compiled: typeof compiled; authored: typeof authored; system: typeof system; theme: typeof theme; repaired: boolean } | undefined;
         try {
-          throwIfAborted(opts.signal);
+          throwIfAborted(signal);
           ctx.emit({ stage: "compile", progress: 0.6, detailKey: "artDirector.reviewing" });
           const reviewModel = visionText === config.text ? model : createLlm(visionText).model;
           const capture = opts.captureReviewShots;
@@ -650,7 +674,7 @@ export async function generatePresentationViaDeckgen(
             pageCount: () => authored.slides.length,
             capture: async () => {
               const shots = (await capture(compiled.presentation, { all: true })) ?? [];
-              throwIfAborted(opts.signal);
+              throwIfAborted(signal);
               return shots;
             },
             // The first review only picks pages to re-author; the final one (after the repair, or the
@@ -658,34 +682,74 @@ export async function generatePresentationViaDeckgen(
             review: (screenshots) =>
               reviewPresentation(compiled.presentation, {
                 model: reviewModel,
-                ...(opts.signal ? { signal: opts.signal } : {}),
+                signal,
                 language: resolveGuidanceLanguage(guidance),
                 ...(guidance.topic ? { topic: guidance.topic } : {}),
                 screenshots,
                 applyEdits: false,
                 onUsage: ctx.recordUsage,
               }),
-            repair: async (findings) => {
+            repair: async (findings, shots) => {
+              beforeVisual = { compiled, authored, system, theme, repaired };
               repaired = true;
-              await repairPass(findings, "visual");
+              // The reviewer judged pixels, so the rewrite gets the same pixels. When the text model
+              // cannot read images, let the vision model author these ≤ 3 pages — otherwise the
+              // screenshots are sent to a model that ignores them.
+              await repairPass(findings, "visual", signal, {
+                shots,
+                ...(textModelSupportsVision(config.text) ? {} : { model: reviewModel }),
+              });
+            },
+            // Whatever the geometry gate still fails after the structural pass joins the visual set:
+            // pages neither channel alone would have sent to the author this round. Slot pages are
+            // skipped — their coordinates come from `layoutPage`, so a re-author can rewrite the
+            // copy but cannot move the carrier; sending them to the author burns a call on a page
+            // whose geometry is fixed. Their voids belong to the layout engine, not the repair pass.
+            surviving: () =>
+              compiled.reflect.findings.filter(
+                (f) =>
+                  !isCopyVoiceIssue(f.issue) &&
+                  !(opts.canvasLayout !== "author" && f.slideIdx >= 0 && jobs[f.slideIdx] && isSlotPage(jobs[f.slideIdx]!, images)),
+              ),
+            revert: () => {
+              if (!beforeVisual) return;
+              ({ compiled, authored, system, theme, repaired } = beforeVisual);
             },
             tryConsume: () => ctx.budget.tryConsume(),
             remaining: () => ctx.budget.remaining(),
             // keep one call for the copy rewrite after this round
             reserveAfter: 1,
+            hasTimeFor: (step) => box.left() >= (step === "repair" ? VISUAL_REPAIR_MIN_MS : VISUAL_REREVIEW_MIN_MS),
+            runAborted: () => Boolean(opts.signal?.aborted),
+            ...(opts.debug ? { log: (msg: string) => console.log(`[ai] visual round: ${msg}`) } : {}),
           });
           if (round) {
             // Recolor edits name shape ids of the deck that was reviewed: apply them only when that
             // deck is the one being shipped (no repair after the review that produced them).
             const current = round.scoreBefore != null || !round.repairedPages.length;
             const edits = current && round.report.edits?.length ? applyArtDirectorEdits(compiled.presentation, round.report.edits) : { applied: 0, skipped: 0 };
-            visualReview = { ...round.report, ...edits, repairedPages: round.repairedPages, ...(round.scoreBefore != null ? { scoreBefore: round.scoreBefore } : {}) };
-            if (opts.debug) console.log(`[ai] visual review: score ${round.scoreBefore != null ? `${round.scoreBefore} → ` : ""}${round.report.score}${round.repairedPages.length ? ` · re-authored pages ${round.repairedPages.join(", ")}` : ""}`);
+            visualReview = {
+              ...round.report,
+              ...edits,
+              repairedPages: round.repairedPages,
+              ...(round.scoreBefore != null ? { scoreBefore: round.scoreBefore } : {}),
+              ...(round.revertedPages?.length ? { revertedPages: round.revertedPages } : {}),
+            };
+            if (opts.debug) console.log(`[ai] visual review: score ${round.scoreBefore != null ? `${round.scoreBefore} → ` : ""}${round.report.score}${round.repairedPages.length ? ` · re-authored pages ${round.repairedPages.join(", ")}` : ""}${round.revertedPages?.length ? ` · reverted pages ${round.revertedPages.join(", ")}` : ""}`);
           }
         } catch (e) {
-          rethrowIfAborted(opts.signal, e);
-          if (opts.debug) console.warn("[ai] visual review failed (non-fatal):", e);
+          if (box.expired()) {
+            // Out of time: whatever the round finished (a merged repair) is already in `compiled`.
+            if (opts.debug) console.warn("[ai] visual review ran out of time; keeping the deck as it stands");
+          } else {
+            rethrowIfAborted(opts.signal, e);
+            if (opts.debug) console.warn("[ai] visual review failed (non-fatal):", e);
+          }
+        } finally {
+          box.dispose();
         }
+      } else if (opts.debug && wantVisual && opts.wallDeadline != null) {
+        console.log(`[ai] visual review skipped: ${Math.round((opts.wallDeadline - Date.now()) / 1000)}s left on the wall clock`);
       }
       if (
         compiled.reflect.findings.some((f) => isCopyVoiceIssue(f.issue)) &&

@@ -19,3 +19,4 @@ export {
   themeColorsFontsEqual,
   themeTypefacesXml,
 } from "./theme-export";
+export { needsOoxmlNormalization } from "./pptx-timing-normalize";

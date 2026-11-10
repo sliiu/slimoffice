@@ -44,6 +44,15 @@ export interface AuthorCanvasInput {
     /** Debug tap: raw model JSON before normalize / zod. */
     onRaw?: (parsed: unknown) => void;
     /**
+     * Screenshots of the pages being re-authored, in `only` order. A visual-review repair is the one
+     * pass where the model is told what is wrong with pixels it cannot see; attaching the page as it
+     * renders now lets it judge its own rewrite against the same evidence the reviewer used.
+     */
+    shots?: Array<{
+        slideIdx: number;
+        dataUrl: string;
+    }>;
+    /**
      * Slot layout: content pages (header-stack / split / sidebar / band / grid, no photo, not an
      * anchor) are written as `slots` and laid out by `deckgen/page-layout.ts`; anchor and photo
      * pages stay authored. Off = every page is authored with bboxes.

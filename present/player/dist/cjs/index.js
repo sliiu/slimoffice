@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_PLAYER_LOCALE = exports.resolvePlayerLocale = exports.createTranslator = exports.screenshotPlugin = exports.thumbnailBarPlugin = exports.notesPanelPlugin = exports.outlinePlugin = exports.laserPointerPlugin = exports.whiteboardPlugin = exports.pickBuiltinPlugins = exports.BUILTIN_PLUGINS = exports.withErrorBoundary = exports.composePlugins = exports.definePlugin = exports.buildOoxmlPlayback = exports.buildStoredZip = exports.dataUrlsToPdf = exports.slideSizeToPdfPoints = exports.SCREEN_DPI = exports.PDF_EXPORT_DPI_HIGH = exports.PDF_EXPORT_DPI = exports.snapshotPixelRatio = exports.exportPresentationPdf = exports.snapshotAllForPdf = exports.snapshotsToPdf = exports.snapshotsToZip = exports.snapshotAll = exports.snapshotSlide = exports.loadEmbeddedFonts = exports.registerEmbeddedFonts = exports.bundleToZip = exports.buildHtmlBundle = exports.buildHtml = exports.runStageTransition = exports.createBake3DRuntime = exports.mount = void 0;
+exports.DEFAULT_PLAYER_LOCALE = exports.resolvePlayerLocale = exports.createTranslator = exports.screenshotPlugin = exports.thumbnailBarPlugin = exports.notesPanelPlugin = exports.outlinePlugin = exports.laserPointerPlugin = exports.whiteboardPlugin = exports.pickBuiltinPlugins = exports.BUILTIN_PLUGINS = exports.withErrorBoundary = exports.composePlugins = exports.definePlugin = exports.buildOoxmlPlayback = exports.buildStoredZip = exports.notesForSlide = exports.createPresenterBridge = exports.buildPresenterPageHtml = exports.dataUrlsToPdf = exports.slideSizeToPdfPoints = exports.SCREEN_DPI = exports.PDF_EXPORT_DPI_HIGH = exports.PDF_EXPORT_DPI = exports.snapshotPixelRatio = exports.exportPresentationPdf = exports.snapshotAllForPdf = exports.snapshotsToPdf = exports.snapshotsToZip = exports.snapshotAll = exports.snapshotSlide = exports.loadEmbeddedFonts = exports.registerEmbeddedFonts = exports.bundleToZip = exports.buildHtmlBundle = exports.buildHtml = exports.runStageTransition = exports.createBake3DRuntime = exports.mount = void 0;
 var player_1 = require("./player");
 Object.defineProperty(exports, "mount", { enumerable: true, get: function () { return player_1.mount; } });
 // 3D bake runtime：editor 也复用它把 sp3d/scene3d 烘成 PNG（避免在 player 内被
@@ -32,6 +32,10 @@ Object.defineProperty(exports, "SCREEN_DPI", { enumerable: true, get: function (
 var pdf_1 = require("./pdf");
 Object.defineProperty(exports, "slideSizeToPdfPoints", { enumerable: true, get: function () { return pdf_1.slideSizeToPdfPoints; } });
 Object.defineProperty(exports, "dataUrlsToPdf", { enumerable: true, get: function () { return pdf_1.dataUrlsToPdf; } });
+var presenter_remote_1 = require("./presenter-remote");
+Object.defineProperty(exports, "buildPresenterPageHtml", { enumerable: true, get: function () { return presenter_remote_1.buildPresenterPageHtml; } });
+Object.defineProperty(exports, "createPresenterBridge", { enumerable: true, get: function () { return presenter_remote_1.createPresenterBridge; } });
+Object.defineProperty(exports, "notesForSlide", { enumerable: true, get: function () { return presenter_remote_1.notesForSlide; } });
 var zip_store_1 = require("./zip-store");
 Object.defineProperty(exports, "buildStoredZip", { enumerable: true, get: function () { return zip_store_1.buildStoredZip; } });
 var ooxml_runtime_1 = require("./ooxml-runtime");

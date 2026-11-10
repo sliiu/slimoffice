@@ -2,7 +2,15 @@ English | [中文](./README.zh-CN.md)
 
 # Slim Office
 
+Documents and spreadsheets are planned. This repository currently ships the presentation component.
+
 The present tree lives in `present/`. Open a `.pptx`, edit and present it in the browser, then write `.pptx`, HTML, PDF, PNG, or video.
+
+![Editor after opening a presentation: slide list, canvas, and the command row.](./editor.png)
+
+The desktop app is in `desktop/`. It opens files on this computer. The file home lists recent files; a presentation opens in the editor.
+
+![Desktop file home: new presentation, open, and the empty recent list.](./file-home.png)
 
 ## Install
 

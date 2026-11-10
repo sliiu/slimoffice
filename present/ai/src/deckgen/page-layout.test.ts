@@ -63,6 +63,51 @@ describe("slot page layout", () => {
     assert.equal(Math.round(title.bbox.y), Math.round(c.bbox.y));
   });
 
+  it("header-stack: a short carrier grows into the slack instead of leaving a band under it", () => {
+    // A 3-row table at its natural height fills barely half of a header-stack region; the old
+    // layout floated it near the top and the page ended at y≈520 with 160px of paper below.
+    const table: FilledEl = {
+      slot: "t",
+      kind: "table",
+      name: "t",
+      bbox: { x: 0, y: 0, w: 1, h: 1 },
+      paintRole: "surface",
+      table: { headers: ["环节", "AI 接手", "仍由人负责", "前后对比"], rows: [["入库", "抽取标签", "切分粒度", "8 分钟 → 40 秒"], ["检索", "语义扩召回", "排序权重", "40% → 78%"], ["更新", "触发重建", "版本确认", "季度 → 实时"]] },
+    };
+    const slots: PageSlots = { composition: "header-stack", eyebrow: "02 · 三个环节", title: "三个环节里 AI 具体做了什么", lede: "模型接手打标签、扩召回和触发重建，切分规则与权限仍由人定。", carrier: table, takeaway: "抽取、扩召回、起草摘要交给模型；切分规则、权限归属由人负责。", footnote: "对照口径：同一批 200 篇文档。" };
+    const els = layoutPage(slots, sys);
+    inside(els);
+    const natural = fitHeight(table, CANVAS.width * (1 - 2 * sys.grid.margin), 400, sys);
+    const carrier = els.find((e) => e.slot === "carrier")!;
+    assert.ok(carrier.bbox.h > natural, `carrier stayed at its natural ${natural}px`);
+    // Nothing below the carrier group may be left empty enough to read as a hole.
+    const my = CANVAS.height * sys.grid.margin;
+    const contentBottom = Math.max(
+      ...els.filter((e) => !/footnote/.test(e.slot)).map((e) => inkBox({ ...e, color: "#000000" }, sys).y + inkBox({ ...e, color: "#000000" }, sys).h),
+    );
+    assert.ok(CANVAS.height - my - contentBottom < CANVAS.height * 0.18, `bottom band ${Math.round(CANVAS.height - my - contentBottom)}px`);
+  });
+
+  it("header-stack: a short title puts the lede beside it, not under it", () => {
+    const table: FilledEl = { slot: "t", kind: "table", name: "t", bbox: { x: 0, y: 0, w: 1, h: 1 }, paintRole: "surface", table: { headers: ["a", "b"], rows: [["1", "2"]] } };
+    const els = layoutPage({ composition: "header-stack", eyebrow: "02 · 三个环节", title: "三个环节里 AI 具体做了什么", lede: "模型接手打标签、扩召回和触发重建，切分规则与权限仍由人定。", carrier: table }, sys);
+    inside(els);
+    const title = els.find((e) => e.slot === "title")!;
+    const lede = els.find((e) => e.slot === "lede")!;
+    assert.ok(lede.bbox.x > title.bbox.x + title.bbox.w * 0.9, "lede sits in the right-hand column");
+    assert.equal(Math.round(lede.bbox.y), Math.round(title.bbox.y), "the two columns start on one line");
+  });
+
+  it("header-stack: a long title keeps the lede stacked under it", () => {
+    const table: FilledEl = { slot: "t", kind: "table", name: "t", bbox: { x: 0, y: 0, w: 1, h: 1 }, paintRole: "surface", table: { headers: ["a", "b"], rows: [["1", "2"]] } };
+    const els = layoutPage({ composition: "header-stack", title: "从零到可用：企业知识库上线第一年的完整推进节奏与验收口径", lede: "分四个阶段推进。", carrier: table }, sys);
+    inside(els);
+    const title = els.find((e) => e.slot === "title")!;
+    const lede = els.find((e) => e.slot === "lede")!;
+    assert.equal(Math.round(lede.bbox.x), Math.round(title.bbox.x), "a full-width title leaves no column for the lede");
+    assert.ok(lede.bbox.y > title.bbox.y, "lede stacks under the title");
+  });
+
   it("sidebar: a full-height panel holds the title at h1 width", () => {
     const els = layoutPage({ composition: "sidebar", title: "试点三个月的四项指标", carrier: steps }, sys);
     const panel = els.find((e) => e.slot === "panel")!;

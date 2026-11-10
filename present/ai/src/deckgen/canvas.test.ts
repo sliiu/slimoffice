@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { compileCanvasDeck } from "./pipeline.js";
+import { splitLines } from "./emit.js";
 import { resolveVisualSystem, typeRole } from "./visual-system.js";
 import { paletteOf, seedColorTheme, themeFromAuthoredLook } from "./color-theme.js";
 import { contrastRatio, parseHex } from "../generate/qa/color.js";
-import { MAX_FLOATING_PER_PAGE, canvasTypeRamp, clipText, contentTitleSize, fitTextSize, isContentPage, isTitleSlot, snapCanvas, snapCanvasReport } from "./snap.js";
+import { MAX_FLOATING_PER_PAGE, balancedBreak, canvasTypeRamp, clipText, contentTitleSize, fitTextSize, isContentPage, isTitleSlot, snapCanvas, snapCanvasReport } from "./snap.js";
 import { CANVAS_SYSTEM_IDS, VISUAL_SYSTEM_IDS } from "./ids.js";
 import { reflectCanvas } from "./reflect-canvas.js";
 import { applyColorTheme } from "./apply-theme.js";
@@ -344,6 +345,50 @@ describe("canvas IR — P0 vocabulary (shape · icon · diagram · device · run
     assert.ok(fills.length > 0);
     for (const f of fills) assert.ok([pal.accent, pal.accentSoft].includes(f!), `diagram fill ${f} recolored to palette`);
     assert.ok(!result.presentation.slides[0]!.layers[0]!.shapes.some((s) => s.id.startsWith("dec_")));
+  });
+
+  it("paints the 'after' series of a comparison chart in the accent, and leaves the baseline series on ink", () => {
+    const system = resolveVisualSystem("data-dense");
+    const theme = seedColorTheme("data-dense", "ink");
+    const slide: FilledSlide = {
+      layout: "evidence",
+      variant: "canvas",
+      elements: [
+        { slot: "title", kind: "text", name: "t", bbox: box(64, 48, 900, 52), paintRole: "ink", text: "找一份资料要花几分钟", fontSize: 36 },
+        {
+          slot: "carrier",
+          kind: "chart",
+          name: "c",
+          bbox: box(64, 160, 1100, 420),
+          paintRole: "accent",
+          chart: {
+            type: "column",
+            categories: ["研发", "销售"],
+            series: [
+              { name: "改造前（分钟）", values: [38, 34] },
+              { name: "引入 AI 检索后（分钟）", values: [12, 9] },
+            ],
+          },
+        },
+      ],
+    };
+    const out = compileCanvasDeck({ system, theme, slides: [slide], title: "x" });
+    const chart = out.presentation.slides[0]!.layers[0]!.shapes.find((s) => s.kind === "chart");
+    assert.ok(chart && chart.kind === "chart");
+    const pal = theme.palette!;
+    assert.notEqual(chart.chart.series[0]!.color, pal.accent, "the baseline series stays off the accent");
+    assert.equal(chart.chart.series[1]!.color, pal.accent, "the series that names the change wears the accent");
+    // A chart that is not a comparison keeps every series off the accent.
+    const plain: FilledSlide = {
+      ...slide,
+      elements: slide.elements.map((e) =>
+        e.kind === "chart" && e.chart ? { ...e, chart: { ...e.chart, series: [{ name: "2023", values: [10, 12] }, { name: "2024", values: [14, 16] }] } } : e,
+      ),
+    };
+    const out2 = compileCanvasDeck({ system, theme, slides: [plain], title: "x" });
+    const chart2 = out2.presentation.slides[0]!.layers[0]!.shapes.find((s) => s.kind === "chart");
+    assert.ok(chart2 && chart2.kind === "chart");
+    assert.ok(chart2.chart.series.every((s) => s.color !== pal.accent), "two neutral series share the ramp");
   });
 
   it("expands devices into primitives inside their bbox and caps floating objects", () => {
@@ -765,6 +810,16 @@ describe("canvas IR — P0 vocabulary (shape · icon · diagram · device · run
     };
     const viaTable = compileCanvasDeck({ system, theme, slides: [tabled], title: "x", briefs: [{ relationships: "contrast", rhythm: "dense", carrier: "table" }] });
     assert.equal(viaTable.reflect.findings.filter((f) => /relationships=contrast/.test(f.issue)).length, 0, viaTable.reflect.findings.map((f) => f.issue).join("; "));
+    // A closing page organized as relationships=order has nothing to draw: it is one sentence. The
+    // anchor rhythm already relaxes the geometry checks; the relationship demand has to follow, or
+    // the gate asks for a stepStrip on the last slide of every deck (live run 2026-11-08).
+    const closing: FilledSlide = { ...typeOnly, layout: "close" };
+    const closeAnchor = compileCanvasDeck({ system, theme, slides: [closing], title: "x", briefs: [{ relationships: "order", rhythm: "anchor" }] });
+    assert.equal(
+      closeAnchor.reflect.findings.filter((f) => /relationships=order/.test(f.issue)).length,
+      0,
+      closeAnchor.reflect.findings.map((f) => f.issue).join("; "),
+    );
   });
 });
 
@@ -1056,6 +1111,41 @@ describe("canvas composition + readability gates", () => {
     assert.match(sz[0]!.issue, /page 2 at 24px; the rest at 12px/);
   });
 
+  it("numbering the eyebrow: a deck that numbers most kickers gets the rest numbered too", () => {
+    const system = resolveVisualSystem("data-dense");
+    const theme = seedColorTheme("data-dense", "ink");
+    const page = (i: number, eyebrow: string): FilledSlide => ({
+      layout: "evidence",
+      variant: "canvas",
+      elements: [
+        { slot: "eyebrow", kind: "text", name: "e", bbox: { x: 64, y: 40, w: 420, h: 20 }, paintRole: "accent", text: eyebrow, fontSize: 11 },
+        { slot: "title", kind: "text", name: "t", bbox: { x: 64, y: 80, w: 900, h: 52 }, paintRole: "ink", text: `第 ${i + 1} 页`, fontSize: 36 },
+        { slot: "body", kind: "text", name: "b", bbox: { x: 64, y: 240, w: 1100, h: 340 }, paintRole: "ink", text: "正文内容，用来让页面成立。", fontSize: 17 },
+      ],
+    });
+    // Majority numbered → the two plain ones are brought into the system, keeping their labels.
+    const out = compileCanvasDeck({
+      system,
+      theme,
+      folio: true,
+      title: "x",
+      slides: [page(0, "封面副题"), page(1, "现状 · 认知成本"), page(2, "03 / 08 · 耗时对比"), page(3, "04 / 08 · 分类"), page(4, "05 / 08 · 落地")],
+    });
+    const eyes = out.painted.map((s) => s.elements.find((e) => e.slot === "eyebrow")?.text);
+    assert.equal(eyes[0], "封面副题", "the cover kicker is not a page kicker");
+    assert.equal(eyes[1], "02 / 05 · 现状 · 认知成本");
+    // A deck where most kickers are plain follows the author: no prefix is imposed.
+    const plain = compileCanvasDeck({
+      system,
+      theme,
+      folio: true,
+      title: "x",
+      slides: [page(0, "封面副题"), page(1, "现状 · 成本"), page(2, "03 / 08 · 耗时"), page(3, "知识分类"), page(4, "落地节奏")],
+    });
+    assert.equal(plain.painted[2]!.elements.find((e) => e.slot === "eyebrow")?.text, "03 / 08 · 耗时");
+    assert.equal(plain.painted[3]!.elements.find((e) => e.slot === "eyebrow")?.text, "知识分类");
+  });
+
   it("reports running copy below the 13px floor but lets short labels stay at caption size", () => {
     const slide: FilledSlide = {
       layout: "evidence",
@@ -1177,6 +1267,20 @@ describe("content-page title size — snap forces, reflect backstops", () => {
     assert.equal(sb.elements.find((e) => e.slot === "num")!.fontSize, 72);
     assert.equal(sb.elements.find((e) => e.slot === "kpi")!.fontSize, 64);
     assert.equal(sb.elements.find((e) => e.slot === "text-5")!.fontSize, 36);
+    // KPI values written as plain text with a unit ("2.5 小时" at 48px under a 40px title) are
+    // figures, not the title (live run 2026-11-05: the figure shrank to h1, the title stayed 42px).
+    const kpiText: FilledSlide = {
+      ...page("data", "text-1", 40, "知识管理的四个现状数字"),
+      elements: [
+        ...page("data", "text-1", 40, "知识管理的四个现状数字").elements,
+        { slot: "text-2", kind: "text", name: "k1", bbox: box(64, 180, 260, 64), paintRole: "accent", text: "2.5 小时", fontSize: 48 },
+        { slot: "text-3", kind: "text", name: "k2", bbox: box(380, 180, 260, 64), paintRole: "accent", text: "约 4.2 个", fontSize: 48 },
+      ],
+    };
+    const kt = snapCanvasReport([kpiText], system).slides[0]!;
+    assert.equal(kt.elements.find((e) => e.slot === "text-1")!.fontSize, 36);
+    assert.equal(kt.elements.find((e) => e.slot === "text-2")!.fontSize, 48);
+    assert.equal(kt.elements.find((e) => e.slot === "text-3")!.fontSize, 48);
   });
 
   it("reflect backstop reports one deck-level finding when snap did not run over the titles", () => {
@@ -1201,6 +1305,46 @@ describe("content-page title size — snap forces, reflect backstops", () => {
     const mixed = compileCanvasDeck({ system, theme, slides: [page("cover", "text-1", 64), page("evidence", "text-3", 36), narrow, page("evidence", "text-9", 36)], title: "x" });
     assert.equal(mixed.painted[2]!.elements[0]!.fontSize, system.typeScale.h2);
     assert.equal(mixed.reflect.findings.filter((x) => /content-page titles/.test(x.issue)).length, 0, mixed.reflect.findings.map((x) => x.issue).join("; "));
+  });
+});
+
+describe("author line breaks", () => {
+  it("emit sets each \\n-separated line as its own paragraph (the renderer draws \\n in a run as a space)", () => {
+    const system = resolveVisualSystem("editorial");
+    const theme = seedColorTheme("editorial", "ink");
+    const slide: FilledSlide = {
+      layout: "cover",
+      variant: "canvas",
+      elements: [{ slot: "title", kind: "text", name: "t", bbox: { x: 96, y: 280, w: 780, h: 200 }, paintRole: "ink", text: "AI 如何重塑\n企业知识管理", fontSize: 72 }],
+    };
+    const out = compileCanvasDeck({ system, theme, slides: [slide], title: "x" });
+    const shapes = out.presentation.slides[0]!.layers.flatMap((l) => l.shapes);
+    const title = shapes.find((sh) => sh.kind === "text" && sh.paragraphs.some((p) => p.runs.some((r) => r.text.includes("企业"))));
+    assert.ok(title && title.kind === "text");
+    assert.deepEqual(title.paragraphs.map((p) => p.runs.map((r) => r.text).join("")), ["AI 如何重塑", "企业知识管理"]);
+    assert.equal(title.paragraphs[1]!.runs[0]!.fontSize, title.paragraphs[0]!.runs[0]!.fontSize);
+  });
+
+  it("splits runs across lines and keeps blank lines", () => {
+    const lines = splitLines([{ text: "a\nb", w: 1 }, { text: "c\n\nd", w: 2 }]);
+    assert.deepEqual(lines.map((l) => l.map((r) => `${r.text}${r.w}`)), [["a1"], ["b1", "c2"], ["2"], ["d2"]]);
+  });
+
+  // The renderer fills the first line and wraps the rest, which cut 企业 in half on the cover
+  // ("AI 如何重塑企 / 业知识管理") — the reviewer's first-impression finding.
+  it("balancedBreak: a cover line breaks between words, not inside one", () => {
+    assert.equal(balancedBreak("AI 如何重塑企业知识管理", 80, 540), "AI 如何重塑\n企业知识管理");
+    // Already broken by the author: kept.
+    assert.equal(balancedBreak("AI 如何重塑\n企业知识管理", 80, 540), "AI 如何重塑\n企业知识管理");
+    // Fits on one line: untouched.
+    assert.equal(balancedBreak("三层能力", 80, 540), "三层能力");
+    // Needs three lines: the renderer's greedy wrap is no worse than a forced 2-line break.
+    assert.equal(balancedBreak("把知识管理的重心从管理文档转到管理问题与答案覆盖制度方案工单会议记录四类知识", 80, 540).includes("\n"), false);
+  });
+
+  it("balancedBreak: never breaks inside a Latin word", () => {
+    const out = balancedBreak("Masters and layouts come along with Chrome", 72, 420);
+    for (const line of out.split("\n")) assert.doesNotMatch(line, /^[a-z]/, `line starts mid-word: ${line}`);
   });
 });
 

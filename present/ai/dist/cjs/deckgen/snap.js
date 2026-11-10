@@ -12,6 +12,7 @@ exports.inferFontSizeFromSlot = inferFontSizeFromSlot;
 exports.isContentPage = isContentPage;
 exports.isTitleSlot = isTitleSlot;
 exports.textUnits = textUnits;
+exports.balancedBreak = balancedBreak;
 exports.fitTextSize = fitTextSize;
 exports.contentTitleSize = contentTitleSize;
 exports.findContentTitle = findContentTitle;
@@ -28,6 +29,8 @@ exports.pageNumeralOf = pageNumeralOf;
 exports.applyFolio = applyFolio;
 exports.snapCanvasReport = snapCanvasReport;
 exports.snapCanvas = snapCanvas;
+exports.eyebrowOf = eyebrowOf;
+exports.applyEyebrowNumbering = applyEyebrowNumbering;
 const visual_system_js_1 = require("./visual-system.js");
 const color_theme_js_1 = require("./color-theme.js");
 const vocab_js_1 = require("./vocab.js");
@@ -124,6 +127,50 @@ function wrappedLines(text, size, w) {
     const perLine = Math.max(0.5, Math.max(1, w - TITLE_INSET_X) / size);
     return Math.max(1, ...text.split(/\n/).map((line) => Math.ceil(Math.max(0.5, textUnits(line)) / perLine)));
 }
+/** Punctuation that may not open a line (a subset of kinsoku's 行头禁则). */
+const NO_LINE_START = /[，。、；：！？）」』】》%,.;:!?)\]]/;
+/**
+ * Balanced break for a two-line display line (cover / section / statement): the renderer wraps by
+ * width, so "AI 如何重塑企业知识管理" at 80px in a 540px box broke between 企 and 业 — the reviewer
+ * called it the first-impression defect of the deck (live review 2026-11-08, page 01). Choose the
+ * break that balances the two lines instead of filling the first, and never break inside a Latin
+ * word or in front of closing punctuation. Returns the text unchanged when one line fits, when the
+ * author already set a break, or when the line needs three.
+ */
+function balancedBreak(text, size, w) {
+    if (text.includes("\n"))
+        return text;
+    const perLine = Math.max(1, (w - TITLE_INSET_X) / size);
+    const chars = [...text];
+    const total = textUnits(text);
+    if (total <= perLine || total > perLine * 2)
+        return text;
+    const unitsFrom = (n) => textUnits(chars.slice(0, n).join(""));
+    let best;
+    for (let k = 1; k < chars.length; k++) {
+        const prefix = unitsFrom(k);
+        const suffix = total - prefix;
+        if (prefix > perLine * 0.995 || suffix > perLine * 0.995)
+            continue;
+        const prev = chars[k - 1];
+        const next = chars[k];
+        if (/\s/.test(next) || /\s/.test(prev))
+            continue; // a break at a space is redundant
+        if (/[A-Za-z0-9]/.test(prev) && /[A-Za-z0-9]/.test(next))
+            continue; // inside a Latin word
+        if (NO_LINE_START.test(next))
+            continue;
+        if (suffix < 2)
+            continue; // one orphaned glyph
+        // Balance first; on a tie prefer the break that leaves the wider first line (optical).
+        const score = Math.max(prefix, suffix) * 1000 - prefix;
+        if (!best || score < best.score)
+            best = { k, score };
+    }
+    if (!best)
+        return text;
+    return `${chars.slice(0, best.k).join("").trimEnd()}\n${chars.slice(best.k).join("").trimStart()}`;
+}
 /**
  * A display sentence the author set at 84px in a 700×220 box ("Masters and layouts come along")
  * wraps to three lines and runs 70px past the box into the subtitle below. Step it down the ramp
@@ -177,6 +224,12 @@ function contentTitleSize(sys, text, bbox) {
 }
 const NUMERAL_ONLY = /^[\d０-９.,%+\-–—×x\s·/]+$/;
 /**
+ * A figure with a short unit — "2.5 小时", "4.2 个", "约 30 分钟", "¥1.2万", "3x faster" is not one.
+ * Models often write KPI values as plain text instead of a kpiRow; at 48px they outsize the real
+ * title and must not be taken for it (snap would shrink the figure and leave the title off-size).
+ */
+const MEASURE = /^(?:约|近|超过?|≈|~|<|>|≤|≥|[+\-¥$€£])?\s*[\d０-９][\d０-９.,]*\s*[^\s\d０-９]{0,4}$/u;
+/**
  * The section title of a content page when the author did not name a `title` slot (most
  * models don't): the largest word-text in the top third at ≥ h2 — not a sidebar numeral
  * ("04"), not a KPI value ("41%"), not an eyebrow. Shared by snap (forces) and reflect (checks).
@@ -201,7 +254,7 @@ function findContentTitle(elements, sys) {
         if ((e.fontSize ?? 0) < sys.typeScale.h2)
             continue;
         const t = e.text.trim();
-        if ([...t].length < 4 || NUMERAL_ONLY.test(t))
+        if ([...t].length < 4 || NUMERAL_ONLY.test(t) || MEASURE.test(t))
             continue;
         if (!best || (e.fontSize ?? 0) > (best.fontSize ?? 0))
             best = e;
@@ -806,11 +859,15 @@ function snapEl(raw, sys, ramp, mx, my, page) {
             fontSize = visual_system_js_1.MIN_READABLE_PX;
         if (!(page?.content && isTitleSlot(raw.slot)))
             fontSize = fitTextSize(text, fontSize, bbox, ramp, raw.lineHeight, sys);
+        // Anchor display lines (cover / section / statement) get a balanced break instead of the
+        // renderer's greedy fill, which cut 企业 in half on the cover. Content titles are left to
+        // `contentTitleSize`, which already steps down to avoid orphans.
+        const broken = !page?.content && fontSize >= sys.typeScale.h1 ? balancedBreak(text, fontSize, bbox.w) : text;
         const treatment = resolveTreatment(sys, normalizeTreatment(raw.treatment));
         return {
             el: decorate({
                 ...base,
-                text,
+                text: broken,
                 fontSize,
                 ...(treatment ? { treatment } : {}),
                 ...(runs ? { runs } : {}),
@@ -861,6 +918,12 @@ function claimFreeRoom(elements, sys, my) {
     if (carriers.length !== 1)
         return;
     const c = carriers[0];
+    // A slot page's carrier was sized by `layoutPage`, which already measured its content, grew it
+    // into the slack and placed it with its takeaway band as one block. Claiming the free band again
+    // re-stretched it past that block — on page 05 the 299px diagram became 449px and its bottom edge
+    // crossed the band it had just been laid out above. The layout engine owns slot geometry.
+    if (c.slot === "carrier" && (c.name ?? "").startsWith("slot:"))
+        return;
     const g = sys.grid.gutter;
     let top = my;
     let bottom = visual_system_js_1.CANVAS.height - my;
@@ -1076,8 +1139,12 @@ function applyFolio(elements, sys, pageIdx, content, folio, size = sys.typeScale
     const w = Math.round(size * 4);
     const y = visual_system_js_1.CANVAS.height - my - h;
     const spots = [
-        { bbox: { x: mx, y, w, h }, align: "start" },
+        // Right corner first, in every page: the folio used to take whichever corner was free, so a
+        // page whose footnote sits on the right got its numeral bottom-left while the rest of the deck
+        // ran bottom-right (live review 2026-11-08, page 02). One corner for the whole deck, and the
+        // left corner only when something real occupies the right one.
         { bbox: { x: visual_system_js_1.CANVAS.width - mx - w, y, w, h }, align: "end" },
+        { bbox: { x: mx, y, w, h }, align: "start" },
     ];
     const spot = spots.find((s) => !elements.some((e) => e.kind !== "overlay" && e.kind !== "bar" && e.kind !== "surface" && e.kind !== "image" && overlaps(s.bbox, e.bbox)));
     if (!spot)
@@ -1158,9 +1225,65 @@ function snapCanvasReport(slides, sys, opts = {}) {
             const anchor = ANCHOR_LAYOUTS.has(String(s.layout).toLowerCase()) || opts.briefs?.[i]?.rhythm === "anchor";
             applyFolio(s.elements, sys, i, !anchor && i > 0 && i < out.length - 1, opts.folio, mode, { total: out.length, pad });
         });
+        // The eyebrow numbering travels with the folio decision: both are wayfinding, both are the
+        // author's to get right page by page and snap's to make consistent across the deck.
+        applyEyebrowNumbering(out, (i) => {
+            const anchor = ANCHOR_LAYOUTS.has(String(out[i].layout).toLowerCase()) || opts.briefs?.[i]?.rhythm === "anchor";
+            return !anchor && i > 0 && i < out.length - 1;
+        }, pad);
     }
     return { slides: out, drops };
 }
 function snapCanvas(slides, sys, opts = {}) {
     return snapCanvasReport(slides, sys, opts).slides;
+}
+/** The eyebrow of a content page: the `eyebrow` slot, else the smallest short kicker text above the title. */
+function eyebrowOf(elements, sys) {
+    const named = elements.find((e) => e.kind === "text" && e.slot === "eyebrow" && e.text?.trim());
+    if (named)
+        return named;
+    const title = elements.find((e) => e.kind === "text" && e.slot === "title");
+    const top = title ? title.bbox.y : visual_system_js_1.CANVAS.height / 3;
+    const ceiling = (sys?.typeScale.caption ?? 13) * 1.3;
+    const cands = elements.filter((e) => e.kind === "text" &&
+        !e.slot.includes(".") &&
+        (e.text?.trim().length ?? 0) > 0 &&
+        (e.text?.trim().length ?? 0) <= 40 &&
+        e.bbox.y + e.bbox.h <= top + 4 &&
+        (e.fontSize ?? 99) <= ceiling);
+    return cands.sort((a, b) => (a.fontSize ?? 99) - (b.fontSize ?? 99))[0];
+}
+const EYEBROW_PREFIX = /^\d{1,2}\s*\/\s*\d{1,2}\s*[·•:：—-]\s*/;
+/**
+ * One eyebrow system for the deck. Authors write "03 / 08 · 耗时对比" on most pages and then drop
+ * the numbering on the ones they re-authored ("现状 · 认知成本"), which reads as two templates in
+ * one deck (live review 2026-11-08, page 02 and 05). When the majority of content pages carry the
+ * prefix, the rest get it too — same page/total as the folio, one separator. A deck where most
+ * eyebrows are plain is left alone: the check follows the author, it does not impose a style.
+ */
+function applyEyebrowNumbering(slides, contentOf, pad) {
+    const rows = slides
+        .map((s, i) => ({ i, e: eyebrowOf(s.elements), content: contentOf(i) }))
+        .filter((r) => !!r.e && r.content);
+    if (rows.length < 3)
+        return;
+    const numbered = rows.filter((r) => EYEBROW_PREFIX.test(r.e.text ?? ""));
+    if (numbered.length * 2 <= rows.length)
+        return;
+    // Follow the author's separator (the most common one), else " · ".
+    const sep = [" · ", " ·", "／", " / ", ": ", "—"].map((s) => [s, numbered.filter((r) => (r.e.text ?? "").includes(s)).length]).sort((a, b) => b[1] - a[1])[0][0];
+    const total = String(slides.length).padStart(pad, "0");
+    for (const r of rows) {
+        const text = (r.e.text ?? "").trim();
+        if (EYEBROW_PREFIX.test(text))
+            continue;
+        const num = String(r.i + 1).padStart(pad, "0");
+        const next = `${num} / ${total}${sep}${text}`;
+        // Only if it still reads as a kicker line; a long label keeps its plain form.
+        if (textUnits(next) > 26)
+            continue;
+        r.e.text = next;
+        if (r.e.runs?.length)
+            r.e.runs = [{ ...r.e.runs[0], text: next }];
+    }
 }

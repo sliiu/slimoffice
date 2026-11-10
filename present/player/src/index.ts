@@ -29,6 +29,16 @@ export {
 } from "./snapshot";
 export type { SnapshotOptions, PdfExportOptions } from "./snapshot";
 export { slideSizeToPdfPoints, dataUrlsToPdf } from "./pdf";
+export {
+  buildPresenterPageHtml,
+  createPresenterBridge,
+  notesForSlide,
+  type PresenterBridge,
+  type PresenterBridgeOptions,
+  type PresenterSnapshot,
+  type RemoteCommand,
+  type RemoteTarget,
+} from "./presenter-remote";
 export { buildStoredZip } from "./zip-store";
 export type { ZipFile } from "./zip-store";
 export { buildOoxmlPlayback } from "./ooxml-runtime";

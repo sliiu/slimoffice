@@ -151,18 +151,73 @@ export function bindGenerateWallClock(
 }
 
 export async function withGenerateWallClock<
-  TOpts extends { signal?: AbortSignal; wallClock?: false | GenerateWallClockOptions },
+  TOpts extends { signal?: AbortSignal; wallClock?: false | GenerateWallClockOptions; wallDeadline?: number },
   T,
 >(opts: TOpts, run: (opts: TOpts) => Promise<T>): Promise<T> {
   if (opts.wallClock === false) return run(opts);
   const { signal, dispose } = bindGenerateWallClock(opts.signal, opts.wallClock);
+  const clock = opts.wallClock ?? {};
+  const wallDeadline = (clock.startedAt ?? (clock.now ?? Date.now)()) + (clock.wallMs ?? GENERATE_WALL_MS);
   try {
     throwIfAborted(signal);
-    return await run({ ...opts, signal, wallClock: false });
+    return await run({ ...opts, signal, wallClock: false, wallDeadline });
   } catch (e) {
     throwIfAborted(signal);
     throw e;
   } finally {
     dispose();
   }
+}
+
+/** Time an optional step may take; see `optionalStepBox`. */
+export interface OptionalStepBox {
+  signal: AbortSignal;
+  /** True when the box ran out (not the parent run): the step is skipped, the deck is kept. */
+  expired: () => boolean;
+  /** Milliseconds before the box runs out; Infinity without a deadline. */
+  left: () => number;
+  dispose: () => void;
+}
+
+/**
+ * Time box for an optional step (vision review, art director) inside a run with a wall clock:
+ * it gets what is left before `deadline` minus `reserveMs` for the steps after it, and is skipped
+ * (undefined) when that is under `minMs`. Without a box a slow reviewer runs into the wall clock,
+ * and the timeout fails the whole generate — throwing away a deck that was already finished.
+ */
+export function optionalStepBox(
+  parent: AbortSignal | undefined,
+  deadline: number | undefined,
+  opts: { reserveMs: number; minMs: number; now?: () => number },
+): OptionalStepBox | undefined {
+  const ac = new AbortController();
+  const forward = (): void => ac.abort(parent?.reason);
+  if (parent?.aborted) forward();
+  else parent?.addEventListener("abort", forward, { once: true });
+  let expired = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const now = opts.now ?? Date.now;
+  const end = deadline == null ? Infinity : deadline - opts.reserveMs;
+  if (deadline != null) {
+    const left = end - now();
+    if (left < opts.minMs) {
+      parent?.removeEventListener("abort", forward);
+      return undefined;
+    }
+    timer = setTimeout(() => {
+      expired = true;
+      const err = new Error("Optional step ran out of time");
+      err.name = "AbortError";
+      ac.abort(err);
+    }, left);
+  }
+  return {
+    signal: ac.signal,
+    expired: () => expired && !parent?.aborted,
+    left: () => Math.max(0, end - now()),
+    dispose: () => {
+      if (timer !== undefined) clearTimeout(timer);
+      parent?.removeEventListener("abort", forward);
+    },
+  };
 }

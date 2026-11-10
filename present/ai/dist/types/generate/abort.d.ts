@@ -29,5 +29,26 @@ export declare function bindGenerateWallClock(parent: AbortSignal | undefined, w
 export declare function withGenerateWallClock<TOpts extends {
     signal?: AbortSignal;
     wallClock?: false | GenerateWallClockOptions;
+    wallDeadline?: number;
 }, T>(opts: TOpts, run: (opts: TOpts) => Promise<T>): Promise<T>;
+/** Time an optional step may take; see `optionalStepBox`. */
+export interface OptionalStepBox {
+    signal: AbortSignal;
+    /** True when the box ran out (not the parent run): the step is skipped, the deck is kept. */
+    expired: () => boolean;
+    /** Milliseconds before the box runs out; Infinity without a deadline. */
+    left: () => number;
+    dispose: () => void;
+}
+/**
+ * Time box for an optional step (vision review, art director) inside a run with a wall clock:
+ * it gets what is left before `deadline` minus `reserveMs` for the steps after it, and is skipped
+ * (undefined) when that is under `minMs`. Without a box a slow reviewer runs into the wall clock,
+ * and the timeout fails the whole generate — throwing away a deck that was already finished.
+ */
+export declare function optionalStepBox(parent: AbortSignal | undefined, deadline: number | undefined, opts: {
+    reserveMs: number;
+    minMs: number;
+    now?: () => number;
+}): OptionalStepBox | undefined;
 export {};

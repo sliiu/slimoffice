@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-renderer",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -18,9 +18,9 @@
   "dependencies": {
     "emf-converter": "^4.8.0",
     "three": "^0.186.0",
-    "@sliiu/present-animation": "0.1.2",
-    "@sliiu/present-core": "0.1.2",
-    "@sliiu/present-three-bake": "0.1.2"
+    "@sliiu/present-animation": "0.1.3",
+    "@sliiu/present-core": "0.1.3",
+    "@sliiu/present-three-bake": "0.1.3"
   },
   "devDependencies": {
     "@types/three": "^0.186.0"

@@ -20,7 +20,7 @@ import { outlineToFallbackSpec } from "./compile/compile.js";
 import { validateAndRepairPresentation } from "./qa/validate.js";
 import { reviewPresentation } from "./qa/art-director.js";
 import { resolveGuidanceLanguage } from "./prompts.js";
-import { rethrowIfAborted, shouldCommitGeneratedDeck, throwIfAborted } from "./abort.js";
+import { optionalStepBox, rethrowIfAborted, shouldCommitGeneratedDeck, throwIfAborted } from "./abort.js";
 import { GENERATE_MODEL_CALL_BUDGET, ModelCallBudget } from "./call-budget.js";
 import { defaultOutlinePageLock } from "./deckgen-ui.js";
 import { briefFromOutlineItem, manuscriptFromOutline, organizeDeckContent, researchManuscript, } from "./agent/roles.js";
@@ -249,9 +249,15 @@ priorReview) {
         opts.onArtDirectorReport?.(priorReview);
         return;
     }
-    if (opts.enableArtDirector !== false && isConfigUsable(config) && ctx.budget.tryConsume()) {
+    // Optional like the canvas vision round: bounded by the wall clock (a little kept for motion and
+    // commit), skipped when too little is left, and a timeout keeps the deck instead of failing it.
+    const box = opts.enableArtDirector !== false && isConfigUsable(config)
+        ? optionalStepBox(opts.signal, opts.wallDeadline, { reserveMs: ART_DIRECTOR_RESERVE_MS, minMs: ART_DIRECTOR_MIN_MS })
+        : undefined;
+    if (box && ctx.budget.tryConsume()) {
+        const signal = box.signal;
         try {
-            throwIfAborted(opts.signal);
+            throwIfAborted(signal);
             ctx.emit({ stage: "compile", progress: 0.88, detailKey: "artDirector.reviewing" });
             // Screenshots go to a model that can see (the configured review model, else a vision-capable
             // text model). A text-only model (DeepSeek chat, …) rejects image parts — sending them only
@@ -259,10 +265,10 @@ priorReview) {
             const visionText = visionReviewTextConfig(config);
             const { model } = createLlm(visionText ?? config.text);
             const screenshots = visionText ? ((await opts.captureReviewShots?.(pres)) ?? []) : [];
-            throwIfAborted(opts.signal);
+            throwIfAborted(signal);
             const report = await reviewPresentation(pres, {
                 model,
-                ...(opts.signal ? { signal: opts.signal } : {}),
+                signal,
                 language: resolveGuidanceLanguage(guidance),
                 ...(guidance.topic ? { topic: guidance.topic } : {}),
                 ...(guidance.styleFamily ? { styleFamily: guidance.styleFamily } : {}),
@@ -273,9 +279,20 @@ priorReview) {
             opts.onArtDirectorReport?.(report);
         }
         catch (e) {
-            rethrowIfAborted(opts.signal, e);
-            if (opts.debug)
-                console.warn("[ai] art director failed (non-fatal):", e);
+            if (box.expired()) {
+                if (opts.debug)
+                    console.warn("[ai] art director ran out of time; deck kept without a review");
+            }
+            else {
+                rethrowIfAborted(opts.signal, e);
+                if (opts.debug)
+                    console.warn("[ai] art director failed (non-fatal):", e);
+            }
         }
     }
+    box?.dispose();
 }
+/** Wall-clock time kept after the art director for motion and commit. */
+const ART_DIRECTOR_RESERVE_MS = 15_000;
+/** Below this much time the art director is not started. */
+const ART_DIRECTOR_MIN_MS = 45_000;

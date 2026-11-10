@@ -131,6 +131,22 @@ function deadSpace(s, sys) {
     const my = CANVAS.height * sys.grid.margin;
     const frame = { x: mx, y: my, w: CANVAS.width - 2 * mx, h: CANVAS.height - 2 * my };
     const boxes = s.elements.filter((e) => !isGround(e)).map((e) => inkBox(e, sys));
+    // A column divider is a 1–4px rule, thinner than the 16px grid this search runs on, so it never
+    // occupied a cell and the empty rectangle ran straight across both columns. A split page is two
+    // columns by design: the short type column under a tall carrier is not one hole. Widen the rule to
+    // a cell so it actually separates them.
+    for (const e of s.elements) {
+        // Wider than a cell: the type column ends a gutter short of the rule, and a 16px block left
+        // that gap open, so the empty rectangle crossed into the other column anyway.
+        // emit draws a rule as a rect, so match the shape, not the kind: a stroke many times taller
+        // than it is wide is a column divider.
+        if (e.kind === "rule" && e.bbox.h > e.bbox.w * 4 && e.bbox.w < CELL) {
+            // Reach back to the nearest content on the left: the type column stops a gutter short of the
+            // rule, and any gap left between them lets the empty rectangle through.
+            const left = boxes.filter((b) => b.x + b.w <= e.bbox.x + 1).reduce((a, b) => Math.max(a, b.x + b.w), e.bbox.x - 80);
+            boxes.push({ x: left, y: e.bbox.y, w: e.bbox.x + e.bbox.w - left, h: e.bbox.h });
+        }
+    }
     const r = largestEmptyRect(frame, boxes);
     if (r.w * r.h < frame.w * frame.h * DEAD_SPACE.area || r.w < frame.w * DEAD_SPACE.w || r.h < frame.h * DEAD_SPACE.h)
         return undefined;
@@ -141,6 +157,29 @@ function deadSpace(s, sys) {
 function sameColumn(a, b) {
     const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
     return ox >= Math.min(a.w, b.w) * 0.5;
+}
+/**
+ * The bottom of the page, measured against where the ink actually stops. `deadSpace` looks for
+ * one big empty rectangle; a footnote or a folio splits the bottom void into two bands that are
+ * each too short to trip it, while the page still reads as "content piled at the top, half a page
+ * blank underneath". The gap below the lowest content ink is the honest measure, so a footnote
+ * alone (muted, small) never counts as content that fills the page.
+ */
+function bottomVoid(s, sys) {
+    const my = CANVAS.height * sys.grid.margin;
+    const bottom = CANVAS.height - my;
+    const content = s.elements
+        .filter((e) => !isGround(e) && e.kind !== "rule" && !/footnote|folio|pageNo/i.test(e.slot))
+        .map((e) => inkBox(e, sys))
+        .filter((b) => b.h > 0);
+    if (!content.length)
+        return undefined;
+    const lowest = Math.max(...content.map((b) => b.y + b.h));
+    const gap = bottom - lowest;
+    const bandH = CANVAS.height * 0.18;
+    if (gap < bandH)
+        return undefined;
+    return `content stops at y=${Math.round(lowest)} and the page runs to y=${Math.round(bottom)} — a ${Math.round(gap)}px band (${Math.round((gap / CANVAS.height) * 100)}% of the page) holds nothing: grow the carrier to fill it (taller cards / chart, a second row) or move the block down to the optical centre`;
 }
 function splitColumn(s, sys) {
     // Free text blocks only; device parts are laid out by their expander.
@@ -241,10 +280,15 @@ export function layoutFindings(slides, sys, briefs) {
         // A split column is the more specific diagnosis of the same void; report one, not both.
         const split = splitColumn(s, sys);
         const dead = split ? undefined : deadSpace(s, sys);
+        // The bottom band is checked even when a dead rectangle was already named: they are different
+        // shapes of the same failure, and a page can have both.
+        const bottom = bottomVoid(s, sys);
         if (split)
             findings.push({ kind: "design", slideIdx: i, issue: split });
         if (dead)
             findings.push({ kind: "design", slideIdx: i, issue: dead });
+        if (bottom)
+            findings.push({ kind: "design", slideIdx: i, issue: bottom });
     });
     return findings;
 }

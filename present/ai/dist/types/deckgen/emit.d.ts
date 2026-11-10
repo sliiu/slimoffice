@@ -14,4 +14,13 @@ import type { PaintedSlide } from "./apply-theme.js";
  * beat, which is how "some cards animate and some don't" looked on live decks.
  */
 export declare function animUnitOf(slot: string): string | undefined;
+/**
+ * Runs → one run list per line. The author's "\n" is a line break ("AI 如何重塑\n企业知识管理"),
+ * and the gates measure it as one; but the renderer, like PowerPoint, breaks only between
+ * paragraphs and draws a "\n" inside a run as a space — the cover then wrapped by width and left
+ * "理" alone on line two (live run 2026-11-05). Each line becomes its own paragraph, same style.
+ */
+export declare function splitLines<R extends {
+    text: string;
+}>(runs: R[]): R[][];
 export declare function emitPresentation(painted: PaintedSlide[], system: VisualSystem, theme: ColorTheme, title: string): Presentation;

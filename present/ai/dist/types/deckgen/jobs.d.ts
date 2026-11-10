@@ -30,6 +30,11 @@ export interface PageJob {
 export declare function jobFromOutlineItem(item: PageJobItem, index: number, total: number): VisualJob;
 export declare function jobsFromPages(items: PageJobItem[], deckTitle?: string): PageJob[];
 /**
+ * Can this page carry a tile grid? Three points is the floor for a 2×2-ish field; a carrier that is
+ * a single object (chart / table / photo / one short line) is one thing, not a grid of things.
+ */
+export declare function gridCapable(job: PageJob): boolean;
+/**
  * Enforce the deck's photo decision over the page jobs (mutates in place). Photo pages get
  * carrier=photo + wantsPhoto; every other page loses both, so a stray interior photograph or a
  * paper section page cannot break the rhythm. `editorial` leaves the organizer's per-page picks.

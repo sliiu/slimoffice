@@ -8,3 +8,4 @@ export { serializePresentationSource, deserializePresentationSource, } from "./s
 export type { SerializedPresentationSource } from "./source-json.js";
 export { latexToOMathPara, latexToOmmlInner } from "./omml-write.js";
 export { backgroundForThemeExport, inferThemeCanvasBackground, looksCjkTypeface, pickEaTypeface, primaryTypeface, themeColorsFontsEqual, themeTypefacesXml, } from "./theme-export.js";
+export { needsOoxmlNormalization } from "./pptx-timing-normalize.js";

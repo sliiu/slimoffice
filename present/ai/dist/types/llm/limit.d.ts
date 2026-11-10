@@ -1,5 +1,5 @@
 export declare const LLM_TIMEOUT: {
-    readonly stepMs: number;
+    stepMs: number;
 };
 export declare function setGenerateJsonConcurrency(n: number): void;
 export declare function isTimeoutLlmError(e: unknown): boolean;

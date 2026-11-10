@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.themeTypefacesXml = exports.themeColorsFontsEqual = exports.primaryTypeface = exports.pickEaTypeface = exports.looksCjkTypeface = exports.inferThemeCanvasBackground = exports.backgroundForThemeExport = exports.latexToOmmlInner = exports.latexToOMathPara = exports.deserializePresentationSource = exports.serializePresentationSource = exports.reattachPresentationSource = exports.assembleDeck = exports.buildDeckParts = exports.writePptx = void 0;
+exports.needsOoxmlNormalization = exports.themeTypefacesXml = exports.themeColorsFontsEqual = exports.primaryTypeface = exports.pickEaTypeface = exports.looksCjkTypeface = exports.inferThemeCanvasBackground = exports.backgroundForThemeExport = exports.latexToOmmlInner = exports.latexToOMathPara = exports.deserializePresentationSource = exports.serializePresentationSource = exports.reattachPresentationSource = exports.assembleDeck = exports.buildDeckParts = exports.writePptx = void 0;
 var pptx_write_1 = require("./pptx-write");
 Object.defineProperty(exports, "writePptx", { enumerable: true, get: function () { return pptx_write_1.writePptx; } });
 Object.defineProperty(exports, "buildDeckParts", { enumerable: true, get: function () { return pptx_write_1.buildDeckParts; } });
@@ -22,3 +22,5 @@ Object.defineProperty(exports, "pickEaTypeface", { enumerable: true, get: functi
 Object.defineProperty(exports, "primaryTypeface", { enumerable: true, get: function () { return theme_export_1.primaryTypeface; } });
 Object.defineProperty(exports, "themeColorsFontsEqual", { enumerable: true, get: function () { return theme_export_1.themeColorsFontsEqual; } });
 Object.defineProperty(exports, "themeTypefacesXml", { enumerable: true, get: function () { return theme_export_1.themeTypefacesXml; } });
+var pptx_timing_normalize_1 = require("./pptx-timing-normalize");
+Object.defineProperty(exports, "needsOoxmlNormalization", { enumerable: true, get: function () { return pptx_timing_normalize_1.needsOoxmlNormalization; } });

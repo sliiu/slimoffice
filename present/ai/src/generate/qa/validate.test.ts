@@ -33,4 +33,16 @@ describe("text overflow repair", () => {
     assert.equal(fitted.autoFit, undefined);
     assert.ok(report.fixes.some((f) => f.kind === "autofit"));
   });
+
+  it("leaves a single line in a font-size-tall box alone (folios, kickers)", () => {
+    const folio: TextShape = {
+      id: "f0",
+      kind: "text",
+      name: "slot:text:0",
+      bbox: { x: 64, y: 36, w: 60, h: 14 },
+      paragraphs: [{ runs: [{ text: "03", fontSize: 11, color: "#4E6478" }] }],
+    } as TextShape;
+    validateAndRepairPresentation(deck(folio));
+    assert.equal(folio.autoFit, undefined);
+  });
 });

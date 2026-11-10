@@ -224,6 +224,12 @@ function compactOutline(outline: Outline): Outline {
  */
 export const OUTLINE_TIMING = { timeoutMs: 3 * 60 * 1000, retryOnTimeout: 1 } as const;
 
+/** Dev override: a slow model (grok, measured 2026-11-09) cannot finish an 8-page outline in 3 minutes. */
+function outlineTiming(): { timeoutMs: number; retryOnTimeout: number } {
+  const min = Number.parseInt(process.env.PPT_AI_OUTLINE_MIN || "0", 10);
+  return min > 0 ? { timeoutMs: min * 60 * 1000, retryOnTimeout: 0 } : OUTLINE_TIMING;
+}
+
 export async function callOutline(
   model: LanguageModel,
   guidance: GuidanceInput,
@@ -259,7 +265,7 @@ export async function callOutline(
     signal,
     undefined,
     onUsage,
-    OUTLINE_TIMING,
+    outlineTiming(),
     sources?.files?.length ? { files: sources.files, ...(sources.responses ? { responses: sources.responses } : {}) } : undefined,
   );
   const compact = normalizeOutlineTheme(compactOutline(outline), guidance);

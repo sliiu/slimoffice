@@ -8,9 +8,11 @@ import {
   isAbortError,
   isGeneratePauseError,
   isGenerateTimeoutError,
+  optionalStepBox,
   shouldCommitGeneratedDeck,
   startGenerateWallClock,
   throwIfAborted,
+  withGenerateWallClock,
 } from "./abort.js";
 import { generateFromOutline } from "./pipeline.js";
 
@@ -132,5 +134,47 @@ describe("generate wall clock", () => {
       (e: unknown) => isGenerateTimeoutError(e) && classifyGenerateEndError(e) === "timed-out",
     );
     assert.equal(applied, 0);
+  });
+});
+
+describe("optional step time box", () => {
+  it("passes the run's deadline to the steps inside it", async () => {
+    const startedAt = Date.now();
+    const opts: { wallClock: { wallMs: number; startedAt: number }; wallDeadline?: number } = { wallClock: { wallMs: 60_000, startedAt } };
+    const seen = await withGenerateWallClock(opts, async (o) => o.wallDeadline);
+    assert.equal(seen, startedAt + 60_000);
+  });
+
+  it("is skipped when too little time is left after the reserve", () => {
+    assert.equal(optionalStepBox(undefined, 100_000, { reserveMs: 30_000, minMs: 60_000, now: () => 20_000 }), undefined);
+    const box = optionalStepBox(undefined, 200_000, { reserveMs: 30_000, minMs: 60_000, now: () => 20_000 });
+    assert.ok(box);
+    box.dispose();
+  });
+
+  it("aborts only its own step when its time runs out, and reports that it expired", async () => {
+    const run = new AbortController();
+    const box = optionalStepBox(run.signal, Date.now() + 40, { reserveMs: 0, minMs: 0 })!;
+    await new Promise((r) => setTimeout(r, 80));
+    assert.equal(box.signal.aborted, true);
+    assert.equal(box.expired(), true);
+    assert.equal(run.signal.aborted, false);
+    assert.ok(isAbortError(box.signal.reason));
+    box.dispose();
+  });
+
+  it("follows a cancel of the run and does not call that an expiry", () => {
+    const run = new AbortController();
+    const box = optionalStepBox(run.signal, Date.now() + 60_000, { reserveMs: 0, minMs: 0 })!;
+    run.abort();
+    assert.equal(box.signal.aborted, true);
+    assert.equal(box.expired(), false);
+    box.dispose();
+  });
+
+  it("has no timer without a deadline (host turned the wall clock off)", () => {
+    const box = optionalStepBox(undefined, undefined, { reserveMs: 30_000, minMs: 60_000 })!;
+    assert.equal(box.signal.aborted, false);
+    box.dispose();
   });
 });

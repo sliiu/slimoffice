@@ -101,3 +101,38 @@ describe("layout gates", () => {
     assert.ok(!findingsFor(s).some((x) => /repeats numbers/.test(x.issue)));
   });
 });
+
+describe("bottom void", () => {
+  it("flags a page whose copy stops high above the footer, even with a footnote below", () => {
+    // The 11-05 sample: a compare page whose content ends at y=530 with a 230px card holding 3 lines.
+    const s = page([
+      text("两种知识库的做法", { x: 64, y: 80, w: 900, h: 60 }, 28),
+      el("surface", { x: 64, y: 180, w: 540, h: 230 }),
+      text("传统做法", { x: 84, y: 200, w: 200, h: 30 }, 18),
+      text("人工维护目录", { x: 84, y: 240, w: 400, h: 24 }, 14),
+      text("靠关键词匹配", { x: 84, y: 274, w: 400, h: 24 }, 14),
+      text("1. 来源：2025 内部调研", { x: 64, y: 660, w: 500, h: 20 }, 12, { slot: "footnote" }),
+    ]);
+    const f = findingsFor(s);
+    assert.ok(f.some((x) => /px band .*holds nothing/.test(x.issue)), JSON.stringify(f));
+  });
+
+  it("stays quiet when the carrier reaches the footer", () => {
+    const s = page([
+      text("两种知识库的做法", { x: 64, y: 80, w: 900, h: 60 }, 28),
+      el("surface", { x: 64, y: 180, w: 1152, h: 460 }),
+      text("传统做法", { x: 84, y: 200, w: 200, h: 30 }, 18),
+    ]);
+    assert.ok(!findingsFor(s).some((x) => /px band .*holds nothing/.test(x.issue)));
+  });
+
+  it("counts a footnote as a label, not as content that fills the page", () => {
+    const s = page([
+      text("标题", { x: 64, y: 80, w: 600, h: 60 }, 28),
+      text("一句短话。", { x: 64, y: 160, w: 400, h: 30 }, 14),
+      text("来源：内部数据", { x: 64, y: 660, w: 400, h: 20 }, 12, { slot: "footnote" }),
+    ]);
+    const f = findingsFor(s);
+    assert.ok(f.some((x) => /px band .*holds nothing/.test(x.issue)), JSON.stringify(f));
+  });
+});

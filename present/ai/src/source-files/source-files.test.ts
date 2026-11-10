@@ -91,6 +91,28 @@ describe("source text fallback", () => {
     assert.equal(extractSourceText({ name: "deck.pptx", mediaType: "", bytes: pptx }), "From the deck");
   });
 
+  it("keeps docx tables as rows instead of flattening them", () => {
+    const docx = zipSync({
+      "word/document.xml": strToU8(
+        `<w:document><w:body>
+          <w:p><w:r><w:t>Q3 销量</w:t></w:r></w:p>
+          <w:tbl>
+            <w:tr><w:tc><w:p><w:r><w:t>品牌</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>销量</w:t></w:r></w:p></w:tc></w:tr>
+            <w:tr><w:tc><w:p><w:r><w:t>A</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>120</w:t></w:r></w:p></w:tc></w:tr>
+          </w:tbl>
+          <w:p><w:r><w:t>数据来源：内部</w:t></w:r></w:p>
+        </w:body></w:document>`,
+      ),
+    });
+    const text = extractSourceText({ name: "q3.docx", mediaType: "", bytes: docx });
+    assert.match(text, /\| 品牌 \| 销量 \|/);
+    assert.match(text, /\| --- \| --- \|/);
+    assert.match(text, /\| A \| 120 \|/);
+    // document order survives: the caption above the table, not after it
+    assert.ok(text.indexOf("Q3 销量") < text.indexOf("| 品牌"), text);
+    assert.ok(text.indexOf("数据来源") > text.indexOf("| A"), text);
+  });
+
   it("stops on a file with no readable text", () => {
     assert.throws(
       () => extractSourceText({ name: "empty.pdf", mediaType: "application/pdf", bytes: new TextEncoder().encode("%PDF-1.1\n%%EOF") }),

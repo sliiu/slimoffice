@@ -72,6 +72,11 @@ export interface GenerateOptions {
      * `false` skips the timer (inner calls after the outer run already armed it).
      */
     wallClock?: false | GenerateWallClockOptions;
+    /**
+     * Epoch ms at which the wall clock fires; set by `withGenerateWallClock` for the steps inside a
+     * run, so optional steps (vision review) can give up in time instead of failing the whole deck.
+     */
+    wallDeadline?: number;
     /** 调试日志输出。 */
     debug?: boolean;
     /** 生成完后是否自动套用主流审美动画（默认 true）。 */
@@ -139,9 +144,9 @@ export interface GenerateOptions {
     /** 艺术总监发现版式问题时对高严重度页换 layout 单页重生成（最多 3 页）。默认跟随 enableArtDirector。 */
     enableArtDirectorRetry?: boolean;
     /**
-     * Canvas page geometry. "author" (default): the model writes every bbox. "slots": content pages
-     * are written as composition + slots and laid out by code (`deckgen/page-layout.ts`); cover,
-     * close, section, statement and photo pages stay authored.
+     * Canvas page geometry. "slots" (default): content pages are written as composition + slots and
+     * laid out by code (`deckgen/page-layout.ts`); cover, close, section, statement and photo pages
+     * stay authored. "author": the model writes every bbox.
      */
     canvasLayout?: "author" | "slots";
     /** 艺术总监评审报告回调。UI 可展示"AI 设计建议"。 */

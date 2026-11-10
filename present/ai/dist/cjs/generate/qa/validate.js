@@ -357,7 +357,10 @@ function textBoxOverflows(shape) {
             continue;
         lines += Math.max(1, Math.ceil((glyphUnits(text) * size) / innerW));
     }
-    if (lines === 0)
+    // One line drawn in a font-size-tall box ("02" at 11px in a 60×14 folio box) spills a few px
+    // below the box and hits nothing; shrink-to-fit would draw it at a quarter size (live run
+    // 2026-11-05: every folio at 3–5px). Snap applies the same rule. Only wrapped text overflows.
+    if (lines <= 1)
         return false;
     return lines * size * 1.35 > innerH + 1;
 }

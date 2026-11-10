@@ -332,22 +332,38 @@ async function authorCanvasDeck(input) {
     const prompt = [
         `Topic: ${input.topic}`,
         input.repair ? `Repair these issues${only ? "" : ", keep the same page count"}:\n${input.repair}` : "",
+        input.shots?.length
+            ? `These are the pages as they render now (${input.shots.map((s) => `image ${input.shots.indexOf(s) + 1} = page ${s.slideIdx + 1}`).join(", ")}). Compare the picture with the issues above: a finding that names a measured gap or an overlap is visible in the image, and the rewrite must remove that visible defect, not just reword the copy. Do not copy the current layout — write the page you would have designed for this content.`
+            : "",
         scope,
         pageBrief(input.jobs, input.images, only ? new Set(only) : undefined, Boolean(input.slots) && !input.sampleComposition),
         input.sampleComposition ? `SAMPLE COMPOSITION:\n${input.sampleComposition}` : "",
     ]
         .filter(Boolean)
         .join("\n\n");
-    const deck = await (0, json_js_1.generateJson)({
+    // Screenshots travel as file parts: the AI SDK's `image` content part is deprecated, and a
+    // `file` part with a media type renders the same on every provider that reads images.
+    const files = (input.shots ?? []).flatMap((s, n) => {
+        const m = /^data:([^;]+);base64,(.*)$/s.exec(s.dataUrl);
+        if (!m)
+            return [];
+        return [{ name: `page-${s.slideIdx + 1}-${n + 1}.png`, mediaType: m[1], bytes: Uint8Array.from(Buffer.from(m[2], "base64")), route: "chat" }];
+    });
+    const ask = (withFiles) => (0, json_js_1.generateJson)({
         model: input.model,
         schema: canvas_schema_js_1.CanvasDeckSchema,
         system: canvasAuthorSystemPrompt(input.brand, input.lock, input.brief, input.host, Boolean(input.sampleComposition), Boolean(input.slots) && !input.sampleComposition),
         prompt,
         signal: input.signal,
         normalize: canvas_schema_js_1.normalizeCanvasDeck,
+        ...(withFiles && files.length ? { files } : {}),
         ...(input.onUsage ? { onUsage: input.onUsage } : {}),
         ...(input.onRaw ? { onRaw: input.onRaw } : {}),
     });
+    // Some OpenAI-compatible gateways reject a `file` content part while accepting the same image as
+    // an `image` part (the review call). A repair that carries screenshots is an improvement, not a
+    // requirement: fall back to the text-only repair rather than losing the round.
+    const deck = files.length ? await ask(true).catch(() => ask(false)) : await ask(false);
     return {
         systemId: deck.systemId,
         slides: toFilled(deck, jobs, input.images),

@@ -203,6 +203,11 @@ function compactOutline(outline) {
  * (worst case 6 min, still under the default step budget).
  */
 exports.OUTLINE_TIMING = { timeoutMs: 3 * 60 * 1000, retryOnTimeout: 1 };
+/** Dev override: a slow model (grok, measured 2026-11-09) cannot finish an 8-page outline in 3 minutes. */
+function outlineTiming() {
+    const min = Number.parseInt(process.env.PPT_AI_OUTLINE_MIN || "0", 10);
+    return min > 0 ? { timeoutMs: min * 60 * 1000, retryOnTimeout: 0 } : exports.OUTLINE_TIMING;
+}
 async function callOutline(model, guidance, signal, systemExtra, host, lockLayouts = true, onUsage, sources) {
     const choices = sources?.template ? (0, template_fill_1.layoutsFromTemplate)(sources.template) : [];
     const system = [
@@ -215,7 +220,7 @@ async function callOutline(model, guidance, signal, systemExtra, host, lockLayou
     ]
         .filter(Boolean)
         .join("\n\n");
-    const outline = await (0, aliases_1.generateSpecJson)(model, schema_1.OutlineSchema, system, (0, prompts_1.outlineUserPrompt)(guidance), signal, undefined, onUsage, exports.OUTLINE_TIMING, sources?.files?.length ? { files: sources.files, ...(sources.responses ? { responses: sources.responses } : {}) } : undefined);
+    const outline = await (0, aliases_1.generateSpecJson)(model, schema_1.OutlineSchema, system, (0, prompts_1.outlineUserPrompt)(guidance), signal, undefined, onUsage, outlineTiming(), sources?.files?.length ? { files: sources.files, ...(sources.responses ? { responses: sources.responses } : {}) } : undefined);
     const compact = normalizeOutlineTheme(compactOutline(outline), guidance);
     const counted = clampOutlineSlideCount(assignLayoutsFromContent(compact), guidance.slideCount);
     if (choices.length)
