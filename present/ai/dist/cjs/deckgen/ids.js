@@ -5,7 +5,7 @@
  * Live canvas author may use CANVAS_SYSTEM_IDS plus skill-registered systems.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PAINT_ROLES = exports.SLOT_CAPS = exports.DEFAULT_COLOR_THEME = exports.COLOR_THEME_PAIRING = exports.COLOR_THEME_IDS = exports.LAYOUT_VARIANTS = exports.LAYOUT_IDS = exports.CUSTOM_SYSTEM_ID_RE = exports.CANVAS_SYSTEM_IDS = exports.VISUAL_SYSTEM_IDS = void 0;
+exports.PAINT_ROLES = exports.SLOT_CAPS = exports.FOLIO_THEME_ALIASES = exports.FOLIO = exports.INK_BOARD_THEME_ALIASES = exports.INK_BOARD = exports.DEFAULT_COLOR_THEME = exports.COLOR_THEME_PAIRING = exports.COLOR_THEME_IDS = exports.LAYOUT_VARIANTS = exports.LAYOUT_IDS = exports.CUSTOM_SYSTEM_ID_RE = exports.CANVAS_SYSTEM_IDS = exports.VISUAL_SYSTEM_IDS = void 0;
 exports.isBuiltinCanvasSystemId = isBuiltinCanvasSystemId;
 exports.isCanvasSystemId = isCanvasSystemId;
 exports.listCanvasSystemIds = listCanvasSystemIds;
@@ -13,6 +13,8 @@ exports.setRegisteredCanvasSystemIds = setRegisteredCanvasSystemIds;
 exports.isVisualSystemId = isVisualSystemId;
 exports.isLayoutId = isLayoutId;
 exports.isColorThemeId = isColorThemeId;
+exports.isInkBoardThemeAlias = isInkBoardThemeAlias;
+exports.isFolioThemeAlias = isFolioThemeAlias;
 exports.variantsForLayout = variantsForLayout;
 exports.isVariantForLayout = isVariantForLayout;
 exports.themesForSystem = themesForSystem;
@@ -100,6 +102,20 @@ exports.DEFAULT_COLOR_THEME = {
     editorial: "ink",
     swiss: "ikb",
 };
+/**
+ * Ink Board — the locked editorial + ink pairing (porcelain paper, near-black type).
+ * Not a VisualSystem id. Folio is a different look (`swiss` + `ikb`) and must not reuse this pair.
+ */
+exports.INK_BOARD = { systemId: "editorial", themeId: "ink" };
+/** Wizard / notes aliases that resolve to {@link INK_BOARD.themeId}. */
+exports.INK_BOARD_THEME_ALIASES = ["ink-board", "inkboard"];
+/**
+ * Folio — the locked swiss + ikb pairing (cool paper, near-black type, International Klein Blue).
+ * Not a VisualSystem id. Page numerals stay on DeckBrief.folio; this constant is the look only.
+ */
+exports.FOLIO = { systemId: "swiss", themeId: "ikb" };
+/** Wizard / notes aliases that resolve to {@link FOLIO.themeId}. */
+exports.FOLIO_THEME_ALIASES = ["folio"];
 exports.SLOT_CAPS = {
     statementClaimChars: 18,
     quoteChars: 42,
@@ -124,6 +140,14 @@ function isLayoutId(id) {
 }
 function isColorThemeId(id) {
     return exports.COLOR_THEME_IDS.includes(id);
+}
+function isInkBoardThemeAlias(id) {
+    const hint = id.trim().toLowerCase();
+    return hint === exports.INK_BOARD.themeId || exports.INK_BOARD_THEME_ALIASES.includes(hint);
+}
+function isFolioThemeAlias(id) {
+    const hint = id.trim().toLowerCase();
+    return hint === exports.FOLIO.themeId || exports.FOLIO_THEME_ALIASES.includes(hint);
 }
 function variantsForLayout(layout) {
     return exports.LAYOUT_VARIANTS[layout];

@@ -17,6 +17,8 @@ ColorTheme hex is registered (`COLOR_THEME_PALETTES`). Pairing:
 - editorial → ink | indigo | kraft
 - swiss → ikb | signal | lemon
 
+**Ink Board** is the `editorial` + `ink` row (`editorial-ink.json`). It is a named look, not a third VisualSystem.
+
 Negative (expected FAIL) fixtures: [`negative/`](./negative/README.md).
 
 ## Run

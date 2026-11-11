@@ -19,6 +19,11 @@ export interface ReflectResult {
     passed: boolean;
     findings: ReflectFinding[];
 }
+/**
+ * Title hierarchy on porcelain/ink: page titles must clear 7:1 on their field
+ * and must not sit as muted-on-paper (gray-on-mud).
+ */
+export declare function checkTitleHierarchy(slides: PaintedSlide[], theme: ColorTheme, findings: ReflectFinding[]): void;
 export declare function reflectPainted(slides: PaintedSlide[], system: VisualSystem, theme: ColorTheme): ReflectResult;
 export declare function reflectPresentation(pres: Presentation, system: VisualSystem, theme: ColorTheme): ReflectResult;
 export declare function assertReflect(result: ReflectResult): void;

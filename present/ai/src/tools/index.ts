@@ -31,6 +31,7 @@ import { fontTools } from "./domains/fonts";
 import { protectionTools } from "./domains/protection";
 import { agendaTools } from "./domains/agenda";
 import { iconTools } from "./domains/icons";
+import { screenshotTools } from "./domains/screenshot";
 import { stockFontsGroup } from "../mcp/client/builtin/stock-fonts";
 
 const PAINTER_TOOL_NAMES = new Set([
@@ -78,6 +79,7 @@ export function buildEditToolDefs(): ToolDef[] {
     ...protectionTools,
     ...agendaTools,
     ...iconTools,
+    ...screenshotTools,
   ];
 }
 

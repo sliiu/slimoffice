@@ -11,10 +11,34 @@ import { tool, type Tool } from "ai";
 import type { ToolDef, ToolRuntime } from "../types";
 import { assertShapeInScope, extractShapeTarget } from "../guard";
 
+function modelOutput(output: unknown): { type: "json"; value: unknown } | { type: "content"; value: unknown[] } {
+  const slides = output && typeof output === "object" ? (output as { slides?: { slideIdx?: number; pngBase64?: string }[] }).slides : undefined;
+  if (!Array.isArray(slides) || !slides.some((s) => typeof s?.pngBase64 === "string" && s.pngBase64.length > 0)) {
+    return { type: "json", value: output };
+  }
+  return {
+    type: "content",
+    value: [
+      {
+        type: "text",
+        text: slides.map((s) => `slide ${s.slideIdx ?? "?"}`).join(", "),
+      },
+      ...slides
+        .filter((s) => typeof s.pngBase64 === "string" && s.pngBase64.length > 0)
+        .map((s) => ({
+          type: "file",
+          mediaType: "image/png",
+          data: { type: "data", data: s.pngBase64 },
+        })),
+    ],
+  };
+}
+
 export function toVercelTool(def: ToolDef, rt: ToolRuntime): Tool {
   return tool({
     description: def.description,
     inputSchema: def.inputSchema as never,
+    toModelOutput: ({ output }) => modelOutput(output) as never,
     execute: async (input: unknown) => {
       if (def.shapeScoped) {
         const violation = assertShapeInScope(rt.port, extractShapeTarget(input));

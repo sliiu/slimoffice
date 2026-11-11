@@ -226,7 +226,10 @@ export const OUTLINE_TIMING = { timeoutMs: 3 * 60 * 1000, retryOnTimeout: 1 } as
 
 /** Dev override: a slow model (grok, measured 2026-11-09) cannot finish an 8-page outline in 3 minutes. */
 function outlineTiming(): { timeoutMs: number; retryOnTimeout: number } {
-  const min = Number.parseInt(process.env.PPT_AI_OUTLINE_MIN || "0", 10);
+  const min = Number.parseInt(
+    (typeof process !== "undefined" ? process.env?.PPT_AI_OUTLINE_MIN : undefined) || "0",
+    10,
+  );
   return min > 0 ? { timeoutMs: min * 60 * 1000, retryOnTimeout: 0 } : OUTLINE_TIMING;
 }
 

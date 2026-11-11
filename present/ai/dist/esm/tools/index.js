@@ -29,6 +29,7 @@ import { fontTools } from "./domains/fonts.js";
 import { protectionTools } from "./domains/protection.js";
 import { agendaTools } from "./domains/agenda.js";
 import { iconTools } from "./domains/icons.js";
+import { screenshotTools } from "./domains/screenshot.js";
 import { stockFontsGroup } from "../mcp/client/builtin/stock-fonts.js";
 const PAINTER_TOOL_NAMES = new Set([
     "insertTextBox",
@@ -74,6 +75,7 @@ export function buildEditToolDefs() {
         ...protectionTools,
         ...agendaTools,
         ...iconTools,
+        ...screenshotTools,
     ];
 }
 /** 生成 polish 专用子集。extra 可并入额外工具名。 */

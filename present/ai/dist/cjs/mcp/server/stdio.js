@@ -1,6 +1,7 @@
 "use strict";
 // 本地 stdio MCP。工具集与网关 /api/mcp 相同（createPptMcpServer）。
 // 文稿在 SLIMPPT_ROOT（缺省为当前目录）这一层。保存写回 .pptx。
+// 任意路径也可以 open_pptx → 编辑 → screenshot_slide → save_pptx。
 //
 //   SLIMPPT_ROOT=/path/to/decks pnpm exec tsx packages/ai/src/mcp/server/stdio.ts
 //

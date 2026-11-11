@@ -27,6 +27,12 @@ export interface MountOptions {
     showMediaControls?: boolean;
     fileName?: string;
     initialSlide?: number;
+    /**
+     * 画出设计稿：进入动画的目标不按「点击前隐藏」处理。
+     * 无头浏览器截 `?designed=1` 时打开，和 PNG 导出同一张画面。
+     * 放映仍走默认，点击前隐藏。
+     */
+    designedAppearance?: boolean;
     onSlideChange?: (index: number, total: number) => void;
     onComplete?: () => void;
     /**

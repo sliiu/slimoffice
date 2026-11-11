@@ -14,6 +14,7 @@ const color_theme_js_1 = require("./color-theme.js");
 const visual_system_js_1 = require("./visual-system.js");
 const snap_js_1 = require("./snap.js");
 const compare_js_1 = require("./compare.js");
+const reflect_js_1 = require("./reflect.js");
 const brief_js_1 = require("./brief.js");
 const copy_voice_js_1 = require("../generate/copy-voice.js");
 const layout_gates_js_1 = require("./layout-gates.js");
@@ -361,6 +362,7 @@ function reflectCanvas(slides, system, theme, briefs) {
             pages,
         });
     }
+    (0, reflect_js_1.checkTitleHierarchy)(slides, theme, findings);
     return { passed: findings.length === 0, findings };
 }
 const CJK_NUMERALS = { 一: 1, 两: 2, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };

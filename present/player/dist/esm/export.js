@@ -178,6 +178,13 @@ ${pluginTags}
   // 仅在 window.__player 上挂 PlayerHandle；URL ?driver=auto 时跳过 autoplay/clickAdvance/键盘。
   var qs = typeof window !== 'undefined' && window.location ? window.location.search : '';
   var auto = /[?&]driver=auto/.test(qs);
+  var designed = /[?&]designed=1(?:&|$)/.test(qs);
+  var slideParam = /[?&]slide=(\\d+)/.exec(qs);
+  if (designed) {
+    opts.designedAppearance = true;
+    console.log("PPTVIEW:" + window.innerWidth + "," + window.innerHeight);
+  }
+  if (slideParam) opts.initialSlide = parseInt(slideParam[1], 10);
   var follow = /[?&]live=/.test(qs) || /[?&]driver=follow/.test(qs);
   if (auto) {
     opts.autoplay = false;

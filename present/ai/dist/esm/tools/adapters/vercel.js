@@ -8,10 +8,33 @@
 //      不让一次工具异常打断整个流。
 import { tool } from "ai";
 import { assertShapeInScope, extractShapeTarget } from "../guard.js";
+function modelOutput(output) {
+    const slides = output && typeof output === "object" ? output.slides : undefined;
+    if (!Array.isArray(slides) || !slides.some((s) => typeof s?.pngBase64 === "string" && s.pngBase64.length > 0)) {
+        return { type: "json", value: output };
+    }
+    return {
+        type: "content",
+        value: [
+            {
+                type: "text",
+                text: slides.map((s) => `slide ${s.slideIdx ?? "?"}`).join(", "),
+            },
+            ...slides
+                .filter((s) => typeof s.pngBase64 === "string" && s.pngBase64.length > 0)
+                .map((s) => ({
+                type: "file",
+                mediaType: "image/png",
+                data: { type: "data", data: s.pngBase64 },
+            })),
+        ],
+    };
+}
 export function toVercelTool(def, rt) {
     return tool({
         description: def.description,
         inputSchema: def.inputSchema,
+        toModelOutput: ({ output }) => modelOutput(output),
         execute: async (input) => {
             if (def.shapeScoped) {
                 const violation = assertShapeInScope(rt.port, extractShapeTarget(input));

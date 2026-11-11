@@ -50,6 +50,8 @@ Common subpaths:
 | Path | Use |
 |---|---|
 | `@sliiu/present-player/export` | `buildHtml`, `buildHtmlBundle` |
+| `@sliiu/present-player/browser-screenshot` | PNG of a slide via a local headless Chrome, when there is no DOM |
+| `@sliiu/present-ai/mcp-server` | File agent: `open_pptx`, edit, `screenshot_slide`, `save_pptx`. Run `pnpm exec tsx packages/ai/src/mcp/server/stdio.ts` |
 | `@sliiu/present-player/pdf` | PDF page size |
 | `@sliiu/present-player/iife` | The browser file |
 | `@sliiu/present-serializer/source-json` | The original package as JSON |

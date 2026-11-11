@@ -40,6 +40,10 @@ Reviewed outline → per-page visual **job** (hint, not a skeleton lock) → fet
 
 `generateDeck()` still fills the locked layout catalog so tests and keyless builds work. That path keeps ColorTheme pairing and print bans.
 
+**Ink Board** is the locked `editorial` + `ink` pairing (porcelain paper, near-black type). The AI main pipeline (`generateFromOutline`) treats a brief that names editorial / ink / “Ink Board” as that look: fill and live author both emit `system · theme = editorial · ink`. Titles must clear 7:1 on their field and must not sit as muted-on-paper. `swiss` + `ink` still fails pairing.
+
+**Folio** is the locked `swiss` + `ikb` pairing (cool paper, near-black type, International Klein Blue accent). A brief that names swiss (with no other ColorTheme) / ikb / “Folio” emits `system · theme = swiss · ikb`. Page numerals stay on `DeckBrief.folio`. `editorial` + `ikb` still fails pairing. editorial / ink / indigo / kraft are not Folio.
+
 ```
 pnpm exec tsx --test packages/ai/src/deckgen packages/ai/src/generate/deckgen-adapter.test.ts
 ```

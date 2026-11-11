@@ -112,6 +112,26 @@ export const DEFAULT_COLOR_THEME: Record<VisualSystemId, ColorThemeId> = {
   swiss: "ikb",
 };
 
+/**
+ * Ink Board — the locked editorial + ink pairing (porcelain paper, near-black type).
+ * Not a VisualSystem id. Folio is a different look (`swiss` + `ikb`) and must not reuse this pair.
+ */
+export const INK_BOARD = { systemId: "editorial", themeId: "ink" } as const;
+export type InkBoardPairing = typeof INK_BOARD;
+
+/** Wizard / notes aliases that resolve to {@link INK_BOARD.themeId}. */
+export const INK_BOARD_THEME_ALIASES = ["ink-board", "inkboard"] as const;
+
+/**
+ * Folio — the locked swiss + ikb pairing (cool paper, near-black type, International Klein Blue).
+ * Not a VisualSystem id. Page numerals stay on DeckBrief.folio; this constant is the look only.
+ */
+export const FOLIO = { systemId: "swiss", themeId: "ikb" } as const;
+export type FolioPairing = typeof FOLIO;
+
+/** Wizard / notes aliases that resolve to {@link FOLIO.themeId}. */
+export const FOLIO_THEME_ALIASES = ["folio"] as const;
+
 export const SLOT_CAPS = {
   statementClaimChars: 18,
   quoteChars: 42,
@@ -141,6 +161,16 @@ export function isLayoutId(id: string): id is LayoutId {
 
 export function isColorThemeId(id: string): id is ColorThemeId {
   return (COLOR_THEME_IDS as readonly string[]).includes(id);
+}
+
+export function isInkBoardThemeAlias(id: string): boolean {
+  const hint = id.trim().toLowerCase();
+  return hint === INK_BOARD.themeId || (INK_BOARD_THEME_ALIASES as readonly string[]).includes(hint);
+}
+
+export function isFolioThemeAlias(id: string): boolean {
+  const hint = id.trim().toLowerCase();
+  return hint === FOLIO.themeId || (FOLIO_THEME_ALIASES as readonly string[]).includes(hint);
 }
 
 export function variantsForLayout(layout: LayoutId): readonly string[] {

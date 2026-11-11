@@ -29,6 +29,30 @@ describe("canvas author look", () => {
     assert.match(p, /Keep systemId="swiss"/);
   });
 
+  it("locks Ink Board porcelain/ink when the palette is pinned", () => {
+    const p = canvasAuthorSystemPrompt(undefined, {
+      systemId: "editorial",
+      palette: { bg: "#F1EFEA", ink: "#0A0A0B", accent: "#0A0A0B" },
+    });
+    assert.match(p, /Keep systemId="editorial"/);
+    assert.match(p, /#F1EFEA/);
+    assert.match(p, /porcelain paper and near-black type/);
+    assert.match(p, /gray-on-mud/);
+  });
+
+  it("locks Folio swiss paper / IKB accent when the palette is pinned", () => {
+    const p = canvasAuthorSystemPrompt(undefined, {
+      systemId: "swiss",
+      palette: { bg: "#FAFAF8", ink: "#0A0A0A", accent: "#002FA7" },
+    });
+    assert.match(p, /Keep systemId="swiss"/);
+    assert.match(p, /#FAFAF8/);
+    assert.match(p, /#002FA7/);
+    assert.match(p, /International Klein Blue/);
+    assert.doesNotMatch(p, /porcelain paper/);
+    assert.doesNotMatch(p, /no third hue/);
+  });
+
   it("pins brand hex when the brief has one", () => {
     const p = canvasAuthorSystemPrompt("#E11D48");
     assert.match(p, /#E11D48/);

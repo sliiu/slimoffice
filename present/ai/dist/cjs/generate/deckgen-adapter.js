@@ -13,6 +13,8 @@ exports.DECKGEN_CANVAS = void 0;
 exports.isDeckgenGenerateEnabled = isDeckgenGenerateEnabled;
 exports.resolveDeckgenSystem = resolveDeckgenSystem;
 exports.resolveDeckgenTheme = resolveDeckgenTheme;
+exports.isInkBoardGuidance = isInkBoardGuidance;
+exports.isFolioGuidance = isFolioGuidance;
 exports.fillThemeId = fillThemeId;
 exports.materialsFromGuidance = materialsFromGuidance;
 exports.toDeckgenInput = toDeckgenInput;
@@ -63,6 +65,10 @@ function isDeckgenGenerateEnabled(_opts) {
  * Used by the no-key fill fallback. Live author picks systemId itself.
  */
 function resolveDeckgenSystem(guidance) {
+    if (isInkBoardGuidance(guidance))
+        return index_js_1.INK_BOARD.systemId;
+    if (isFolioGuidance(guidance))
+        return index_js_1.FOLIO.systemId;
     const family = (guidance.styleFamily ?? "").trim().toLowerCase();
     if ((0, index_js_1.isVisualSystemId)(family))
         return family;
@@ -84,9 +90,86 @@ function resolveDeckgenSystem(guidance) {
  */
 function resolveDeckgenTheme(systemId, themeHint) {
     const hint = (themeHint ?? "").trim();
+    if ((0, index_js_1.isInkBoardThemeAlias)(hint))
+        return index_js_1.INK_BOARD.themeId;
+    if ((0, index_js_1.isFolioThemeAlias)(hint))
+        return index_js_1.FOLIO.themeId;
     if (hint && (0, index_js_1.isColorThemeId)(hint))
         return hint;
     return index_js_1.DEFAULT_COLOR_THEME[systemId];
+}
+/**
+ * Ink Board is editorial + ink. Notes / theme aliases win over a swiss family so a
+ * brief that names the look does not land on a remapped swiss seed.
+ * A brief that names Folio is not Ink Board — that look is swiss + ikb.
+ */
+function isInkBoardGuidance(guidance) {
+    const notes = [guidance.extraNotes, guidance.goals, guidance.styleFamily, guidance.themeId]
+        .map((s) => (s ?? "").toLowerCase())
+        .join(" ");
+    if (/\bink[-\s]?board\b/.test(notes))
+        return true;
+    const family = (guidance.styleFamily ?? "").trim().toLowerCase();
+    const theme = (guidance.themeId ?? "").trim().toLowerCase();
+    if (family === "swiss")
+        return false;
+    if (namesFolioLook(notes) && !(0, index_js_1.isInkBoardThemeAlias)(theme) && !isEditorialTheme(theme))
+        return false;
+    if ((0, index_js_1.isInkBoardThemeAlias)(theme))
+        return true;
+    if (family === "editorial" && (!theme || theme === "ai" || (0, index_js_1.isInkBoardThemeAlias)(theme)))
+        return true;
+    if (guidance.visualSystem === "editorial" && (!theme || theme === "ai" || (0, index_js_1.isInkBoardThemeAlias)(theme)))
+        return true;
+    return false;
+}
+/**
+ * Folio is swiss + ikb. Notes / theme aliases win over an editorial family so a
+ * brief that names the look does not land on a remapped editorial seed.
+ * editorial / ink / indigo / kraft briefs stay those looks; swiss+signal/lemon stays those themes.
+ * DeckBrief.folio is the page-number channel, not a look detector.
+ */
+function isFolioGuidance(guidance) {
+    const notes = [guidance.extraNotes, guidance.goals, guidance.styleFamily, guidance.themeId]
+        .map((s) => (s ?? "").toLowerCase())
+        .join(" ");
+    if (/\bink[-\s]?board\b/.test(notes))
+        return false;
+    const family = (guidance.styleFamily ?? "").trim().toLowerCase();
+    const theme = (guidance.themeId ?? "").trim().toLowerCase();
+    if (family === "editorial" || guidance.visualSystem === "editorial") {
+        return namesFolioLook(notes) && !(0, index_js_1.isInkBoardThemeAlias)(theme) && !isEditorialTheme(theme);
+    }
+    if (isEditorialTheme(theme) || (0, index_js_1.isInkBoardThemeAlias)(theme))
+        return false;
+    if (namesFolioLook(notes))
+        return true;
+    if ((0, index_js_1.isFolioThemeAlias)(theme) || (0, index_js_1.isFolioThemeAlias)(family))
+        return true;
+    if (family === "swiss" && (!theme || theme === "ai" || (0, index_js_1.isFolioThemeAlias)(theme)))
+        return true;
+    if (guidance.visualSystem === "swiss" && (!theme || theme === "ai" || (0, index_js_1.isFolioThemeAlias)(theme)))
+        return true;
+    return false;
+}
+function namesFolioLook(notes) {
+    return /\bfolio\b/.test(notes);
+}
+function isEditorialTheme(theme) {
+    return theme === "indigo" || theme === "kraft";
+}
+/** Named product look, if the brief locked one. */
+function namedLook(guidance) {
+    if (isInkBoardGuidance(guidance))
+        return index_js_1.INK_BOARD;
+    if (isFolioGuidance(guidance))
+        return index_js_1.FOLIO;
+    return undefined;
+}
+function lookPaletteIntent(look) {
+    return look.themeId === index_js_1.INK_BOARD.themeId
+        ? "porcelain paper, near-black ink, no third hue, no gray-on-mud titles"
+        : "swiss paper, near-black type, International Klein Blue accent";
 }
 function fillThemeId(systemId, themeId) {
     const id = resolveDeckgenTheme(systemId, themeId);
@@ -115,8 +198,9 @@ function materialsFromGuidance(guidance, outline) {
 }
 /** Map generate guidance (+ optional user outline) onto deckgen fill input. */
 function toDeckgenInput(guidance, outline) {
-    const systemId = resolveDeckgenSystem(guidance);
-    const themeId = fillThemeId(systemId, guidance.themeId);
+    const look = namedLook(guidance);
+    const systemId = look ? look.systemId : resolveDeckgenSystem(guidance);
+    const themeId = look ? look.themeId : fillThemeId(systemId, guidance.themeId);
     const topic = (outline?.title || guidance.topic || "").trim() || "Untitled";
     const materials = materialsFromGuidance(guidance, outline);
     const audience = (guidance.audience ?? outline?.subtitle)?.trim();
@@ -410,7 +494,15 @@ async function generatePresentationViaDeckgen(guidance, outline, opts = {}) {
     if (!pres && working?.slides.length && (0, presets_js_1.isConfigUsable)(config) && ctx.budget.tryConsume()) {
         try {
             const jobs = jobsFromOutline(working);
+            const look = namedLook(guidance);
             const deckBrief = withPhotoDecision(withFolioDecision((0, brief_js_1.coerceDeckBrief)(working.designBrief), guidance, jobs.length), guidance);
+            const lockedBrief = look
+                ? {
+                    ...deckBrief,
+                    systemId: look.systemId,
+                    paletteIntent: deckBrief.paletteIntent ?? lookPaletteIntent(look),
+                }
+                : deckBrief;
             // One photo decision for the whole deck, enforced before acquisition so only the pages that
             // will carry a photograph fetch one.
             (0, jobs_js_1.applyPhotoRhythm)(jobs, deckBrief.photoRhythm);
@@ -445,12 +537,16 @@ async function generatePresentationViaDeckgen(guidance, outline, opts = {}) {
             while (paidExtras < canvasExtras && ctx.budget.tryConsume())
                 paidExtras += 1;
             const chunks = (0, canvas_author_js_1.canvasChunkIndexes)(jobs.length, paidExtras);
+            const lookLock = look
+                ? { systemId: look.systemId, palette: index_js_1.COLOR_THEME_PALETTES[look.themeId] }
+                : undefined;
             const authorBase = {
                 model,
                 topic: working.title || guidance.topic,
                 jobs,
                 images,
-                brief: deckBrief,
+                brief: lockedBrief,
+                ...(lookLock ? { lock: lookLock } : {}),
                 ...(brand ? { brand } : {}),
                 ...(opts.hostSkillStore ? { host: opts.hostSkillStore } : {}),
                 ...(opts.signal ? { signal: opts.signal } : {}),
@@ -484,7 +580,7 @@ async function generatePresentationViaDeckgen(guidance, outline, opts = {}) {
                     ...authorBase,
                     only,
                     unchanged: describeUnchangedPages(slideSlots, jobs, only, (0, index_js_1.resolveVisualSystem)(authored.systemId)),
-                    lock: {
+                    lock: lookLock ?? {
                         systemId: authored.systemId,
                         ...(authored.palette ? { palette: authored.palette } : {}),
                     },
@@ -497,13 +593,15 @@ async function generatePresentationViaDeckgen(guidance, outline, opts = {}) {
                     throw new Error("canvas chunk missing pages");
                 authored = { ...authored, slides: slideSlots.filter((slide) => !!slide) };
             }
-            let system = (0, index_js_1.resolveVisualSystem)(authored.systemId);
-            let theme = (0, index_js_1.themeFromAuthoredLook)({
-                systemId: authored.systemId,
-                ...(authored.themeId ? { themeId: authored.themeId } : {}),
-                ...(authored.palette ? { palette: authored.palette } : {}),
-                ...(brand ? { brand } : {}),
-            });
+            let system = (0, index_js_1.resolveVisualSystem)(look ? look.systemId : authored.systemId);
+            let theme = look
+                ? (0, index_js_1.seedColorTheme)(look.systemId, look.themeId, brand)
+                : (0, index_js_1.themeFromAuthoredLook)({
+                    systemId: authored.systemId,
+                    ...(authored.themeId ? { themeId: authored.themeId } : {}),
+                    ...(authored.palette ? { palette: authored.palette } : {}),
+                    ...(brand ? { brand } : {}),
+                });
             const folio = deckBrief.folio;
             let compiled = (0, index_js_1.compileCanvasDeck)({
                 system,
@@ -531,11 +629,11 @@ async function generatePresentationViaDeckgen(guidance, outline, opts = {}) {
                     topic: working.title || guidance.topic,
                     jobs,
                     images,
-                    brief: deckBrief,
+                    brief: lockedBrief,
                     repair,
                     ...(extra?.shots?.length ? { shots: extra.shots } : {}),
                     ...(scope ? { only: scope, unchanged: describeUnchangedPages(firstPass.slides, jobs, scope, system) } : {}),
-                    lock: {
+                    lock: lookLock ?? {
                         systemId: authored.systemId,
                         ...(authored.palette ? { palette: authored.palette } : {}),
                     },
@@ -561,13 +659,15 @@ async function generatePresentationViaDeckgen(guidance, outline, opts = {}) {
                 }
                 else {
                     authored = scopedRepair;
-                    system = (0, index_js_1.resolveVisualSystem)(authored.systemId);
-                    theme = (0, index_js_1.themeFromAuthoredLook)({
-                        systemId: authored.systemId,
-                        ...(authored.themeId ? { themeId: authored.themeId } : {}),
-                        ...(authored.palette ? { palette: authored.palette } : {}),
-                        ...(brand ? { brand } : {}),
-                    });
+                    if (!look) {
+                        system = (0, index_js_1.resolveVisualSystem)(authored.systemId);
+                        theme = (0, index_js_1.themeFromAuthoredLook)({
+                            systemId: authored.systemId,
+                            ...(authored.themeId ? { themeId: authored.themeId } : {}),
+                            ...(authored.palette ? { palette: authored.palette } : {}),
+                            ...(brand ? { brand } : {}),
+                        });
+                    }
                 }
                 const repairedCompiled = (0, index_js_1.compileCanvasDeck)({
                     system,

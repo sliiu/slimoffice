@@ -3,7 +3,10 @@ let active = 0;
 const waiters: Array<() => void> = [];
 
 /** Dev override (`PPT_AI_STEP_MIN`): grok did not finish organize or the canvas author inside 8 minutes. */
-const stepMin = Number.parseInt(process.env.PPT_AI_STEP_MIN || "0", 10);
+const stepMin = Number.parseInt(
+  (typeof process !== "undefined" ? process.env?.PPT_AI_STEP_MIN : undefined) || "0",
+  10,
+);
 export const LLM_TIMEOUT = { stepMs: (stepMin > 0 ? stepMin : 8) * 60 * 1000 };
 
 export function setGenerateJsonConcurrency(n: number): void {

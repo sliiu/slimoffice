@@ -11,7 +11,7 @@ export default defineConfig({
     },
     minify: "esbuild",
     sourcemap: false,
-    emptyOutDir: true,
+    emptyOutDir: process.env.PRESENT_KEEP_DIST !== "1",
     target: "es2020",
   },
 });

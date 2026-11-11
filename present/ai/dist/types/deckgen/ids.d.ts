@@ -58,6 +58,28 @@ export declare const COLOR_THEME_PAIRING: {
     readonly swiss: readonly ["ikb", "signal", "lemon"];
 };
 export declare const DEFAULT_COLOR_THEME: Record<VisualSystemId, ColorThemeId>;
+/**
+ * Ink Board — the locked editorial + ink pairing (porcelain paper, near-black type).
+ * Not a VisualSystem id. Folio is a different look (`swiss` + `ikb`) and must not reuse this pair.
+ */
+export declare const INK_BOARD: {
+    readonly systemId: "editorial";
+    readonly themeId: "ink";
+};
+export type InkBoardPairing = typeof INK_BOARD;
+/** Wizard / notes aliases that resolve to {@link INK_BOARD.themeId}. */
+export declare const INK_BOARD_THEME_ALIASES: readonly ["ink-board", "inkboard"];
+/**
+ * Folio — the locked swiss + ikb pairing (cool paper, near-black type, International Klein Blue).
+ * Not a VisualSystem id. Page numerals stay on DeckBrief.folio; this constant is the look only.
+ */
+export declare const FOLIO: {
+    readonly systemId: "swiss";
+    readonly themeId: "ikb";
+};
+export type FolioPairing = typeof FOLIO;
+/** Wizard / notes aliases that resolve to {@link FOLIO.themeId}. */
+export declare const FOLIO_THEME_ALIASES: readonly ["folio"];
 export declare const SLOT_CAPS: {
     readonly statementClaimChars: 18;
     readonly quoteChars: 42;
@@ -78,6 +100,8 @@ export type PaintRole = (typeof PAINT_ROLES)[number];
 export declare function isVisualSystemId(id: string): id is VisualSystemId;
 export declare function isLayoutId(id: string): id is LayoutId;
 export declare function isColorThemeId(id: string): id is ColorThemeId;
+export declare function isInkBoardThemeAlias(id: string): boolean;
+export declare function isFolioThemeAlias(id: string): boolean;
 export declare function variantsForLayout(layout: LayoutId): readonly string[];
 export declare function isVariantForLayout(layout: LayoutId, variant: string): boolean;
 export declare function themesForSystem(system: VisualSystemId): readonly ColorThemeId[];

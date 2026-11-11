@@ -50,6 +50,8 @@ const { parsePptx } = require("@sliiu/present-parser");
 | 路径 | 用途 |
 |---|---|
 | `@sliiu/present-player/export` | `buildHtml`、`buildHtmlBundle` |
+| `@sliiu/present-player/browser-screenshot` | 没有 DOM 时，用本机无头 Chrome 截一页 PNG |
+| `@sliiu/present-ai/mcp-server` | 文件 agent：`open_pptx`、编辑、`screenshot_slide`、`save_pptx`。启动：`pnpm exec tsx packages/ai/src/mcp/server/stdio.ts` |
 | `@sliiu/present-player/pdf` | PDF 页尺寸 |
 | `@sliiu/present-player/iife` | 浏览器单文件 |
 | `@sliiu/present-serializer/source-json` | 原始压缩包的 JSON 形式 |

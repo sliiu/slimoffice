@@ -18,6 +18,12 @@ export {
   COLOR_THEME_IDS,
   COLOR_THEME_PAIRING,
   DEFAULT_COLOR_THEME,
+  INK_BOARD,
+  INK_BOARD_THEME_ALIASES,
+  isInkBoardThemeAlias,
+  FOLIO,
+  FOLIO_THEME_ALIASES,
+  isFolioThemeAlias,
   SLOT_CAPS,
   PAINT_ROLES,
   isVisualSystemId,
@@ -32,6 +38,8 @@ export {
   type ColorThemeId,
   type AnyVariantId,
   type PaintRole,
+  type InkBoardPairing,
+  type FolioPairing,
 } from "./ids.js";
 
 export {
@@ -111,6 +119,7 @@ export { structureOf, structureEqual, structureDiff } from "./compare.js";
 export {
   reflectPainted,
   reflectPresentation,
+  checkTitleHierarchy,
   assertReflect,
   type ReflectResult,
   type ReflectFinding,

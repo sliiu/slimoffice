@@ -4,7 +4,7 @@
  * Live (API key): canvas author → snap → emit.
  * Offline / no key: VisualSystem → Layout+Variant → fill → ColorTheme.
  */
-export { VISUAL_SYSTEM_IDS, CANVAS_SYSTEM_IDS, isCanvasSystemId, isBuiltinCanvasSystemId, listCanvasSystemIds, LAYOUT_IDS, LAYOUT_VARIANTS, COLOR_THEME_IDS, COLOR_THEME_PAIRING, DEFAULT_COLOR_THEME, SLOT_CAPS, PAINT_ROLES, isVisualSystemId, isLayoutId, isColorThemeId, isVariantForLayout, variantsForLayout, themesForSystem, assertThemePairing, } from "./ids.js";
+export { VISUAL_SYSTEM_IDS, CANVAS_SYSTEM_IDS, isCanvasSystemId, isBuiltinCanvasSystemId, listCanvasSystemIds, LAYOUT_IDS, LAYOUT_VARIANTS, COLOR_THEME_IDS, COLOR_THEME_PAIRING, DEFAULT_COLOR_THEME, INK_BOARD, INK_BOARD_THEME_ALIASES, isInkBoardThemeAlias, FOLIO, FOLIO_THEME_ALIASES, isFolioThemeAlias, SLOT_CAPS, PAINT_ROLES, isVisualSystemId, isLayoutId, isColorThemeId, isVariantForLayout, variantsForLayout, themesForSystem, assertThemePairing, } from "./ids.js";
 export { CANVAS, VISUAL_SYSTEMS, DECKGEN_FONT_FAMILIES, resolveVisualSystem, listCanvasSystems, listCustomVisualSystems, getRegisteredVisualSystem, registerCustomVisualSystems, fontFamiliesForSystem, normalizeSystemId, TYPE_VOICES, displaySize, typeRole, } from "./visual-system.js";
 export { CustomVisualSystemSchema, CustomVisualSystemError, extractCustomVisualSystems, buildCustomVisualSystem, formatCustomVisualSystemBlock, } from "./custom-system.js";
 export { listLayoutCatalog, resolveLayout, imageSlotsAllowed } from "./layouts.js";
@@ -17,7 +17,7 @@ export { emitPresentation } from "./emit.js";
 export { buildDeckgenMasters, deckgenMasterId, deckgenLayoutId, ooxmlTypeForLayout, } from "./masters.js";
 export { injectDeckgenFonts, injectDeckgenFontsFromPres, deckgenFontLinks } from "./fonts.js";
 export { structureOf, structureEqual, structureDiff } from "./compare.js";
-export { reflectPainted, reflectPresentation, assertReflect, } from "./reflect.js";
+export { reflectPainted, reflectPresentation, checkTitleHierarchy, assertReflect, } from "./reflect.js";
 export { generateDeck, generateDeckPair, compileCanvasDeck, canvasStats, lockColorTheme, } from "./pipeline.js";
 export { snapCanvas, snapCanvasReport, deriveScrim, realImageSrc, canvasTypeRamp, isContentPage, isTitleSlot, contentTitleSize, findContentTitle, textUnits, MAX_FLOATING_PER_PAGE, } from "./snap.js";
 export { reflectCanvas, MAX_COPY_BLOCKS, READING_CAP, MIN_DENSE_FIELD_COVERAGE } from "./reflect-canvas.js";

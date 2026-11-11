@@ -14,6 +14,7 @@ exports.toFilled = toFilled;
 exports.canvasExtraChunks = canvasExtraChunks;
 exports.canvasChunkIndexes = canvasChunkIndexes;
 exports.authorCanvasDeck = authorCanvasDeck;
+const color_theme_js_1 = require("../deckgen/color-theme.js");
 const visual_system_js_1 = require("../deckgen/visual-system.js");
 const page_layout_js_1 = require("../deckgen/page-layout.js");
 const sample_composition_js_1 = require("./sample-composition.js");
@@ -86,13 +87,36 @@ const SLOTS_RULE = [
     "- Put enough on the page to fill it: 3–6 items in a device, each with a one-phrase body; a chart with every category; never a single short line as the carrier.",
     "Other pages (cover, close, section, statement, photo pages) are authored with elements and bbox as above.",
 ].join("\n");
+function hexEq(a, b) {
+    return (a ?? "").toLowerCase() === b.toLowerCase();
+}
+/** Character line for a pinned palette so Ink Board and Folio do not share porcelain/no-third-hue copy. */
+function lockedPaletteLine(lock) {
+    const pal = lock.palette;
+    if (!pal?.bg || !pal?.ink)
+        return "";
+    const ink = color_theme_js_1.COLOR_THEME_PALETTES.ink;
+    const ikb = color_theme_js_1.COLOR_THEME_PALETTES.ikb;
+    if (hexEq(pal.bg, ink.bg) && hexEq(pal.ink, ink.ink)) {
+        return `Keep the locked palette (bg ${pal.bg}, ink ${pal.ink}) — porcelain paper and near-black type, no third hue, no gray-on-mud titles.`;
+    }
+    if (hexEq(pal.bg, ikb.bg) && hexEq(pal.ink, ikb.ink) && hexEq(pal.accent, ikb.accent)) {
+        return `Keep the locked palette (bg ${pal.bg}, ink ${pal.ink}, accent ${pal.accent}) — swiss paper, near-black type, International Klein Blue accent.`;
+    }
+    return `Keep the locked palette (bg ${pal.bg}, ink ${pal.ink}${pal.accent ? `, accent ${pal.accent}` : ""}).`;
+}
 function canvasAuthorSystemPrompt(brand, lock, brief, host, sample = false, slots = false) {
     // Reading the skills first also registers any custom visual systems they define,
     // so the whitelist below already contains them.
     const skillFragments = (0, registry_js_1.getEnabledSkillFragments)({ stage: "slide", host });
     const systems = (0, visual_system_js_1.listCanvasSystems)();
     const look = lock
-        ? `Keep systemId="${lock.systemId}". You may adjust palette hex if contrast failed.`
+        ? [
+            `Keep systemId="${lock.systemId}". You may adjust palette hex if contrast failed.`,
+            lockedPaletteLine(lock),
+        ]
+            .filter(Boolean)
+            .join(" ")
         : [
             "You choose the look for THIS brief. Do not default to a generic magazine/ink deck.",
             `systemId must be one of: ${systems.map((s) => s.id).join(" | ")}.`,

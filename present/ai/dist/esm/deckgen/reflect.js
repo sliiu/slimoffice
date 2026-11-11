@@ -7,11 +7,48 @@ import { isLayoutId, isVariantForLayout } from "./ids.js";
 import { imageSlotsAllowed } from "./layouts.js";
 import { paletteOf } from "./color-theme.js";
 import { typeScaleValues, CANVAS } from "./visual-system.js";
+import { contrastRatio, parseHex, relativeLuminance } from "../generate/qa/color.js";
+import { isTitleSlot } from "./snap.js";
 function find(findings, kind, slideIdx, issue) {
     findings.push({ kind, slideIdx, issue });
 }
 function texts(slide) {
     return slide.elements.filter((e) => e.kind === "text" && (e.text ?? "").trim());
+}
+function isPageTitle(el) {
+    if (el.kind !== "text" || !(el.text ?? "").trim())
+        return false;
+    if (el.slot === "claim")
+        return true;
+    return isTitleSlot(el.slot) || isTitleSlot(el.name);
+}
+/**
+ * Title hierarchy on porcelain/ink: page titles must clear 7:1 on their field
+ * and must not sit as muted-on-paper (gray-on-mud).
+ */
+export function checkTitleHierarchy(slides, theme, findings) {
+    const pal = paletteOf(theme);
+    const paper = parseHex(pal.bg);
+    const muted = pal.muted.toLowerCase();
+    for (let i = 0; i < slides.length; i++) {
+        for (const el of slides[i].elements) {
+            if (!isPageTitle(el))
+                continue;
+            const fg = parseHex(el.color);
+            const bg = parseHex(el.backdrop ?? pal.bg) ?? paper;
+            if (!fg || !bg)
+                continue;
+            const ratio = contrastRatio(fg, bg);
+            const onLight = relativeLuminance(bg) > 0.5;
+            if (onLight && el.color.toLowerCase() === muted) {
+                find(findings, "design", i, `title “${(el.text ?? "").slice(0, 24)}” is muted on paper (gray-on-mud) — set it in ink`);
+                continue;
+            }
+            if (ratio < 7) {
+                find(findings, "design", i, `title contrast ${ratio.toFixed(1)}:1 is below 7:1 (ink on porcelain)`);
+            }
+        }
+    }
 }
 export function reflectPainted(slides, system, theme) {
     const findings = [];
@@ -97,6 +134,7 @@ export function reflectPainted(slides, system, theme) {
     }
     if (slides.length === 0)
         find(findings, "coherence", -1, "empty deck");
+    checkTitleHierarchy(slides, theme, findings);
     return { passed: findings.length === 0, findings };
 }
 export function reflectPresentation(pres, system, theme) {
@@ -149,6 +187,22 @@ export function reflectPresentation(pres, system, theme) {
                         }
                         if (r.color && !allowed.has(r.color.toLowerCase())) {
                             find(findings, "design", i, `free text hex ${r.color}`);
+                        }
+                    }
+                }
+                const titleName = (t.name ?? "").toLowerCase();
+                if (/slot:(title|claim)$/.test(titleName) || isTitleSlot(titleName)) {
+                    const paperHex = (slide.background?.kind === "solid" && slide.background.color) || pal.bg;
+                    const paper = parseHex(paperHex);
+                    const run = t.paragraphs[0]?.runs[0];
+                    const fg = parseHex(run?.color ?? pal.ink);
+                    if (paper && fg) {
+                        const ratio = contrastRatio(fg, paper);
+                        if (relativeLuminance(paper) > 0.5 && (run?.color ?? "").toLowerCase() === pal.muted.toLowerCase()) {
+                            find(findings, "design", i, `title is muted on paper (gray-on-mud) — set it in ink`);
+                        }
+                        else if (ratio < 7) {
+                            find(findings, "design", i, `title contrast ${ratio.toFixed(1)}:1 is below 7:1 (ink on porcelain)`);
                         }
                     }
                 }

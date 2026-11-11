@@ -86,6 +86,20 @@ export const DEFAULT_COLOR_THEME = {
     editorial: "ink",
     swiss: "ikb",
 };
+/**
+ * Ink Board — the locked editorial + ink pairing (porcelain paper, near-black type).
+ * Not a VisualSystem id. Folio is a different look (`swiss` + `ikb`) and must not reuse this pair.
+ */
+export const INK_BOARD = { systemId: "editorial", themeId: "ink" };
+/** Wizard / notes aliases that resolve to {@link INK_BOARD.themeId}. */
+export const INK_BOARD_THEME_ALIASES = ["ink-board", "inkboard"];
+/**
+ * Folio — the locked swiss + ikb pairing (cool paper, near-black type, International Klein Blue).
+ * Not a VisualSystem id. Page numerals stay on DeckBrief.folio; this constant is the look only.
+ */
+export const FOLIO = { systemId: "swiss", themeId: "ikb" };
+/** Wizard / notes aliases that resolve to {@link FOLIO.themeId}. */
+export const FOLIO_THEME_ALIASES = ["folio"];
 export const SLOT_CAPS = {
     statementClaimChars: 18,
     quoteChars: 42,
@@ -110,6 +124,14 @@ export function isLayoutId(id) {
 }
 export function isColorThemeId(id) {
     return COLOR_THEME_IDS.includes(id);
+}
+export function isInkBoardThemeAlias(id) {
+    const hint = id.trim().toLowerCase();
+    return hint === INK_BOARD.themeId || INK_BOARD_THEME_ALIASES.includes(hint);
+}
+export function isFolioThemeAlias(id) {
+    const hint = id.trim().toLowerCase();
+    return hint === FOLIO.themeId || FOLIO_THEME_ALIASES.includes(hint);
 }
 export function variantsForLayout(layout) {
     return LAYOUT_VARIANTS[layout];

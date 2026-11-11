@@ -4,6 +4,7 @@
  * Reflective checklist; hard fail.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.checkTitleHierarchy = checkTitleHierarchy;
 exports.reflectPainted = reflectPainted;
 exports.reflectPresentation = reflectPresentation;
 exports.assertReflect = assertReflect;
@@ -12,11 +13,48 @@ const ids_js_2 = require("./ids.js");
 const layouts_js_1 = require("./layouts.js");
 const color_theme_js_1 = require("./color-theme.js");
 const visual_system_js_1 = require("./visual-system.js");
+const color_js_1 = require("../generate/qa/color.js");
+const snap_js_1 = require("./snap.js");
 function find(findings, kind, slideIdx, issue) {
     findings.push({ kind, slideIdx, issue });
 }
 function texts(slide) {
     return slide.elements.filter((e) => e.kind === "text" && (e.text ?? "").trim());
+}
+function isPageTitle(el) {
+    if (el.kind !== "text" || !(el.text ?? "").trim())
+        return false;
+    if (el.slot === "claim")
+        return true;
+    return (0, snap_js_1.isTitleSlot)(el.slot) || (0, snap_js_1.isTitleSlot)(el.name);
+}
+/**
+ * Title hierarchy on porcelain/ink: page titles must clear 7:1 on their field
+ * and must not sit as muted-on-paper (gray-on-mud).
+ */
+function checkTitleHierarchy(slides, theme, findings) {
+    const pal = (0, color_theme_js_1.paletteOf)(theme);
+    const paper = (0, color_js_1.parseHex)(pal.bg);
+    const muted = pal.muted.toLowerCase();
+    for (let i = 0; i < slides.length; i++) {
+        for (const el of slides[i].elements) {
+            if (!isPageTitle(el))
+                continue;
+            const fg = (0, color_js_1.parseHex)(el.color);
+            const bg = (0, color_js_1.parseHex)(el.backdrop ?? pal.bg) ?? paper;
+            if (!fg || !bg)
+                continue;
+            const ratio = (0, color_js_1.contrastRatio)(fg, bg);
+            const onLight = (0, color_js_1.relativeLuminance)(bg) > 0.5;
+            if (onLight && el.color.toLowerCase() === muted) {
+                find(findings, "design", i, `title “${(el.text ?? "").slice(0, 24)}” is muted on paper (gray-on-mud) — set it in ink`);
+                continue;
+            }
+            if (ratio < 7) {
+                find(findings, "design", i, `title contrast ${ratio.toFixed(1)}:1 is below 7:1 (ink on porcelain)`);
+            }
+        }
+    }
 }
 function reflectPainted(slides, system, theme) {
     const findings = [];
@@ -102,6 +140,7 @@ function reflectPainted(slides, system, theme) {
     }
     if (slides.length === 0)
         find(findings, "coherence", -1, "empty deck");
+    checkTitleHierarchy(slides, theme, findings);
     return { passed: findings.length === 0, findings };
 }
 function reflectPresentation(pres, system, theme) {
@@ -154,6 +193,22 @@ function reflectPresentation(pres, system, theme) {
                         }
                         if (r.color && !allowed.has(r.color.toLowerCase())) {
                             find(findings, "design", i, `free text hex ${r.color}`);
+                        }
+                    }
+                }
+                const titleName = (t.name ?? "").toLowerCase();
+                if (/slot:(title|claim)$/.test(titleName) || (0, snap_js_1.isTitleSlot)(titleName)) {
+                    const paperHex = (slide.background?.kind === "solid" && slide.background.color) || pal.bg;
+                    const paper = (0, color_js_1.parseHex)(paperHex);
+                    const run = t.paragraphs[0]?.runs[0];
+                    const fg = (0, color_js_1.parseHex)(run?.color ?? pal.ink);
+                    if (paper && fg) {
+                        const ratio = (0, color_js_1.contrastRatio)(fg, paper);
+                        if ((0, color_js_1.relativeLuminance)(paper) > 0.5 && (run?.color ?? "").toLowerCase() === pal.muted.toLowerCase()) {
+                            find(findings, "design", i, `title is muted on paper (gray-on-mud) — set it in ink`);
+                        }
+                        else if (ratio < 7) {
+                            find(findings, "design", i, `title contrast ${ratio.toFixed(1)}:1 is below 7:1 (ink on porcelain)`);
                         }
                     }
                 }

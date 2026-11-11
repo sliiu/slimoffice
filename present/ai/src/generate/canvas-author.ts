@@ -7,6 +7,7 @@
  */
 
 import type { LanguageModel } from "ai";
+import { COLOR_THEME_PALETTES } from "../deckgen/color-theme.js";
 import { CANVAS, listCanvasSystems, resolveVisualSystem, type VisualSystem } from "../deckgen/visual-system.js";
 import { isSlotComposition, layoutPage, type SlotComposition } from "../deckgen/page-layout.js";
 import type { CanvasDevice, CanvasDiagram, FilledEl, FilledSlide } from "../deckgen/ir.js";
@@ -139,6 +140,25 @@ const SLOTS_RULE = [
   "Other pages (cover, close, section, statement, photo pages) are authored with elements and bbox as above.",
 ].join("\n");
 
+function hexEq(a: string | undefined, b: string): boolean {
+  return (a ?? "").toLowerCase() === b.toLowerCase();
+}
+
+/** Character line for a pinned palette so Ink Board and Folio do not share porcelain/no-third-hue copy. */
+function lockedPaletteLine(lock: NonNullable<AuthorCanvasInput["lock"]>): string {
+  const pal = lock.palette;
+  if (!pal?.bg || !pal?.ink) return "";
+  const ink = COLOR_THEME_PALETTES.ink;
+  const ikb = COLOR_THEME_PALETTES.ikb;
+  if (hexEq(pal.bg, ink.bg) && hexEq(pal.ink, ink.ink)) {
+    return `Keep the locked palette (bg ${pal.bg}, ink ${pal.ink}) — porcelain paper and near-black type, no third hue, no gray-on-mud titles.`;
+  }
+  if (hexEq(pal.bg, ikb.bg) && hexEq(pal.ink, ikb.ink) && hexEq(pal.accent, ikb.accent)) {
+    return `Keep the locked palette (bg ${pal.bg}, ink ${pal.ink}, accent ${pal.accent}) — swiss paper, near-black type, International Klein Blue accent.`;
+  }
+  return `Keep the locked palette (bg ${pal.bg}, ink ${pal.ink}${pal.accent ? `, accent ${pal.accent}` : ""}).`;
+}
+
 export function canvasAuthorSystemPrompt(
   brand?: string,
   lock?: AuthorCanvasInput["lock"],
@@ -152,7 +172,12 @@ export function canvasAuthorSystemPrompt(
   const skillFragments = getEnabledSkillFragments({ stage: "slide", host });
   const systems = listCanvasSystems();
   const look = lock
-    ? `Keep systemId="${lock.systemId}". You may adjust palette hex if contrast failed.`
+    ? [
+        `Keep systemId="${lock.systemId}". You may adjust palette hex if contrast failed.`,
+        lockedPaletteLine(lock),
+      ]
+        .filter(Boolean)
+        .join(" ")
     : [
         "You choose the look for THIS brief. Do not default to a generic magazine/ink deck.",
         `systemId must be one of: ${systems.map((s) => s.id).join(" | ")}.`,

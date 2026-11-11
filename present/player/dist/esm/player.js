@@ -1,6 +1,6 @@
 import { lecturePlaybackEnabled, lectureTakeFor, nextLectureClickMs } from "@sliiu/present-core";
 import { attachMediaTrimPlayback, sanitizeExternalUrl } from "@sliiu/present-core";
-import { CanvasBackend, HybridBackend, SvgBackend, createScene, applyEntranceHideToScene, mountMorphTransitionLayers, getImage, resolveAnimatable, stageChromeBackground, hitTestNodeBBox, } from "@sliiu/present-renderer";
+import { CanvasBackend, HybridBackend, SvgBackend, createScene, applyEntranceHideToScene, revealDesignedAppearance, mountMorphTransitionLayers, getImage, resolveAnimatable, stageChromeBackground, hitTestNodeBBox, } from "@sliiu/present-renderer";
 import { registerEmbeddedFonts } from "./fonts.js";
 import { mkLucideIconButton } from "./icons.js";
 import { autoAdvanceAfterSec, autoAdvanceWaitSec, autoplayTimelineSec, clickAdvancesSlide } from "./slide-advance.js";
@@ -625,10 +625,21 @@ export function mount(host, pres, opts = {}) {
         runtime = createSlideRuntime(stage, incoming, pres, backend, () => {
             // step 推进或时间轴自动触发时发事件
             fireStepChange();
-        }, playAnimSound);
+        }, playAnimSound, opts.designedAppearance === true);
         // 触发当前 slide 的 3D bake；setProperty 在 bake 完成时通知 renderer redraw。
         if (runtime?.scene)
             bakeRuntime.kick(incoming, runtime.scene);
+        if (opts.designedAppearance && runtime) {
+            const painted = runtime;
+            void waitForSlideAssets(painted.scene, host.ownerDocument, 0)
+                .then(() => bakeRuntime.waitForAll())
+                .then(() => {
+                if (runtime !== painted)
+                    return;
+                painted.repaint?.();
+                host.ownerDocument.documentElement.dataset.pptReady = "1";
+            });
+        }
         fitStage();
         refreshUi();
         requestAnimationFrame(syncVideoMediaControls);
@@ -1915,10 +1926,14 @@ function waitForSlideAssets(scene, doc, timeoutMs = 4000) {
     if (waits.length === 0)
         return Promise.resolve();
     const all = Promise.all(waits).then(() => undefined);
+    // timeoutMs <= 0：只等加载事件。无头截图开了虚拟时间，setTimeout 会被快进，
+    // 不能拿它当「图还没到就先画」的兜底。
+    if (timeoutMs <= 0)
+        return all;
     const timeout = new Promise((resolve) => setTimeout(resolve, timeoutMs));
     return Promise.race([all, timeout]);
 }
-function createSlideRuntime(stage, slide, pres, backend, onChange, onAnimSound) {
+function createSlideRuntime(stage, slide, pres, backend, onChange, onAnimSound, designedAppearance = false) {
     // 清空上一页的渲染产物，但保留插件注入的 overlay 层（白板 SVG、plugin overlay
     // 根等，标记 data-ppt-overlay）。这些层独立于 slide 内容存在，若被一并清掉，翻页
     // 后插件持有的就是游离节点 —— 典型症状：白板第二次开启后画不上、点击穿透到 stage
@@ -1931,7 +1946,10 @@ function createSlideRuntime(stage, slide, pres, backend, onChange, onAnimSound) 
             stage.removeChild(n);
     }
     const scene = createScene(slide, pres.size, { masters: pres.masters });
-    applyEntranceHideToScene(scene, slide);
+    if (designedAppearance)
+        revealDesignedAppearance(scene, slide);
+    else
+        applyEntranceHideToScene(scene, slide);
     const detachers = [];
     let ready3D;
     const chromeBg = stageChromeBackground(slide);
@@ -1947,6 +1965,9 @@ function createSlideRuntime(stage, slide, pres, backend, onChange, onAnimSound) 
     // 同步画出 video/audio，让 playSlideNarrationsFor 能复用 scene.mediaEl，
     // 而不是在 rAF 之前另建一个脱离 DOM 的 <audio>。
     flushable.flush?.();
+    const repaint = () => {
+        flushable.flush?.();
+    };
     let ooxmlPlayback;
     if (slide.ooxmlTiming) {
         const play = buildOoxmlPlayback(slide, scene, { slideWidth: pres.size.width, slideHeight: pres.size.height }, {
@@ -2004,6 +2025,7 @@ function createSlideRuntime(stage, slide, pres, backend, onChange, onAnimSound) 
         scene,
         detach: () => detachers.forEach((d) => d()),
         ready3D,
+        repaint,
         ooxml: ooxmlPlayback,
     };
 }

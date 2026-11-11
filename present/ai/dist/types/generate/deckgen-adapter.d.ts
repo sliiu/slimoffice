@@ -25,6 +25,19 @@ export declare function resolveDeckgenSystem(guidance: GuidanceInput): VisualSys
  * fill fallback remaps to the system default.
  */
 export declare function resolveDeckgenTheme(systemId: VisualSystemId, themeHint?: string): ColorThemeId;
+/**
+ * Ink Board is editorial + ink. Notes / theme aliases win over a swiss family so a
+ * brief that names the look does not land on a remapped swiss seed.
+ * A brief that names Folio is not Ink Board — that look is swiss + ikb.
+ */
+export declare function isInkBoardGuidance(guidance: GuidanceInput): boolean;
+/**
+ * Folio is swiss + ikb. Notes / theme aliases win over an editorial family so a
+ * brief that names the look does not land on a remapped editorial seed.
+ * editorial / ink / indigo / kraft briefs stay those looks; swiss+signal/lemon stays those themes.
+ * DeckBrief.folio is the page-number channel, not a look detector.
+ */
+export declare function isFolioGuidance(guidance: GuidanceInput): boolean;
 export declare function fillThemeId(systemId: VisualSystemId, themeId?: string): ColorThemeId;
 export declare function materialsFromGuidance(guidance: GuidanceInput, outline?: Outline): string[];
 /** Map generate guidance (+ optional user outline) onto deckgen fill input. */

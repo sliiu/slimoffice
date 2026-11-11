@@ -35,6 +35,7 @@ const fonts_1 = require("./domains/fonts");
 const protection_1 = require("./domains/protection");
 const agenda_1 = require("./domains/agenda");
 const icons_1 = require("./domains/icons");
+const screenshot_1 = require("./domains/screenshot");
 const stock_fonts_1 = require("../mcp/client/builtin/stock-fonts");
 const PAINTER_TOOL_NAMES = new Set([
     "insertTextBox",
@@ -80,6 +81,7 @@ function buildEditToolDefs() {
         ...protection_1.protectionTools,
         ...agenda_1.agendaTools,
         ...icons_1.iconTools,
+        ...screenshot_1.screenshotTools,
     ];
 }
 /** 生成 polish 专用子集。extra 可并入额外工具名。 */

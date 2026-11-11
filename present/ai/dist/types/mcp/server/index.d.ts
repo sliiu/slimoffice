@@ -19,6 +19,8 @@ export interface PptMcpDeckStore {
  */
 export interface PptMcpSession {
     deckId: string | null;
+    /** 用 open_pptx 打开时的绝对路径。save_pptx / save_presentation 写回这里。 */
+    filePath: string | null;
     port: DocumentPort | null;
     /** 打开后有未保存改动。 */
     dirty: boolean;

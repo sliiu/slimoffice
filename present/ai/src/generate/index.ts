@@ -39,6 +39,8 @@ export {
 } from "./pipeline";
 export {
   isDeckgenGenerateEnabled,
+  isInkBoardGuidance,
+  isFolioGuidance,
   resolveDeckgenSystem,
   resolveDeckgenTheme,
   toDeckgenInput,

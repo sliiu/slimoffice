@@ -13,7 +13,7 @@ import { CANVAS, MAX_CAPTION_CHARS, MIN_READABLE_PX, type VisualSystem } from ".
 import { NUMERIC_VALUE, canvasTypeRamp, contentTitleSize, findContentTitle, isContentPage, pageNumeralOf as pageNumeral, realImageSrc, textUnits } from "./snap.js";
 import type { PaintedEl, PaintedSlide } from "./apply-theme.js";
 import { structureOf } from "./compare.js";
-import type { ReflectFinding, ReflectResult } from "./reflect.js";
+import { checkTitleHierarchy, type ReflectFinding, type ReflectResult } from "./reflect.js";
 import { COMPOSITION_HINTS, RELATIONSHIP_CARRIERS, type Composition, type PageBrief } from "./brief.js";
 import { formatCopyVoiceHits, lintCopyVoice } from "../generate/copy-voice.js";
 import { layoutFindings } from "./layout-gates.js";
@@ -386,6 +386,7 @@ export function reflectCanvas(
     });
   }
 
+  checkTitleHierarchy(slides, theme, findings);
   return { passed: findings.length === 0, findings };
 }
 

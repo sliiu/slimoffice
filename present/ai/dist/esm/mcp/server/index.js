@@ -12,19 +12,58 @@
 //
 // 不暴露 capability 工具（list_capabilities 等）——那是浏览器宿主的能力管理心智；
 // 外部 Agent 的能力发现走 MCP 协议本身的 tools/list。
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { composeContactSheet, SCREENSHOT_SHEET_LIMIT, screenshotSlidesViaBrowser, } from "@sliiu/present-player/browser-screenshot";
 import { createHeadlessPort } from "../../kernel/port.js";
 import { buildEditToolDefs } from "../../tools/index.js";
 import { createToolRuntime } from "../../tools/types.js";
 import { defaultConfig } from "../../config/types.js";
 import { isConfigUsable } from "../../config/presets.js";
 import { generateFromOutline, generateOutline } from "../../generate/index.js";
+import { readPptxFile, writePptxFile } from "./file-pptx.js";
+import { PRESENT_AGENT_INSTRUCTIONS } from "./workflow.js";
 export function createPptMcpSession() {
-    return { deckId: null, port: null, dirty: false, lastActiveAt: Date.now() };
+    return { deckId: null, filePath: null, port: null, dirty: false, lastActiveAt: Date.now() };
 }
 function toBase64(bytes) {
     return Buffer.from(bytes).toString("base64");
+}
+function imageResult(text, slides) {
+    return {
+        content: [
+            { type: "text", text },
+            ...slides.map((s) => ({ type: "image", data: s.pngBase64, mimeType: "image/png" })),
+        ],
+    };
+}
+function promoteSlideImages(result) {
+    const slides = result && typeof result === "object" ? result.slides : undefined;
+    if (!Array.isArray(slides) || !slides.some((s) => typeof s?.pngBase64 === "string"))
+        return null;
+    const brief = {
+        ...result,
+        slides: slides.map((s) => ({ slideIdx: s.slideIdx, bytes: typeof s.pngBase64 === "string" ? s.pngBase64.length : 0 })),
+    };
+    return {
+        content: [
+            { type: "text", text: JSON.stringify(brief, null, 2) },
+            ...slides
+                .filter((s) => typeof s?.pngBase64 === "string")
+                .map((s) => ({ type: "image", data: s.pngBase64, mimeType: "image/png" })),
+        ],
+    };
+}
+function loadBundledPlayerScript() {
+    const req = createRequire(import.meta.url);
+    try {
+        return readFileSync(req.resolve("@sliiu/present-player/iife"), "utf8");
+    }
+    catch {
+        throw new Error("Player bundle is missing. Build @sliiu/present-player so dist/player.iife.js exists.");
+    }
 }
 function jsonResult(v) {
     const isErr = !!v && typeof v === "object" && v.ok === false;
@@ -48,7 +87,7 @@ export function createPptMcpServer(opts) {
     const server = new McpServer({
         name: opts.serverInfo?.name ?? "slimppt",
         version: opts.serverInfo?.version ?? "2.0.0",
-    });
+    }, { instructions: PRESENT_AGENT_INSTRUCTIONS });
     const touch = () => {
         session.lastActiveAt = Date.now();
     };
@@ -77,6 +116,7 @@ export function createPptMcpServer(opts) {
         try {
             const pres = await decks.load(deckId);
             session.deckId = deckId;
+            session.filePath = null;
             session.port = createHeadlessPort(pres);
             session.dirty = false;
             return jsonResult({
@@ -98,10 +138,15 @@ export function createPptMcpServer(opts) {
     }, async () => {
         touch();
         if (!session.deckId || !session.port) {
-            return jsonResult({ ok: false, error: "No presentation open. Call open_presentation first." });
+            return jsonResult({ ok: false, error: "No presentation open. Call open_pptx or open_presentation first." });
         }
         try {
-            await decks.save(session.deckId, session.port.getPres());
+            if (session.filePath) {
+                await writePptxFile(session.filePath, session.port.getPres());
+            }
+            else {
+                await decks.save(session.deckId, session.port.getPres());
+            }
             session.dirty = false;
             return jsonResult({ ok: true, deckId: session.deckId, saved: true });
         }
@@ -116,6 +161,7 @@ export function createPptMcpServer(opts) {
         touch();
         const had = session.deckId;
         session.deckId = null;
+        session.filePath = null;
         session.port = null;
         session.dirty = false;
         return jsonResult({ ok: true, closed: had ?? null });
@@ -198,6 +244,7 @@ export function createPptMcpServer(opts) {
                 });
                 touch();
                 session.deckId = args.deckId;
+                session.filePath = null;
                 session.port = createHeadlessPort(pres);
                 session.dirty = true;
                 const deckgen = pres.meta?.deckgen;
@@ -224,6 +271,83 @@ export function createPptMcpServer(opts) {
             }
         });
     }
+    server.registerTool("open_pptx", {
+        description: "Open a .pptx file from disk into this session. path is absolute or relative to the server process. Discards unsaved changes of the previously open deck. Then use getPresentationSummary and the edit tools. Save with save_pptx.",
+        inputSchema: {
+            path: z.string().min(1).describe("Path to a .pptx file."),
+        },
+    }, async ({ path: filePath }) => {
+        touch();
+        try {
+            const opened = await readPptxFile(filePath);
+            session.deckId = opened.path;
+            session.filePath = opened.path;
+            session.port = createHeadlessPort(opened.pres);
+            session.dirty = false;
+            return jsonResult({
+                ok: true,
+                path: opened.path,
+                slideCount: opened.pres.slides.length,
+                size: opened.pres.size,
+                note: "Opened. Use getPresentationSummary, edit, screenshot_slide, then save_pptx.",
+            });
+        }
+        catch (e) {
+            return jsonResult({ ok: false, error: `open failed: ${e.message}` });
+        }
+    });
+    server.registerTool("save_pptx", {
+        description: "Write the open presentation to a .pptx file. Omit path to overwrite the file from open_pptx. Returns saved:true only after the bytes are on disk.",
+        inputSchema: {
+            path: z.string().min(1).optional().describe("Destination .pptx path. Defaults to the opened file."),
+        },
+    }, async ({ path: filePath }) => {
+        touch();
+        if (!session.port) {
+            return jsonResult({ ok: false, error: "No presentation open. Call open_pptx first." });
+        }
+        const dest = filePath ?? session.filePath;
+        if (!dest) {
+            return jsonResult({ ok: false, error: "No file path. Pass path, or open_pptx first." });
+        }
+        try {
+            const abs = await writePptxFile(dest, session.port.getPres());
+            session.filePath = abs;
+            session.deckId = abs;
+            session.dirty = false;
+            return jsonResult({ ok: true, path: abs, saved: true });
+        }
+        catch (e) {
+            return jsonResult({ ok: false, error: `save failed: ${e.message}` });
+        }
+    });
+    server.registerTool("screenshot_sheet", {
+        description: `Render up to ${SCREENSHOT_SHEET_LIMIT} slides into one contact-sheet PNG using a local headless Chrome, Edge, or Chromium. Use this to scan a deck for overlap and overflow. The pictures are designed slides, not a click-through. Call open_pptx first.`,
+        inputSchema: {
+            limit: z.number().int().min(1).max(SCREENSHOT_SHEET_LIMIT).optional().describe("How many slides from the start. Default 8."),
+        },
+        annotations: { readOnlyHint: true },
+    }, async ({ limit }) => {
+        touch();
+        if (!session.port) {
+            return jsonResult({ ok: false, error: "No presentation open. Call open_pptx first." });
+        }
+        const pres = session.port.getPres();
+        const n = Math.min(pres.slides.length, limit ?? SCREENSHOT_SHEET_LIMIT);
+        if (n === 0)
+            return jsonResult({ ok: false, error: "Presentation has no slides." });
+        try {
+            const shots = await screenshotSlidesViaBrowser(pres, loadBundledPlayerScript(), {
+                slideIndices: Array.from({ length: n }, (_, i) => i),
+                width: 640,
+            });
+            const sheet = composeContactSheet(shots.map((s) => s.png), { cellWidth: 480 });
+            return imageResult(`Contact sheet of slides 0–${n - 1}${pres.slides.length > n ? ` (${pres.slides.length - n} later slides omitted)` : ""}.`, [{ slideIdx: -1, pngBase64: Buffer.from(sheet).toString("base64") }]);
+        }
+        catch (e) {
+            return jsonResult({ ok: false, error: e.message ?? String(e) });
+        }
+    });
     // ---- 编辑工具（与浏览器对话共用同一套 ToolDef）------------------------------
     for (const def of buildEditToolDefs()) {
         const isRead = def.tags.includes("read");
@@ -236,15 +360,30 @@ export function createPptMcpServer(opts) {
             if (!session.port) {
                 return jsonResult({
                     ok: false,
-                    error: "No presentation open. Call list_presentations then open_presentation first.",
+                    error: "No presentation open. Call open_pptx with a .pptx path, or open_presentation.",
                 });
+            }
+            if (def.name === "screenshot_slide" && typeof document === "undefined") {
+                const slideIdx = args.slideIdx;
+                if (typeof slideIdx !== "number") {
+                    return jsonResult({ ok: false, error: "slideIdx is required." });
+                }
+                try {
+                    const shots = await screenshotSlidesViaBrowser(session.port.getPres(), loadBundledPlayerScript(), {
+                        slideIndices: [slideIdx],
+                    });
+                    return imageResult(shots.map((s) => `Slide ${s.slideIdx} rendered.`).join(" "), shots.map((s) => ({ slideIdx: s.slideIdx, pngBase64: Buffer.from(s.png).toString("base64") })));
+                }
+                catch (e) {
+                    return jsonResult({ ok: false, error: e.message ?? String(e) });
+                }
             }
             const rt = createToolRuntime({ port: session.port, getConfig });
             try {
                 const result = await def.execute(rt, args);
                 if (!def.tags.includes("read"))
                     session.dirty = true;
-                return jsonResult(result);
+                return promoteSlideImages(result) ?? jsonResult(result);
             }
             catch (e) {
                 return jsonResult({ ok: false, error: e.message ?? String(e) });

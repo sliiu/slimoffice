@@ -205,7 +205,7 @@ function compactOutline(outline) {
 exports.OUTLINE_TIMING = { timeoutMs: 3 * 60 * 1000, retryOnTimeout: 1 };
 /** Dev override: a slow model (grok, measured 2026-11-09) cannot finish an 8-page outline in 3 minutes. */
 function outlineTiming() {
-    const min = Number.parseInt(process.env.PPT_AI_OUTLINE_MIN || "0", 10);
+    const min = Number.parseInt((typeof process !== "undefined" ? process.env?.PPT_AI_OUTLINE_MIN : undefined) || "0", 10);
     return min > 0 ? { timeoutMs: min * 60 * 1000, retryOnTimeout: 0 } : exports.OUTLINE_TIMING;
 }
 async function callOutline(model, guidance, signal, systemExtra, host, lockLayouts = true, onUsage, sources) {

@@ -9,7 +9,7 @@
 import type { ColorTheme } from "./color-theme.js";
 import { type VisualSystem } from "./visual-system.js";
 import type { PaintedSlide } from "./apply-theme.js";
-import type { ReflectResult } from "./reflect.js";
+import { type ReflectResult } from "./reflect.js";
 import { type PageBrief } from "./brief.js";
 export declare function reflectCanvas(slides: PaintedSlide[], system: VisualSystem, theme: ColorTheme, briefs?: Array<PageBrief | undefined>): ReflectResult;
 /** Running-copy blocks (≥ 8 units each) a page may carry before it stops being read. */
