@@ -7827,6 +7827,7 @@ export function mountEditor(host, initialPres, opts = {}) {
         openFeedback,
         openTraining,
         openEditorTour: opts.openEditorTour,
+        openEditorWelcome: opts.openEditorWelcome,
         setInkMode: (mode) => {
             if (mode)
                 cancelCommentPlacement();

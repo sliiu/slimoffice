@@ -413,6 +413,8 @@ export declare const en: {
     readonly "toolbar.lectureHandle": "Camera";
     readonly "toolbar.lectureHandleHint": "Open or close the camera panel";
     readonly "ribbon.group.help": "Help";
+    readonly "ribbon.help.welcome": "Choose again: open a file, start from a template, or generate with AI";
+    readonly "ribbon.help.welcomeLabel": "Start here";
     readonly "ribbon.help.tour": "Walk through the editor layout and key features";
     readonly "ribbon.help.tourLabel": "Interface tour";
     readonly "ribbon.help.help": "Keyboard shortcuts and product links";
@@ -3610,7 +3612,7 @@ export declare const en: {
     readonly "tour.coach.stepInsert.title": "Add content";
     readonly "tour.coach.stepInsert.desc": "Use Common on the bottom bar to add a slide, text, image, or shape. Switch groups with the pill on the left.";
     readonly "tour.coach.stepPresent.title": "Present";
-    readonly "tour.coach.stepPresent.desc": "Play from the view bar to preview animations and click order. Export lives under Share in the header.";
+    readonly "tour.coach.stepPresent.desc": "Play from the view bar to preview animations and click order. Export lives under Share in the header. Everything else is under Help → Interface tour.";
     readonly "tour.editor.step1.title": "Canvas";
     readonly "tour.editor.step1.desc": "Displays the current slide. Select text or objects to edit; scroll or zoom ({mod}+scroll) to view the full page.";
     readonly "tour.editor.step2.title": "Open";

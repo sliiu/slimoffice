@@ -2486,9 +2486,12 @@ export function buildRibbon(doc, a) {
     contentRow.appendChild(review);
     tabPanels.set("Review", review);
     // ---------- HELP ----------
-    if (a.openHelp || a.openFeedback || a.openTraining || a.openEditorTour) {
+    if (a.openHelp || a.openFeedback || a.openTraining || a.openEditorTour || a.openEditorWelcome) {
         const help = mkPanel();
         const { group, row } = mkGroup(t("ribbon.group.help"));
+        if (a.openEditorWelcome) {
+            row.appendChild(mkBtn(t("ribbon.help.welcomeLabel"), t("ribbon.help.welcome"), () => a.openEditorWelcome?.(), "map"));
+        }
         if (a.openEditorTour) {
             row.appendChild(mkBtn(t("ribbon.help.tourLabel"), t("ribbon.help.tour"), () => a.openEditorTour?.(), "map"));
         }

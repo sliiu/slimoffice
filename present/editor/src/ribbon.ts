@@ -273,6 +273,8 @@ export interface RibbonActions {
   openTraining?: () => void;
   /** Help tab：功能导览（由 playground 等宿主注入）。 */
   openEditorTour?: () => void;
+  /** Help tab：从这里开始（打开 / 模板 / AI）。 */
+  openEditorWelcome?: () => void;
   setColorViewMode?: (mode: "color" | "grayscale" | "blackWhite") => void;
   getColorViewMode?: () => "color" | "grayscale" | "blackWhite";
   setInkMode?: (mode: "pen" | "highlighter" | "eraser" | null) => void;
@@ -3187,9 +3189,19 @@ export function buildRibbon(doc: Document, a: RibbonActions): RibbonHandle {
   tabPanels.set("Review", review);
 
   // ---------- HELP ----------
-  if (a.openHelp || a.openFeedback || a.openTraining || a.openEditorTour) {
+  if (a.openHelp || a.openFeedback || a.openTraining || a.openEditorTour || a.openEditorWelcome) {
     const help = mkPanel();
     const { group, row } = mkGroup(t("ribbon.group.help"));
+    if (a.openEditorWelcome) {
+      row.appendChild(
+        mkBtn(
+          t("ribbon.help.welcomeLabel"),
+          t("ribbon.help.welcome"),
+          () => a.openEditorWelcome?.(),
+          "map",
+        ),
+      );
+    }
     if (a.openEditorTour) {
       row.appendChild(
         mkBtn(t("ribbon.help.tourLabel"), t("ribbon.help.tour"), () => a.openEditorTour?.(), "map"),

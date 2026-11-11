@@ -225,6 +225,8 @@ export interface RibbonActions {
     openTraining?: () => void;
     /** Help tab：功能导览（由 playground 等宿主注入）。 */
     openEditorTour?: () => void;
+    /** Help tab：从这里开始（打开 / 模板 / AI）。 */
+    openEditorWelcome?: () => void;
     setColorViewMode?: (mode: "color" | "grayscale" | "blackWhite") => void;
     getColorViewMode?: () => "color" | "grayscale" | "blackWhite";
     setInkMode?: (mode: "pen" | "highlighter" | "eraser" | null) => void;

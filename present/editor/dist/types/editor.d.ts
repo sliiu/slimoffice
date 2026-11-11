@@ -197,6 +197,8 @@ export interface EditorOptions {
     helpLinks?: HelpLinks;
     /** Help 分组「功能导览」；由宿主打开 onboarding tour。 */
     openEditorTour?: () => void;
+    /** Help 分组「从这里开始」；由宿主重放打开 / 模板 / AI 卡片。 */
+    openEditorWelcome?: () => void;
     /** Base URL for built-in 3D model presets (`public/samples/models/` when hosted at `/`). */
     model3dAssetsBaseUrl?: string;
     /** View tab editor plugin catalog (built-ins merged in). */
