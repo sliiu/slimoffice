@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-plugin-sdk",
-  "version": "0.0.0-nightly.20261113150955",
+  "version": "0.0.0-nightly.20261113152637",
   "license": "AGPL-3.0-or-later",
   "description": "Plugin SDK for the PPT player. Zero runtime dependencies; works in browser (ESM/IIFE) and Node (ESM/CJS).",
   "type": "module",

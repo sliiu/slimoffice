@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-serializer",
-  "version": "0.0.0-nightly.20261113150955",
+  "version": "0.0.0-nightly.20261113152637",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -28,8 +28,8 @@
   "dependencies": {
     "fast-xml-parser": "^5.11.1",
     "fflate": "^0.8.3",
-    "@sliiu/present-animation": "0.0.0-nightly.20261113150955",
-    "@sliiu/present-core": "0.0.0-nightly.20261113150955"
+    "@sliiu/present-animation": "0.0.0-nightly.20261113152637",
+    "@sliiu/present-core": "0.0.0-nightly.20261113152637"
   },
   "module": "./dist/esm/index.js",
   "repository": {
