@@ -138,7 +138,7 @@ async function fetchAiImageDataUrl(
 ): Promise<EnrichmentImageFetchResult | null> {
   const req = resolvedImageRequest(config);
   if (!req) return null;
-  const { endpoint, model, apiKey, provider } = req;
+  const { endpoint, model, apiKey, provider, fetchImpl } = req;
   const prompt = toAiPrompt(query, kind, promptContext);
   const sizes = resolveImageSizes(endpoint, model, config.image.size, kind);
   let lastErr: unknown = null;
@@ -154,6 +154,7 @@ async function fetchAiImageDataUrl(
         size,
         background: "opaque",
         signal,
+        fetchImpl,
       });
       return { dataUrl, w: nat.w, h: nat.h, source: "ai" };
     } catch (e) {

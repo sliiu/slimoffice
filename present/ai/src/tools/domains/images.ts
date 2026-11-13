@@ -59,7 +59,7 @@ export const imageTools = [
           "Image generation is not configured. Ask user to open AI panel → Settings and set Image provider + API key. (You may still try stock_images_search if Unsplash/Pexels keys are configured.)",
         );
       }
-      const { endpoint, model, apiKey, provider } = req;
+      const { endpoint, model, apiKey, provider, fetchImpl } = req;
 
       const targetSlide = slideIdx ?? rt.port.getFocusedSlideIndices()[0] ?? 0;
 
@@ -77,6 +77,7 @@ export const imageTools = [
               prompt,
               size: candidate,
               ...(background ? { background } : {}),
+              fetchImpl,
             });
             lastErr = null;
             break;

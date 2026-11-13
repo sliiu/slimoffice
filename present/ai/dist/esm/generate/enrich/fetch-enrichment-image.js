@@ -89,7 +89,7 @@ async function fetchAiImageDataUrl(query, config, kind, signal, promptContext) {
     const req = resolvedImageRequest(config);
     if (!req)
         return null;
-    const { endpoint, model, apiKey, provider } = req;
+    const { endpoint, model, apiKey, provider, fetchImpl } = req;
     const prompt = toAiPrompt(query, kind, promptContext);
     const sizes = resolveImageSizes(endpoint, model, config.image.size, kind);
     let lastErr = null;
@@ -106,6 +106,7 @@ async function fetchAiImageDataUrl(query, config, kind, signal, promptContext) {
                 size,
                 background: "opaque",
                 signal,
+                fetchImpl,
             });
             return { dataUrl, w: nat.w, h: nat.h, source: "ai" };
         }

@@ -17,7 +17,7 @@ import type { LanguageModel } from "ai";
 import { parseCustomHeaders, type TextConfig } from "../config/types";
 import { applyProxyUrl, clampTextRequestConcurrency, getProviderPreset, isLocalLlmEndpoint, resolveTextConfig } from "../config/presets";
 import { setGenerateJsonConcurrency } from "./limit";
-import { systemTextRoute } from "./offline-route";
+import { systemTextRoute } from "./caller-route";
 
 export interface LlmClient {
   model: LanguageModel;

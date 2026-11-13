@@ -25,7 +25,7 @@ exports.insertImageToSlide = insertImageToSlide;
 const commands_1 = require("@sliiu/present-editor/commands");
 const core_1 = require("@sliiu/present-core");
 const presets_1 = require("../../config/presets");
-const offline_route_1 = require("../../llm/offline-route");
+const caller_route_1 = require("../../llm/caller-route");
 // ===========================================================================
 // 默认插入位置：slide 中央、占满约 60% 宽，按图像 aspect ratio 等比裁。
 // ===========================================================================
@@ -163,13 +163,14 @@ function resolveImageApi(provider, endpoint) {
 }
 /** 从完整 AiConfig 解析出发请求所需的 endpoint / model / key（含 proxy）。 */
 function resolvedImageRequest(config) {
-    const system = (0, offline_route_1.systemImageRoute)();
+    const system = (0, caller_route_1.systemImageRoute)();
     if (system) {
         return {
             provider: "openai-compatible",
             endpoint: system.endpoint,
             model: system.model,
             apiKey: "session",
+            fetchImpl: system.fetchImpl,
         };
     }
     const image = (0, presets_1.resolveImageConfig)(config.image);
@@ -207,11 +208,11 @@ async function callOpenAIImages(args) {
     // gpt-image-1 默认 b64_json；dall-e-3 默认 url，强制要求 b64。
     // 部分兼容端（Together / 硅基）不认该字段，4xx 时去掉再试一次。
     body.response_format = "b64_json";
-    let resp = await postJson(args.endpoint, args.apiKey, body, args.signal);
+    let resp = await postJson(args.endpoint, args.apiKey, body, args.signal, args.fetchImpl);
     if (!resp.ok && resp.status === 400) {
         const retryBody = { ...body };
         delete retryBody.response_format;
-        resp = await postJson(args.endpoint, args.apiKey, retryBody, args.signal);
+        resp = await postJson(args.endpoint, args.apiKey, retryBody, args.signal, args.fetchImpl);
     }
     if (!resp.ok) {
         const text = await resp.text().catch(() => "");
@@ -313,11 +314,12 @@ async function callHuggingFaceImage(args) {
     }
     return await imageResultFromBlob(await resp.blob());
 }
-function postJson(endpoint, apiKey, body, signal) {
+function postJson(endpoint, apiKey, body, signal, fetchImpl) {
     const session = apiKey === "session";
-    return fetch(endpoint, {
+    const send = fetchImpl ?? fetch;
+    return send(endpoint, {
         method: "POST",
-        credentials: session ? "include" : "same-origin",
+        credentials: session ? undefined : "same-origin",
         headers: {
             "Content-Type": "application/json",
             ...(session ? {} : { Authorization: `Bearer ${apiKey}` }),

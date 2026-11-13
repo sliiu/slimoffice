@@ -15,7 +15,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { parseCustomHeaders } from "../config/types.js";
 import { applyProxyUrl, clampTextRequestConcurrency, getProviderPreset, isLocalLlmEndpoint, resolveTextConfig } from "../config/presets.js";
 import { setGenerateJsonConcurrency } from "./limit.js";
-import { systemTextRoute } from "./offline-route.js";
+import { systemTextRoute } from "./caller-route.js";
 export function createLlm(text) {
     const system = systemTextRoute();
     if (system) {

@@ -16,7 +16,7 @@ import {
   type ImageApiKind,
 } from "../../config/presets";
 import type { AiConfig, ImageProviderKind } from "../../config/types";
-import { systemImageRoute } from "../../llm/offline-route";
+import { systemImageRoute } from "../../llm/caller-route";
 import type { ToolRuntime } from "../types";
 
 // ===========================================================================
@@ -174,6 +174,7 @@ export interface GenerateAiImageArgs {
   apiKey: string;
   model: string;
   prompt: string;
+  fetchImpl?: typeof fetch;
   provider?: ImageProviderKind;
   // 常见 OpenAI 尺寸；也允许任意 provider 自定义值（如火山方舟 seedream 的 `2048x2048`）。
   size?: "1024x1024" | "1792x1024" | "1024x1792" | "auto" | (string & {});
@@ -200,6 +201,7 @@ export function resolvedImageRequest(config: AiConfig): {
   endpoint: string;
   model: string;
   apiKey: string;
+  fetchImpl?: typeof fetch;
 } | null {
   const system = systemImageRoute();
   if (system) {
@@ -208,6 +210,7 @@ export function resolvedImageRequest(config: AiConfig): {
       endpoint: system.endpoint,
       model: system.model,
       apiKey: "session",
+      fetchImpl: system.fetchImpl,
     };
   }
   const image = resolveImageConfig(config.image);
@@ -241,11 +244,11 @@ export async function callOpenAIImages(args: GenerateAiImageArgs): Promise<Gener
   // 部分兼容端（Together / 硅基）不认该字段，4xx 时去掉再试一次。
   body.response_format = "b64_json";
 
-  let resp = await postJson(args.endpoint, args.apiKey, body, args.signal);
+  let resp = await postJson(args.endpoint, args.apiKey, body, args.signal, args.fetchImpl);
   if (!resp.ok && resp.status === 400) {
     const retryBody = { ...body };
     delete retryBody.response_format;
-    resp = await postJson(args.endpoint, args.apiKey, retryBody, args.signal);
+    resp = await postJson(args.endpoint, args.apiKey, retryBody, args.signal, args.fetchImpl);
   }
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
@@ -358,11 +361,13 @@ function postJson(
   apiKey: string,
   body: Record<string, unknown>,
   signal?: AbortSignal,
+  fetchImpl?: typeof fetch,
 ): Promise<Response> {
   const session = apiKey === "session";
-  return fetch(endpoint, {
+  const send = fetchImpl ?? fetch;
+  return send(endpoint, {
     method: "POST",
-    credentials: session ? "include" : "same-origin",
+    credentials: session ? undefined : "same-origin",
     headers: {
       "Content-Type": "application/json",
       ...(session ? {} : { Authorization: `Bearer ${apiKey}` }),

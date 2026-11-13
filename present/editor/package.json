@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/present-editor",
-  "version": "0.1.5",
+  "version": "0.0.0-nightly.20261113150955",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -27,14 +27,14 @@
     "katex": "^0.18.9",
     "lucide": "^1.48.0",
     "tesseract.js": "^7.0.0",
-    "@sliiu/present-animation": "0.1.5",
-    "@sliiu/present-core": "0.1.5",
-    "@sliiu/present-parser": "0.1.5",
-    "@sliiu/present-player": "0.1.5",
-    "@sliiu/present-renderer": "0.1.5",
-    "@sliiu/present-themes": "0.1.5",
-    "@sliiu/present-transition-fx": "0.1.5",
-    "@sliiu/present-ui": "0.1.5"
+    "@sliiu/present-animation": "0.0.0-nightly.20261113150955",
+    "@sliiu/present-core": "0.0.0-nightly.20261113150955",
+    "@sliiu/present-parser": "0.0.0-nightly.20261113150955",
+    "@sliiu/present-player": "0.0.0-nightly.20261113150955",
+    "@sliiu/present-renderer": "0.0.0-nightly.20261113150955",
+    "@sliiu/present-themes": "0.0.0-nightly.20261113150955",
+    "@sliiu/present-transition-fx": "0.0.0-nightly.20261113150955",
+    "@sliiu/present-ui": "0.0.0-nightly.20261113150955"
   },
   "module": "./dist/esm/index.js",
   "repository": {

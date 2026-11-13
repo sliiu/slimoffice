@@ -18,9 +18,9 @@ const openai_compatible_1 = require("@ai-sdk/openai-compatible");
 const types_1 = require("../config/types");
 const presets_1 = require("../config/presets");
 const limit_1 = require("./limit");
-const offline_route_1 = require("./offline-route");
+const caller_route_1 = require("./caller-route");
 function createLlm(text) {
-    const system = (0, offline_route_1.systemTextRoute)();
+    const system = (0, caller_route_1.systemTextRoute)();
     if (system) {
         (0, limit_1.setGenerateJsonConcurrency)((0, presets_1.clampTextRequestConcurrency)(text.concurrency));
         const provider = (0, openai_compatible_1.createOpenAICompatible)({

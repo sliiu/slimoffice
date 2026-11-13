@@ -51,6 +51,7 @@ export interface GenerateAiImageArgs {
     apiKey: string;
     model: string;
     prompt: string;
+    fetchImpl?: typeof fetch;
     provider?: ImageProviderKind;
     size?: "1024x1024" | "1792x1024" | "1024x1792" | "auto" | (string & {});
     background?: "transparent" | "opaque" | "auto";
@@ -70,6 +71,7 @@ export declare function resolvedImageRequest(config: AiConfig): {
     endpoint: string;
     model: string;
     apiKey: string;
+    fetchImpl?: typeof fetch;
 } | null;
 export declare function generateAiImage(args: GenerateAiImageArgs): Promise<GeneratedAiImage>;
 export declare function callOpenAIImages(args: GenerateAiImageArgs): Promise<GeneratedAiImage>;

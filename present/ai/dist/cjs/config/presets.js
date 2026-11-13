@@ -22,7 +22,7 @@ exports.isConfigUsable = isConfigUsable;
 exports.textModelSupportsVision = textModelSupportsVision;
 exports.reviewTextConfig = reviewTextConfig;
 exports.visionReviewTextConfig = visionReviewTextConfig;
-const offline_route_1 = require("../llm/offline-route");
+const caller_route_1 = require("../llm/caller-route");
 const types_1 = require("./types");
 exports.PROVIDER_PRESETS = {
     openai: {
@@ -369,7 +369,7 @@ function isLocalLlmEndpoint(url) {
  * model / baseURL 缺失会被 preset 兜底；Ollama / llama.cpp / 局域网 endpoint 不强制 key。
  */
 function isConfigUsable(config) {
-    if ((0, offline_route_1.isSystemTextRouteActive)())
+    if ((0, caller_route_1.isSystemTextRouteActive)())
         return true;
     const text = resolveTextConfig(config.text);
     if (!text.model)
@@ -387,7 +387,7 @@ function isConfigUsable(config) {
  * if we send a vision payload — skip those and fall back to on-device OCR.
  */
 function textModelSupportsVision(text) {
-    if ((0, offline_route_1.isSystemTextRouteActive)())
+    if ((0, caller_route_1.isSystemTextRouteActive)())
         return true;
     const resolved = resolveTextConfig(text);
     const model = resolved.model.trim().toLowerCase();

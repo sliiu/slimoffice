@@ -7,7 +7,7 @@
 //      text.proxyUrl 自部署反代使用（llm/client.ts 会拼 `${proxyUrl}/${baseURL}`）。
 //   3. 除 openai / anthropic / google 走官方 SDK 外，其余文本供应商一律 OpenAI-Compatible。
 //   4. 图像供应商：多数走 /v1/images/generations；OpenRouter / HF / Stability / Fal 走各自协议。
-import { isSystemTextRouteActive } from "../llm/offline-route.js";
+import { isSystemTextRouteActive } from "../llm/caller-route.js";
 import { IMAGE_GEN_CONCURRENCY_DEFAULT, IMAGE_GEN_CONCURRENCY_MAX, IMAGE_GEN_CONCURRENCY_MIN, TEXT_REQUEST_CONCURRENCY_DEFAULT, TEXT_REQUEST_CONCURRENCY_MAX, TEXT_REQUEST_CONCURRENCY_MIN, } from "./types.js";
 export const PROVIDER_PRESETS = {
     openai: {

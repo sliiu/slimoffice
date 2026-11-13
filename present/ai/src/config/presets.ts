@@ -8,7 +8,7 @@
 //   3. 除 openai / anthropic / google 走官方 SDK 外，其余文本供应商一律 OpenAI-Compatible。
 //   4. 图像供应商：多数走 /v1/images/generations；OpenRouter / HF / Stability / Fal 走各自协议。
 
-import { isSystemTextRouteActive } from "../llm/offline-route";
+import { isSystemTextRouteActive } from "../llm/caller-route";
 import type { AiConfig, ImageConfig, ImageProviderKind, TextConfig, TextProviderKind } from "./types";
 import {
   IMAGE_GEN_CONCURRENCY_DEFAULT,
