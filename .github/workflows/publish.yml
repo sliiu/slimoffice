@@ -150,7 +150,8 @@ jobs:
           failed=
           for name in $order; do
             log=$(mktemp)
-            if npm publish "$name" --access public --tag "$tag" >"$log" 2>&1; then
+            # A one-slash path is a GitHub user/repo shorthand. The leading ./ keeps it a local directory.
+            if npm publish "./$name" --access public --tag "$tag" >"$log" 2>&1; then
               cat "$log"
             elif grep -q "previously published" "$log"; then
               echo "skip $name (already published)"
