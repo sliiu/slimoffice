@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cellBorderSegments, cellHasPerSideBorders } from "./cell-borders.js";
-import type { TextShape } from "@ppt/core";
+import type { TextShape } from "@sliiu/present-core";
 
 const stroke = { width: 1, paint: { kind: "solid" as const, color: "#000" } };
 

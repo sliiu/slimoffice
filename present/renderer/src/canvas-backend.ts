@@ -1,6 +1,6 @@
-import type { ChartShape, ClipState, Model3DShape, OleObjectShape, Shape, Stroke, TextParagraph, TextRun, TextShape } from "@ppt/core";
+import type { ChartShape, ClipState, Model3DShape, OleObjectShape, Shape, Stroke, TextParagraph, TextRun, TextShape } from "@sliiu/present-core";
 import { withFontFallback } from "./font-stack";
-import { runDisplayText } from "@ppt/core";
+import { runDisplayText } from "@sliiu/present-core";
 import { mergeParaOverrides, netFlipParity, shapeRenderFill, shapeRenderFillBBox, type ParaOverride, type Scene, type SceneNode } from "./scene-node";
 import { applyStroke, getImage, paintToCanvasStyle, adjustImage } from "./paint-canvas";
 import { previewImageSrc } from "./metafile-preview";
@@ -27,7 +27,7 @@ import { wordArtFitTransform, type WordArtFit } from "./text-wordart";
 import { flattenWarpGlyphs, placeGlyphsOnWarp, sampleWarpPath, warpActive } from "./text-warp";
 import { drawOleCanvas } from "./ole-render";
 import { drawModel3DCanvas } from "./model3d-render";
-import { shape3DInfo } from "@ppt/three-bake";
+import { shape3DInfo } from "@sliiu/present-three-bake";
 // vert 旋转角 / 竖排判定 / bullet 编号 / 缺省 insets 全部来自 ./text-shared，
 // 与 svg-backend 和编辑器的行内文本编辑器共用同一套规则。
 import {
@@ -565,7 +565,7 @@ export class CanvasBackend {
     x: number,
     y: number,
     angle: number,
-    end: import("@ppt/core").ArrowEnd,
+    end: import("@sliiu/present-core").ArrowEnd,
     side: "start" | "end",
     sw: number,
   ): void {
@@ -1045,7 +1045,7 @@ export class CanvasBackend {
 
     type ParaColumn = {
       paraIdx: number;
-      paragraph: import("@ppt/core").TextParagraph;
+      paragraph: import("@sliiu/present-core").TextParagraph;
       glyphs: StackedGlyph[];
       width: number;
       isFirstColOfPara: boolean;
@@ -1155,7 +1155,7 @@ export class CanvasBackend {
 
   // ECMA-376 §21.1.2.3.9 rPr/ln — 文字描边：先 stroke 再 fill。
   private runFillStyle(
-    run: { color?: string; fill?: import("@ppt/core").Paint },
+    run: { color?: string; fill?: import("@sliiu/present-core").Paint },
     para: { fontColor?: string; fillColor?: string } | undefined,
     bbox: { x: number; y: number; w: number; h: number },
   ): string | CanvasGradient | CanvasPattern {
@@ -1179,7 +1179,7 @@ export class CanvasBackend {
   }
 
   private drawBullet(
-    p: import("@ppt/core").TextParagraph,
+    p: import("@sliiu/present-core").TextParagraph,
     bulletX: number,
     baseline: number,
     state: BulletNumState,
@@ -1238,7 +1238,7 @@ export class CanvasBackend {
   }
 
   private drawRunsWithCharOverrides(
-    p: import("@ppt/core").TextParagraph,
+    p: import("@sliiu/present-core").TextParagraph,
     fallbackFs: number,
     startX: number,
     baseline: number,
@@ -1248,7 +1248,7 @@ export class CanvasBackend {
     const ctx = this.ctx;
     type Entry = {
       ch: string;
-      run: import("@ppt/core").TextRun;
+      run: import("@sliiu/present-core").TextRun;
       width: number;
       ov: import("./scene-node").CharRangeOverride | undefined;
     };

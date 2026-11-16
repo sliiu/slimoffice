@@ -11,7 +11,7 @@ exports.removeEffect = removeEffect;
 exports.moveEffect = moveEffect;
 exports.setEffectProperty = setEffectProperty;
 exports.copyShapeAnimations = copyShapeAnimations;
-const animation_1 = require("@sliiu/present-animation");
+const present_animation_1 = require("@sliiu/present-animation");
 // Effect.id 必须在多次 buildEffectList 之间保持稳定：
 // UI（panel/timeline）会把当前选中的 effectId 保存到组件内部状态；任何编辑命令都会
 // 触发 stack.subscribe → refresh → buildEffectList 重建列表。如果 id 在每次重建时变化
@@ -32,7 +32,7 @@ function buildEffectList(timing) {
     return out;
 }
 function walk(node, topIdx, parentPath, out, hint) {
-    const cTn = animation_1.ooxml.getCTn(node);
+    const cTn = present_animation_1.ooxml.getCTn(node);
     let nextHint = hint;
     if (cTn.nodeType === "interactiveSeq") {
         const shapeId = condShapeId(cTn.stCondLst);
@@ -50,7 +50,7 @@ function walk(node, topIdx, parentPath, out, hint) {
             return;
         }
     }
-    if (animation_1.ooxml.isContainer(node)) {
+    if (present_animation_1.ooxml.isContainer(node)) {
         const children = node.ctn.childTnLst ?? [];
         for (let i = 0; i < children.length; i++) {
             walk(children[i], topIdx, [...parentPath, i], out, nextHint);
@@ -170,10 +170,10 @@ function findLeafTarget(node) {
     const stack = [node];
     while (stack.length > 0) {
         const n = stack.pop();
-        if (animation_1.ooxml.isBehavior(n) || animation_1.ooxml.isMedia(n)) {
-            const tgt = animation_1.ooxml.isMedia(n) ? n.cMediaNode.tgtEl : n.cBhvr.tgtEl;
+        if (present_animation_1.ooxml.isBehavior(n) || present_animation_1.ooxml.isMedia(n)) {
+            const tgt = present_animation_1.ooxml.isMedia(n) ? n.cMediaNode.tgtEl : n.cBhvr.tgtEl;
             if (tgt.spTgt?.spid) {
-                const cTn = animation_1.ooxml.isMedia(n) ? n.cMediaNode.ctn : n.cBhvr.ctn;
+                const cTn = present_animation_1.ooxml.isMedia(n) ? n.cMediaNode.ctn : n.cBhvr.ctn;
                 return {
                     spid: tgt.spTgt.spid,
                     txEl: tgt.spTgt.txEl,
@@ -181,7 +181,7 @@ function findLeafTarget(node) {
                 };
             }
         }
-        if (animation_1.ooxml.isContainer(n)) {
+        if (present_animation_1.ooxml.isContainer(n)) {
             const children = n.ctn.childTnLst ?? [];
             for (let i = children.length - 1; i >= 0; i--)
                 stack.push(children[i]);
@@ -194,13 +194,13 @@ function findLeafTarget(node) {
 function maxLeafDurMs(node) {
     let max = 0;
     const visit = (n) => {
-        if (animation_1.ooxml.isBehavior(n) || animation_1.ooxml.isMedia(n)) {
-            const d = msNum(animation_1.ooxml.getCTn(n).dur);
+        if (present_animation_1.ooxml.isBehavior(n) || present_animation_1.ooxml.isMedia(n)) {
+            const d = msNum(present_animation_1.ooxml.getCTn(n).dur);
             if (d > max)
                 max = d;
             return;
         }
-        if (animation_1.ooxml.isContainer(n)) {
+        if (present_animation_1.ooxml.isContainer(n)) {
             for (const c of n.ctn.childTnLst ?? [])
                 visit(c);
         }
@@ -255,11 +255,11 @@ function ensureTiming(slide) {
 }
 function findMainSeq(timing) {
     for (const top of timing.tnLst) {
-        if (!animation_1.ooxml.isContainer(top))
+        if (!present_animation_1.ooxml.isContainer(top))
             continue;
         const children = top.ctn.childTnLst ?? [];
         for (const c of children) {
-            if (animation_1.ooxml.isContainer(c) && c.ctn.nodeType === "mainSeq")
+            if (present_animation_1.ooxml.isContainer(c) && c.ctn.nodeType === "mainSeq")
                 return c.ctn;
         }
     }
@@ -269,13 +269,13 @@ let _ctnIdCounter = 100;
 function freshCTnId(timing) {
     let max = _ctnIdCounter;
     const visit = (n) => {
-        const c = animation_1.ooxml.getCTn(n);
+        const c = present_animation_1.ooxml.getCTn(n);
         if (c.id) {
             const x = Number(c.id);
             if (Number.isFinite(x) && x > max)
                 max = x;
         }
-        for (const ch of animation_1.ooxml.getChildren(n))
+        for (const ch of present_animation_1.ooxml.getChildren(n))
             visit(ch);
     };
     for (const top of timing.tnLst)
@@ -339,16 +339,16 @@ function makePresetSubtree(timing, args, durationMs) {
         args.presetClass === "emph" ||
         args.presetClass === "path") &&
         typeof args.presetId === "number") {
-        const tpl = animation_1.ooxml.findPresetTemplate(args.presetClass, args.presetId);
+        const tpl = present_animation_1.ooxml.findPresetTemplate(args.presetClass, args.presetId);
         if (tpl) {
-            const expanded = animation_1.ooxml.expandPresetTemplate(tpl, {
+            const expanded = present_animation_1.ooxml.expandPresetTemplate(tpl, {
                 tgtSpid: spid,
                 pRg: args.paraRange,
                 charRg: args.charRange,
                 presetSubtype: args.presetSubtype,
                 durMs: durationMs,
             });
-            const expandedCTn = animation_1.ooxml.getCTn(expanded);
+            const expandedCTn = present_animation_1.ooxml.getCTn(expanded);
             expandedCTn.presetID = args.presetId;
             expandedCTn.presetClass = args.presetClass;
             if (args.presetSubtype !== undefined)
@@ -357,7 +357,7 @@ function makePresetSubtree(timing, args, durationMs) {
             // 用户/调用方指定的 durationMs 与模板默认 dur 不同时，按比例缩放模板
             // 内部 leaf dur 与 delay，保证总时长与 UI 期望一致（同时保留各 leaf 节奏）。
             // expand 已把 durMs 写到根 cTn.dur，模板原时长只能从子节点量。
-            const children = animation_1.ooxml.getCTn(expanded).childTnLst ?? [];
+            const children = present_animation_1.ooxml.getCTn(expanded).childTnLst ?? [];
             const origTotal = Math.max(0, ...children.map(estimateContainerDuration));
             if (origTotal > 0 && Math.abs(origTotal - durationMs) > 1) {
                 for (const c of children)
@@ -415,9 +415,9 @@ function makePresetSubtree(timing, args, durationMs) {
 // 模板提取时保留了源 PPT 的 cTn.id，多次插入或与既有 timing 树合并会冲突。
 // 这里整棵子树重新分配 id，确保唯一性（不影响时序 / 行为）。
 function reassignCTnIds(node, timing) {
-    const cTn = animation_1.ooxml.getCTn(node);
+    const cTn = present_animation_1.ooxml.getCTn(node);
     cTn.id = freshCTnId(timing);
-    for (const c of animation_1.ooxml.getChildren(node))
+    for (const c of present_animation_1.ooxml.getChildren(node))
         reassignCTnIds(c, timing);
 }
 function removeEffect(timing, effectPath) {
@@ -427,7 +427,7 @@ function removeEffect(timing, effectPath) {
     const children = mainSeq.childTnLst ?? [];
     for (let i = 0; i < children.length; i++) {
         const c = children[i];
-        if (animation_1.ooxml.getCTn(c).id === effectPath.cTnId) {
+        if (present_animation_1.ooxml.getCTn(c).id === effectPath.cTnId) {
             children.splice(i, 1);
             return c;
         }
@@ -439,7 +439,7 @@ function moveEffect(timing, effectPath, newIndex) {
     if (!mainSeq)
         return;
     const children = mainSeq.childTnLst ?? [];
-    const idx = children.findIndex((c) => animation_1.ooxml.getCTn(c).id === effectPath.cTnId);
+    const idx = children.findIndex((c) => present_animation_1.ooxml.getCTn(c).id === effectPath.cTnId);
     if (idx < 0)
         return;
     const [node] = children.splice(idx, 1);
@@ -453,13 +453,13 @@ function nodeChain(timing, path) {
     const chain = [top];
     let node = top;
     for (const i of path.parentPath) {
-        const next = animation_1.ooxml.getCTn(node).childTnLst?.[i];
+        const next = present_animation_1.ooxml.getCTn(node).childTnLst?.[i];
         if (!next)
             return null;
         chain.push(next);
         node = next;
     }
-    if (path.cTnId && animation_1.ooxml.getCTn(node).id !== path.cTnId)
+    if (path.cTnId && present_animation_1.ooxml.getCTn(node).id !== path.cTnId)
         return null;
     return chain;
 }
@@ -471,9 +471,9 @@ function nodeAtPath(timing, path) {
     return node ? { node } : null;
 }
 function subtreeHasBehavior(node) {
-    if (animation_1.ooxml.isBehavior(node) || animation_1.ooxml.isMedia(node))
+    if (present_animation_1.ooxml.isBehavior(node) || present_animation_1.ooxml.isMedia(node))
         return true;
-    return animation_1.ooxml.getChildren(node).some(subtreeHasBehavior);
+    return present_animation_1.ooxml.getChildren(node).some(subtreeHasBehavior);
 }
 const GESTURE_EVT = {
     onShapeClick: "onClick",
@@ -492,7 +492,7 @@ function gestureCond(trigger, spid) {
 }
 function removeNode(timing, target) {
     const visit = (node) => {
-        const children = animation_1.ooxml.getCTn(node).childTnLst;
+        const children = present_animation_1.ooxml.getCTn(node).childTnLst;
         if (!children)
             return false;
         const i = children.indexOf(target);
@@ -512,19 +512,19 @@ function applyEffectTrigger(timing, path, trigger) {
     if (!chain || chain.length === 0)
         return;
     const effect = chain[chain.length - 1];
-    const ancestor = chain.find((n) => animation_1.ooxml.getCTn(n).nodeType === "interactiveSeq");
+    const ancestor = chain.find((n) => present_animation_1.ooxml.getCTn(n).nodeType === "interactiveSeq");
     const gesture = GESTURE_EVT[trigger];
     if (gesture) {
         const cond = gestureCond(trigger, findLeafTarget(effect)?.spid);
         if (ancestor) {
-            animation_1.ooxml.getCTn(ancestor).stCondLst = [cond];
+            present_animation_1.ooxml.getCTn(ancestor).stCondLst = [cond];
             return;
         }
         if (chain.length < 2)
             return;
         const parent = chain[chain.length - 2];
         const index = path.parentPath[path.parentPath.length - 1];
-        const list = animation_1.ooxml.getCTn(parent).childTnLst;
+        const list = present_animation_1.ooxml.getCTn(parent).childTnLst;
         if (!list || list[index] !== effect)
             return;
         const seq = {
@@ -548,12 +548,12 @@ function applyEffectTrigger(timing, path, trigger) {
             trigger === "afterPrevious" ? "afterEffect" : undefined;
     if (!nodeType)
         return;
-    animation_1.ooxml.getCTn(effect).nodeType = nodeType;
+    present_animation_1.ooxml.getCTn(effect).nodeType = nodeType;
     if (!ancestor || chain.length < 2)
         return;
     const parent = chain[chain.length - 2];
     const index = path.parentPath[path.parentPath.length - 1];
-    const list = animation_1.ooxml.getCTn(parent).childTnLst;
+    const list = present_animation_1.ooxml.getCTn(parent).childTnLst;
     if (!list || list[index] !== effect)
         return;
     list.splice(index, 1);
@@ -569,7 +569,7 @@ function setEffectProperty(timing, effectPath, patch) {
     if (!located)
         return;
     const node = located.node;
-    const cTn = animation_1.ooxml.getCTn(node);
+    const cTn = present_animation_1.ooxml.getCTn(node);
     if (patch.trigger !== undefined) {
         applyEffectTrigger(timing, effectPath, patch.trigger);
     }
@@ -620,12 +620,12 @@ function setEffectProperty(timing, effectPath, patch) {
         if (cTn.presetClass &&
             cTn.presetID !== undefined &&
             (cTn.presetClass === "entr" || cTn.presetClass === "exit" || cTn.presetClass === "emph" || cTn.presetClass === "path")) {
-            const tpl = animation_1.ooxml.findPresetTemplate(cTn.presetClass, cTn.presetID);
+            const tpl = present_animation_1.ooxml.findPresetTemplate(cTn.presetClass, cTn.presetID);
             if (tpl) {
                 const tgtSpid = findFirstSpid(node);
                 if (tgtSpid) {
                     const txEl = findFirstTxEl(node);
-                    const expanded = animation_1.ooxml.expandPresetTemplate(tpl, {
+                    const expanded = present_animation_1.ooxml.expandPresetTemplate(tpl, {
                         tgtSpid,
                         pRg: txEl?.pRg,
                         charRg: txEl?.charRg,
@@ -652,10 +652,10 @@ function clampAccelDecel(v) {
     return Math.round(v);
 }
 function findFirstSpid(node) {
-    if (animation_1.ooxml.isBehavior(node)) {
+    if (present_animation_1.ooxml.isBehavior(node)) {
         return node.cBhvr.tgtEl?.spTgt?.spid;
     }
-    if (animation_1.ooxml.isContainer(node)) {
+    if (present_animation_1.ooxml.isContainer(node)) {
         for (const c of node.ctn.childTnLst ?? []) {
             const s = findFirstSpid(c);
             if (s)
@@ -665,10 +665,10 @@ function findFirstSpid(node) {
     return undefined;
 }
 function findFirstTxEl(node) {
-    if (animation_1.ooxml.isBehavior(node)) {
+    if (present_animation_1.ooxml.isBehavior(node)) {
         return node.cBhvr.tgtEl?.spTgt?.txEl;
     }
-    if (animation_1.ooxml.isContainer(node)) {
+    if (present_animation_1.ooxml.isContainer(node)) {
         for (const c of node.ctn.childTnLst ?? []) {
             const t = findFirstTxEl(c);
             if (t)
@@ -691,11 +691,11 @@ function propagateDuration(node, durMs) {
     scaleDurations(node, durMs, durMs / origTotal);
 }
 function estimateContainerDuration(node) {
-    if (animation_1.ooxml.isBehavior(node)) {
+    if (present_animation_1.ooxml.isBehavior(node)) {
         const d = node.cBhvr.ctn.dur;
         return typeof d === "number" ? d : 0;
     }
-    if (animation_1.ooxml.isContainer(node)) {
+    if (present_animation_1.ooxml.isContainer(node)) {
         // 优先用 container 自带 cTn.dur（PPT 模板里 par/seq 通常带显式 dur），
         // 否则递归子节点取最大 leaf dur 作 fallback。
         const own = node.ctn.dur;
@@ -712,7 +712,7 @@ function estimateContainerDuration(node) {
     return 0;
 }
 function scaleDurations(node, targetMs, scale) {
-    if (animation_1.ooxml.isContainer(node)) {
+    if (present_animation_1.ooxml.isContainer(node)) {
         const cTn = node.ctn;
         if (typeof cTn.dur === "number" && cTn.dur > 1) {
             cTn.dur = Math.max(1, Math.round(cTn.dur * scale));
@@ -724,7 +724,7 @@ function scaleDurations(node, targetMs, scale) {
             scaleDurations(c, targetMs, scale);
         return;
     }
-    if (animation_1.ooxml.isBehavior(node)) {
+    if (present_animation_1.ooxml.isBehavior(node)) {
         const c = node.cBhvr.ctn;
         if (typeof c.dur === "number" && c.dur > 1) {
             c.dur = Math.max(1, Math.round(c.dur * scale));

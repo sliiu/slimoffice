@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SvgBackend = void 0;
 const font_stack_1 = require("./font-stack");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const scene_node_1 = require("./scene-node");
 const paint_svg_1 = require("./paint-svg");
 const cell_borders_1 = require("./cell-borders");
@@ -20,7 +20,7 @@ const shape_effects_1 = require("./shape-effects");
 const text_autofit_1 = require("./text-autofit");
 const text_wordart_1 = require("./text-wordart");
 const text_warp_1 = require("./text-warp");
-const three_bake_1 = require("@sliiu/present-three-bake");
+const present_three_bake_1 = require("@sliiu/present-three-bake");
 const text_shared_1 = require("./text-shared");
 const SVG_NS = "http://www.w3.org/2000/svg";
 // 每个 SvgBackend 实例一个唯一序号，用来给 <defs> 里的 clipPath id 加前缀。
@@ -57,7 +57,7 @@ function cssTransformFromBody3D(info, bbox) {
     const cam = info?.scene3d?.camera;
     if (!cam)
         return "";
-    const r = (0, three_bake_1.resolveCamera)(cam);
+    const r = (0, present_three_bake_1.resolveCamera)(cam);
     const near0 = (v) => Math.abs(v) < 0.5;
     if (near0(r.lat) && near0(r.lon) && near0(r.rev))
         return "";
@@ -443,7 +443,7 @@ class SvgBackend {
     paintBaked3D(s, b) {
         if (s.kind === "group")
             return false;
-        const info = (0, three_bake_1.shape3DInfo)(s);
+        const info = (0, present_three_bake_1.shape3DInfo)(s);
         const baked = info?.bakedSrc;
         if (!baked || !b.shapeEl)
             return false;
@@ -676,7 +676,7 @@ class SvgBackend {
                 }
             }
             b.mediaTrimDetach?.();
-            b.mediaTrimDetach = (0, core_1.attachMediaTrimPlayback)(b.mediaEl, s.trim, s.duration, !!s.loop);
+            b.mediaTrimDetach = (0, present_core_1.attachMediaTrimPlayback)(b.mediaEl, s.trim, s.duration, !!s.loop);
         }
         fo.setAttribute("x", String(s.bbox.x));
         fo.setAttribute("y", String(s.bbox.y));
@@ -690,7 +690,7 @@ class SvgBackend {
         }
     }
     renderWebEmbed(s, container, b, node) {
-        if (this.preview || !(0, core_1.isAllowedWebEmbedSrc)(s.embedUrl)) {
+        if (this.preview || !(0, present_core_1.isAllowedWebEmbedSrc)(s.embedUrl)) {
             this.renderMediaPlaceholder(container, s.bbox, "video");
             return;
         }
@@ -895,7 +895,7 @@ class SvgBackend {
             }
         }
         // 需要 3D 的文字走 WebGL / 烘焙贴图，这里不再叠一层 CSS 相机，避免和挤出体各转一次。
-        const css3d = (0, three_bake_1.needs3DRender)(s.body3D) ? "" : cssTransformFromBody3D(s.body3D, s.bbox);
+        const css3d = (0, present_three_bake_1.needs3DRender)(s.body3D) ? "" : cssTransformFromBody3D(s.body3D, s.bbox);
         if (css3d) {
             const wrap3d = document.createElementNS(SVG_NS, "g");
             const cx3 = s.bbox.x + s.bbox.w / 2;

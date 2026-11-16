@@ -1,4 +1,4 @@
-import type { VbaModuleKind, VbaModuleMeta, VbaProjectMeta } from "@ppt/core";
+import type { VbaModuleKind, VbaModuleMeta, VbaProjectMeta } from "@sliiu/present-core";
 import { isCfb, listCfbStreamPaths, readCfbStreamPath } from "./cfb";
 import { decompressVbaStream } from "./vba-decompress";
 

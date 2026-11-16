@@ -1,4 +1,4 @@
-import type { Presentation, Shape, Slide, TextShape } from "@ppt/core";
+import type { Presentation, Shape, Slide, TextShape } from "@sliiu/present-core";
 import { auditPresentationAccessibility } from "./accessibility-audit";
 
 export type DesignSuggestionSeverity = "error" | "warn" | "info";

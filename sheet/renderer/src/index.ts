@@ -1,4 +1,4 @@
-import type { Workbook, Worksheet } from "@sheet/core";
+import type { Workbook, Worksheet } from "@sliiu/sheet-core";
 
 export interface SheetGrid {
   destroy(): void;

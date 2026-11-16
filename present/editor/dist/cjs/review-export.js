@@ -62,7 +62,7 @@ exports.slideWithFirstCompareChange = slideWithFirstCompareChange;
 exports.slideWithFewestCompareChanges = slideWithFewestCompareChanges;
 exports.formatCompareSlideCoverageBreakdownLine = formatCompareSlideCoverageBreakdownLine;
 exports.exportCompareSlideCoverageText = exportCompareSlideCoverageText;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const accessibility_audit_1 = require("./accessibility-audit");
 const compare_deck_1 = require("./compare-deck");
 const A11Y_KIND_LABEL = {
@@ -276,7 +276,7 @@ function exportDeckReviewCompactText(pres, opts = {}) {
         const count = groupAccessibilityIssuesBySlide(report).get(busiest)?.length ?? 0;
         lines.push(`Busiest: slide ${busiest + 1}×${count}`);
     }
-    const p = (0, core_1.getPresentationProtection)(pres);
+    const p = (0, present_core_1.getPresentationProtection)(pres);
     if (!p)
         lines.push("Protection: none");
     else if (p.kind === "final")
@@ -398,8 +398,8 @@ function exportThesaurusCompactText(word, synonyms, related, antonyms) {
 }
 /** Plain-text protection status for copy. */
 function exportProtectionStatusText(pres) {
-    const p = (0, core_1.getPresentationProtection)(pres);
-    const office = (0, core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
+    const p = (0, present_core_1.getPresentationProtection)(pres);
+    const office = (0, present_core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
     const lines = ["Presentation protection"];
     if (!p) {
         lines.push("Status: not protected");
@@ -419,7 +419,7 @@ function exportProtectionStatusText(pres) {
 }
 /** One-line protection status for compact copy. */
 function exportProtectionCompactText(pres) {
-    const p = (0, core_1.getPresentationProtection)(pres);
+    const p = (0, present_core_1.getPresentationProtection)(pres);
     if (!p)
         return "Protection: none";
     if (p.kind === "final")
@@ -616,7 +616,7 @@ function exportDeckReviewReadinessText(pres, opts = {}) {
 /** One-line protection readiness for status chips. */
 function formatProtectionReadinessLine(pres) {
     const compact = exportProtectionCompactText(pres);
-    const office = (0, core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
+    const office = (0, present_core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
     const parts = ["Protection ready", compact.replace("Protection: ", "")];
     if (office)
         parts.push(`Office ${office.algorithm}`);

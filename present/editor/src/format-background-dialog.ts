@@ -1,4 +1,4 @@
-import type { Paint } from "@ppt/core";
+import type { Paint } from "@sliiu/present-core";
 import { showDialog } from "./dialog";
 import { t } from "./i18n";
 import { appendPaintEditor } from "./paint-editor-ui";

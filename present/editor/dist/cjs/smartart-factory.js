@@ -6,8 +6,8 @@ exports.inferSmartArtLayout = inferSmartArtLayout;
 exports.convertTextShapeToSmartArt = convertTextShapeToSmartArt;
 exports.defaultSmartArtItems = defaultSmartArtItems;
 exports.createSmartArtGroup = createSmartArtGroup;
-const core_1 = require("@sliiu/present-core");
-const core_2 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
+const present_core_2 = require("@sliiu/present-core");
 const shape_factory_1 = require("./shape-factory");
 function paragraphText(p) {
     return p.runs.map((r) => r.text).join("").trim();
@@ -97,7 +97,7 @@ function defaultSmartArtItems(layout) {
     ];
 }
 function createSmartArtGroup(opts) {
-    const children = (0, core_1.buildSmartArtShapes)(opts.layout, opts.items, opts.bbox);
+    const children = (0, present_core_1.buildSmartArtShapes)(opts.layout, opts.items, opts.bbox);
     return {
         id: opts.id,
         name: "SmartArt",
@@ -106,7 +106,7 @@ function createSmartArtGroup(opts) {
         locked: false,
         opacity: 1,
         bbox: opts.bbox,
-        transform: (0, core_2.identityTransform)(),
+        transform: (0, present_core_2.identityTransform)(),
         kind: "group",
         children,
         smartArtMeta: { layout: opts.layout },

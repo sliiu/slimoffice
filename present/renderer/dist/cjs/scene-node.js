@@ -7,7 +7,7 @@ exports.resolveAnimatable = resolveAnimatable;
 exports.createScene = createScene;
 exports.shapeRenderFill = shapeRenderFill;
 exports.shapeRenderFillBBox = shapeRenderFillBBox;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const compose_1 = require("./compose");
 /** iterate 子目标上的属性叠在段落动画之上（同名字段以后者为准）。 */
 function mergeParaOverrides(base, over) {
@@ -194,7 +194,7 @@ class SceneNode {
                     const trim = this.shape.trim;
                     const fallbackDur = this.shape.duration;
                     const dur = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : fallbackDur;
-                    const { start } = (0, core_1.mediaTrimBounds)(trim, dur);
+                    const { start } = (0, present_core_1.mediaTrimBounds)(trim, dur);
                     switch (value) {
                         case "play":
                             if (el.currentTime < start) {

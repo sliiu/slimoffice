@@ -1,7 +1,7 @@
 // 阶段 3.2：模板缩略图生成。
 //
 // generateTemplate 拿到 master + layout 后，要生成一份"卡片预览图"挂到
-// Template.thumbnailUrl 上。完整渲染要拉 @ppt/renderer/SvgBackend（依赖巨大），
+// Template.thumbnailUrl 上。完整渲染要拉 @sliiu/present-renderer/SvgBackend（依赖巨大），
 // 而模板缩略图只要"看出风格"就行。
 //
 // 策略：手写一份极简的 SVG 序列化，覆盖 rect / ellipse / line + solid/linear/radial fill。
@@ -9,7 +9,7 @@
 //
 // 输出 `data:image/svg+xml;utf8,<encoded svg>`，可直接塞 <img src>。
 
-import type { Paint, Shape, SlideSize } from "@ppt/core";
+import type { Paint, Shape, SlideSize } from "@sliiu/present-core";
 
 export interface SnapshotInput {
   size: SlideSize;

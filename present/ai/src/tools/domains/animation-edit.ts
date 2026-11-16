@@ -16,7 +16,7 @@
 //     直接对齐）。
 //
 // 关键设计：
-//   - 所有改动走 rt.apply（@ppt/editor 的命令栈），自动支持 undo。
+//   - 所有改动走 rt.apply（@sliiu/present-editor 的命令栈），自动支持 undo。
 //   - effectId 直接复用 buildEffectList 的稳定派生 id（"eff_<topIdx>_<cTnId>_<parentPath>"），
 //     与编辑器 panel/timeline 一致；UI 上选中的 effect 与 AI 操作的 effect 一致。
 //   - LLM 通过 listSlideAnimations 拿到当前 effects 列表后，**必须**用返回的 effectId
@@ -33,7 +33,7 @@ import {
   type Effect,
   type EffectClass,
   type EffectPath,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { defineTool, ok, err, type ToolRuntime } from "../types";
 
 // ----------------------------------------------------------------------------
@@ -312,7 +312,7 @@ export const animationEditTools = [
     shapeScoped: true,
     execute: async (rt, { slideIdx, shapeId, preset, trigger, durationMs, delayMs, iterations }) => {
       const presetId = EMPHASIS_PRESETS[preset]!;
-      const args: import("@ppt/editor").InsertEffectArgs = {
+      const args: import("@sliiu/present-editor").InsertEffectArgs = {
         targetShapeId: shapeId,
         presetClass: "emph",
         presetId,
@@ -364,7 +364,7 @@ export const animationEditTools = [
     shapeScoped: true,
     execute: async (rt, { slideIdx, shapeId, preset, trigger, durationMs, delayMs }) => {
       const presetId = EXIT_PRESETS[preset]!;
-      const args: import("@ppt/editor").InsertEffectArgs = {
+      const args: import("@sliiu/present-editor").InsertEffectArgs = {
         targetShapeId: shapeId,
         presetClass: "exit",
         presetId,
@@ -405,7 +405,7 @@ export const animationEditTools = [
     shapeScoped: true,
     execute: async (rt, { slideIdx, shapeId, preset, trigger, durationMs, delayMs }) => {
       const presetId = MOTION_PATH_PRESETS[preset]!;
-      const args: import("@ppt/editor").InsertEffectArgs = {
+      const args: import("@sliiu/present-editor").InsertEffectArgs = {
         targetShapeId: shapeId,
         presetClass: "path",
         presetId,
@@ -440,7 +440,7 @@ export const animationEditTools = [
     tags: ["mutate", "animation"],
     shapeScoped: true,
     execute: async (rt, a) => {
-      const args: import("@ppt/editor").InsertEffectArgs = {
+      const args: import("@sliiu/present-editor").InsertEffectArgs = {
         targetShapeId: a.shapeId,
         presetClass: a.presetClass as EffectClass,
         presetId: a.presetId,

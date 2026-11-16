@@ -1,4 +1,4 @@
-import type { ImageColorAdjust, Paint } from "@ppt/core";
+import type { ImageColorAdjust, Paint } from "@sliiu/present-core";
 import { t } from "./i18n";
 import { CHECK_CLASS, COLOR_SWATCH_CLASS, CONTROL_INPUT_CLASS, RANGE_INPUT_CLASS } from "./ui-style";
 

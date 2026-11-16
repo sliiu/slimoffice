@@ -11,7 +11,7 @@ exports.openEquationDialog = openEquationDialog;
 /// <reference path="./css.d.ts" />
 const katex_1 = __importDefault(require("katex"));
 require("katex/dist/katex.min.css");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const dialog_1 = require("./dialog");
 const i18n_1 = require("./i18n");
 const EQ_DESCR_PREFIX = "ppt-equation:";
@@ -90,7 +90,7 @@ async function rasterizeEquationShapesInPlace(pres, doc) {
             });
             if (s.src !== src) {
                 s.src = src;
-                (0, core_1.markDirty)(s, "src");
+                (0, present_core_1.markDirty)(s, "src");
             }
             s.natural = natural;
             s.lockAspect = true;
@@ -106,7 +106,7 @@ async function rasterizeEquationShapesInPlace(pres, doc) {
                 const h = natural.h * k;
                 if (Math.abs(s.bbox.w - w) > 0.5 || Math.abs(s.bbox.h - h) > 0.5) {
                     s.bbox = { x: cx - w / 2, y: cy - h / 2, w, h };
-                    (0, core_1.markDirty)(s, "bbox");
+                    (0, present_core_1.markDirty)(s, "bbox");
                 }
             }
         }

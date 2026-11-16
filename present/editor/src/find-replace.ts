@@ -1,7 +1,7 @@
 // Find / Replace —— 全 deck 文本搜索与替换（含表格 cell、group 内 text shape）。
 // 非模态浮动面板，Find Next 时自动跳转 slide 并选中命中 shape。
 
-import type { EditCommand, Presentation, Shape, TextParagraph, TextShape } from "@ppt/core";
+import type { EditCommand, Presentation, Shape, TextParagraph, TextShape } from "@sliiu/present-core";
 import { SetParagraphsCmd } from "./commands";
 import { findShape } from "./selection";
 import { t } from "./i18n";

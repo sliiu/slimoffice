@@ -3,8 +3,8 @@ export { readAsArrayBuffer, readAsDataURL, showFileProgress, setFileProgress, hi
 export { combinedReadRatio, mediaKindOf, progressLabel } from "./file-kind.js";
 export type { EditorOptions, EditorHandle, InsertShapeKind, PlaybackPluginOption, SaveFormat, ExtraContextMenuInfo, } from "./editor.js";
 export type { DevDumpAction, DevDumpSection } from "./dev-panel.js";
-export { defineEditorPlugin, withEditorPluginErrorBoundary, slideStatsEditorPlugin, speakerNotesEditorPlugin, createMockEditorPluginContext, BUILTIN_EDITOR_PLUGIN_CATALOG, mergeEditorPluginCatalog, } from "./editor-plugins.js";
-export type { EditorPlugin, EditorPluginAPI, EditorPluginContext, EditorPluginUIHost, EditorPluginCatalogEntry, EditorEventBus, EditorCommandEvent, EditorSelectionEvent, EditorSlideChangeEvent, MockEditorCallLog, } from "./editor-plugins.js";
+export { defineEditorPlugin, withEditorPluginErrorBoundary, slideStatsEditorPlugin, speakerNotesEditorPlugin, createMockEditorPluginContext, BUILTIN_EDITOR_PLUGIN_CATALOG, mergeEditorPluginCatalog, } from "./editor-plugins/index.js";
+export type { EditorPlugin, EditorPluginAPI, EditorPluginContext, EditorPluginUIHost, EditorPluginCatalogEntry, EditorEventBus, EditorCommandEvent, EditorSelectionEvent, EditorSlideChangeEvent, MockEditorCallLog, } from "./editor-plugins/index.js";
 export { openEditorPluginMarketPopover } from "./editor-plugin-market.js";
 export type { EditorPluginMarketEntry, EditorPluginMarketPopoverOptions } from "./editor-plugin-market.js";
 export type { ContextMenuItem } from "./context-menu.js";
@@ -20,9 +20,9 @@ export { SetSlideLayoutRefCmd, AddLayoutCmd, DeleteLayoutCmd, RenameLayoutCmd, D
 export type { TxStyleScope, LevelStylePatch } from "./master-commands.js";
 export { createShapeFromPreset, officialPresetId, createTextBox, createLine, createTable, createChart, genShapeId, } from "./shape-factory.js";
 export type { BaseOpts, CreateShapeOptions, CreateTextBoxOptions, CreateLineOptions, CreateTableOptions, CreateChartOptions, } from "./shape-factory.js";
-export * from "./animation.js";
-export { setLocale, getLocale, registerMessages, t } from "./i18n.js";
-export type { Locale, MessageKey } from "./i18n.js";
+export * from "./animation/index.js";
+export { setLocale, getLocale, registerMessages, t } from "./i18n/index.js";
+export type { Locale, MessageKey } from "./i18n/index.js";
 export { DEFAULT_LUCIDE_ICON, normalizeLucideIconName, lucideSvg, fillLucideIcon, svgIcon, appendLucideIcon, appendLabelWithIcon, mkLucideIconButton, mkLucideButton, setButtonLucideIcon, } from "./icons.js";
 export type { IconName } from "./icons.js";
 export { WORDART_PRESETS, defaultWordArtState } from "./dialog.js";

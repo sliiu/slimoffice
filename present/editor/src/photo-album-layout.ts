@@ -1,4 +1,4 @@
-import { createSlideFromMaster, type PhotoAlbum, type Presentation, type Rect, type Shape, type Slide } from "@ppt/core";
+import { createSlideFromMaster, type PhotoAlbum, type Presentation, type Rect, type Shape, type Slide } from "@sliiu/present-core";
 import { genShapeId } from "./shape-factory";
 
 export type PhotoAlbumLayoutId = "fitToSlide" | "2pic" | "4pic";

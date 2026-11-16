@@ -1,7 +1,7 @@
 // ECMA-376 §20.1.4.2 tblStyle / §14.7 tableStyles.xml — 一个可选的演示文稿
 // 级别部件，定义 wholeTbl/band1H/band2H/firstRow/lastRow/firstCol/lastCol/
 // nwCell/neCell/swCell/seCell 等 12 个区域的填充、边框与文字颜色。
-import type { Paint, Stroke } from "@ppt/core";
+import type { Paint, Stroke } from "@sliiu/present-core";
 import { attr, findAllByLocalName, findByLocalName, type XmlNode } from "./xml";
 import { parseFill, parseStroke, type FillCtx } from "./fill";
 import { loadXmlPart } from "./parts";

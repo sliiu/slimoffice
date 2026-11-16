@@ -23,7 +23,7 @@ exports.searchUnsplash = searchUnsplash;
 exports.searchPexels = searchPexels;
 exports.insertImageToSlide = insertImageToSlide;
 const commands_1 = require("@sliiu/present-editor/commands");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const presets_1 = require("../../config/presets");
 const caller_route_1 = require("../../llm/caller-route");
 // ===========================================================================
@@ -50,7 +50,7 @@ function makeImageShape(args) {
         name: args.name,
         kind: "image",
         bbox: args.bbox,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         zIndex: 0,
         visible: true,
         locked: false,

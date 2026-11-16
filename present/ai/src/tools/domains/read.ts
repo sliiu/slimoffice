@@ -9,7 +9,7 @@ import {
   isPresentationEditingBlocked,
   protectionRequiresPassword,
   summarizeOfficeModifyVerifier,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { defineTool } from "../types";
 import { ok, err } from "../types";
 import { shapeSummary, slideSummary } from "../summaries";

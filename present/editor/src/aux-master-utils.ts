@@ -1,4 +1,4 @@
-import type { Presentation, Slide, SlideMaster, SlideSize } from "@ppt/core";
+import type { Presentation, Slide, SlideMaster, SlideSize } from "@sliiu/present-core";
 
 /** Notes page canvas (portrait; defaults to slide H×W when notesSize missing). */
 export function notesCanvasSize(pres: Presentation): SlideSize {

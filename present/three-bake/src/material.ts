@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Paint } from "@ppt/core";
+import type { Paint } from "@sliiu/present-core";
 
 export interface MaterialOpts {
   prst?: string;

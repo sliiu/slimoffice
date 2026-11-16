@@ -1,5 +1,5 @@
-import { bytesToFontDataUrl } from "@ppt/core";
-import { findFontPreset } from "@ppt/themes";
+import { bytesToFontDataUrl } from "@sliiu/present-core";
+import { findFontPreset } from "@sliiu/present-themes";
 
 const TTF_UA = "Wget/1.21";
 

@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { THEMES } from "../themes";
 import type { Outline } from "./schema";
 import { templateFromThemeDef } from "./template/generate-template";
-import type { Template } from "@ppt/core";
+import type { Template } from "@sliiu/present-core";
 import { contentLayout, layoutsFromTemplate, presentationFromTemplateOutline, repairTemplateDeck, resolveVisualSource } from "./template-fill";
 
 function outline(): Outline {

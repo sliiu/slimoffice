@@ -4,11 +4,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.listPresetsByClass = listPresetsByClass;
 exports.mountPresetPicker = mountPresetPicker;
-const animation_1 = require("@sliiu/present-animation");
+const present_animation_1 = require("@sliiu/present-animation");
 const i18n_1 = require("../i18n");
 const preset_labels_1 = require("./preset-labels");
 function listPresetsByClass(classKey) {
-    const items = animation_1.ooxml.listPresets(classKey);
+    const items = present_animation_1.ooxml.listPresets(classKey);
     return items.map((p) => ({
         classKey: classKey,
         presetId: p.id,

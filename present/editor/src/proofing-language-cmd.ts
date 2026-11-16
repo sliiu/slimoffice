@@ -1,5 +1,5 @@
-import type { EditCommand, Presentation } from "@ppt/core";
-import { normalizeProofingLangId, PROOFING_LANG_META_KEY, setProofingLanguageMeta } from "@ppt/core";
+import type { EditCommand, Presentation } from "@sliiu/present-core";
+import { normalizeProofingLangId, PROOFING_LANG_META_KEY, setProofingLanguageMeta } from "@sliiu/present-core";
 
 export class SetProofingLanguageCmd implements EditCommand {
   readonly label = "Set proofing language";

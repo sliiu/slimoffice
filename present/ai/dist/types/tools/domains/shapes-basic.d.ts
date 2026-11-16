@@ -1,4 +1,4 @@
-export declare const shapeBasicTools: import("...js").ToolDef<{
+export declare const shapeBasicTools: import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
 }>[];

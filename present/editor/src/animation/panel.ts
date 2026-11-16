@@ -1,7 +1,7 @@
 // 动画面板 - 列出当前 slide 的所有动画，支持选择/排序/删除/新增/属性编辑。
 
-import type { CommandStack, Presentation, Slide } from "@ppt/core";
-import { ooxml } from "@ppt/animation";
+import type { CommandStack, Presentation, Slide } from "@sliiu/present-core";
+import { ooxml } from "@sliiu/present-animation";
 import {
   AddAnimEffectCmd,
   MoveAnimEffectCmd,

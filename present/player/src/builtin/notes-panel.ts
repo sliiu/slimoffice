@@ -1,4 +1,4 @@
-import type { Plugin } from "@ppt/plugin-sdk";
+import type { Plugin } from "@sliiu/present-plugin-sdk";
 import { createTranslator } from "../i18n";
 
 /** Speaker notes for the current slide during playback. */

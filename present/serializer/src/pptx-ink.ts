@@ -1,7 +1,7 @@
 // Office ink：`p:contentPart` + InkML 部件（ECMA-376 contentPart / W3C InkML）。
 // Draw 笔迹和解析回来的 Office 墨迹都走这条路径，而不是普通 a:custGeom。
 
-import type { PathShape, Shape } from "@ppt/core";
+import type { PathShape, Shape } from "@sliiu/present-core";
 import { attrs, esc, pxToEmu, xmlHeader } from "./xml-util";
 import { allocSpId, type ShapeCtx } from "./pptx-shapes";
 

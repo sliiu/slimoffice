@@ -1,4 +1,4 @@
-import type { SheetCell, Workbook, Worksheet } from "@sheet/core";
+import type { SheetCell, Workbook, Worksheet } from "@sliiu/sheet-core";
 import { loadArchive, type OfficeArchive } from "./zip";
 import { attr, child, children, parseXml, type XmlNode } from "./xml";
 

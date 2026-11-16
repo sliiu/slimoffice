@@ -1,4 +1,4 @@
-import type { PhotoAlbum, Presentation, PresentationSource } from "@ppt/core";
+import type { PhotoAlbum, Presentation, PresentationSource } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
 import type { RoundTripOptions } from "./pptx-roundtrip";
 import {

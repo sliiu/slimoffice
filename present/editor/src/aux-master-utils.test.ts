@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { ensureSlideMasters } from "./aux-master-utils.js";
 
 function emptyPres(): Presentation {

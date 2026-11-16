@@ -1,4 +1,4 @@
-import type { ChartDef, ClrMap, HeaderFooter, Paint, Rect, Shape, BackgroundRef, StyleRefColor } from "@ppt/core";
+import type { ChartDef, ClrMap, HeaderFooter, Paint, Rect, Shape, BackgroundRef, StyleRefColor } from "@sliiu/present-core";
 import { attr, findByLocalName, type XmlNode } from "./xml";
 import { boolish } from "./units";
 import { loadRels, loadXmlPart, type RelMap } from "./parts";

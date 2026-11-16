@@ -21,7 +21,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createEditorPort = createEditorPort;
 exports.createHeadlessPort = createHeadlessPort;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 /** 监听器集合 + transaction 的共享实现。 */
 function makePortCore(getStack) {
     const listeners = new Set();
@@ -64,7 +64,7 @@ function createEditorPort(opts) {
 }
 /** Node / MCP server / 测试：内存 Presentation + 独立栈，无焦点无选区。 */
 function createHeadlessPort(pres) {
-    const stack = new core_1.CommandStack(pres);
+    const stack = new present_core_1.CommandStack(pres);
     const core = makePortCore(() => stack);
     return {
         ...core,

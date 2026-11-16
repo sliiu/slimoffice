@@ -1,6 +1,6 @@
 // Office `p:contentPart` + InkML → PathShape，供编辑器 / 放映显示墨迹。
 
-import type { PathShape, Rect, ShapeMeta, Transform } from "@ppt/core";
+import type { PathShape, Rect, ShapeMeta, Transform } from "@sliiu/present-core";
 import { attr, findAllByLocalName, findByLocalName, type XmlNode } from "./xml";
 
 function nodeText(n: XmlNode | undefined): string {

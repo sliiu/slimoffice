@@ -1,4 +1,4 @@
-import type { Presentation, PresentationSource, Theme } from "@ppt/core";
+import type { Presentation, PresentationSource, Theme } from "@sliiu/present-core";
 
 /**
  * JSON-safe round-trip archive: `__source.files` 是 Map + Uint8Array，不能走 JSON.stringify。

@@ -9,7 +9,7 @@ import {
   type SlideMaster,
   type SlideSize,
   type Theme,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { buildDecorationShapesShared } from "./decorations";
 import type { CoverMotifId, GeneratedThemeSpec, TemplateLayoutId, ThemeDef } from "./themes";
 

@@ -1,6 +1,6 @@
-export declare const capabilityTools: (import("...js").ToolDef<Record<string, never>> | import("...js").ToolDef<{
+export declare const capabilityTools: (import("../index.js").ToolDef<Record<string, never>> | import("../index.js").ToolDef<{
     fields: string[];
     reason: string;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     id: string;
 }>)[];

@@ -1,10 +1,10 @@
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import {
   getProofingLanguage,
   normalizeProofingLangId,
   PROOFING_LANG_META_KEY,
   setProofingLanguageMeta,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { getLocale } from "./i18n";
 
 export interface ProofingLanguageOption {

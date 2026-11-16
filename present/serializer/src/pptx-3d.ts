@@ -7,8 +7,8 @@ import type {
   Sp3DInfo,
   Sp3DParams,
   Sphere3D,
-} from "@ppt/core";
-import { getOrigin, isDirty } from "@ppt/core";
+} from "@sliiu/present-core";
+import { getOrigin, isDirty } from "@sliiu/present-core";
 import {
   getChildren,
   getTagName,

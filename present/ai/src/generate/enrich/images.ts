@@ -20,8 +20,8 @@
 //        - image-text 的 imageQuery → 替换 compile 留下的 "Image placeholder" +
 //          "Image hint" 为真实 ImageShape（占 layout 预留的 bbox）。
 
-import type { Presentation, Paint, ImageShape } from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+import type { Presentation, Paint, ImageShape } from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import type { AiConfig } from "../../config/types";
 import type { PresentationSpec, SlideSpecZ } from "../schema";
 import { imageryForFamily } from "../schema";

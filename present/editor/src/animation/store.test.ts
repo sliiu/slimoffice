@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Slide } from "@ppt/core";
-import { ooxml } from "@ppt/animation";
+import type { Slide } from "@sliiu/present-core";
+import { ooxml } from "@sliiu/present-animation";
 import { buildEffectList, ensureTiming, insertEffect, setEffectProperty } from "./store.js";
 
 function leafDurs(node: ooxml.TimeNode): number[] {

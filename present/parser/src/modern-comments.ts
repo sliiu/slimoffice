@@ -1,4 +1,4 @@
-import type { DeckComment } from "@ppt/core";
+import type { DeckComment } from "@sliiu/present-core";
 import type { PptxArchive } from "./zip";
 import { loadXmlPart, type RelMap } from "./parts";
 import { findAllByLocalName, findByLocalName, attr, type XmlNode } from "./xml";

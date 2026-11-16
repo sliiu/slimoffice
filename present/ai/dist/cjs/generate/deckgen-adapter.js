@@ -28,7 +28,7 @@ exports.describeUnchangedPages = describeUnchangedPages;
 exports.compileDeckgenPresentation = compileDeckgenPresentation;
 exports.generatePresentationViaDeckgen = generatePresentationViaDeckgen;
 exports.jobsFromOutline = jobsFromOutline;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const index_js_1 = require("../deckgen/index.js");
 const jobs_js_1 = require("../deckgen/jobs.js");
 const brief_js_1 = require("../deckgen/brief.js");
@@ -435,7 +435,7 @@ function applyMotion(pres, opts, outline) {
                 : {}),
         });
         for (const slide of pres.slides) {
-            (0, core_1.applyInitialEntranceState)(slide, (0, core_1.computeInitialEntranceState)(slide));
+            (0, present_core_1.applyInitialEntranceState)(slide, (0, present_core_1.computeInitialEntranceState)(slide));
         }
         emitProgress(opts, { stage: "compile", progress: 0.96, detailKey: "animate.ready" });
     }

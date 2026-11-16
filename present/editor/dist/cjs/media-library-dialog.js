@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openMediaLibraryDialog = openMediaLibraryDialog;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const dialog_1 = require("./dialog");
 const i18n_1 = require("./i18n");
 const ACCEPT = "image/*,video/*,audio/*";
@@ -105,14 +105,14 @@ function openMediaLibraryDialog(doc, adapter) {
                     const btn = doc.createElement("button");
                     btn.type = "button";
                     btn.textContent =
-                        cat.id === core_1.MEDIA_LIBRARY_DEFAULT_CATEGORY_ID ? (0, i18n_1.t)("library.uncategorized") : cat.name;
+                        cat.id === present_core_1.MEDIA_LIBRARY_DEFAULT_CATEGORY_ID ? (0, i18n_1.t)("library.uncategorized") : cat.name;
                     btn.style.cssText = `${catBtnCss(activeCat === cat.id)};flex:1;text-align:left`;
                     btn.addEventListener("click", () => {
                         activeCat = cat.id;
                         void refreshItems();
                     });
                     row.appendChild(btn);
-                    if (cat.id !== core_1.MEDIA_LIBRARY_DEFAULT_CATEGORY_ID) {
+                    if (cat.id !== present_core_1.MEDIA_LIBRARY_DEFAULT_CATEGORY_ID) {
                         const del = doc.createElement("button");
                         del.type = "button";
                         del.textContent = "×";
@@ -218,7 +218,7 @@ function openMediaLibraryDialog(doc, adapter) {
                             const opt = doc.createElement("option");
                             opt.value = cat.id;
                             opt.textContent =
-                                cat.id === core_1.MEDIA_LIBRARY_DEFAULT_CATEGORY_ID ? (0, i18n_1.t)("library.uncategorized") : cat.name;
+                                cat.id === present_core_1.MEDIA_LIBRARY_DEFAULT_CATEGORY_ID ? (0, i18n_1.t)("library.uncategorized") : cat.name;
                             if (cat.id === item.categoryId)
                                 opt.selected = true;
                             move.appendChild(opt);
@@ -269,13 +269,13 @@ function openMediaLibraryDialog(doc, adapter) {
                     const files = [...(inp.files ?? [])];
                     if (!files.length)
                         return;
-                    const tooBig = files.find((f) => f.size > core_1.MEDIA_LIBRARY_MAX_ITEM_BYTES);
+                    const tooBig = files.find((f) => f.size > present_core_1.MEDIA_LIBRARY_MAX_ITEM_BYTES);
                     if (tooBig) {
                         setStatus((0, i18n_1.t)("library.tooLarge"), true);
                         return;
                     }
                     setStatus((0, i18n_1.t)("library.uploading"));
-                    const dest = activeCat === "all" ? core_1.MEDIA_LIBRARY_DEFAULT_CATEGORY_ID : activeCat;
+                    const dest = activeCat === "all" ? present_core_1.MEDIA_LIBRARY_DEFAULT_CATEGORY_ID : activeCat;
                     void adapter.addFiles(files, dest).then(refreshItems).catch((e) => {
                         setStatus(e instanceof Error && e.message === "ITEM_TOO_LARGE" ? (0, i18n_1.t)("library.tooLarge") : (0, i18n_1.t)("library.uploadFailed"), true);
                     });

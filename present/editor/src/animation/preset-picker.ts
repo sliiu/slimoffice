@@ -1,7 +1,7 @@
 // 预设选择器 - 按入场/强调/退出/路径分类
-// 数据来自 @ppt/animation 中的 PRESET_TABLE。
+// 数据来自 @sliiu/present-animation 中的 PRESET_TABLE。
 
-import { ooxml } from "@ppt/animation";
+import { ooxml } from "@sliiu/present-animation";
 import type { EffectClass } from "./store";
 import { t } from "../i18n";
 import { presetDisplayName } from "./preset-labels";

@@ -4,7 +4,7 @@ import type { VbaProjectMeta } from "./vba-project";
 import type { ViewGuides } from "./view-guides";
 import type { Lecture } from "./lecture";
 import type { ShowProperties } from "./show-properties";
-import type { ooxml } from "@ppt/animation";
+import type { ooxml } from "@sliiu/present-animation";
 
 export interface SlideSize {
   width: number;

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writePptxRoundTrip = writePptxRoundTrip;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const media_table_1 = require("./media-table");
 const embedding_table_1 = require("./embedding-table");
@@ -1042,9 +1042,9 @@ function readChartRelIdFromRaw(raw) {
     return undefined;
 }
 function chartDefChanged(shape) {
-    if ((0, core_1.isDirty)(shape, "chart"))
+    if ((0, present_core_1.isDirty)(shape, "chart"))
         return true;
-    const snap = (0, core_1.getOrigin)(shape)?.chart;
+    const snap = (0, present_core_1.getOrigin)(shape)?.chart;
     if (!snap)
         return false;
     return JSON.stringify(shape.chart) !== JSON.stringify(snap);
@@ -1406,7 +1406,7 @@ class PartDiagramRegistry {
         const files = (0, pptx_smartart_1.buildSmartArtPartFiles)({
             idx,
             layout: group.smartArtMeta.layout,
-            items: (0, core_1.extractSmartArtItems)(group),
+            items: (0, present_core_1.extractSmartArtItems)(group),
             bbox: group.bbox,
             childrenXml,
             drawingMedia: drawingMedia.list(),
@@ -2056,7 +2056,7 @@ function patchSlideXml(tree, slide, archive, partPath, opts, slideSize, slidePat
     // bgSnapshot 是 parser 解析时（含从 layout/master 继承的兜底）的快照，与当前
     // background 做 JSON 等值比较 → 相等则保留原 `<p:bg>` 字节（含"原本就没"
     // 的继承场景），不等则用 backgroundToXml 序列化后注入。
-    patchBackgroundIn(cSld, slide.background, slide.__source?.bgSnapshot, archive, partPath, opts, (0, core_1.isDirty)(slide, "background"), slideSize);
+    patchBackgroundIn(cSld, slide.background, slide.__source?.bgSnapshot, archive, partPath, opts, (0, present_core_1.isDirty)(slide, "background"), slideSize);
     const spTree = (0, raw_xml_1.findChildByLocal)((0, raw_xml_1.getChildren)(cSld), "spTree");
     if (!spTree) {
         if (opts.debug)
@@ -2286,7 +2286,7 @@ function patchSpTreeInPlace(spTreeNode, memShapes, slide, archive, partPath, opt
             if (!memShape)
                 continue;
             const inkDirty = memShape.kind === "path" &&
-                ((0, core_1.isDirty)(memShape, "bbox") || (0, core_1.isDirty)(memShape, "transform") || (0, core_1.isDirty)(memShape, "stroke"));
+                ((0, present_core_1.isDirty)(memShape, "bbox") || (0, present_core_1.isDirty)(memShape, "transform") || (0, present_core_1.isDirty)(memShape, "stroke"));
             if (inkDirty)
                 continue;
             seenIds.add(spId);
@@ -2443,7 +2443,7 @@ idAlloc, links, charts, diagrams, inks, embeddings, mediaTimings, writtenSpIds) 
             // 上 —— 否则保存后整个 group 的所有子图都 baked 成 alphaModFix amt=0，下次打开就
             // 是永久透明（且后续保存依然 0 → round-trip 持久化 bug）。snapshot 取解析时原值。
             const opSnap = shapeOrigin(shape)?.opacity;
-            const userSetOpacity = (0, core_1.isDirty)(shape, "opacity");
+            const userSetOpacity = (0, present_core_1.isDirty)(shape, "opacity");
             const ownOp = !userSetOpacity && opSnap !== undefined && shape.opacity === 0 && opSnap !== 0
                 ? opSnap
                 : (shape.opacity ?? 1);
@@ -2633,9 +2633,9 @@ function writeChildLocalXfrm(childRaw, childLocal, memChild, frame, partPath, op
     // 容差（CHILD_XFRM_EPS_EMU）防止历史"子坐标循环膨胀"bug：未编辑 child 反算出的
     // local 与 raw 完全一致(实测 0 噪声)，但留极小容差以吸收 scale!=1 时的浮点误差，
     // 远低于任何真实移动(≥1px=9525 emu)。
-    if (!(0, core_1.isDirty)(view.meta, "bbox") &&
-        !(0, core_1.isDirty)(view.meta, "transform") &&
-        !(view.textHost && ((0, core_1.isDirty)(view.textHost, "bbox") || (0, core_1.isDirty)(view.textHost, "transform")))) {
+    if (!(0, present_core_1.isDirty)(view.meta, "bbox") &&
+        !(0, present_core_1.isDirty)(view.meta, "transform") &&
+        !(view.textHost && ((0, present_core_1.isDirty)(view.textHost, "bbox") || (0, present_core_1.isDirty)(view.textHost, "transform")))) {
         if (!childXfrmDiffersFromRaw(propNode, localBbox, view.transform))
             return;
     }
@@ -2666,7 +2666,7 @@ function rectClose(a, b) {
 function syntheticTextBboxDirty(group, text) {
     if (!text)
         return false;
-    if ((0, core_1.isDirty)(text, "bbox"))
+    if ((0, present_core_1.isDirty)(text, "bbox"))
         return true;
     const originBox = shapeOrigin(text)?.bbox;
     if (originBox)
@@ -2709,7 +2709,7 @@ function childXfrmDiffersFromRaw(propNode, localBbox, transform) {
 function pickCarrier(group, base, field) {
     if (!base)
         return group;
-    if ((0, core_1.isDirty)(group, field))
+    if ((0, present_core_1.isDirty)(group, field))
         return group;
     const own = group[field];
     if (Array.isArray(own) ? own.length > 0 : own !== undefined)
@@ -2734,7 +2734,7 @@ function pickSyntheticSpPr(field, base, text, visible) {
     const bVal = base ? base[field] : undefined;
     const tSnap = text ? shapeOrigin(text)?.[field] : undefined;
     const bSnap = base ? shapeOrigin(base)?.[field] : undefined;
-    if ((0, core_1.isDirty)(text, field) || (visible(tVal) && !visible(bVal))) {
+    if ((0, present_core_1.isDirty)(text, field) || (visible(tVal) && !visible(bVal))) {
         return { value: tVal, snapshot: tSnap };
     }
     return { value: bVal, snapshot: bSnap };
@@ -2745,10 +2745,10 @@ function pickSyntheticSpPr(field, base, text, visible) {
 //   - 没标 / 缓存恢复丢标记 → 回落到 origin diff，鲁棒不漏。
 // 关键：未编辑（无标记 + 模型==origin）→ false → 保留原始字节，open→save 幂等。
 function shapeOrigin(obj) {
-    return (0, core_1.getOrigin)(obj);
+    return (0, present_core_1.getOrigin)(obj);
 }
 function fieldDirty(meta, field, modelVal, originVal, eq) {
-    if ((0, core_1.isDirty)(meta, field))
+    if ((0, present_core_1.isDirty)(meta, field))
         return true;
     return !eq(modelVal, originVal);
 }
@@ -2761,7 +2761,7 @@ function effectiveShapeForPatch(s) {
         // 必须把半边的 bbox 提升到 sp 的 xfrm，否则保存后边框落在旧位置。
         // rotation 仍取外层 group：解析后旋转挂在 group 上，_text.transform 是 identity。
         const textBboxDirty = syntheticTextBboxDirty(s, text);
-        const textXfDirty = !!text && (0, core_1.isDirty)(text, "transform");
+        const textXfDirty = !!text && (0, present_core_1.isDirty)(text, "transform");
         const fillPick = pickSyntheticSpPr("fill", base, text, isVisibleFill);
         const strokePick = pickSyntheticSpPr("stroke", base, text, isVisibleStroke);
         return {
@@ -2821,7 +2821,7 @@ function patchSpShape(raw, view, archive, partPath, opts, parentOpacity = 1, ins
         // 没编辑过的 shape 在保存后整片消失。用 __opacitySnapshot 区分：内存 opacity=0
         // 但 snapshot != 0 → 视作动画压入，按 snapshot 写。
         const opSnap = shapeOrigin(view.meta)?.opacity;
-        const userSetOpacity = (0, core_1.isDirty)(view.meta, "opacity");
+        const userSetOpacity = (0, present_core_1.isDirty)(view.meta, "opacity");
         const ownOp = !userSetOpacity && opSnap !== undefined && view.opacity === 0 && opSnap !== 0
             ? opSnap
             : (view.opacity ?? 1);
@@ -2829,7 +2829,7 @@ function patchSpShape(raw, view, archive, partPath, opts, parentOpacity = 1, ins
         if (view.fill !== undefined) {
             const desiredFill = applyOpacityToPaint(view.fill, effOp);
             const fillDirty = fieldDirty(view.meta, "fill", desiredFill, view.fillSnapshot, paintEqual) ||
-                (0, core_1.isDirty)(view.textHost, "fill");
+                (0, present_core_1.isDirty)(view.textHost, "fill");
             if (desiredFill && fillDirty) {
                 patchSpPrFillIn(spPr, desiredFill, archive, partPath, opts);
             }
@@ -2837,7 +2837,7 @@ function patchSpShape(raw, view, archive, partPath, opts, parentOpacity = 1, ins
         if (view.stroke !== undefined) {
             const desiredStroke = applyOpacityToStroke(view.stroke, effOp);
             const strokeDirty = fieldDirty(view.meta, "stroke", desiredStroke, view.strokeSnapshot, strokeEqual) ||
-                (0, core_1.isDirty)(view.textHost, "stroke");
+                (0, present_core_1.isDirty)(view.textHost, "stroke");
             if (desiredStroke && strokeDirty) {
                 patchSpPrStrokeIn(spPr, desiredStroke, opts, partPath);
             }
@@ -3029,7 +3029,7 @@ function patchSpPrEffectsIn(spPr, shape, opts, partPath) {
     // 显式 effectLst 和 `<p:style>/<a:effectRef>` 继承来的主题效果，无差别写出会把继承效果
     // 烘焙进 spPr（切主题不再跟随），并把 schemeClr 阴影降级成 srgbClr。
     const originEffects = shapeOrigin(shape)?.effects;
-    if (!(0, core_1.isDirty)(shape, "effects") && originEffects !== undefined && effectsEqual(effects, originEffects)) {
+    if (!(0, present_core_1.isDirty)(shape, "effects") && originEffects !== undefined && effectsEqual(effects, originEffects)) {
         return;
     }
     const desiredXml = (0, pptx_effects_1.effectsToXml)(effects);
@@ -3115,7 +3115,7 @@ function patchTableGraphicFrame(raw, g, archive, partPath, opts, links) {
             const cell = g.children[r * cols + c];
             if (!cell || cell.kind !== "text")
                 continue;
-            if (!(0, core_1.isDirty)(cell, "text") && !(0, core_1.isDirty)(cell, "textStyle") && !(0, core_1.isDirty)(cell, "paragraph"))
+            if (!(0, present_core_1.isDirty)(cell, "text") && !(0, present_core_1.isDirty)(cell, "textStyle") && !(0, present_core_1.isDirty)(cell, "paragraph"))
                 continue;
             const tc = tcs[c];
             if (!tc)
@@ -3174,24 +3174,24 @@ function tableStructureChanged(tbl, g, rows, cols) {
     return false;
 }
 function tableVisualDirty(g) {
-    if ((0, core_1.isDirty)(g, "bbox") || (0, core_1.isDirty)(g, "fill") || (0, core_1.isDirty)(g, "stroke"))
+    if ((0, present_core_1.isDirty)(g, "bbox") || (0, present_core_1.isDirty)(g, "fill") || (0, present_core_1.isDirty)(g, "stroke"))
         return true;
     for (const c of g.children) {
-        if ((0, core_1.isDirty)(c, "fill") || (0, core_1.isDirty)(c, "stroke") || (0, core_1.isDirty)(c, "bbox"))
+        if ((0, present_core_1.isDirty)(c, "fill") || (0, present_core_1.isDirty)(c, "stroke") || (0, present_core_1.isDirty)(c, "bbox"))
             return true;
     }
     return false;
 }
 function tableContentDirty(g) {
-    if ((0, core_1.isDirty)(g, "bbox") || (0, core_1.isDirty)(g, "text") || (0, core_1.isDirty)(g, "paragraph") || (0, core_1.isDirty)(g, "fill"))
+    if ((0, present_core_1.isDirty)(g, "bbox") || (0, present_core_1.isDirty)(g, "text") || (0, present_core_1.isDirty)(g, "paragraph") || (0, present_core_1.isDirty)(g, "fill"))
         return true;
     for (const c of g.children) {
-        if ((0, core_1.isDirty)(c, "text") ||
-            (0, core_1.isDirty)(c, "textStyle") ||
-            (0, core_1.isDirty)(c, "paragraph") ||
-            (0, core_1.isDirty)(c, "fill") ||
-            (0, core_1.isDirty)(c, "stroke") ||
-            (0, core_1.isDirty)(c, "bbox")) {
+        if ((0, present_core_1.isDirty)(c, "text") ||
+            (0, present_core_1.isDirty)(c, "textStyle") ||
+            (0, present_core_1.isDirty)(c, "paragraph") ||
+            (0, present_core_1.isDirty)(c, "fill") ||
+            (0, present_core_1.isDirty)(c, "stroke") ||
+            (0, present_core_1.isDirty)(c, "bbox")) {
             return true;
         }
     }
@@ -3232,7 +3232,7 @@ function patchPicShape(raw, view, partPath, archive, opts, parentOpacity = 1, in
         // 字符串自比较虽相同但每次写入都会通过 ensureMediaFileName 新建一份媒体文件，
         // 导致每次 open-save 都让 ppt/media 翻倍、_rels 永远脏。
         const srcSnapshot = shapeOrigin(view.meta)?.src;
-        if ((0, core_1.isDirty)(view.meta, "src") || srcSnapshot === undefined || srcSnapshot !== view.meta.src) {
+        if ((0, present_core_1.isDirty)(view.meta, "src") || srcSnapshot === undefined || srcSnapshot !== view.meta.src) {
             patchPicImageSrc(raw, view.meta.src, archive, partPath);
         }
     }
@@ -3247,7 +3247,7 @@ function patchPicShape(raw, view, partPath, archive, opts, parentOpacity = 1, in
     //   - 内存 opacity == snapshot → 用户没改 → 用 snapshot 作为 effOp 源头
     //   - 否则 → 用户真的改了 → 用 view.opacity
     const ownOpSnapshot = shapeOrigin(view.meta)?.opacity;
-    const ownOpPic = !(0, core_1.isDirty)(view.meta, "opacity") && ownOpSnapshot !== undefined && view.opacity === 0 && ownOpSnapshot !== 0
+    const ownOpPic = !(0, present_core_1.isDirty)(view.meta, "opacity") && ownOpSnapshot !== undefined && view.opacity === 0 && ownOpSnapshot !== 0
         ? ownOpSnapshot
         : (view.opacity ?? 1);
     const effOp = clampOp(parentOpacity * ownOpPic);
@@ -3471,7 +3471,7 @@ function patchXfrmIn(propNode, view, _partPath, _opts) {
         // 判定 = 命令标脏(bbox/transform) OR (有 bbox 基线 && 模型 bbox 与基线有实质差异)。
         // 后者让缓存恢复（__dirty 丢失）后仍能识别——占位符没有 raw xfrm 字节可比，bbox
         // origin 就是它的几何基线。无基线（undefined）时保守保留继承。
-        const movedByCmd = (0, core_1.isDirty)(view.meta, "bbox") || (0, core_1.isDirty)(view.meta, "transform");
+        const movedByCmd = (0, present_core_1.isDirty)(view.meta, "bbox") || (0, present_core_1.isDirty)(view.meta, "transform");
         const ob = view.bboxOrigin;
         const movedVsOrigin = ob !== undefined && (Math.abs(view.bbox.x - ob.x) > BBOX_EPS_PX ||
             Math.abs(view.bbox.y - ob.y) > BBOX_EPS_PX ||
@@ -3586,7 +3586,7 @@ function patchBodyPr(bodyPr, host) {
     const vert = stacked.vert;
     const wrap = stacked.wrap;
     const rtlCol = stacked.rtlCol;
-    const flagDirty = (0, core_1.isDirty)(host, "text") || (0, core_1.isDirty)(host, "textStyle") || (0, core_1.isDirty)(host, "paragraph");
+    const flagDirty = (0, present_core_1.isDirty)(host, "text") || (0, present_core_1.isDirty)(host, "textStyle") || (0, present_core_1.isDirty)(host, "paragraph");
     // 缓存恢复会丢掉 __dirty。选择窗里改「竖排堆叠」只写在文字半边，必须对照 raw
     // bodyPr 属性，否则打开→改方向→保存会静默丢 vert。
     const attrDirty = bodyPrAttrsSemanticallyDiffer(raw, host, stacked);
@@ -3711,7 +3711,7 @@ function patchTxBody(txBody, paragraphs, links, textHost, media) {
     const memJoined = paragraphs.map((p) => p.runs.map((r) => r.text ?? "").join("")).join("\u0001");
     const rawJoined = oldParas.map((p) => paragraphTextWithBr(p).join("\u0001")).join("\u0001");
     const memHasExplicitStyle = paragraphs.some((p) => p.runs.some((r) => runHasExplicitStyle(r)));
-    const pPrDirty = (0, core_1.isDirty)(textHost, "paragraph");
+    const pPrDirty = (0, present_core_1.isDirty)(textHost, "paragraph");
     if (memJoined === rawJoined && !memHasExplicitStyle && !pPrDirty)
         return;
     if (memJoined === rawJoined && !memHasExplicitStyle && pPrDirty) {
@@ -4154,7 +4154,7 @@ function mergeRPr(template, run, links, media) {
     // master 默认 Calibri 之类被每次保存都拷一份到 slide 上，污染整个 OOXML。
     // 内联 ExplicitRPrSnapshot 形状（parser 端定义），避免 serializer 反向依赖 parser
     // 包；保持单向依赖关系：parser ← serializer。字段含义详见 parser/src/text.ts。
-    const snap = (0, core_1.getOrigin)(run)?.explicitRPr;
+    const snap = (0, present_core_1.getOrigin)(run)?.explicitRPr;
     // 字段是否"被用户改过"判定：
     //   - snap === undefined：原 raw 完全没 rPr 节点 → 内存所有字段都视为编辑后值，
     //     按内存写（典型场景：编辑器新加的 run）
@@ -4324,7 +4324,7 @@ function buildSolidFillChild(color) {
 function runColorChange(run) {
     if (!run.color)
         return undefined;
-    const snap = (0, core_1.getOrigin)(run)?.explicitRPr;
+    const snap = (0, present_core_1.getOrigin)(run)?.explicitRPr;
     if (!(snap === undefined || snap.color === undefined || snap.color !== run.color))
         return undefined;
     return { oldColor: snap?.color, fill: buildSolidFillChild(run.color) };
@@ -4759,7 +4759,7 @@ function runHasExplicitStyle(r) {
     // 用 parse-time 留下的 __explicitRPr 区分：当字段值与 snapshot 完全一致时
     // 视为「继承未改」，不算显式样式。snap === undefined 表示原 raw 完全没 rPr
     // 节点，这种情况下任何字段都按"用户加的"处理。
-    const snap = (0, core_1.getOrigin)(r)?.explicitRPr;
+    const snap = (0, present_core_1.getOrigin)(r)?.explicitRPr;
     // `isEdited`：内存字段 vs snap 字段，差异时认为"被用户编辑了"。
     //   - snap===undefined：原 raw 完全没 rPr，内存字段都算 explicit（用户/编辑器加的）
     //   - snap 存在 + snap[key] 也存在 + 与 current 不同 → 编辑了

@@ -28,8 +28,8 @@
   "dependencies": {
     "fast-xml-parser": "^5.11.1",
     "fflate": "^0.8.3",
-    "@sliiu/present-animation": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-core": "0.0.0-nightly.20261116031027"
+    "@sliiu/present-animation": "workspace:*",
+    "@sliiu/present-core": "workspace:*"
   },
   "module": "./dist/esm/index.js",
   "repository": {

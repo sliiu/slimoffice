@@ -1,8 +1,8 @@
 // 竖排堆叠（eaVert / wordArtVert / mongolianVert）共享类型与列拆分工具。
 // svg-backend 与 canvas-backend 同时依赖：保证两个后端的列拆分 / 列宽计算完全一致。
 
-import type { FieldResolveContext, TextParagraph, TextRun } from "@ppt/core";
-import { runDisplayText } from "@ppt/core";
+import type { FieldResolveContext, TextParagraph, TextRun } from "@sliiu/present-core";
+import { runDisplayText } from "@sliiu/present-core";
 import { isEastAsianChar } from "./text-layout";
 import { FALLBACK_FONT_SIZE, lineHeightFactor } from "./text-shared";
 import type { ParaOverride } from "./scene-node";

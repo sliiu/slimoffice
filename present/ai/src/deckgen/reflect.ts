@@ -3,7 +3,7 @@
  * Reflective checklist; hard fail.
  */
 
-import type { Presentation, Shape, TextShape } from "@ppt/core";
+import type { Presentation, Shape, TextShape } from "@sliiu/present-core";
 import { SLOT_CAPS } from "./ids.js";
 import { isLayoutId, isVariantForLayout, type LayoutId } from "./ids.js";
 import { imageSlotsAllowed } from "./layouts.js";

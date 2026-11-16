@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.applyEntranceHideToScene = applyEntranceHideToScene;
 exports.revealDesignedAppearance = revealDesignedAppearance;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 /**
  * 放映专用：按当前 timing 把 entrance 目标在 scene 上藏起来（opacity=0 / 段落级 hide）。
  *
@@ -10,7 +10,7 @@ const core_1 = require("@sliiu/present-core");
  * 打的是这份数据。播放器必须在这里重算 hidden-until-entrance，不能依赖 shape.opacity。
  */
 function applyEntranceHideToScene(scene, slide) {
-    const st = (0, core_1.computeInitialEntranceState)(slide);
+    const st = (0, present_core_1.computeInitialEntranceState)(slide);
     for (const s of st.hiddenShapes) {
         const node = scene.root.findById(s.id);
         if (node)
@@ -39,7 +39,7 @@ function applyEntranceHideToScene(scene, slide) {
  * 缩略图如果跟着藏，演讲者看到的是空白页。只改 scene，不改 slide 数据。
  */
 function revealDesignedAppearance(scene, slide) {
-    const st = (0, core_1.computeInitialEntranceState)(slide);
+    const st = (0, present_core_1.computeInitialEntranceState)(slide);
     for (const s of st.hiddenShapes) {
         const node = scene.root.findById(s.id);
         if (node)

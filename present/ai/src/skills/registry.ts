@@ -2,9 +2,9 @@
 //
 // 设计要点：
 //   1. builtin md 由 scripts/sync-skills.mjs 生成为 builtin/index.ts 字符串常量
-//      （不用 Vite `?raw`：@ppt/ai 需要同时在浏览器与 Node/MCP server 下加载）。
+//      （不用 Vite `?raw`：@sliiu/present-ai 需要同时在浏览器与 Node/MCP server 下加载）。
 //   2. user skills 通过宿主注入的 HostSkillStore 提供 —— registry 永远不直接
-//      访问 localStorage（保持 @ppt/ai 不依赖宿主存储格式）。
+//      访问 localStorage（保持 @sliiu/present-ai 不依赖宿主存储格式）。
 //   3. `getEnabledFragments({ stage, host })` 是 prompts/index.ts 唯一调用点：
 //      按 stage 过滤 + 按 enabled 状态拼接，再做 32KB 总长度兜底。
 //   4. 优先级（产品决策：**user 压过 builtin**）：

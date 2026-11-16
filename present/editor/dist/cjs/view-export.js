@@ -38,7 +38,7 @@ exports.exportViewReadinessText = exportViewReadinessText;
 exports.exportViewWorkspaceStatsText = exportViewWorkspaceStatsText;
 exports.exportViewWorkspaceSummaryText = exportViewWorkspaceSummaryText;
 exports.exportViewWorkspaceCompactText = exportViewWorkspaceCompactText;
-const parser_1 = require("@sliiu/present-parser");
+const present_parser_1 = require("@sliiu/present-parser");
 const MODULE_KIND_LABEL = {
     standard: "standard",
     document: "document",
@@ -97,7 +97,7 @@ function exportVbaProjectSummaryText(meta, opts = {}) {
 }
 /** Plain-text procedure index across all modules (read-only). */
 function exportVbaProcedureIndexText(projectBytes, modules, codepage = 1252) {
-    const index = (0, parser_1.indexVbaProceduresInProject)(projectBytes, modules, codepage);
+    const index = (0, present_parser_1.indexVbaProceduresInProject)(projectBytes, modules, codepage);
     const lines = ["VBA procedure index (read-only)"];
     let total = 0;
     for (const entry of index) {
@@ -148,7 +148,7 @@ function exportVbaModuleInventoryText(meta) {
 }
 /** Total procedure count across readable modules. */
 function countVbaProceduresInProject(projectBytes, modules, codepage = 1252) {
-    return (0, parser_1.indexVbaProceduresInProject)(projectBytes, modules, codepage).reduce((sum, entry) => sum + entry.procedures.length, 0);
+    return (0, present_parser_1.indexVbaProceduresInProject)(projectBytes, modules, codepage).reduce((sum, entry) => sum + entry.procedures.length, 0);
 }
 /** One-line module kind breakdown, e.g. `standard×2, class×1`. */
 function formatVbaModuleKindsLine(modules) {
@@ -212,7 +212,7 @@ function formatVbaProjectStatsLine(meta, opts = {}) {
 }
 /** Module with the most indexed procedures (ties → first in list). */
 function vbaModuleWithMostProcedures(projectBytes, modules, codepage = 1252) {
-    const index = (0, parser_1.indexVbaProceduresInProject)(projectBytes, [...modules], codepage);
+    const index = (0, present_parser_1.indexVbaProceduresInProject)(projectBytes, [...modules], codepage);
     let best = null;
     for (const entry of index) {
         const count = entry.procedures.length;
@@ -242,7 +242,7 @@ function exportVbaModuleInventoryCompactText(meta) {
 /** Compact procedure index (truncated per module). */
 function exportVbaProcedureIndexCompactText(projectBytes, modules, kind = "all", codepage = 1252) {
     const filtered = filterVbaModulesByKind(modules, kind);
-    const index = (0, parser_1.indexVbaProceduresInProject)(projectBytes, filtered, codepage);
+    const index = (0, present_parser_1.indexVbaProceduresInProject)(projectBytes, filtered, codepage);
     const parts = [
         kind === "all" ? "VBA procedures (compact)" : `VBA procedures (compact · ${kind})`,
     ];
@@ -314,13 +314,13 @@ function averageVbaProceduresPerModule(projectBytes, modules, codepage = 1252) {
 }
 /** Module names with zero indexed procedures. */
 function vbaModulesWithoutProcedures(projectBytes, modules, codepage = 1252) {
-    return (0, parser_1.indexVbaProceduresInProject)(projectBytes, [...modules], codepage)
+    return (0, present_parser_1.indexVbaProceduresInProject)(projectBytes, [...modules], codepage)
         .filter((entry) => !entry.procedures.length)
         .map((entry) => entry.moduleName);
 }
 /** Modules with at least one indexed procedure. */
 function countVbaModulesWithProcedures(projectBytes, modules, codepage = 1252) {
-    return (0, parser_1.indexVbaProceduresInProject)(projectBytes, [...modules], codepage).filter((entry) => entry.procedures.length > 0).length;
+    return (0, present_parser_1.indexVbaProceduresInProject)(projectBytes, [...modules], codepage).filter((entry) => entry.procedures.length > 0).length;
 }
 /** Count of modules with zero indexed procedures. */
 function countVbaModulesWithoutProcedures(projectBytes, modules, codepage = 1252) {
@@ -340,7 +340,7 @@ function formatVbaModuleCoverageBreakdownLine(projectBytes, modules, codepage = 
 }
 /** Module with the fewest procedures among non-empty modules (ties → first in list). */
 function vbaModuleWithFewestProcedures(projectBytes, modules, codepage = 1252) {
-    const index = (0, parser_1.indexVbaProceduresInProject)(projectBytes, [...modules], codepage);
+    const index = (0, present_parser_1.indexVbaProceduresInProject)(projectBytes, [...modules], codepage);
     let best = null;
     for (const entry of index) {
         const count = entry.procedures.length;

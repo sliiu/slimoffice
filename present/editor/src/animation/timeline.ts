@@ -1,6 +1,6 @@
 // 底部动画时间轴：PowerPoint Animation Pane 风格。
 // 功能：
-//   - Play / Pause / Reset：通过 @ppt/player buildOoxmlPlayback 在编辑器场景上跑真实运行时；
+//   - Play / Pause / Reset：通过 @sliiu/present-player buildOoxmlPlayback 在编辑器场景上跑真实运行时；
 //   - 顶部 ruler：标尺 + 可拖拽 playhead；
 //   - 左列 sequence 编号（PowerPoint 规则：onClick 进 +1，with/after 在同一编号下 a/b/c）；
 //   - 每条 effect：颜色按 entr/emph/exit/path/media 区分；拖动条体 = delay，左/右边缘 = duration；
@@ -8,10 +8,10 @@
 //   - 拖动时按 50ms 网格 snap，Shift 取消 snap；
 //   - 键盘：Space=Play/Pause、Home=Reset、Delete=删除选中 effect。
 
-import type { CommandStack, Presentation, Slide } from "@ppt/core";
-import { ooxml } from "@ppt/animation";
-import { buildOoxmlPlayback, type OoxmlPlayback } from "@ppt/player";
-import type { Scene } from "@ppt/renderer";
+import type { CommandStack, Presentation, Slide } from "@sliiu/present-core";
+import { ooxml } from "@sliiu/present-animation";
+import { buildOoxmlPlayback, type OoxmlPlayback } from "@sliiu/present-player";
+import type { Scene } from "@sliiu/present-renderer";
 import { RemoveAnimEffectCmd, SetAnimEffectPropCmd } from "./commands";
 import { buildEffectList, type Effect } from "./store";
 import { appendLucideIcon, mkLucideIconButton, setButtonLucideIcon } from "../icons";
@@ -138,7 +138,7 @@ export function mountAnimTimeline(
   // seekStep 写到悬空的旧 SceneNode 上，视觉上看似动画完全没生效（典型场景：
   // 新建 WordArt / 普通形状后给它加 entrance，applyEntranceHideToScene 把新 shape
   // hide 在 scene2 上，但 cached playback 仍跑 scene1 → 新 shape 永远不被 reveal）。
-  let playbackScene: import("@ppt/renderer").Scene | null = null;
+  let playbackScene: import("@sliiu/present-renderer").Scene | null = null;
   let isPlaying = false;
   // 预览态：入场目标已 hide，runtime 按时间轴绝对时间 seek。暂停应冻结画面，
   // 只有 Reset / 切页 / 改 timing 才退回"全部可见"的编辑态。

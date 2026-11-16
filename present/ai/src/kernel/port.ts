@@ -18,7 +18,7 @@
 //   折叠 undo 栈结构。事务不做原子回滚：轮次中途失败时已成功的改动保留
 //   （对话场景中模型会在下一步自行修正，回滚反而丢工作）。
 
-import { CommandStack, type EditCommand, type Presentation } from "@ppt/core";
+import { CommandStack, type EditCommand, type Presentation } from "@sliiu/present-core";
 
 export interface DocumentPort {
   /** 每次取最新引用 —— 应对 stack 替换 presentation 之后引用变化。 */

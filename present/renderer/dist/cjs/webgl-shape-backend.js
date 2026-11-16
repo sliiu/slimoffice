@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebGLShapeBackend = void 0;
 const THREE = __importStar(require("three"));
-const three_bake_1 = require("@sliiu/present-three-bake");
+const present_three_bake_1 = require("@sliiu/present-three-bake");
 const node_affine_1 = require("./node-affine");
 const shape_front_1 = require("./shape-front");
 // ════════════════════════════════════════════════════════════════════════════
@@ -120,11 +120,11 @@ class WebGLShapeBackend {
         container.appendChild(this.space);
         scene.root.walk((n) => {
             const s = n.shape;
-            if (!(0, three_bake_1.shapeSupports3D)(s))
+            if (!(0, present_three_bake_1.shapeSupports3D)(s))
                 return;
             if (!filter(s))
                 return;
-            if (!(0, three_bake_1.needs3DRender)((0, three_bake_1.shape3DInfo)(s)))
+            if (!(0, present_three_bake_1.needs3DRender)((0, present_three_bake_1.shape3DInfo)(s)))
                 return;
             this.add(n);
         });
@@ -150,13 +150,13 @@ class WebGLShapeBackend {
     }
     add(node) {
         const s = node.shape;
-        const meta = (0, three_bake_1.shape3DInfo)(s);
+        const meta = (0, present_three_bake_1.shape3DInfo)(s);
         if (!meta)
             return;
-        const pad = (0, three_bake_1.shape3DPad)(s.kind);
+        const pad = (0, present_three_bake_1.shape3DPad)(s.kind);
         const baseBBox = { x: s.bbox.x, y: s.bbox.y, w: s.bbox.w, h: s.bbox.h };
         const paddedBBox = paddedRect(baseBBox, pad);
-        const resolved = (0, three_bake_1.resolveScene3D)(meta);
+        const resolved = (0, present_three_bake_1.resolveScene3D)(meta);
         const wrapper = document.createElement("div");
         wrapper.style.position = "absolute";
         wrapper.style.left = `${paddedBBox.x}px`;
@@ -190,14 +190,14 @@ class WebGLShapeBackend {
         const src = s.kind === "image" ? s.src : s.kind === "text" ? (0, shape_front_1.shapeFrontImageSrc)(this.scene, s) : undefined;
         // 贴图此前已解码过（典型：初次加载已经走过一遍）→ 同步构建场景并 built 就绪，
         // 这样紧随其后的 flush() 能当帧首渲，drawSlide 双缓冲不会出现 3D 空一帧的闪屏。
-        const cachedTex = src ? (0, three_bake_1.getCachedImageTexture)(src) : null;
+        const cachedTex = src ? (0, present_three_bake_1.getCachedImageTexture)(src) : null;
         if (src ? cachedTex !== null : true) {
             this.buildManaged(m, s, cachedTex);
         }
         else {
             // 首次（未缓存）走异步解码；解码完成后会缓存，后续重建即走上面的同步路径。
             void (async () => {
-                const texture = src ? await (0, three_bake_1.loadImageTexture)(src) : null;
+                const texture = src ? await (0, present_three_bake_1.loadImageTexture)(src) : null;
                 if (m.disposed) {
                     texture?.dispose();
                     return;
@@ -220,19 +220,19 @@ class WebGLShapeBackend {
         }
         const isPicture = s.kind === "image" || (s.kind === "text" && !!texture);
         if (s.kind === "image" && texture)
-            (0, three_bake_1.applyTextureCrop)(texture, s.cropRect);
+            (0, present_three_bake_1.applyTextureCrop)(texture, s.cropRect);
         m.texture = texture;
-        m.built = (0, three_bake_1.buildThreeScene)({
+        m.built = (0, present_three_bake_1.buildThreeScene)({
             baseW: Math.max(8, m.baseBBox.w),
             baseH: Math.max(8, m.baseBBox.h),
-            pathD: isPicture ? undefined : (0, three_bake_1.shape3DPathD)(s),
+            pathD: isPicture ? undefined : (0, present_three_bake_1.shape3DPathD)(s),
             fill: s.fill,
             stroke: s.stroke,
             resolved: m.resolved,
             texture: isPicture ? texture : null,
             isImage: isPicture,
         });
-        m.camera = (0, three_bake_1.createSceneCamera)(m.resolved.camera, m.built.geoW, m.built.geoH, m.paddedBBox.w, m.paddedBBox.h, m.pad, m.resolved.backdrop);
+        m.camera = (0, present_three_bake_1.createSceneCamera)(m.resolved.camera, m.built.geoW, m.built.geoH, m.paddedBBox.w, m.paddedBBox.h, m.pad, m.resolved.backdrop);
         this.scheduleGlRender();
         this.checkReady();
     }

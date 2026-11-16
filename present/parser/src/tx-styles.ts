@@ -1,4 +1,4 @@
-import type { BulletDef, TextParagraph, TextRun } from "@ppt/core";
+import type { BulletDef, TextParagraph, TextRun } from "@sliiu/present-core";
 import { findByLocalName, type XmlNode } from "./xml";
 import { parsePPrDefaults, readRunProps, type TextCtx } from "./text";
 

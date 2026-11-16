@@ -22,8 +22,8 @@ import type {
   Slide,
   SlideSource,
   SlideLikeSource,
-} from "@ppt/core";
-import { preserveOrigin } from "@ppt/core";
+} from "@sliiu/present-core";
+import { preserveOrigin } from "@sliiu/present-core";
 import { strFromU8 } from "fflate";
 import { parseFromArchive } from "./parse";
 import type { PptxArchive } from "./zip";

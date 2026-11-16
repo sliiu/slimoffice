@@ -1,7 +1,7 @@
 import type { RelMap } from "./parts";
 import { loadXmlPart } from "./parts";
 import type { PptxArchive } from "./zip";
-import type { ShowKind, ShowProperties, ShowSlideRange } from "@ppt/core";
+import type { ShowKind, ShowProperties, ShowSlideRange } from "@sliiu/present-core";
 import { boolish } from "./units";
 import { attr, findAllByLocalName, findByLocalName, type XmlNode } from "./xml";
 

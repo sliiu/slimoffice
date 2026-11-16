@@ -4,7 +4,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.readTools = void 0;
 const zod_1 = require("zod");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const types_1 = require("../types");
 const types_2 = require("../types");
 const summaries_1 = require("../summaries");
@@ -33,19 +33,19 @@ exports.readTools = [
                 })),
                 fonts: {
                     embedTrueTypeFonts: !!pres.options?.embedTrueTypeFonts,
-                    used: (0, core_1.collectUsedTypefaces)(pres),
+                    used: (0, present_core_1.collectUsedTypefaces)(pres),
                     embeddedFamilies: [...new Set((pres.fonts ?? []).map((f) => f.family))],
-                    missing: (0, core_1.collectUsedTypefaces)(pres).filter((f) => !(0, core_1.isTypefaceEmbedded)(pres, f)),
+                    missing: (0, present_core_1.collectUsedTypefaces)(pres).filter((f) => !(0, present_core_1.isTypefaceEmbedded)(pres, f)),
                 },
                 protection: (() => {
-                    const current = (0, core_1.getPresentationProtection)(pres);
-                    const office = (0, core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
+                    const current = (0, present_core_1.getPresentationProtection)(pres);
+                    const office = (0, present_core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
                     return {
                         protected: current !== undefined,
                         kind: current?.kind ?? null,
                         setAt: current?.setAt ?? null,
-                        passwordRequired: current ? (0, core_1.protectionRequiresPassword)(current, pres.modifyVerifier) : false,
-                        editingBlocked: (0, core_1.isPresentationEditingBlocked)(pres),
+                        passwordRequired: current ? (0, present_core_1.protectionRequiresPassword)(current, pres.modifyVerifier) : false,
+                        editingBlocked: (0, present_core_1.isPresentationEditingBlocked)(pres),
                         officeNative: office ? { algorithm: office.algorithm, spinCount: office.spinCount } : null,
                     };
                 })(),

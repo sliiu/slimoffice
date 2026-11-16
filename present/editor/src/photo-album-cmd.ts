@@ -1,4 +1,4 @@
-import type { EditCommand, PhotoAlbum, Presentation, Slide } from "@ppt/core";
+import type { EditCommand, PhotoAlbum, Presentation, Slide } from "@sliiu/present-core";
 import {
   remapCommentsAfterSlideDelete,
   remapCommentsAfterSlideInsert,

@@ -1,4 +1,4 @@
-import type { Shape, Slide } from "@ppt/core";
+import type { Shape, Slide } from "@sliiu/present-core";
 
 export type SelectionListener = (ids: ReadonlySet<string>) => void;
 

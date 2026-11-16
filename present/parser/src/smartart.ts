@@ -1,11 +1,11 @@
-import type { Rect, Shape, TextParagraph } from "@ppt/core";
+import type { Rect, Shape, TextParagraph } from "@sliiu/present-core";
 import {
   buildSmartArtShapes,
   smartArtLayoutFromCat,
   smartArtLayoutFromUniqueId,
   type SmartArtItem,
   type SmartArtLayoutKind,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import type { PptxArchive } from "./zip";
 import { loadXmlPart, loadRels, type RelMap } from "./parts";
 import { attr, findByLocalName, findAllByLocalName } from "./xml";
@@ -28,7 +28,7 @@ export function parseSmartArtDetailed(
   ctx: ShapeCtx,
   hostBBox?: Rect,
   layoutPath?: string,
-): { shapes: Shape[]; layout?: import("@ppt/core").SmartArtLayoutKind } {
+): { shapes: Shape[]; layout?: import("@sliiu/present-core").SmartArtLayoutKind } {
   const xml = loadXmlPart(archive, dataPath);
   if (!xml) return { shapes: [] };
   const dataRels = loadRels(archive, dataPath);
@@ -128,7 +128,7 @@ function buildFallback(
   ctx: ShapeCtx,
   hostBBox?: Rect,
   layout?: LayoutMeta,
-): { shapes: Shape[]; layout: import("@ppt/core").SmartArtLayoutKind } {
+): { shapes: Shape[]; layout: import("@sliiu/present-core").SmartArtLayoutKind } {
   const dm = findByLocalName(xml, "dataModel");
   if (!dm) return { shapes: [], layout: "list" };
   const ptLst = findByLocalName(dm, "ptLst");

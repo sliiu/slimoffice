@@ -1,13 +1,13 @@
 // 动画基础工具：主流动效方案 / 清除动画 / 页间过渡 / 单个入场动画。
 //
-// 复用 @ppt/animation 的 OOXML preset 子树模板：AI 只给一个语义化 effect 名
+// 复用 @sliiu/present-animation 的 OOXML preset 子树模板：AI 只给一个语义化 effect 名
 // （fade / fade-up / zoom-soft ...），由 animations.ts 翻译为 (presetClass,
 // presetID, durationMs) 写入 slide.ooxmlTiming.tnLst。所有改动走 EditCommand
 // 因此带 undo / redo 支持。
 
 import { z } from "zod";
-import { SetSlideTransitionCmd } from "@ppt/editor/commands";
-import type { SlideTransition } from "@ppt/core";
+import { SetSlideTransitionCmd } from "@sliiu/present-editor/commands";
+import type { SlideTransition } from "@sliiu/present-core";
 import {
   AddAnimationCmd,
   ApplyAutoAnimationsCmd,

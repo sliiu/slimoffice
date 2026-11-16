@@ -1,5 +1,5 @@
-import type { Kinsoku, Presentation, PresentationSource, Slide, SlideLayout, SlideMaster } from "@ppt/core";
-import { computeInitialEntranceState, getProofingLanguage, ooxmlLangFromProofingId } from "@ppt/core";
+import type { Kinsoku, Presentation, PresentationSource, Slide, SlideLayout, SlideMaster } from "@sliiu/present-core";
+import { computeInitialEntranceState, getProofingLanguage, ooxmlLangFromProofingId } from "@sliiu/present-core";
 import { packZip, type ZipFiles } from "./zip-write";
 import { xmlHeader, esc } from "./xml-util";
 import {
@@ -19,8 +19,8 @@ import {
   renderPresentationFontRels,
 } from "./embedded-font-export";
 import type { DeckParts } from "./deck-assemble";
-import type { ChartDef, Shape } from "@ppt/core";
-import { extractSmartArtItems } from "@ppt/core";
+import type { ChartDef, Shape } from "@sliiu/present-core";
+import { extractSmartArtItems } from "@sliiu/present-core";
 import { hfToXml, backgroundToXml, setActiveSchemeColors, shapeToXml, assignSpIds, sldRootAttrXml, cSldNameAttr, clrMapOvrXml, type ShapeCtx } from "./pptx-shapes";
 import {
   buildSmartArtPartFiles,

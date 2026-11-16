@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 // @ts-expect-error jsdom ships without types in this repo; tests run via tsx.
 import { JSDOM } from "jsdom";
-import type { Presentation, Slide } from "@ppt/core";
+import type { Presentation, Slide } from "@sliiu/present-core";
 import type { PresentationViewHost } from "./presentation-views.js";
 
 function installDom(): Document {

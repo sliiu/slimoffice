@@ -19,7 +19,7 @@
 // 播放舞台另走 applyEntranceHideToScene，缩略图不跟「点击前隐藏」。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createThumbnailAPI = createThumbnailAPI;
-const renderer_1 = require("@sliiu/present-renderer");
+const present_renderer_1 = require("@sliiu/present-renderer");
 function createThumbnailAPI(pres) {
     const stringCache = new Map();
     const resolveSlide = (target) => {
@@ -65,11 +65,11 @@ function createThumbnailAPI(pres) {
         let svgString;
         let be = null;
         try {
-            const scene = (0, renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
-            (0, renderer_1.revealDesignedAppearance)(scene, slide);
-            const chrome = (0, renderer_1.stageChromeBackground)(slide);
+            const scene = (0, present_renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
+            (0, present_renderer_1.revealDesignedAppearance)(scene, slide);
+            const chrome = (0, present_renderer_1.stageChromeBackground)(slide);
             const transparent = opts.transparent === true || chrome === "transparent";
-            be = new renderer_1.SvgBackend(scene, host, { transparent, preview: true });
+            be = new present_renderer_1.SvgBackend(scene, host, { transparent, preview: true });
             if (!transparent)
                 be.root.style.background = chrome;
             // SvgBackend 默认走 rAF 调度 redraw；这里同步取 SVG 字符串，必须强制 flush
@@ -110,11 +110,11 @@ function createThumbnailAPI(pres) {
     return {
         mount(host, target, opts = {}) {
             const { slide } = resolveSlide(target);
-            const scene = (0, renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
-            (0, renderer_1.revealDesignedAppearance)(scene, slide);
-            const chrome = (0, renderer_1.stageChromeBackground)(slide);
+            const scene = (0, present_renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
+            (0, present_renderer_1.revealDesignedAppearance)(scene, slide);
+            const chrome = (0, present_renderer_1.stageChromeBackground)(slide);
             const transparent = opts.transparent === true || chrome === "transparent";
-            const be = new renderer_1.SvgBackend(scene, host, { transparent, preview: true });
+            const be = new present_renderer_1.SvgBackend(scene, host, { transparent, preview: true });
             if (!transparent)
                 be.root.style.background = chrome;
             be.root.setAttribute("preserveAspectRatio", "xMidYMid meet");

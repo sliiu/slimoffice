@@ -1,4 +1,4 @@
-import type { EditCommand, Presentation, Rect, Shape, TextShape } from "@ppt/core";
+import type { EditCommand, Presentation, Rect, Shape, TextShape } from "@sliiu/present-core";
 import { isInkShapeId } from "./ink-tool";
 import { createTextBox, genShapeId } from "./shape-factory";
 import { findMainLayer } from "./slide-layout-utils";

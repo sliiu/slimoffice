@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openSmartArtDialog = openSmartArtDialog;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const dialog_1 = require("./dialog");
 const i18n_1 = require("./i18n");
-const LAYOUTS = core_1.SMARTART_LAYOUT_KINDS;
+const LAYOUTS = present_core_1.SMARTART_LAYOUT_KINDS;
 const LAYOUT_ICONS = {
     list: "☰",
     process: "→",
@@ -72,7 +72,7 @@ function openSmartArtDialog(doc) {
                 icon.textContent = LAYOUT_ICONS[layout];
                 const label = doc.createElement("span");
                 label.style.fontSize = "11px";
-                label.textContent = (0, i18n_1.t)(`dialog.smartArt.layout.${layout}`) || core_1.SMARTART_LAYOUT_LABELS[layout];
+                label.textContent = (0, i18n_1.t)(`dialog.smartArt.layout.${layout}`) || present_core_1.SMARTART_LAYOUT_LABELS[layout];
                 btn.append(icon, label);
                 btn.addEventListener("click", () => ctx.close({ layout }));
                 grid.appendChild(btn);

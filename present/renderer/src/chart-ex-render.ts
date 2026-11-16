@@ -1,4 +1,4 @@
-import type { ChartDef, ChartSeries } from "@ppt/core";
+import type { ChartDef, ChartSeries } from "@sliiu/present-core";
 
 export const CHART_EX_PALETTE = [
   "#4E79A7",

@@ -1,4 +1,4 @@
-export declare const embedTools: (import("...js").ToolDef<Record<string, never>> | import("...js").ToolDef<{
+export declare const embedTools: (import("../index.js").ToolDef<Record<string, never>> | import("../index.js").ToolDef<{
     slideIdx: number;
     fileName: string;
     embedSrc: string;
@@ -9,21 +9,21 @@ export declare const embedTools: (import("...js").ToolDef<Record<string, never>>
         h: number;
     } | undefined;
     showAsIcon?: boolean | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
     fileName: string;
     embedSrc: string;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
     showAsIcon: boolean;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
     glbSrc: string;
     objectName?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     presetId: string;
     objectName?: string | undefined;
@@ -33,7 +33,7 @@ export declare const embedTools: (import("...js").ToolDef<Record<string, never>>
         w: number;
         h: number;
     } | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     url: string;
     bbox?: {

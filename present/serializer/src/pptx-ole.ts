@@ -1,4 +1,4 @@
-import type { OleObjectShape, Shape } from "@ppt/core";
+import type { OleObjectShape, Shape } from "@sliiu/present-core";
 import { attrs, esc, pxToEmu } from "./xml-util";
 import type { OleEmbeddingRegistrar } from "./embedding-table";
 import { allocSpId, graphicFrameLocksXml, nvPrXml, type ShapeCtx } from "./pptx-shapes";

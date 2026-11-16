@@ -1,3 +1,3 @@
-export declare const protectionTools: (import("...js").ToolDef<Record<string, never>> | import("...js").ToolDef<{
+export declare const protectionTools: (import("../index.js").ToolDef<Record<string, never>> | import("../index.js").ToolDef<{
     password?: string | undefined;
 }>)[];

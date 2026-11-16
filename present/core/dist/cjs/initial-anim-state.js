@@ -15,7 +15,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.computeInitialEntranceState = computeInitialEntranceState;
 exports.applyInitialEntranceState = applyInitialEntranceState;
-const animation_1 = require("@sliiu/present-animation");
+const present_animation_1 = require("@sliiu/present-animation");
 /**
  * 扫描 slide.ooxmlTiming 中的 entrance preset 目标，按与 parser 相同的算法
  * 决定哪些 shape 需要整体 hide、哪些段落/字符 range 需要 hide。
@@ -77,7 +77,7 @@ function computeInitialEntranceState(slide) {
         }
         return v;
     };
-    for (const t of animation_1.ooxml.collectEntranceTargets(slide.ooxmlTiming, { getTextSlices: textSlicesFor })) {
+    for (const t of present_animation_1.ooxml.collectEntranceTargets(slide.ooxmlTiming, { getTextSlices: textSlicesFor })) {
         const slot = ensure(t.spid);
         if (t.paraRange && !t.charRange) {
             for (let p = t.paraRange.st; p <= t.paraRange.end; p++)

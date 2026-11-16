@@ -23,7 +23,7 @@
 //   fade / image 不属于 sweep 类，可见区永远是 fullRect，opacity 通道单独管
 //   visibility（见 svg-backend 的 fadeOpacityFromClip）。
 
-import type { Rect } from "@ppt/core";
+import type { Rect } from "@sliiu/present-core";
 
 const TWO_PI = Math.PI * 2;
 

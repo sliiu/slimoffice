@@ -1,5 +1,5 @@
-import type { VbaModuleKind, VbaModuleMeta, VbaProjectMeta } from "@ppt/core";
-import { indexVbaProceduresInProject } from "@ppt/parser";
+import type { VbaModuleKind, VbaModuleMeta, VbaProjectMeta } from "@sliiu/present-core";
+import { indexVbaProceduresInProject } from "@sliiu/present-parser";
 
 const MODULE_KIND_LABEL: Record<string, string> = {
   standard: "standard",

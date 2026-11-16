@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseSmartArt = parseSmartArt;
 exports.parseSmartArtDetailed = parseSmartArtDetailed;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const parts_1 = require("./parts");
 const xml_1 = require("./xml");
 const shapes_1 = require("./shapes");
@@ -41,11 +41,11 @@ function parseSmartArtDetailed(archive, dataPath, ctx, hostBBox, layoutPath) {
     return buildFallback(xml, ctx, hostBBox, layoutMeta);
 }
 function layoutKindFromMeta(meta) {
-    const fromId = (0, core_1.smartArtLayoutFromUniqueId)(meta?.uniqueId);
+    const fromId = (0, present_core_1.smartArtLayoutFromUniqueId)(meta?.uniqueId);
     if (fromId)
         return fromId;
     if (meta?.cat)
-        return (0, core_1.smartArtLayoutFromCat)(meta.cat);
+        return (0, present_core_1.smartArtLayoutFromCat)(meta.cat);
     return undefined;
 }
 function loadLayoutMetaFromPath(archive, layoutPath) {
@@ -131,6 +131,6 @@ function buildFallback(xml, ctx, hostBBox, layout) {
     if (items.length === 0)
         return { shapes: [], layout: "list" };
     const bbox = hostBBox ?? { x: 0, y: 0, w: 600, h: 400 };
-    const layoutKind = layoutKindFromMeta(layout) ?? (0, core_1.smartArtLayoutFromCat)(layout?.cat);
-    return { shapes: (0, core_1.buildSmartArtShapes)(layoutKind, items, bbox), layout: layoutKind };
+    const layoutKind = layoutKindFromMeta(layout) ?? (0, present_core_1.smartArtLayoutFromCat)(layout?.cat);
+    return { shapes: (0, present_core_1.buildSmartArtShapes)(layoutKind, items, bbox), layout: layoutKind };
 }

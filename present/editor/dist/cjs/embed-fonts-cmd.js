@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmbedFontsCmd = void 0;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 class EmbedFontsCmd {
     additions;
     optionsPatch;
@@ -24,9 +24,9 @@ class EmbedFontsCmd {
         this.prevFonts = pres.fonts ? [...pres.fonts] : undefined;
         this.prevOptions = pres.options ? { ...pres.options } : undefined;
         const base = this.removeFamilies.length
-            ? (0, core_1.removeEmbeddedFontFamilies)(pres.fonts, this.removeFamilies)
+            ? (0, present_core_1.removeEmbeddedFontFamilies)(pres.fonts, this.removeFamilies)
             : pres.fonts;
-        pres.fonts = (0, core_1.mergeEmbeddedFonts)(base, this.additions);
+        pres.fonts = (0, present_core_1.mergeEmbeddedFonts)(base, this.additions);
         pres.options = { ...pres.options, ...this.optionsPatch };
     }
     revert(pres) {

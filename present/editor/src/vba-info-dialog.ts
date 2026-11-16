@@ -1,7 +1,7 @@
 import { bindEditorModal } from "./dialog";
-import { VBA_PROJECT_PART_PATH, type Presentation, type VbaModuleKind } from "@ppt/core";
-import { presentationHasVbaProject } from "@ppt/core";
-import { formatVbaBasExport, parseVbaModuleProcedures, readVbaModuleSource, searchVbaProceduresInProject, exportAllVbaModulesBas } from "@ppt/parser";
+import { VBA_PROJECT_PART_PATH, type Presentation, type VbaModuleKind } from "@sliiu/present-core";
+import { presentationHasVbaProject } from "@sliiu/present-core";
+import { formatVbaBasExport, parseVbaModuleProcedures, readVbaModuleSource, searchVbaProceduresInProject, exportAllVbaModulesBas } from "@sliiu/present-parser";
 import { t } from "./i18n";
 import { exportVbaProcedureIndexText, exportVbaProjectSummaryText, exportVbaModuleInventoryText, countVbaProceduresInProject, filterVbaModulesByKind, formatVbaModuleKindsLine, exportVbaProjectCompactText, exportVbaProcedureIndexFilteredText, formatVbaProjectStatsLine, exportVbaModuleInventoryCompactText, exportVbaProcedureIndexCompactText, exportVbaEmptyModulesText, exportVbaReadinessText, formatVbaReadinessLine, vbaModuleWithMostProcedures, vbaModulesWithoutProcedures, formatVbaModuleCoverageBreakdownLine, exportVbaModuleCoverageText, vbaModuleWithFewestProcedures } from "./view-export";
 import {

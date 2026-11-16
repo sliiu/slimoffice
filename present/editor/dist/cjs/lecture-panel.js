@@ -2,7 +2,7 @@
 // 底部面板里的出镜：哪些页有画面、静音预览、拖已有的讲解点击、改整场角落和大小。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mountLecturePanel = mountLecturePanel;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const commands_1 = require("./commands");
 const lecture_cmd_1 = require("./lecture-cmd");
 const i18n_1 = require("./i18n");
@@ -111,7 +111,7 @@ function mountLecturePanel(host, deps) {
     const pageDurationMs = () => {
         const pres = deps.getPres();
         const slide = pres.slides[deps.getSlideIndex()];
-        return slide ? ((0, core_1.lectureTakeFor)(pres.lecture, slide.id)?.durationMs ?? 0) : 0;
+        return slide ? ((0, present_core_1.lectureTakeFor)(pres.lecture, slide.id)?.durationMs ?? 0) : 0;
     };
     const paintClock = () => {
         const duration = pageDurationMs();
@@ -240,14 +240,14 @@ function mountLecturePanel(host, deps) {
         const index = deps.getSlideIndex();
         const slide = pres.slides[index];
         const lecture = pres.lecture;
-        const take = slide ? (0, core_1.lectureTakeFor)(lecture, slide.id) : undefined;
+        const take = slide ? (0, present_core_1.lectureTakeFor)(lecture, slide.id) : undefined;
         if ((slide?.id ?? "") !== clockSlideId) {
             clockSlideId = slide?.id ?? "";
             positionMs = 0;
             stopClock();
         }
         list.replaceChildren();
-        const recorded = pres.slides.flatMap((s, i) => ((0, core_1.lectureTakeFor)(lecture, s.id) ? [{ slide: s, i }] : []));
+        const recorded = pres.slides.flatMap((s, i) => ((0, present_core_1.lectureTakeFor)(lecture, s.id) ? [{ slide: s, i }] : []));
         if (recorded.length === 0) {
             const empty = doc.createElement("p");
             empty.style.cssText = "margin:0;color:var(--muted-foreground);font:11px system-ui,sans-serif;line-height:1.4";
@@ -272,7 +272,7 @@ function mountLecturePanel(host, deps) {
                 "border:none",
             ].join(";");
             const name = row.slide.name ? ` · ${row.slide.name}` : "";
-            const cam = (0, core_1.lectureTakeFor)(lecture, row.slide.id)?.cameraRef
+            const cam = (0, present_core_1.lectureTakeFor)(lecture, row.slide.id)?.cameraRef
                 ? (0, i18n_1.t)("lecture.panel.camera")
                 : (0, i18n_1.t)("lecture.panel.narrationOnly");
             b.textContent = `${(0, i18n_1.t)("lecture.panel.slide", { n: row.i + 1 })}${name}\n${cam}`;

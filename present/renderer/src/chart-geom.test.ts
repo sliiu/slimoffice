@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { barGeometry, barLabelAnchor, chart3DOffset, chartPadding, chartTextStyle, linearFit, niceTicks, seriesXyPoints, shadeHex } from "./chart-geom.js";
-import type { BarChartDef, ChartDef, ChartSeries } from "@ppt/core";
+import type { BarChartDef, ChartDef, ChartSeries } from "@sliiu/present-core";
 
 describe("chart-geom", () => {
   it("fits a line, falls back to index points, and shades hex", () => {

@@ -10,7 +10,7 @@
 // 增删 layout / 复制 master / 改 placeholder 类型已暴露；不要凭空造一整棵 master 树。
 
 import { z } from "zod";
-import type { Paint, Shape, TextRun } from "@ppt/core";
+import type { Paint, Shape, TextRun } from "@sliiu/present-core";
 import {
   AddLayoutCmd,
   DeleteLayoutCmd,
@@ -30,7 +30,7 @@ import {
   handoutMasterTarget,
   type LevelStylePatch,
   type TxStyleScope,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { defineTool, ok, err, type ToolResult } from "../types";
 
 const masterPaintSchema = z.discriminatedUnion("kind", [
@@ -485,7 +485,7 @@ function dedupe<T>(arr: T[]): T[] {
   return [...new Set(arr)];
 }
 
-function findInMasters(pres: import("@ppt/core").Presentation, id: string): Shape | undefined {
+function findInMasters(pres: import("@sliiu/present-core").Presentation, id: string): Shape | undefined {
   if (!pres.masters) return undefined;
   const walk = (shapes: Shape[]): Shape | undefined => {
     for (const s of shapes) {

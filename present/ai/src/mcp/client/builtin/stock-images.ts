@@ -7,8 +7,8 @@
 // 启用条件：至少一个 (imagery.unsplashKey | imagery.pexelsKey) 已填。
 
 import { z } from "zod";
-import { SetSlideBackgroundCmd } from "@ppt/editor/commands";
-import type { ImagePaint } from "@ppt/core";
+import { SetSlideBackgroundCmd } from "@sliiu/present-editor/commands";
+import type { ImagePaint } from "@sliiu/present-core";
 import {
   insertImageToSlide,
   probeImageSize,

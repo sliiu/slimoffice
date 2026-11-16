@@ -1,4 +1,4 @@
-import type { CommandStackInfo, EditCommand, Presentation } from "@ppt/core";
+import type { CommandStackInfo, EditCommand, Presentation } from "@sliiu/present-core";
 import { EditorEventBusImpl } from "./event-bus";
 import { createEditorPluginUIHost, removeEditorPluginLayers } from "./ui-host";
 import type {

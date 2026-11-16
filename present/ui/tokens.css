@@ -1,6 +1,6 @@
-/* @ppt/ui design tokens — shadcn/ui zinc + Vercel accent + Figma-like editor chrome.
+/* @sliiu/present-ui design tokens — shadcn/ui zinc + Vercel accent + Figma-like editor chrome.
  * This file is the canonical source consumed by the React console's Tailwind theme
- * (import "@ppt/ui/tokens.css").
+ * (import "@sliiu/present-ui/tokens.css").
  *
  * The vanilla editor/playground inject the SAME values at runtime via
  * src/tokens.ts (TOKENS_CSS). Keep the two in sync. */

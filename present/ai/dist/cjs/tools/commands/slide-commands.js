@@ -8,9 +8,9 @@ exports.ReplaceTextCmd = exports.SetSlideNotesCmd = exports.SetSlideNameCmd = ex
 const commands_1 = require("@sliiu/present-editor/commands");
 const layouts_1 = require("../../generate/compile/layouts");
 const themes_1 = require("../../themes");
-var themes_2 = require("@sliiu/present-themes");
-Object.defineProperty(exports, "ApplyCustomThemeCmd", { enumerable: true, get: function () { return themes_2.ApplyCustomThemeCmd; } });
-Object.defineProperty(exports, "ApplyThemeCmd", { enumerable: true, get: function () { return themes_2.ApplyThemeCmd; } });
+var present_themes_1 = require("@sliiu/present-themes");
+Object.defineProperty(exports, "ApplyCustomThemeCmd", { enumerable: true, get: function () { return present_themes_1.ApplyCustomThemeCmd; } });
+Object.defineProperty(exports, "ApplyThemeCmd", { enumerable: true, get: function () { return present_themes_1.ApplyThemeCmd; } });
 var commands_2 = require("@sliiu/present-editor/commands");
 Object.defineProperty(exports, "DeleteSlideCmd", { enumerable: true, get: function () { return commands_2.DeleteSlideCmd; } });
 Object.defineProperty(exports, "DeleteSlidesCmd", { enumerable: true, get: function () { return commands_2.DeleteSlidesCmd; } });

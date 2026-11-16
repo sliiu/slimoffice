@@ -14,7 +14,7 @@ exports.mergeHyperlinkIntoSnapshot = mergeHyperlinkIntoSnapshot;
 exports.parseHlinkNode = parseHlinkNode;
 exports.resolveSlideJumpTarget = resolveSlideJumpTarget;
 exports.mapAction = mapAction;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const shape_3d_1 = require("./shape-3d");
 const fill_1 = require("./fill");
 const units_1 = require("./units");
@@ -470,7 +470,7 @@ function parseParagraph(p, ctx) {
                 // 这样 serializer 的 runHasExplicitStyle 能识别"未编辑的纯继承"路径，避免把
                 // `<a:fld>` 误判为编辑过的 run 而 rebuild 成 `<a:r>`。
                 // 与 parseRun 的 attachSnap 同口径写到统一的 __origin（serializer 读 getOrigin）。
-                (0, core_1.setOrigin)(run, { explicitRPr: mergeHlinkOverrideIntoSnapshot(explicitRPrFromRaw(rPr), props) ?? {} });
+                (0, present_core_1.setOrigin)(run, { explicitRPr: mergeHlinkOverrideIntoSnapshot(explicitRPrFromRaw(rPr), props) ?? {} });
                 push(run);
             }
         }
@@ -483,7 +483,7 @@ function parseParagraph(p, ctx) {
             const props = rPr ? readRunProps(rPr, ctx) : {};
             const mathRun = (0, omml_1.ommlToTextRun)(ref.node, props);
             if (mathRun) {
-                (0, core_1.setOrigin)(mathRun, { explicitRPr: rPr ? (explicitRPrFromRaw(rPr) ?? {}) : {} });
+                (0, present_core_1.setOrigin)(mathRun, { explicitRPr: rPr ? (explicitRPrFromRaw(rPr) ?? {}) : {} });
                 push(mathRun);
             }
         }
@@ -499,7 +499,7 @@ function parseParagraph(p, ctx) {
         // 全部当成"用户显式样式" → memHasExplicitStyle=true → 触发整段 rebuild，把未编辑
         // 段落写坏（7.pptx slide8/12/13/18 的截断 / 串字 / 多空 run 即源于此）。
         const emptyRun = { text: "", ...def };
-        (0, core_1.setOrigin)(emptyRun, { explicitRPr: endRPr ? (explicitRPrFromRaw(endRPr) ?? {}) : {} });
+        (0, present_core_1.setOrigin)(emptyRun, { explicitRPr: endRPr ? (explicitRPrFromRaw(endRPr) ?? {}) : {} });
         last.push(emptyRun);
     }
     return segments.map((runs) => ({ ...defaults, runs }));
@@ -627,7 +627,7 @@ function parseRun(r, ctx) {
     // 超链接 run 会被误判为编辑过而重写原字节。
     const explicit = mergeHyperlinkIntoSnapshot(mergeHlinkOverrideIntoSnapshot(explicitRPrFromRaw(rPr), props), props);
     const attachSnap = (run) => {
-        (0, core_1.setOrigin)(run, { explicitRPr: explicit });
+        (0, present_core_1.setOrigin)(run, { explicitRPr: explicit });
         return run;
     };
     // 按脚本拆分时，run.fontFamily 取的是「该脚本对应槽位」的字体（CJK→ea、拉丁→latin…），
@@ -638,7 +638,7 @@ function parseRun(r, ctx) {
     // 首选字体」，未编辑时即可逐字相等 → 保留原始字节。
     const attachSnapFam = (run, fam) => {
         const first = firstTypefaceOf(fam);
-        (0, core_1.setOrigin)(run, {
+        (0, present_core_1.setOrigin)(run, {
             explicitRPr: first ? { ...(explicit ?? {}), fontFamily: first } : (explicit ?? {}),
         });
         return run;
@@ -674,9 +674,9 @@ function parseRun(r, ctx) {
  * 这些路径会丢失非可枚举的 __origin 字段。
  */
 function preserveRPrSnapshot(target, source) {
-    const snap = (0, core_1.getOrigin)(source)?.explicitRPr;
+    const snap = (0, present_core_1.getOrigin)(source)?.explicitRPr;
     if (snap !== undefined)
-        (0, core_1.setOrigin)(target, { explicitRPr: snap });
+        (0, present_core_1.setOrigin)(target, { explicitRPr: snap });
     return target;
 }
 /** OOXML effectLst 子标签 → 内存 ShapeEffect.kind，便于 snapshot 与运行时比较。 */
@@ -1086,10 +1086,10 @@ function parseHlinkNode(node, ctx) {
     }
     if (!emptyRid && ctx.rels) {
         const resolved = ctx.rels.resolve(rid);
-        return (0, core_1.sanitizeHyperlinkRef)(withExtras({ kind: "url", target: resolved ?? rid, tooltip, action: action ?? undefined, sound }));
+        return (0, present_core_1.sanitizeHyperlinkRef)(withExtras({ kind: "url", target: resolved ?? rid, tooltip, action: action ?? undefined, sound }));
     }
     if (!emptyRid)
-        return (0, core_1.sanitizeHyperlinkRef)(withExtras({ kind: "url", target: rid, tooltip, action: action ?? undefined, sound }));
+        return (0, present_core_1.sanitizeHyperlinkRef)(withExtras({ kind: "url", target: rid, tooltip, action: action ?? undefined, sound }));
     if (sound)
         return withExtras({ kind: "sound", tooltip, action, sound });
     if (action)

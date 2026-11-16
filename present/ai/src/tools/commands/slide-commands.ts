@@ -1,6 +1,6 @@
 // AI 修改对话用的额外 EditCommand：覆盖现有 editor commands 没有的"幻灯片级"操作。
 //
-// 幻灯片列表增删改重排已统一到 @ppt/editor slide-commands（与 playground 共用 undo 栈）。
+// 幻灯片列表增删改重排已统一到 @sliiu/present-editor slide-commands（与 playground 共用 undo 栈）。
 // 本文件保留 AI 专属：主题应用、从 spec 建页、重命名、ReplaceText 等。
 
 import {
@@ -10,11 +10,11 @@ import {
   type Slide,
   type TextParagraph,
   type TextRun,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import {
   newSlideId,
   reindexPresentationSlides,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { renderLayout, type SlideSpec } from "../../generate/compile/layouts";
 import { getTheme } from "../../themes";
 
@@ -23,7 +23,7 @@ export {
   ApplyThemeCmd,
   type ApplyCustomThemeOpts,
   type ApplyThemeOpts,
-} from "@ppt/themes";
+} from "@sliiu/present-themes";
 
 export {
   DeleteSlideCmd,
@@ -31,7 +31,7 @@ export {
   DuplicateSlideCmd,
   InsertSlideCmd,
   MoveSlideCmd,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 
 function blankLayer(): Layer {
   return { id: `layer_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, name: "Main", visible: true, locked: false, shapes: [] };
@@ -172,7 +172,7 @@ function findTextShape(
   pres: Presentation,
   slideIdx: number,
   id: string,
-): import("@ppt/core").TextShape | undefined {
+): import("@sliiu/present-core").TextShape | undefined {
   const slide = pres.slides[slideIdx];
   if (!slide) return undefined;
   for (const layer of slide.layers) {
@@ -185,9 +185,9 @@ function findTextShape(
 }
 
 function walkText(
-  s: import("@ppt/core").Shape,
+  s: import("@sliiu/present-core").Shape,
   id: string,
-): import("@ppt/core").TextShape | undefined {
+): import("@sliiu/present-core").TextShape | undefined {
   if (s.id === id && s.kind === "text") return s;
   if (s.kind === "group") {
     for (const c of s.children) {

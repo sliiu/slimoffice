@@ -5,7 +5,7 @@
  * and exports as `<a:custGeom>` with a real stroke — recolorable in the editor.
  */
 
-import { identityTransform, type PathShape, type Rect } from "@ppt/core";
+import { identityTransform, type PathShape, type Rect } from "@sliiu/present-core";
 import { icons } from "lucide";
 
 type IconChild = [string, Record<string, string | number>, IconChild[]?];

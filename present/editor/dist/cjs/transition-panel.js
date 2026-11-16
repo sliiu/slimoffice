@@ -16,8 +16,8 @@ exports.TRANSITION_OPTIONS = void 0;
 exports.transitionKindLabel = transitionKindLabel;
 exports.dirLabel = dirLabel;
 exports.mountTransitionPanel = mountTransitionPanel;
-const transition_fx_1 = require("@sliiu/present-transition-fx");
-const transition_fx_2 = require("@sliiu/present-transition-fx");
+const present_transition_fx_1 = require("@sliiu/present-transition-fx");
+const present_transition_fx_2 = require("@sliiu/present-transition-fx");
 const commands_1 = require("./commands");
 const icons_1 = require("./icons");
 const i18n_1 = require("./i18n");
@@ -122,7 +122,7 @@ function dirLabel(d, toward = false) {
 }
 function glitterChoiceLabel(def, value) {
     if (def?.kind === "glitter") {
-        const { dir, pattern } = (0, transition_fx_2.glitterParamsFromToken)(value);
+        const { dir, pattern } = (0, present_transition_fx_2.glitterParamsFromToken)(value);
         const shape = (0, i18n_1.t)(pattern === "hexagon" ? "ribbon.transition.pattern.hexagon" : "ribbon.transition.pattern.diamond");
         return `${dirLabel(dir, true)} · ${shape}`;
     }
@@ -375,9 +375,9 @@ function mountTransitionPanel(parent, opts) {
         const def = currentDef();
         const params = {};
         if (def?.kind === "split" && dirSel.value)
-            Object.assign(params, (0, transition_fx_2.splitParamsFromToken)(dirSel.value));
+            Object.assign(params, (0, present_transition_fx_2.splitParamsFromToken)(dirSel.value));
         else if (def?.kind === "glitter" && dirSel.value)
-            Object.assign(params, (0, transition_fx_2.glitterParamsFromToken)(dirSel.value));
+            Object.assign(params, (0, present_transition_fx_2.glitterParamsFromToken)(dirSel.value));
         else if (def?.patterns && dirSel.value)
             params.pattern = dirSel.value;
         else if (def?.dirs && def.dirs.length && dirSel.value)
@@ -446,10 +446,10 @@ function mountTransitionPanel(parent, opts) {
             morphStatsText.textContent = (0, i18n_1.t)("ribbon.transition.morphStatsNoNext");
             return;
         }
-        const report = (0, transition_fx_1.auditMorphSlides)(from, to);
+        const report = (0, present_transition_fx_1.auditMorphSlides)(from, to);
         morphStats.hidden = false;
-        const breakdown = report.pairs.length ? ` · ${(0, transition_fx_1.formatMorphMatchReasonBreakdown)(report)}` : "";
-        morphStatsText.textContent = (0, transition_fx_1.formatMorphReadinessLine)(report) + breakdown;
+        const breakdown = report.pairs.length ? ` · ${(0, present_transition_fx_1.formatMorphMatchReasonBreakdown)(report)}` : "";
+        morphStatsText.textContent = (0, present_transition_fx_1.formatMorphReadinessLine)(report) + breakdown;
     }
     const refresh = () => {
         const cur = opts.pres.slides[opts.currentSlide()]?.transition;
@@ -471,9 +471,9 @@ function mountTransitionPanel(parent, opts) {
         const p = cur.params ?? {};
         const defNow = currentDef();
         if (defNow?.kind === "split")
-            dirSel.value = (0, transition_fx_2.splitToken)(p.orient, p.dir);
+            dirSel.value = (0, present_transition_fx_2.splitToken)(p.orient, p.dir);
         else if (defNow?.kind === "glitter")
-            dirSel.value = (0, transition_fx_2.glitterToken)(p.dir, p.pattern);
+            dirSel.value = (0, present_transition_fx_2.glitterToken)(p.dir, p.pattern);
         else if (defNow?.patterns && p.pattern)
             dirSel.value = String(p.pattern);
         else {

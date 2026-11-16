@@ -1,4 +1,4 @@
-import type { MessageKey } from "./i18n.js";
+import type { MessageKey } from "./i18n/index.js";
 export interface ScreenRect {
     left: number;
     top: number;

@@ -6,7 +6,7 @@
 // 只要 bullet 编号规则 / 缺省字号 / 缺省行距 / bodyPr 旋转角度 在任一处漂移，
 // 用户就会看到"渲染时是 ①，双击编辑时变成 1."这类不一致。所以这些常量与纯函数
 // 只允许在这里定义一次，其它模块 import。
-import type { BulletDef, ShapeEffect, TextParagraph } from "@ppt/core";
+import type { BulletDef, ShapeEffect, TextParagraph } from "@sliiu/present-core";
 
 /**
  * §21.1.2.1.1 bodyPr@lIns/tIns/rIns/bIns 的 OOXML 缺省值：
@@ -20,7 +20,7 @@ export const DEFAULT_LINE_HEIGHT_FACTOR = 1.2;
 /** 继承链都没写 sz 时的绘制字号（px）。schema 不给 sz 缺省值；Office 用 18pt。 */
 export const FALLBACK_FONT_SIZE = (1800 / 100) * (96 / 72);
 
-export type VertMode = NonNullable<import("@ppt/core").TextShape["vert"]>;
+export type VertMode = NonNullable<import("@sliiu/present-core").TextShape["vert"]>;
 
 /**
  * §21.1.2.1.1 bodyPr@vert — 整框旋转角度。

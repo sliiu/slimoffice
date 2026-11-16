@@ -6,7 +6,7 @@
 // 配色从 pres.theme.colors 取 bg / ink / accent。
 
 import { z } from "zod";
-import type { Presentation, Shape, Slide, TextShape } from "@ppt/core";
+import type { Presentation, Shape, Slide, TextShape } from "@sliiu/present-core";
 import { InsertSlideCmd } from "../commands/slide-commands";
 import { defineTool, ok, err } from "../types";
 import { compileCanvasDeck } from "../../deckgen/pipeline";

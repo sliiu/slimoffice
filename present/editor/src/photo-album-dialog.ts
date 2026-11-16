@@ -1,5 +1,5 @@
 import { bindEditorModal } from "./dialog";
-import type { PhotoAlbum } from "@ppt/core";
+import type { PhotoAlbum } from "@sliiu/present-core";
 import { t } from "./i18n";
 import type { PhotoAlbumImageInput, PhotoAlbumLayoutId } from "./photo-album-layout";
 import { DIALOG_OVERLAY_CSS } from "./ui-style";

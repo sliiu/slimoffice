@@ -1,8 +1,8 @@
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { attachFillStrokeSnapshots } from "./parse";
 import { applyAutoFit, applyInheritance, indexPlaceholders, type PhIndex } from "./inherit";
 import type { TxStyles, LevelStyle } from "./tx-styles";
-import type { TextStyles as CoreTextStyles, LevelStyleSpec } from "@ppt/core";
+import type { TextStyles as CoreTextStyles, LevelStyleSpec } from "@sliiu/present-core";
 
 // 阶段 2.1：editor / AI 改 master/layout 后用此函数刷新 slide.layers[main]，
 // 让占位符 inherited 字段（bbox、fontSize/fontFamily/color、bullet 等）与最新 master 同步。

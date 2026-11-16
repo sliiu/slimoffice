@@ -1,4 +1,4 @@
-import type { DeckComment } from "@ppt/core";
+import type { DeckComment } from "@sliiu/present-core";
 import { esc, pxToEmu } from "./xml-util";
 
 export const P188_NS = "http://schemas.microsoft.com/office/powerpoint/2018/8/main";

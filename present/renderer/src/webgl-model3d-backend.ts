@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Model3DShape, Rect, Shape } from "@ppt/core";
+import type { Model3DShape, Rect, Shape } from "@sliiu/present-core";
 import type { Scene, SceneNode } from "./scene-node";
 import { applyModel3DCameraPose, applyModel3DTransform, loadGltfScene } from "./model3d-frame";
 

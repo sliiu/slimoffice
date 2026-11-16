@@ -6,7 +6,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.embedTools = void 0;
 const zod_1 = require("zod");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const commands_1 = require("@sliiu/present-editor/commands");
 const types_1 = require("../types");
 const rectSchema = zod_1.z.object({
@@ -27,7 +27,7 @@ function bytesToDataUrl(bytes) {
     return `data:model/gltf-binary;base64,${b64}`;
 }
 async function loadPresetGlb(presetId) {
-    const preset = core_1.MODEL3D_PRESETS.find((p) => p.id === presetId) ?? core_1.MODEL3D_PRESETS[0];
+    const preset = present_core_1.MODEL3D_PRESETS.find((p) => p.id === presetId) ?? present_core_1.MODEL3D_PRESETS[0];
     if (!preset)
         return { error: `unknown 3D preset "${presetId}"` };
     const url = `/${preset.samplePath}`.replace(/\/{2,}/g, "/");
@@ -135,7 +135,7 @@ exports.embedTools = [
         description: "List built-in 3D model presets for insertModel3DPreset (currently cube).",
         inputSchema: zod_1.z.object({}),
         tags: ["read", "shape"],
-        execute: async () => (0, types_1.ok)({ presets: core_1.MODEL3D_PRESETS.map((p) => ({ id: p.id, label: p.label })) }),
+        execute: async () => (0, types_1.ok)({ presets: present_core_1.MODEL3D_PRESETS.map((p) => ({ id: p.id, label: p.label })) }),
     }),
     (0, types_1.defineTool)({
         name: "insertModel3DPreset",
@@ -175,7 +175,7 @@ exports.embedTools = [
             const pres = rt.getPres();
             if (!pres.slides[slideIdx])
                 return (0, types_1.err)(`slideIdx ${slideIdx} out of range`);
-            const embed = (0, core_1.normalizeWebEmbedUrl)(url);
+            const embed = (0, present_core_1.normalizeWebEmbedUrl)(url);
             if (!embed)
                 return (0, types_1.err)(`Only YouTube and Vimeo URLs can be embedded: ${url}`);
             const cmd = new commands_1.InsertWebEmbedCmd(slideIdx, 0, {

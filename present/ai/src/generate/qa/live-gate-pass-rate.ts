@@ -1,4 +1,4 @@
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { envConfigStore } from "../../config/store";
 import { isConfigUsable } from "../../config/presets";
 import type { AiConfig } from "../../config/types";

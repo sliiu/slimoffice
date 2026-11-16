@@ -1,4 +1,4 @@
-import { MODEL3D_PRESETS } from "@ppt/core";
+import { MODEL3D_PRESETS } from "@sliiu/present-core";
 import { showDialog } from "./dialog";
 import { t } from "./i18n";
 import {

@@ -6,7 +6,7 @@ import type {
   Shape,
   ShapeEffect,
   SoftEdgeEffect,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { angleToEmu, esc, parseColor } from "./xml-util";
 
 /** ECMA-376 effectLst 距离/模糊单位：与 parser `readShadow` 对偶（÷12700）。 */

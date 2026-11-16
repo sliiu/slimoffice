@@ -9,5 +9,5 @@ export * from "./compile.js";
 export * from "./runtime.js";
 export * from "./ticker.js";
 export * from "./presets.js";
-export * from "./presets-template.js";
+export * from "./presets-template/index.js";
 export * from "./scan.js";

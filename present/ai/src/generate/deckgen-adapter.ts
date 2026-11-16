@@ -12,7 +12,7 @@ import {
   applyInitialEntranceState,
   computeInitialEntranceState,
   type Presentation,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import {
   CANVAS,
   COLOR_THEME_PALETTES,

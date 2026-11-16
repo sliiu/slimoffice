@@ -20,7 +20,7 @@ import {
   imageFrame,
   readCrop,
   setCropEdge,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { findShapeDeep } from "../summaries";
 import { defineTool, err } from "../types";
 

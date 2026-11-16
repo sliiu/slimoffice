@@ -1,4 +1,4 @@
-import type { SlideTransition } from "@ppt/core";
+import type { SlideTransition } from "@sliiu/present-core";
 
 // ECMA-376 §19.5.50 p:transition
 //   advClick 缺省为 true：单击可以在动画播完后换到下一页。

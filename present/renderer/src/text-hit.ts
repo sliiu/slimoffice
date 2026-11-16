@@ -1,4 +1,4 @@
-import type { HyperlinkRef, Shape, TextRun, TextShape } from "@ppt/core";
+import type { HyperlinkRef, Shape, TextRun, TextShape } from "@sliiu/present-core";
 import { DEFAULT_TEXT_INSETS, FALLBACK_FONT_SIZE, isVerticalStack, paragraphFallbackFontSize, stackedColumnsLtr, vertRotateDeg } from "./text-shared";
 import { mapVisualAlignWithAnchorCtr, wrapParagraphIntoLines, type VisualLine } from "./text-layout";
 import { buildStackedGlyphs, wrapGlyphsIntoColumns } from "./text-stacked";
@@ -154,7 +154,7 @@ function hitTestStackedRunAt(s: TextShape, x: number, y: number): TextRun | unde
   const clampEnd = (sp: number): number => (allowVertOverflow ? sp : Math.max(0, sp));
 
   type ParaColumn = {
-    paragraph: import("@ppt/core").TextParagraph;
+    paragraph: import("@sliiu/present-core").TextParagraph;
     glyphs: import("./text-stacked").StackedGlyph[];
     width: number;
     isFirstColOfPara: boolean;
@@ -228,7 +228,7 @@ interface ParaHitLayout {
 
 function layoutPara(
   s: TextShape,
-  p: import("@ppt/core").TextParagraph,
+  p: import("@sliiu/present-core").TextParagraph,
   maxWidth: number,
   ctx: CanvasRenderingContext2D,
 ): ParaHitLayout {

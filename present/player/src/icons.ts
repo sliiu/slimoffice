@@ -1,4 +1,4 @@
-// Player 内嵌 UI 的 Lucide 图标（与 @ppt/editor/icons 同逻辑，避免 player 依赖整个 editor）。
+// Player 内嵌 UI 的 Lucide 图标（与 @sliiu/present-editor/icons 同逻辑，避免 player 依赖整个 editor）。
 
 import { icons, type IconNode } from "lucide";
 

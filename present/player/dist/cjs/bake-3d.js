@@ -5,10 +5,10 @@
 // 不可用，现在通用部分（walk slide / dedupe / waitForAll）下沉到 three-bake/runtime.ts。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createBake3DRuntime = createBake3DRuntime;
-const three_bake_1 = require("@sliiu/present-three-bake");
-const renderer_1 = require("@sliiu/present-renderer");
+const present_three_bake_1 = require("@sliiu/present-three-bake");
+const present_renderer_1 = require("@sliiu/present-renderer");
 function createBake3DRuntime(opts = {}) {
-    const core = (0, three_bake_1.createBake3DRuntime)();
+    const core = (0, present_three_bake_1.createBake3DRuntime)();
     // 用 slide 引用做 dedupe key：相同 slide 重复 kick 不会重复发 onSlideBaked，但
     // bake 过的 slide 在 shape.src 已经被替换、再 kick 时 core.shouldBake 自然返回
     // false 不会重新 bake，所以也不会把 onSlideBaked 抛重复。
@@ -40,7 +40,7 @@ function createBake3DRuntime(opts = {}) {
                 // 写入**副通道**而非直接改 shape.src/bbox：SvgBackend（缩略图）/ CanvasBackend
                 // （截图/PDF）读 bakedSrc 显示 3D PNG；live WebGLShapeBackend 忽略它、
                 // 实时渲染原始几何，两条路径互不污染。文字写在 body3D 上。
-                const info = (0, three_bake_1.shape3DInfo)(s);
+                const info = (0, present_three_bake_1.shape3DInfo)(s);
                 if (info) {
                     info.bakedSrc = result.src;
                     info.bakedBBox = result.paddedBBox;
@@ -50,7 +50,7 @@ function createBake3DRuntime(opts = {}) {
                 node?.markDirty();
                 onOne();
             }, {
-                frontImageSrc: (s) => (0, renderer_1.shapeFrontImageSrc)(scene, s),
+                frontImageSrc: (s) => (0, present_renderer_1.shapeFrontImageSrc)(scene, s),
             });
             // bake 失败 / no-op 的也要 decrement。core.kick 不发 callback 给 skipped 的
             // shape，所以这里在 micro-task 末尾如果 pending 还没归零，等 waitForAll 之
@@ -70,7 +70,7 @@ function createBake3DRuntime(opts = {}) {
 function countPendingBakes(slide) {
     let n = 0;
     const walk = (s) => {
-        if ((0, three_bake_1.needs3DBake)(s))
+        if ((0, present_three_bake_1.needs3DBake)(s))
             n += 1;
         if (s.kind === "group") {
             for (const c of s.children)

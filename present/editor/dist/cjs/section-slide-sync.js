@@ -5,7 +5,7 @@ exports.remapSectionsAfterSlidesDelete = remapSectionsAfterSlidesDelete;
 exports.remapSectionsAfterSlideInsert = remapSectionsAfterSlideInsert;
 exports.remapSectionsAfterSlideRemoveAt = remapSectionsAfterSlideRemoveAt;
 exports.remapSectionsAfterSlideMove = remapSectionsAfterSlideMove;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 function remapIndexAfterSlideMove(from, to, idx) {
     if (idx === from)
         return to;
@@ -16,7 +16,7 @@ function remapIndexAfterSlideMove(from, to, idx) {
     return idx;
 }
 function setSections(pres, sections) {
-    const next = (0, core_1.normalizeDeckSections)(sections, pres.slides.length);
+    const next = (0, present_core_1.normalizeDeckSections)(sections, pres.slides.length);
     pres.sections = next.length ? next : undefined;
 }
 /** 删除一页后：移除该页节标题，其后节 startIndex -1。 */

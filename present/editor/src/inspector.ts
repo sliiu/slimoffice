@@ -1,4 +1,4 @@
-import { bindCombobox } from "@ppt/ui";
+import { bindCombobox } from "@sliiu/present-ui";
 import { DEFAULT_FONT_PT, fontPxFromPt, ptToPx, pxToPt } from "./font-size";
 import type {
   CommandStack,
@@ -11,8 +11,8 @@ import type {
   StrokeDashPreset,
   VideoShape,
   AudioShape,
-} from "@ppt/core";
-import { mediaTrimBounds, clampMediaTime, attachMediaTrimPlayback } from "@ppt/core";
+} from "@sliiu/present-core";
+import { mediaTrimBounds, clampMediaTime, attachMediaTrimPlayback } from "@sliiu/present-core";
 import {
   FlipShapeCmd,
   InsertTableColumnCmd,
@@ -78,7 +78,7 @@ import {
   smartArtLayoutSupportsPictures,
   SMARTART_LAYOUT_KINDS,
   type SmartArtLayoutKind,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { downloadOleEmbed, formatByteSize, oleEmbedByteSize, dataUrlByteSize, isOleEmbedOverLimit, UpdateOleEmbedCmd, SetOleShowAsIconCmd } from "./ole-cmd";
 import { UpdateModel3DGlbCmd } from "./model3d-cmd";
 import { loadModel3DFromFile, model3DDataUrlByteSize } from "./model3d-load";
@@ -376,7 +376,7 @@ export function mountInspector(parent: HTMLElement, opts: InspectorOptions): Ins
       el.appendChild(oleSection(shape as OleObjectShape, id));
     }
     if (shape.kind === "model3d") {
-      el.appendChild(model3dSection(shape as import("@ppt/core").Model3DShape, id));
+      el.appendChild(model3dSection(shape as import("@sliiu/present-core").Model3DShape, id));
     }
     if (isTableCell && parentTableGroup) {
       el.appendChild(tableSection(parentTableGroup, parentTableGroup.id, { cellMode: true, cellRowCol }));
@@ -694,7 +694,7 @@ export function mountInspector(parent: HTMLElement, opts: InspectorOptions): Ins
     return wrap;
   }
 
-  function model3dSection(shape: import("@ppt/core").Model3DShape, shapeId: string): HTMLElement {
+  function model3dSection(shape: import("@sliiu/present-core").Model3DShape, shapeId: string): HTMLElement {
     const wrap = sectionWrap(t("inspector.section.model3d"));
     const lines: string[] = [];
     if (shape.objectName || shape.name) {
@@ -1974,7 +1974,7 @@ export function mountInspector(parent: HTMLElement, opts: InspectorOptions): Ins
     }
   }
 
-  function textBodySection(text: import("@ppt/core").TextShape, shapeId: string): HTMLElement {
+  function textBodySection(text: import("@sliiu/present-core").TextShape, shapeId: string): HTMLElement {
     const wrap = sectionWrap(t("inspector.section.textBox"));
     const applyBody = (patch: import("./commands").TextBodyPatch) => {
       opts.stack.execute(new SetTextBodyCmd(opts.currentSlide(), shapeId, patch));
@@ -1996,10 +1996,10 @@ export function mountInspector(parent: HTMLElement, opts: InspectorOptions): Ins
         orientValue,
         (v) => {
           if (v === "horz") applyBody({ vert: null });
-          else if (isWordArtStackedVert(v as import("@ppt/core").TextVert)) {
+          else if (isWordArtStackedVert(v as import("@sliiu/present-core").TextVert)) {
             applyBody({ vert: isWordArtStackedVert(curVert) ? curVert : "wordArtVertRtl" });
           } else {
-            applyBody({ vert: v as import("@ppt/core").TextVert });
+            applyBody({ vert: v as import("@sliiu/present-core").TextVert });
           }
         },
       ),
@@ -2111,7 +2111,7 @@ export function mountInspector(parent: HTMLElement, opts: InspectorOptions): Ins
   }
 
   function paragraphSection(
-    text: import("@ppt/core").TextShape,
+    text: import("@sliiu/present-core").TextShape,
     shapeId: string,
     flags: { nest?: boolean } = {},
   ): HTMLElement {
@@ -2288,7 +2288,7 @@ function pickFirstStyleShape(s: { kind: string; fill?: Paint; stroke?: Stroke; c
   return s as { fill?: Paint; stroke?: Stroke };
 }
 
-function pickInspectorTextShape(s: Shape): import("@ppt/core").TextShape | undefined {
+function pickInspectorTextShape(s: Shape): import("@sliiu/present-core").TextShape | undefined {
   if (s.kind === "text") return s;
   if (s.kind === "group") {
     for (const c of s.children) {

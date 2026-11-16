@@ -1,5 +1,5 @@
 import { bindEditorModal } from "./dialog";
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { t } from "./i18n";
 import {
   accessibilityIssueDetail,

@@ -9,7 +9,7 @@
 // 与 compile/layouts 路径的关系：有 referencePresentation 时优先走本模块；
 // 映射失败的页回退到常规 SlideSpec compile。
 
-import type { Presentation, Shape, Slide, TextParagraph, TextRun, TextShape } from "@ppt/core";
+import type { Presentation, Shape, Slide, TextParagraph, TextRun, TextShape } from "@sliiu/present-core";
 import type { Outline, OutlineItem, OutlineLayoutHint } from "../schema";
 
 export type SlotRole = "title" | "body" | "eyebrow" | "caption" | "other";

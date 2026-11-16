@@ -4,7 +4,7 @@
 // 条目级命令需要当前 items 快照 —— 工具内部先 extract 再 apply。
 
 import { z } from "zod";
-import { SMARTART_LAYOUT_KINDS, extractSmartArtItems, type SmartArtLayoutKind } from "@ppt/core";
+import { SMARTART_LAYOUT_KINDS, extractSmartArtItems, type SmartArtLayoutKind } from "@sliiu/present-core";
 import {
   AddSmartArtItemCmd,
   ClearSmartArtPicturesCmd,
@@ -15,13 +15,13 @@ import {
   SetSmartArtItemLevelCmd,
   SetSmartArtLayoutCmd,
   UpdateSmartArtItemsCmd,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { defineTool, ok, err } from "../types";
 import { findShapeDeep } from "../summaries";
 
 const layoutEnum = z.enum(SMARTART_LAYOUT_KINDS as unknown as [SmartArtLayoutKind, ...SmartArtLayoutKind[]]);
 
-function smartArtState(rt: { getPres: () => import("@ppt/core").Presentation }, slideIdx: number, groupId: string) {
+function smartArtState(rt: { getPres: () => import("@sliiu/present-core").Presentation }, slideIdx: number, groupId: string) {
   const slide = rt.getPres().slides[slideIdx];
   if (!slide) return { ok: false as const, error: `slideIdx ${slideIdx} out of range` };
   const g = findShapeDeep(slide, groupId);

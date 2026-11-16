@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mountInspector = mountInspector;
-const ui_1 = require("@sliiu/present-ui");
+const present_ui_1 = require("@sliiu/present-ui");
 const font_size_1 = require("./font-size");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const commands_1 = require("./commands");
 const selection_1 = require("./selection");
 const i18n_1 = require("./i18n");
@@ -17,7 +17,7 @@ const text_char_style_1 = require("./text-char-style");
 const paint_editor_ui_1 = require("./paint-editor-ui");
 const smartart_commands_1 = require("./smartart-commands");
 const shape_effect_presets_1 = require("./shape-effect-presets");
-const core_2 = require("@sliiu/present-core");
+const present_core_2 = require("@sliiu/present-core");
 const ole_cmd_1 = require("./ole-cmd");
 const model3d_cmd_1 = require("./model3d-cmd");
 const model3d_load_1 = require("./model3d-load");
@@ -279,9 +279,9 @@ function mountInspector(parent, opts) {
         summary.textContent = (0, i18n_1.t)("inspector.smartArt.layout", { layout: (0, i18n_1.t)(`dialog.smartArt.layout.${layout}`) });
         summary.style.cssText = "color:var(--foreground);margin-bottom:6px";
         wrap.appendChild(summary);
-        const items = (0, core_2.extractSmartArtItems)(group);
+        const items = (0, present_core_2.extractSmartArtItems)(group);
         const count = doc.createElement("div");
-        const pictureCount = (0, core_2.smartArtLayoutSupportsPictures)(layout) ? (0, insert_meta_1.smartArtPictureCount)(items) : 0;
+        const pictureCount = (0, present_core_2.smartArtLayoutSupportsPictures)(layout) ? (0, insert_meta_1.smartArtPictureCount)(items) : 0;
         count.textContent =
             pictureCount > 0
                 ? (0, i18n_1.t)("inspector.smartArt.itemsWithPictures", { n: items.length, p: pictureCount })
@@ -297,13 +297,13 @@ function mountInspector(parent, opts) {
         layoutInput.className = ui_style_1.CONTROL_INPUT_CLASS;
         layoutInput.placeholder = (0, i18n_1.t)("inspector.smartArt.filterLayouts");
         layoutInput.value = layout;
-        const layoutCombo = (0, ui_1.bindCombobox)(layoutInput, {
+        const layoutCombo = (0, present_ui_1.bindCombobox)(layoutInput, {
             allowCustom: false,
-            options: core_2.SMARTART_LAYOUT_KINDS.map((l) => ({ value: l, label: layoutLabel(l) })),
+            options: present_core_2.SMARTART_LAYOUT_KINDS.map((l) => ({ value: l, label: layoutLabel(l) })),
             onChange: (next) => {
                 if (next === layout)
                     return;
-                opts.stack.execute(new smartart_commands_1.SetSmartArtLayoutCmd(opts.currentSlide(), groupId, next, layout, (0, core_2.extractSmartArtItems)(group)));
+                opts.stack.execute(new smartart_commands_1.SetSmartArtLayoutCmd(opts.currentSlide(), groupId, next, layout, (0, present_core_2.extractSmartArtItems)(group)));
                 refresh();
             },
         });
@@ -316,13 +316,13 @@ function mountInspector(parent, opts) {
         wrap.appendChild(bulkHead);
         const bulkTa = doc.createElement("textarea");
         bulkTa.rows = 4;
-        bulkTa.value = (0, core_2.serializeSmartArtItemsText)(items);
+        bulkTa.value = (0, present_core_2.serializeSmartArtItemsText)(items);
         bulkTa.className = ui_style_1.CONTROL_INPUT_CLASS;
         bulkTa.style.cssText = "width:100%;font-size:11px;resize:vertical;margin-bottom:6px";
         wrap.appendChild(bulkTa);
         const bulkApply = mkActionBtn((0, i18n_1.t)("inspector.smartArt.applyBulkText"), () => {
-            const current = (0, core_2.extractSmartArtItems)(group);
-            const next = (0, core_2.parseSmartArtItemLines)(bulkTa.value, current);
+            const current = (0, present_core_2.extractSmartArtItems)(group);
+            const next = (0, present_core_2.parseSmartArtItemLines)(bulkTa.value, current);
             if (!next.length)
                 return;
             opts.stack.execute(new smartart_commands_1.UpdateSmartArtItemsCmd(opts.currentSlide(), groupId, next, current));
@@ -331,13 +331,13 @@ function mountInspector(parent, opts) {
         bulkApply.style.marginBottom = "8px";
         wrap.appendChild(bulkApply);
         const copyItemsBtn = mkActionBtn((0, i18n_1.t)("inspector.smartArt.copyItems"), () => {
-            void (0, insert_meta_1.copyTextToClipboard)((0, core_2.serializeSmartArtItemsText)((0, core_2.extractSmartArtItems)(group)));
+            void (0, insert_meta_1.copyTextToClipboard)((0, present_core_2.serializeSmartArtItemsText)((0, present_core_2.extractSmartArtItems)(group)));
         });
         copyItemsBtn.style.marginBottom = "8px";
         wrap.appendChild(copyItemsBtn);
-        if ((0, core_2.smartArtLayoutSupportsPictures)(layout) && pictureCount > 0) {
+        if ((0, present_core_2.smartArtLayoutSupportsPictures)(layout) && pictureCount > 0) {
             const clearPicsBtn = mkActionBtn((0, i18n_1.t)("inspector.smartArt.clearAllPictures"), () => {
-                opts.stack.execute(new smartart_commands_1.ClearSmartArtPicturesCmd(opts.currentSlide(), groupId, (0, core_2.extractSmartArtItems)(group)));
+                opts.stack.execute(new smartart_commands_1.ClearSmartArtPicturesCmd(opts.currentSlide(), groupId, (0, present_core_2.extractSmartArtItems)(group)));
                 refresh();
             });
             clearPicsBtn.style.marginBottom = "8px";
@@ -347,7 +347,7 @@ function mountInspector(parent, opts) {
         listWrap.style.cssText = "display:flex;flex-direction:column;gap:4px;margin-bottom:8px;max-height:160px;overflow:auto";
         const renderItemList = () => {
             listWrap.replaceChildren();
-            const current = (0, core_2.extractSmartArtItems)(group);
+            const current = (0, present_core_2.extractSmartArtItems)(group);
             current.forEach((item, i) => {
                 const row = doc.createElement("div");
                 row.style.cssText = "display:flex;gap:4px;align-items:center";
@@ -357,14 +357,14 @@ function mountInspector(parent, opts) {
                 inp.className = ui_style_1.CONTROL_INPUT_CLASS;
                 inp.style.cssText = "flex:1;min-width:0;font-size:11px";
                 inp.addEventListener("change", () => {
-                    const next = (0, core_2.extractSmartArtItems)(group);
+                    const next = (0, present_core_2.extractSmartArtItems)(group);
                     if (next[i])
                         next[i].text = inp.value;
                     opts.stack.execute(new smartart_commands_1.UpdateSmartArtItemsCmd(opts.currentSlide(), groupId, next, current));
                     refresh();
                 });
                 row.appendChild(inp);
-                if ((0, core_2.smartArtLayoutSupportsPictures)(layout)) {
+                if ((0, present_core_2.smartArtLayoutSupportsPictures)(layout)) {
                     const picBtn = mkActionBtn(item.imageSrc ? "🖼" : "📷", () => {
                         const fileInput = doc.createElement("input");
                         fileInput.type = "file";
@@ -380,7 +380,7 @@ function mountInspector(parent, opts) {
                                 const src = String(reader.result ?? "");
                                 if (!src.startsWith("data:"))
                                     return;
-                                const next = (0, core_2.extractSmartArtItems)(group);
+                                const next = (0, present_core_2.extractSmartArtItems)(group);
                                 if (next[i])
                                     next[i].imageSrc = src;
                                 opts.stack.execute(new smartart_commands_1.UpdateSmartArtItemsCmd(opts.currentSlide(), groupId, next, current));
@@ -397,7 +397,7 @@ function mountInspector(parent, opts) {
                     row.appendChild(picBtn);
                     if (item.imageSrc) {
                         const clearPic = mkActionBtn("✕", () => {
-                            const next = (0, core_2.extractSmartArtItems)(group);
+                            const next = (0, present_core_2.extractSmartArtItems)(group);
                             if (next[i])
                                 delete next[i].imageSrc;
                             opts.stack.execute(new smartart_commands_1.UpdateSmartArtItemsCmd(opts.currentSlide(), groupId, next, current));
@@ -466,11 +466,11 @@ function mountInspector(parent, opts) {
         const rowBtns = doc.createElement("div");
         rowBtns.style.cssText = "display:flex;gap:4px;flex-wrap:wrap";
         rowBtns.appendChild(mkActionBtn((0, i18n_1.t)("inspector.smartArt.addItem"), () => {
-            opts.stack.execute(new smartart_commands_1.AddSmartArtItemCmd(opts.currentSlide(), groupId, (0, core_2.extractSmartArtItems)(group)));
+            opts.stack.execute(new smartart_commands_1.AddSmartArtItemCmd(opts.currentSlide(), groupId, (0, present_core_2.extractSmartArtItems)(group)));
             refresh();
         }));
         rowBtns.appendChild(mkActionBtn((0, i18n_1.t)("inspector.smartArt.removeItem"), () => {
-            opts.stack.execute(new smartart_commands_1.RemoveSmartArtItemCmd(opts.currentSlide(), groupId, (0, core_2.extractSmartArtItems)(group)));
+            opts.stack.execute(new smartart_commands_1.RemoveSmartArtItemCmd(opts.currentSlide(), groupId, (0, present_core_2.extractSmartArtItems)(group)));
             refresh();
         }));
         wrap.appendChild(rowBtns);
@@ -1543,7 +1543,7 @@ function mountInspector(parent, opts) {
             }
             return 0;
         };
-        const trimBounds = () => (0, core_1.mediaTrimBounds)(props.trim, totalDur() || undefined);
+        const trimBounds = () => (0, present_core_1.mediaTrimBounds)(props.trim, totalDur() || undefined);
         const applyTrim = (next) => {
             if (!next)
                 set({ trim: undefined });
@@ -1620,7 +1620,7 @@ function mountInspector(parent, opts) {
                 return;
             const { start, end } = trimBounds();
             const span = Math.max(0.001, end - start);
-            const cur = (0, core_1.clampMediaTime)(media.currentTime, props.trim, totalDur() || undefined);
+            const cur = (0, present_core_1.clampMediaTime)(media.currentTime, props.trim, totalDur() || undefined);
             timeLabel.textContent = `${formatTime(cur - start)} / ${formatTime(span)}`;
             if (!seeking) {
                 seek.value = String(Math.round(((cur - start) / span) * 1000));
@@ -1635,7 +1635,7 @@ function mountInspector(parent, opts) {
             media.addEventListener("ended", reflectPlayState);
             updateTime();
             reflectPlayState();
-            detachTrim = (0, core_1.attachMediaTrimPlayback)(media, props.trim, totalDur() || undefined, !!props.loop);
+            detachTrim = (0, present_core_1.attachMediaTrimPlayback)(media, props.trim, totalDur() || undefined, !!props.loop);
             detachMediaListeners = () => {
                 media.removeEventListener("timeupdate", updateTime);
                 media.removeEventListener("loadedmetadata", updateTime);

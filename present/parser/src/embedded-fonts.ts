@@ -1,4 +1,4 @@
-import type { EmbeddedFont } from "@ppt/core";
+import type { EmbeddedFont } from "@sliiu/present-core";
 import { decompressEotFont } from "mtx-decompressor";
 import { attr, findAllByLocalName, findByLocalName, type XmlNode } from "./xml";
 import type { RelMap } from "./parts";

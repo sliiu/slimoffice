@@ -1,4 +1,4 @@
-import type { ImagePaint, Rect, Shape } from "@ppt/core";
+import type { ImagePaint, Rect, Shape } from "@sliiu/present-core";
 import { applyNodeTransform } from "./shape-transform";
 
 /** OOXML `a:srcRect`：从源图四边裁掉的比例。负数表示窗口伸出画面。 */

@@ -1,4 +1,4 @@
-import type { GradientFlip, GradientStop, Paint, PatternPaint, RadialGradientPaint, Stroke } from "@ppt/core";
+import type { GradientFlip, GradientStop, Paint, PatternPaint, RadialGradientPaint, Stroke } from "@sliiu/present-core";
 import { arrowPathD, arrowRefX, arrowSize } from "./arrow-geom";
 import { displayImageSrc } from "./linked-src";
 import { getImage, rasterizedAdjustHref } from "./paint-canvas";
@@ -438,7 +438,7 @@ function presetPatternSvg(prst: string, fg: string, fgOp: string): string {
   }
 }
 
-function ensureAdjustFilter(defs: SVGDefsElement, adj: import("@ppt/core").ImageColorAdjust): string | null {
+function ensureAdjustFilter(defs: SVGDefsElement, adj: import("@sliiu/present-core").ImageColorAdjust): string | null {
   const key = adjustCacheKey(adj);
   if (!key) return null;
   const id = `imgadj-${key}`;
@@ -607,7 +607,7 @@ function ensureAdjustFilter(defs: SVGDefsElement, adj: import("@ppt/core").Image
   return id;
 }
 
-function adjustCacheKey(adj: import("@ppt/core").ImageColorAdjust): string | null {
+function adjustCacheKey(adj: import("@sliiu/present-core").ImageColorAdjust): string | null {
   const parts: string[] = [];
   if (adj.grayscale) parts.push("g");
   if (adj.lum) parts.push(`l${adj.lum.bright ?? 0}_${adj.lum.contrast ?? 0}`);
@@ -681,7 +681,7 @@ function markerFill(stroke: Stroke): string {
 function ensureArrowMarker(
   defs: SVGDefsElement,
   color: string,
-  end: import("@ppt/core").ArrowEnd,
+  end: import("@sliiu/present-core").ArrowEnd,
   side: "start" | "end",
   idPrefix = "",
 ): string {

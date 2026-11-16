@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.speakerNotesEditorPlugin = void 0;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const define_1 = require("../define");
 /** Editor dock panel showing speaker notes for the current slide. */
 exports.speakerNotesEditorPlugin = (0, define_1.defineEditorPlugin)({
-    id: core_1.OFFICIAL_EDITOR_PLUGIN_IDS.speakerNotes,
+    id: present_core_1.OFFICIAL_EDITOR_PLUGIN_IDS.speakerNotes,
     name: "Speaker notes",
     version: "1.0.0",
     activate(ctx) {

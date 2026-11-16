@@ -11,7 +11,7 @@ import {
   encodeIconDescr,
   lucideIconSvgDataUrl,
   lucideIconToPngDataUrl,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { defineTool, ok, err } from "../types";
 import { findShapeDeep } from "../summaries";
 import { iconPathShape } from "../../deckgen/icons";

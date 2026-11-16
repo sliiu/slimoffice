@@ -9,7 +9,7 @@
 //   4. 描述（.describe(...)）会被注入到给 LLM 的 schema 中，作为"内联提示词"。
 
 import { z } from "zod";
-import { BUILTIN_THEME_IDS, type BuiltinThemeId } from "@ppt/themes";
+import { BUILTIN_THEME_IDS, type BuiltinThemeId } from "@sliiu/present-themes";
 
 /**
  * 内置主题 id（compile 可直接 `getTheme`）。必须与 `themes.ts` 的 `THEMES` keys 保持一致

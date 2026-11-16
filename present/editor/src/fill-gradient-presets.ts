@@ -1,4 +1,4 @@
-import type { Paint } from "@ppt/core";
+import type { Paint } from "@sliiu/present-core";
 import type { MessageKey } from "./i18n";
 
 export interface FillGradientPreset {

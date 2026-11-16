@@ -1,7 +1,7 @@
 /// <reference path="./css.d.ts" />
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { markDirty, type Presentation, type Shape } from "@ppt/core";
+import { markDirty, type Presentation, type Shape } from "@sliiu/present-core";
 import { showDialog } from "./dialog";
 import { t } from "./i18n";
 

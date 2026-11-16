@@ -1,5 +1,5 @@
-import type { DrawingGuide, ViewGuides } from "@ppt/core";
-import { guidePosToPx } from "@ppt/core";
+import type { DrawingGuide, ViewGuides } from "@sliiu/present-core";
+import { guidePosToPx } from "@sliiu/present-core";
 import { boolish, emuToPx } from "./units";
 import { attr, findAllByLocalName, findByLocalName, type XmlNode } from "./xml";
 import { loadXmlPart, type RelMap } from "./parts";

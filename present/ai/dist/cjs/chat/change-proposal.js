@@ -6,8 +6,8 @@ exports.digestSlides = digestSlides;
 exports.changeProposalSystemPrompt = changeProposalSystemPrompt;
 exports.changeProposalUserPrompt = changeProposalUserPrompt;
 exports.applyChangeProposal = applyChangeProposal;
-const core_1 = require("@sliiu/present-core");
-const editor_1 = require("@sliiu/present-editor");
+const present_core_1 = require("@sliiu/present-core");
+const present_editor_1 = require("@sliiu/present-editor");
 const zod_1 = require("zod");
 const template_fill_1 = require("../generate/template-fill");
 const slide_commands_1 = require("../tools/commands/slide-commands");
@@ -70,17 +70,17 @@ async function applyChangeProposal(port, proposal) {
         }
         const deletes = [...new Set(proposal.deletes)].filter((i) => i >= 0 && i < pres.slides.length).sort((a, b) => b - a);
         for (const index of deletes)
-            port.execute(new editor_1.DeleteSlideCmd(index));
+            port.execute(new present_editor_1.DeleteSlideCmd(index));
         const choices = (0, template_fill_1.layoutsFromMasters)(port.getPres().masters);
         const layout = (0, template_fill_1.contentLayout)(choices);
         for (const add of proposal.adds) {
             const current = port.getPres();
-            const slide = (0, core_1.createSlideFromMaster)(current.masters, {
+            const slide = (0, present_core_1.createSlideFromMaster)(current.masters, {
                 index: current.slides.length,
                 name: add.title || `Slide ${current.slides.length + 1}`,
                 ...(layout ? { layoutId: layout.id } : {}),
             });
-            port.execute(new editor_1.InsertSlideCmd(current.slides.length, slide));
+            port.execute(new present_editor_1.InsertSlideCmd(current.slides.length, slide));
             const addedAt = port.getPres().slides.length - 1;
             writeSlideContent(port, port.getPres(), addedAt, add.title, add.body, add.notes);
         }

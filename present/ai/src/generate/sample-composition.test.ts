@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Presentation, Template } from "@ppt/core";
+import type { Presentation, Template } from "@sliiu/present-core";
 import { compositionDigest, sampleDensityRule, SampleDeckError, withPageComposition } from "./sample-composition";
 
 function deck(): Presentation {

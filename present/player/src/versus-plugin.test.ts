@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { IMPORTED_PLUGIN_SOURCE_MAX_CHARS, loadPluginSource } from "@ppt/core";
+import { IMPORTED_PLUGIN_SOURCE_MAX_CHARS, loadPluginSource } from "@sliiu/present-core";
 
 const source = readFileSync(new URL("../examples/plugins/versus.js", import.meta.url), "utf8");
 

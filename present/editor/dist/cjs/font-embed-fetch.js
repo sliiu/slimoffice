@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.setGoogleFontProxyBase = setGoogleFontProxyBase;
 exports.fetchGoogleFontBytes = fetchGoogleFontBytes;
 exports.fetchPresetFontDataUrl = fetchPresetFontDataUrl;
-const core_1 = require("@sliiu/present-core");
-const themes_1 = require("@sliiu/present-themes");
+const present_core_1 = require("@sliiu/present-core");
+const present_themes_1 = require("@sliiu/present-themes");
 const TTF_UA = "Wget/1.21";
 let fontProxyBase;
 function setGoogleFontProxyBase(base) {
@@ -74,12 +74,12 @@ async function fetchGoogleFontBytes(cssUrl, weight = 400) {
     return looksLikeSfnt(bytes) ? bytes : null;
 }
 async function fetchPresetFontDataUrl(family, weight = 400) {
-    const preset = (0, themes_1.findFontPreset)(family);
+    const preset = (0, present_themes_1.findFontPreset)(family);
     if (!preset?.cssUrl)
         return null;
     const bytes = await fetchGoogleFontBytes(preset.cssUrl, weight);
     if (!bytes?.length)
         return null;
     const mime = bytes[0] === 0x4f && bytes[1] === 0x54 ? "font/otf" : "font/ttf";
-    return (0, core_1.bytesToFontDataUrl)(bytes, mime);
+    return (0, present_core_1.bytesToFontDataUrl)(bytes, mime);
 }

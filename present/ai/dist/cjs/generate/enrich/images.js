@@ -22,7 +22,7 @@
 //          "Image hint" 为真实 ImageShape（占 layout 预留的 bbox）。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.enrichImagesInPresentation = enrichImagesInPresentation;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const schema_1 = require("../schema");
 const fetch_enrichment_image_1 = require("./fetch-enrichment-image");
 const placeholders_1 = require("./placeholders");
@@ -164,7 +164,7 @@ async function enrichImagesInPresentation(pres, spec, opts) {
                                 // overlay 通过 name === "BG overlay" 在重复 enrich 时去重，与 locked 无关。
                                 locked: false,
                                 opacity: 1,
-                                transform: (0, core_1.identityTransform)(),
+                                transform: (0, present_core_1.identityTransform)(),
                                 fill: { kind: "solid", color: "#000000", alpha: overlay },
                             });
                         }
@@ -215,7 +215,7 @@ async function enrichImagesInPresentation(pres, spec, opts) {
                     visible: true,
                     locked: false,
                     opacity: 1,
-                    transform: (0, core_1.identityTransform)(),
+                    transform: (0, present_core_1.identityTransform)(),
                     src: result.dataUrl,
                     natural: { w: result.w, h: result.h },
                 };

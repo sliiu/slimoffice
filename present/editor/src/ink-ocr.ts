@@ -1,5 +1,5 @@
-import type { PathShape, Rect } from "@ppt/core";
-import { samplePath } from "@ppt/core";
+import type { PathShape, Rect } from "@sliiu/present-core";
+import { samplePath } from "@sliiu/present-core";
 import type { InkPoint } from "./ink-tool";
 import { pointsToSvgPath } from "./ink-tool";
 

@@ -1,4 +1,4 @@
-import type { EditCommand, Paint, Presentation, Shape, Theme } from "@ppt/core";
+import type { EditCommand, Paint, Presentation, Shape, Theme } from "@sliiu/present-core";
 import { applyThemeVariant, shiftBackgroundColor, type ThemeVariantId } from "./theme-variants";
 
 type ThemeColors = NonNullable<Theme["colors"]>;

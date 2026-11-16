@@ -9,8 +9,8 @@ import type {
   ShapeMeta,
   StyleRefColor,
   Transform,
-} from "@ppt/core";
-import { decodeWebEmbedDescr, identityTransform, setOrigin } from "@ppt/core";
+} from "@sliiu/present-core";
+import { decodeWebEmbedDescr, identityTransform, setOrigin } from "@sliiu/present-core";
 import { angle60kToDeg, emuToPx, boolish } from "./units";
 import {
   attr,
@@ -32,7 +32,7 @@ import {
   resolveShapeStroke,
   type FillCtx,
 } from "./fill";
-import type { ShadowEffect } from "@ppt/core";
+import type { ShadowEffect } from "@sliiu/present-core";
 import { resolveColor } from "./theme";
 import { parse3DInfo } from "./shape-3d";
 import { parseBodyPrFull, parseHlinkNode, parseLstStyle, parseTxBody, preserveRPrSnapshot, type TextCtx } from "./text";
@@ -56,7 +56,7 @@ export interface ShapeCtx extends FillCtx, TextCtx {
     relId: string,
     hostBBox?: Rect,
     layoutRelId?: string,
-  ) => { shapes: Shape[]; layout?: import("@ppt/core").SmartArtLayoutKind };
+  ) => { shapes: Shape[]; layout?: import("@sliiu/present-core").SmartArtLayoutKind };
   tableStyleMap?: import("./table-styles").TableStyleMap;
 }
 
@@ -571,7 +571,7 @@ function readBwMode(spPr: XmlNode | undefined): BwMode | undefined {
   return BW_MODES.has(v as BwMode) ? (v as BwMode) : undefined;
 }
 
-function parseHlink(node: XmlNode | undefined, ctx?: ShapeCtx): import("@ppt/core").HyperlinkRef | undefined {
+function parseHlink(node: XmlNode | undefined, ctx?: ShapeCtx): import("@sliiu/present-core").HyperlinkRef | undefined {
   return parseHlinkNode(node, ctx ?? {});
 }
 
@@ -635,10 +635,10 @@ function readStyleRefs(style: XmlNode | undefined, ctx?: FillCtx): ShapeMeta["st
 // 我们这里把"未指定 color/fontFamily 的 run"批量套上 fontRef 提供的默认值，
 // 这样后续 applyInheritance 的 master defRPr 用 ?? 不会再覆盖（fontRef 优先级更高）。
 function applyFontRefToParagraphs(
-  paragraphs: import("@ppt/core").TextParagraph[],
+  paragraphs: import("@sliiu/present-core").TextParagraph[],
   styleEl: XmlNode | undefined,
   ctx: ShapeCtx,
-): import("@ppt/core").TextParagraph[] {
+): import("@sliiu/present-core").TextParagraph[] {
   if (!styleEl) return paragraphs;
   const fontRef = findByLocalName(styleEl, "fontRef");
   if (!fontRef) return paragraphs;
@@ -769,7 +769,7 @@ function parseSp(
   }
   // ECMA-376 §20.1.2.2.24 stroke inheritance: resolve theme line style first,
   // then merge shape-level `<a:ln>` overrides on top (property by property).
-  let baseStroke: import("@ppt/core").Stroke | undefined;
+  let baseStroke: import("@sliiu/present-core").Stroke | undefined;
   if (styleRefs?.lnRef !== undefined) {
     const phClr = readStyleRefColor(styleEl, "lnRef", ctx);
     baseStroke = resolveLnRef(styleRefs.lnRef, ctx, phClr);
@@ -991,7 +991,7 @@ function promoteWebEmbed(s: Shape | null): Shape | null {
   };
 }
 
-function hasAnyText(paragraphs: import("@ppt/core").TextParagraph[]): boolean {
+function hasAnyText(paragraphs: import("@sliiu/present-core").TextParagraph[]): boolean {
   for (const p of paragraphs) {
     for (const r of p.runs) {
       if (r.text && r.text.trim() !== "") return true;
@@ -1008,7 +1008,7 @@ function shapeHasPictureFill(s: Shape): boolean {
   return false;
 }
 
-function attachOmmlToShapes(shapes: Shape[], math: import("@ppt/core").ShapeMeta["math"] | null): void {
+function attachOmmlToShapes(shapes: Shape[], math: import("@sliiu/present-core").ShapeMeta["math"] | null): void {
   if (!math) return;
   for (const s of shapes) {
     s.math = math;
@@ -1111,7 +1111,7 @@ function parsePic(
     }
   }
   if (!src) return null;
-  let baseStroke: import("@ppt/core").Stroke | undefined;
+  let baseStroke: import("@sliiu/present-core").Stroke | undefined;
   if (styleRefs?.lnRef !== undefined) {
     const phClr = readStyleRefColor(styleEl, "lnRef", ctx);
     baseStroke = resolveLnRef(styleRefs.lnRef, ctx, phClr);

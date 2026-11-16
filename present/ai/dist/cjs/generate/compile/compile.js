@@ -14,7 +14,7 @@ exports.decorationRoleForKind = decorationRoleForKind;
 exports.hashKind = hashKind;
 exports.compilePresentation = compilePresentation;
 exports.outlineToFallbackSpec = outlineToFallbackSpec;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const constraints_1 = require("./constraints");
 const themes_1 = require("../../themes");
 const layouts_1 = require("./layouts");
@@ -106,7 +106,7 @@ function applyFullBleedVisual(slide, kind, size, overlay) {
         visible: true,
         locked: false,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         fill: { kind: "solid", color: "#000000", alpha: overlay > 0 ? overlay : 0.55 },
     });
 }

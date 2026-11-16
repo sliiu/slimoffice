@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.openWebEmbedDialog = openWebEmbedDialog;
 const dialog_1 = require("./dialog");
 const i18n_1 = require("./i18n");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 function openWebEmbedDialog(doc) {
     return (0, dialog_1.showDialog)(doc, {
         title: (0, i18n_1.t)("dialog.webEmbed.title"),
@@ -29,14 +29,14 @@ function openWebEmbedDialog(doc) {
             examples.style.cssText = "margin:10px 0 0;font-size:11px;color:var(--muted-foreground);line-height:1.4";
             body.appendChild(examples);
             const sync = () => {
-                const norm = (0, core_1.normalizeWebEmbedUrl)(urlInput.value);
+                const norm = (0, present_core_1.normalizeWebEmbedUrl)(urlInput.value);
                 ctx.setOkEnabled(norm !== null);
             };
             urlInput.addEventListener("input", sync);
             sync();
             setTimeout(() => urlInput.focus(), 0);
             return () => {
-                const norm = (0, core_1.normalizeWebEmbedUrl)(urlInput.value);
+                const norm = (0, present_core_1.normalizeWebEmbedUrl)(urlInput.value);
                 if (!norm)
                     return null;
                 return { embed: norm };

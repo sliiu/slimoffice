@@ -13,11 +13,11 @@
 import { t } from "./i18n";
 import { mkLucideIconButton } from "./icons";
 import { CHECK_CLASS, COLOR_SWATCH_CLASS, DIALOG_INPUT_CSS, Z_MODAL, closeRibbonMoreDialogs } from "./ui-style";
-import type { HyperlinkRef } from "@ppt/core";
-import { isSafeExternalUrl, sanitizeExternalUrl } from "@ppt/core";
+import type { HyperlinkRef } from "@sliiu/present-core";
+import { isSafeExternalUrl, sanitizeExternalUrl } from "@sliiu/present-core";
 import { bindFontFamilyCombobox } from "./font-list";
 import { fontPxFromPt, formatFontPt } from "./font-size";
-import { bindCombobox, bindModalDismiss, type BindModalDismissOptions, type ModalDismissHandle } from "@ppt/ui";
+import { bindCombobox, bindModalDismiss, type BindModalDismissOptions, type ModalDismissHandle } from "@sliiu/present-ui";
 
 // ---------- 通用 dialog 框架 ----------
 
@@ -245,7 +245,7 @@ function btnStyle(primary: boolean): string {
 //      调用方决定是 AddShape 还是 SetTextStyle。
 
 // WordArt 预设与状态类型 —— 抽到 DOM-free 的 word-art-presets.ts
-// （@ppt/ai 的 Node MCP server 也要用），这里 re-export 保持既有 import 面不变。
+// （@sliiu/present-ai 的 Node MCP server 也要用），这里 re-export 保持既有 import 面不变。
 import {
   PRESET_FONT_DEFAULT,
   WORDART_PRESETS,

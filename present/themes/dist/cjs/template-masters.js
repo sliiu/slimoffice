@@ -7,7 +7,7 @@ exports.buildMastersFromThemeDef = buildMastersFromThemeDef;
 exports.resolveLayoutTypeForSlide = resolveLayoutTypeForSlide;
 exports.findLayoutRefByType = findLayoutRefByType;
 exports.stripSlideThemeDecorations = stripSlideThemeDecorations;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const decorations_1 = require("./decorations");
 function namedDecoration(d) {
     switch (d) {
@@ -663,7 +663,7 @@ function solidPaint(color, alpha) {
 }
 // 装饰矩形（非占位符，locked，可选变形旋转）。
 function decoRect(id, name, bbox, fill, opts = {}) {
-    const transform = (0, core_1.identityTransform)();
+    const transform = (0, present_core_1.identityTransform)();
     if (opts.rotation)
         transform.rotation = opts.rotation;
     return {
@@ -690,7 +690,7 @@ function decoEllipse(id, name, bbox, fill) {
         visible: true,
         locked: true,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         fill,
     };
 }
@@ -706,7 +706,7 @@ function decoPanel(id, name, bbox, fillColor, fillAlpha, strokeColor, rx) {
         visible: true,
         locked: true,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         fill: { kind: "solid", color: fillColor, alpha: fillAlpha },
         stroke: { paint: { kind: "solid", color: strokeColor, alpha: 0.5 }, width: 1 },
     };
@@ -722,7 +722,7 @@ function decoText(id, name, bbox, text, style) {
         visible: true,
         locked: true,
         opacity: style.alpha ?? 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         paragraphs: [
             {
                 ...(style.align ? { align: style.align } : {}),
@@ -770,7 +770,7 @@ function placeholderText(args) {
         visible: true,
         locked: false,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         paragraphs: [paragraph],
         placeholder: { type: args.placeholder.type, idx: args.placeholder.idx },
     };

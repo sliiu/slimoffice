@@ -14,7 +14,7 @@
 //   - 所有命令都通过 rt.apply(...) 走 EditCommand，自动支持 undo / redo。
 //   - 新插入的 shape 走 AddShapeCmd，append 到 layers[0]（与 editor.ts ribbon 插入一致）；
 //     如果该 shape bbox > slide 50% 且与已有文字重叠，模型应紧跟一条 reorderShape({direction:"back"})。
-//   - 工厂调用全部 reuse @ppt/editor/shape-factory，避免与 editor.ts 行为分叉。
+//   - 工厂调用全部 reuse @sliiu/present-editor/shape-factory，避免与 editor.ts 行为分叉。
 //   - SHAPE_LIBRARY 共 ~80 种预设几何 —— 不在 tool schema 里把所有 id 写死，
 //     description 里列举常用类别 + 校验时 fallback to rect（与 editor 一致），
 //     让 LLM 既能用主流 ~12 种 id（rect / ellipse / triangle / star / chevron /
@@ -49,9 +49,9 @@ import {
   createTextBox,
   createLine,
   SHAPE_LIBRARY,
-} from "@ppt/editor/commands";
-import { identityTransform, sanitizeExternalUrl } from "@ppt/core";
-import type { HyperlinkRef, Paint, Rect, Shape, Stroke, BulletDef } from "@ppt/core";
+} from "@sliiu/present-editor/commands";
+import { identityTransform, sanitizeExternalUrl } from "@sliiu/present-core";
+import type { HyperlinkRef, Paint, Rect, Shape, Stroke, BulletDef } from "@sliiu/present-core";
 import { defineTool, ok, err } from "../types";
 
 // 用于 video/audio shape id 唯一性（与 image-tools.genId 同构，避免循环 import）。
@@ -940,9 +940,9 @@ function toShapePaint(p: z.infer<typeof shapePaintSchema>): Paint | undefined {
 
 // 递归查找 shape（含 group children），用于 setShapeStroke 取 prev。
 function findShapeRecursive(
-  slide: import("@ppt/core").Slide,
+  slide: import("@sliiu/present-core").Slide,
   id: string,
-): import("@ppt/core").Shape | undefined {
+): import("@sliiu/present-core").Shape | undefined {
   for (const layer of slide.layers) {
     for (const s of layer.shapes) {
       const found = walk(s, id);
@@ -952,7 +952,7 @@ function findShapeRecursive(
   return undefined;
 }
 
-function walk(s: import("@ppt/core").Shape, id: string): import("@ppt/core").Shape | undefined {
+function walk(s: import("@sliiu/present-core").Shape, id: string): import("@sliiu/present-core").Shape | undefined {
   if (s.id === id) return s;
   if (s.kind === "group") {
     for (const c of s.children) {

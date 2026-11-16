@@ -2,7 +2,7 @@
 
 import type { PaintRole } from "./ids.js";
 import type { SlotKind } from "./layouts.js";
-import type { SmartArtLayoutKind } from "@ppt/core";
+import type { SmartArtLayoutKind } from "@sliiu/present-core";
 
 /**
  * Element vocabulary.

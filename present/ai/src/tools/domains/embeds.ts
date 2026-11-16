@@ -1,11 +1,11 @@
 // OLE / 3D 模型 / Web 嵌入 —— 插入与替换。
 //
-// 都走 @ppt/editor/commands 的专用 Insert*Cmd，append 到 layers[0]。
+// 都走 @sliiu/present-editor/commands 的专用 Insert*Cmd，append 到 layers[0]。
 // `src` / `embedSrc` / `glbSrc` 必须是 data: URL 才能嵌进导出的 PPTX。
 
 import { z } from "zod";
-import { MODEL3D_PRESETS, normalizeWebEmbedUrl } from "@ppt/core";
-import type { Presentation, Rect } from "@ppt/core";
+import { MODEL3D_PRESETS, normalizeWebEmbedUrl } from "@sliiu/present-core";
+import type { Presentation, Rect } from "@sliiu/present-core";
 import {
   InsertModel3DCmd,
   InsertOleCmd,
@@ -13,7 +13,7 @@ import {
   SetOleShowAsIconCmd,
   UpdateModel3DGlbCmd,
   UpdateOleEmbedCmd,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { defineTool, ok, err } from "../types";
 
 const rectSchema = z.object({

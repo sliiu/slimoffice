@@ -4,7 +4,7 @@
 //     （但 relaxed 系 preset 无条件用窄 fov，见 presets.FOV_LOCKED_PRESETS）；
 //   - bevel/material/lightRig 的缺省默认在此补齐；
 //   - 几何决策（slab vs extrude、extrusion 推断）仍由 scene 构建器做，这里只给「值」。
-import type { Backdrop3D, Camera3D, LightRig3D, Scene3DParams, Sp3DInfo, Sp3DParams } from "@ppt/core";
+import type { Backdrop3D, Camera3D, LightRig3D, Scene3DParams, Sp3DInfo, Sp3DParams } from "@sliiu/present-core";
 import {
   CAMERA_PRESETS,
   DEFAULT_BEVEL_PX,

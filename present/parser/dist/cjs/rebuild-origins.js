@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.rebuildOriginsFromSource = rebuildOriginsFromSource;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const parse_1 = require("./parse");
 function normalizePath(p) {
@@ -53,7 +53,7 @@ function collectShapes(container) {
     return out;
 }
 function graftShapeOrigin(target, base) {
-    (0, core_1.preserveOrigin)(target, base);
+    (0, present_core_1.preserveOrigin)(target, base);
     // 文字 run 的 explicitRPr 基线：按段下标 + run 下标对齐。结构未变（未编辑文字）时逐一命中；
     // 文字被编辑导致 run 数变化时，错位的那几个 run 拿不到正确 origin，但它们本就是被编辑过的，
     // 至多多写一次，不影响未编辑内容。
@@ -66,7 +66,7 @@ function graftShapeOrigin(target, base) {
             if (Array.isArray(tr) && Array.isArray(br)) {
                 for (let r = 0; r < tr.length && r < br.length; r++) {
                     if (tr[r] && br[r] && typeof tr[r] === "object" && typeof br[r] === "object") {
-                        (0, core_1.preserveOrigin)(tr[r], br[r]);
+                        (0, present_core_1.preserveOrigin)(tr[r], br[r]);
                     }
                 }
             }

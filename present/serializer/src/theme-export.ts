@@ -1,4 +1,4 @@
-import type { Paint, Presentation, Theme } from "@ppt/core";
+import type { Paint, Presentation, Theme } from "@sliiu/present-core";
 
 const GENERIC_FAMILY =
   /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|ui-monospace|ui-rounded|emoji|math|fangsong|-apple-system|BlinkMacSystemFont)$/i;

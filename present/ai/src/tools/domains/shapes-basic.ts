@@ -2,7 +2,7 @@
 // 全部 shapeScoped —— 定位既有 shape，受 [TURN SCOPE] 选区守卫约束。
 
 import { z } from "zod";
-import type { Paint, Shape, TextParagraph } from "@ppt/core";
+import type { Paint, Shape, TextParagraph } from "@sliiu/present-core";
 import {
   DeleteShapeCmd,
   DuplicateShapeCmd,
@@ -12,7 +12,7 @@ import {
   SetTextAlignCmd,
   SetTextStyleCmd,
   type TextStylePatch,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { ReplaceTextCmd } from "../commands/slide-commands";
 import { findShapeDeep } from "../summaries";
 import { defineTool, err } from "../types";

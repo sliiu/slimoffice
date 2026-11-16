@@ -1,7 +1,7 @@
 export { mount } from "./player";
 export type { MountOptions, PlayerHandle, Backend } from "./player";
 // 3D bake runtime：editor 也复用它把 sp3d/scene3d 烘成 PNG（避免在 player 内被
-// 重复实现 + 编辑视图丢 3D）。底层 walkShapes / dedupe 在 @ppt/three-bake/runtime，
+// 重复实现 + 编辑视图丢 3D）。底层 walkShapes / dedupe 在 @sliiu/present-three-bake/runtime，
 // 这里只做"绑 Scene + 触发 setProperty 让 backend redraw"的薄包装。
 export { createBake3DRuntime, type Bake3DRuntime } from "./bake-3d";
 // 编辑器「预览切换」与放映共用同一套舞台裁切 + ghost 回收，避免两边效果不一致。
@@ -45,7 +45,7 @@ export { buildOoxmlPlayback } from "./ooxml-runtime";
 export type { OoxmlPlayback } from "./ooxml-runtime";
 
 // ---- Plugin API ----
-// 推荐插件作者用 `@ppt/plugin-sdk`；这里 re-export 主要是让 @ppt/player 单包用户
+// 推荐插件作者用 `@sliiu/present-plugin-sdk`；这里 re-export 主要是让 @sliiu/present-player 单包用户
 // 也能直接拿到全部类型和 definePlugin。
 export { definePlugin, composePlugins, withErrorBoundary } from "./define-plugin";
 export type { PluginLiveInbound, PluginLiveTransport } from "./plugin-live";

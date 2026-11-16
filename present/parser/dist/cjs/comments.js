@@ -5,7 +5,7 @@ exports.loadCommentMetaFromArchive = loadCommentMetaFromArchive;
 exports.loadCommentAuthors = loadCommentAuthors;
 exports.loadSlideComments = loadSlideComments;
 exports.linkImportedCommentThreads = linkImportedCommentThreads;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const parts_1 = require("./parts");
 const xml_1 = require("./xml");
@@ -42,7 +42,7 @@ function loadMetaTagFromArchive(archive, presRels, tagName) {
 }
 /** 从 presentation tags part 读取 SlimPPT 批注元数据。 */
 function loadCommentMetaFromArchive(archive, presRels) {
-    return loadMetaTagFromArchive(archive, presRels, core_1.COMMENT_META_TAG);
+    return loadMetaTagFromArchive(archive, presRels, present_core_1.COMMENT_META_TAG);
 }
 const TYPE_COMMENT_AUTHORS = "/commentAuthors";
 const TYPE_COMMENTS = "/comments";

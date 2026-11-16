@@ -29,9 +29,9 @@
 // presets/entrance.ts 中的 ID 对照表（已与 ECMA-376 §19.5.13 entr 比对验证）。
 
 import { z } from "zod";
-import type { Shape, Slide, SlideTransition } from "@ppt/core";
-import { ensureTiming, insertEffect, type InsertEffectArgs } from "@ppt/editor/commands";
-import type { ooxml } from "@ppt/animation";
+import type { Shape, Slide, SlideTransition } from "@sliiu/present-core";
+import { ensureTiming, insertEffect, type InsertEffectArgs } from "@sliiu/present-editor/commands";
+import type { ooxml } from "@sliiu/present-animation";
 
 // ---- effect 名字 → preset 映射 ----
 

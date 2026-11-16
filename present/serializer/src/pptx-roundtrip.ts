@@ -32,8 +32,8 @@ import type {
   Theme,
   Transform,
   HyperlinkRef,
-} from "@ppt/core";
-import { extractSmartArtItems, getOrigin, isDirty } from "@ppt/core";
+} from "@sliiu/present-core";
+import { extractSmartArtItems, getOrigin, isDirty } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
 import { MediaTable, mediaNamePrefix, mediaRelationshipXml, REL_TYPE_IMAGE, isExternalMediaSrc } from "./media-table";
 import { OLE_OBJECT_REL_TYPE, type OleEmbeddingRegistrar } from "./embedding-table";
@@ -812,7 +812,7 @@ function addNewSlidePart(
 // 阶段 2.3：对 slideMasterN.xml 做与 slide.xml 等价的 surgical patch。
 // 复用 patchSpTreeInPlace —— 它只关心 shapes，不依赖 slide 特有字段。
 function patchMasterPart(
-  master: import("@ppt/core").SlideMaster,
+  master: import("@sliiu/present-core").SlideMaster,
   pres: Presentation,
   archive: MutableArchive,
   opts: RoundTripOptions,
@@ -863,7 +863,7 @@ function patchMasterPart(
 // ---------------------------------------------------------------------------
 
 function addNewMasterPart(
-  master: import("@ppt/core").SlideMaster,
+  master: import("@sliiu/present-core").SlideMaster,
   pres: Presentation,
   archive: MutableArchive,
   opts: RoundTripOptions,
@@ -895,8 +895,8 @@ function addNewMasterPart(
 }
 
 function addNewLayoutPart(
-  layout: import("@ppt/core").SlideLayout,
-  parentMaster: import("@ppt/core").SlideMaster,
+  layout: import("@sliiu/present-core").SlideLayout,
+  parentMaster: import("@sliiu/present-core").SlideMaster,
   pres: Presentation,
   archive: MutableArchive,
   opts: RoundTripOptions,
@@ -2090,7 +2090,7 @@ function removeCommentsPart(
 
 function addCommentsPart(
   slide: Slide,
-  slideComments: import("@ppt/core").DeckComment[],
+  slideComments: import("@sliiu/present-core").DeckComment[],
   pres: Presentation,
   archive: MutableArchive,
   opts: RoundTripOptions,
@@ -2172,7 +2172,7 @@ function addModernCommentsPart(
 function ensureModernAuthorsPart(
   pres: Presentation,
   archive: MutableArchive,
-  comments: import("@ppt/core").DeckComment[],
+  comments: import("@sliiu/present-core").DeckComment[],
   opts: RoundTripOptions,
 ): void {
   if (!comments.length) return;
@@ -2206,7 +2206,7 @@ function ensureModernAuthorsPart(
 function ensureCommentAuthorsPart(
   pres: Presentation,
   archive: MutableArchive,
-  comments: import("@ppt/core").DeckComment[],
+  comments: import("@sliiu/present-core").DeckComment[],
   opts: RoundTripOptions,
 ): void {
   if (!comments.length) return;
@@ -2234,7 +2234,7 @@ function ensureCommentAuthorsPart(
 }
 
 function patchLayoutPart(
-  layout: import("@ppt/core").SlideLayout,
+  layout: import("@sliiu/present-core").SlideLayout,
   pres: Presentation,
   archive: MutableArchive,
   opts: RoundTripOptions,
@@ -3019,8 +3019,8 @@ interface ShapeView {
   textHost?: Extract<Shape, { kind: "text" }>;
   fill?: Paint;
   fillSnapshot?: Paint;
-  stroke?: import("@ppt/core").Stroke;
-  strokeSnapshot?: import("@ppt/core").Stroke;
+  stroke?: import("@sliiu/present-core").Stroke;
+  strokeSnapshot?: import("@sliiu/present-core").Stroke;
   // 解析期 bbox 基线。raw 无 <a:xfrm>（占位符继承几何）时，用它判断"位置/尺寸改没改"。
   bboxOrigin?: { x: number; y: number; w: number; h: number };
   // 占位符 / 锁定 / 旋转等元信息直接读最外层 group / sp 自身的字段。
@@ -3049,7 +3049,7 @@ function pickCarrier(group: Shape, base: Shape | undefined, field: "effects" | "
   return base;
 }
 
-function isVisibleStroke(stroke: import("@ppt/core").Stroke | undefined): boolean {
+function isVisibleStroke(stroke: import("@sliiu/present-core").Stroke | undefined): boolean {
   if (!stroke?.paint || stroke.paint.kind === "none") return false;
   return (stroke.width ?? 0) > 0;
 }
@@ -3110,7 +3110,7 @@ function effectiveShapeForPatch(s: Shape): ShapeView {
     const textBboxDirty = syntheticTextBboxDirty(s, text);
     const textXfDirty = !!text && isDirty(text, "transform");
     const fillPick = pickSyntheticSpPr<Paint>("fill", base, text, isVisibleFill);
-    const strokePick = pickSyntheticSpPr<import("@ppt/core").Stroke>("stroke", base, text, isVisibleStroke);
+    const strokePick = pickSyntheticSpPr<import("@sliiu/present-core").Stroke>("stroke", base, text, isVisibleStroke);
     return {
       bbox: { ...(textBboxDirty ? text!.bbox : s.bbox) },
       transform: { ...(textXfDirty ? text!.transform : s.transform) },
@@ -3139,7 +3139,7 @@ function effectiveShapeForPatch(s: Shape): ShapeView {
     textHost: s.kind === "text" ? s : undefined,
     fill: (s as { fill?: Paint }).fill,
     fillSnapshot: shapeOrigin(sObj)?.fill,
-    stroke: (s as { stroke?: import("@ppt/core").Stroke }).stroke,
+    stroke: (s as { stroke?: import("@sliiu/present-core").Stroke }).stroke,
     strokeSnapshot: shapeOrigin(sObj)?.stroke,
     bboxOrigin: shapeOrigin(sObj)?.bbox,
     meta: s,
@@ -3238,9 +3238,9 @@ function applyOpacityToPaint(p: Paint | undefined, opacity: number): Paint | und
 }
 
 function applyOpacityToStroke(
-  stroke: import("@ppt/core").Stroke | undefined,
+  stroke: import("@sliiu/present-core").Stroke | undefined,
   opacity: number,
-): import("@ppt/core").Stroke | undefined {
+): import("@sliiu/present-core").Stroke | undefined {
   if (!stroke || opacity >= 1) return stroke;
   if (!stroke.paint || stroke.paint.kind === "none") return stroke;
   const next = applyOpacityToPaint(stroke.paint, opacity);
@@ -3340,7 +3340,7 @@ function patchSpPrFillIn(
  */
 function patchSpPrStrokeIn(
   spPr: RawNode,
-  stroke: import("@ppt/core").Stroke,
+  stroke: import("@sliiu/present-core").Stroke,
   opts: RoundTripOptions,
   partPath: string,
 ): void {
@@ -3382,8 +3382,8 @@ function patchSpPrStrokeIn(
 
 /** effects 列表等值比较（顺序敏感；字段全是 JSON 可序列化标量）。 */
 function effectsEqual(
-  a: import("@ppt/core").ShapeEffect[],
-  b: import("@ppt/core").ShapeEffect[],
+  a: import("@sliiu/present-core").ShapeEffect[],
+  b: import("@sliiu/present-core").ShapeEffect[],
 ): boolean {
   if (a.length !== b.length) return false;
   return JSON.stringify(a) === JSON.stringify(b);
@@ -4886,8 +4886,8 @@ function patchBackgroundIn(
 }
 
 function strokeEqual(
-  a: import("@ppt/core").Stroke | undefined,
-  b: import("@ppt/core").Stroke | undefined,
+  a: import("@sliiu/present-core").Stroke | undefined,
+  b: import("@sliiu/present-core").Stroke | undefined,
 ): boolean {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
@@ -5067,7 +5067,7 @@ function replaceLatinTypeface(fontEl: RawNode, typeface: string): void {
  * `noSnapshot` = 原 raw 完全没有 rPr（编辑器新建 run）→ 有链接就得写。
  */
 function hyperlinkEdited(
-  current: import("@ppt/core").HyperlinkRef | undefined,
+  current: import("@sliiu/present-core").HyperlinkRef | undefined,
   snap: { kind: string; target?: string; sound?: boolean; highlightClick?: boolean; endSnd?: boolean } | undefined,
   noSnapshot: boolean,
 ): boolean {

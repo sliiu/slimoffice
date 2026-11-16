@@ -1,7 +1,7 @@
 // 动画编辑命令 — 走 CommandStack 的 EditCommand 接口。
 // 实现策略：每个命令在 apply 时直接修改 slide.ooxmlTiming（深拷贝前后差异以便 revert）。
 
-import type { EditCommand, Presentation, Slide } from "@ppt/core";
+import type { EditCommand, Presentation, Slide } from "@sliiu/present-core";
 import {
   ensureTiming,
   insertEffect,
@@ -13,7 +13,7 @@ import {
   type EffectTrigger,
   type InsertEffectArgs,
 } from "./store";
-import type { ooxml } from "@ppt/animation";
+import type { ooxml } from "@sliiu/present-animation";
 
 function slideAt(pres: Presentation, idx: number): Slide | undefined {
   return pres.slides[idx];

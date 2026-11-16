@@ -10,7 +10,7 @@
  * cover photos, web-exclusive quota) and would fail every whitelist deck.
  */
 
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { defaultConfig } from "../config/types";
 import { isConfigUsable, visionReviewTextConfig } from "../config/presets";
 import { createLlm } from "../llm/client";

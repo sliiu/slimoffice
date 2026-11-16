@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseViewGuides = parseViewGuides;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const units_1 = require("./units");
 const xml_1 = require("./xml");
 const parts_1 = require("./parts");
@@ -24,7 +24,7 @@ function parseGuideLst(lst) {
         if (!Number.isFinite(pos))
             continue;
         const orient = (0, xml_1.attr)(g, "orient") === "horz" ? "horz" : "vert";
-        out.push({ orient, pos: (0, core_1.guidePosToPx)(pos) });
+        out.push({ orient, pos: (0, present_core_1.guidePosToPx)(pos) });
     }
     return out;
 }

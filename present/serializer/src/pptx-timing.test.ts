@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ooxml } from "@ppt/animation";
+import type { ooxml } from "@sliiu/present-animation";
 import { serializeTiming, serializeTransition } from "./pptx-timing.js";
 
 // 标准三层树：mainSeq → 点击组 → 同步组 → 效果 par(children)。normalize 对它是不动点，

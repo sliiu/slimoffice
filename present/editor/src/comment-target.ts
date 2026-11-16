@@ -1,4 +1,4 @@
-import type { Shape, ShapeKind, Slide, TextShape } from "@ppt/core";
+import type { Shape, ShapeKind, Slide, TextShape } from "@sliiu/present-core";
 import { t, type MessageKey } from "./i18n";
 import { inverseNodeTransform } from "./shape-transform";
 

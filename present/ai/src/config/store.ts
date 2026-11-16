@@ -1,6 +1,6 @@
 // ConfigStore：AiConfig 的持久化抽象。
 //
-// @ppt/ai 内部不直读 localStorage / env —— 宿主注入 store：
+// @sliiu/present-ai 内部不直读 localStorage / env —— 宿主注入 store：
 //   - 浏览器（playground）→ browserConfigStore()
 //   - Node（MCP server / gateway / 测试）→ envConfigStore() 或 memoryConfigStore()
 //

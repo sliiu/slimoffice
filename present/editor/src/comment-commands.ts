@@ -1,5 +1,5 @@
-import type { DeckComment, Presentation } from "@ppt/core";
-import type { EditCommand } from "@ppt/core";
+import type { DeckComment, Presentation } from "@sliiu/present-core";
+import type { EditCommand } from "@sliiu/present-core";
 
 export function genCommentId(): string {
   return `cmt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;

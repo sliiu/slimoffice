@@ -1,12 +1,12 @@
-import type { EditCommand, OleObjectShape, Presentation, Rect } from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+import type { EditCommand, OleObjectShape, Presentation, Rect } from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import {
   guessOleProgId,
   oleBadgeColor,
   oleBadgeText,
   oleTypeLabel,
   extractOlePreviewPayload,
-} from "@ppt/parser";
+} from "@sliiu/present-parser";
 
 let oleSeq = 1;
 

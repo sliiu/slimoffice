@@ -1,4 +1,4 @@
-import type { Paint, Stroke } from "@ppt/core";
+import type { Paint, Stroke } from "@sliiu/present-core";
 import type { MessageKey } from "./i18n";
 
 export interface QuickStylePreset {

@@ -1,5 +1,5 @@
-import type { EditCommand, Presentation, Rect, WebEmbedShape } from "@ppt/core";
-import { identityTransform, type NormalizedWebEmbed, encodeWebEmbedDescr } from "@ppt/core";
+import type { EditCommand, Presentation, Rect, WebEmbedShape } from "@sliiu/present-core";
+import { identityTransform, type NormalizedWebEmbed, encodeWebEmbedDescr } from "@sliiu/present-core";
 import { genShapeId } from "./shape-factory";
 
 export interface BuildWebEmbedShapeInput {

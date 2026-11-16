@@ -1,5 +1,5 @@
-import type { Presentation } from "@ppt/core";
-import { recomputeSlideInheritance } from "@ppt/parser";
+import type { Presentation } from "@sliiu/present-core";
+import { recomputeSlideInheritance } from "@sliiu/present-parser";
 import type { EditorContext } from "./editor";
 
 /** 母版 / 版式编辑后，刷新引用该 master（及可选 layout）的全部 slide 占位符继承。 */

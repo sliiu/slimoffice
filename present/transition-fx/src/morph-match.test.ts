@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Slide } from "@ppt/core";
+import type { Slide } from "@sliiu/present-core";
 import { collectMorphCandidatesFromSlide } from "./morph-audit.js";
 import { matchMorphShapePairs, type MorphShapeCandidate } from "./morph-match.js";
 

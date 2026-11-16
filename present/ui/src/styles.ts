@@ -1,4 +1,4 @@
-// @ppt/ui base component styles (shadcn-flavoured), token-driven.
+// @sliiu/present-ui base component styles (shadcn-flavoured), token-driven.
 //
 // Injected once per Document via ensureUiStyles(). Class API:
 //   .ui-btn[data-variant][data-size] · .ui-input · .ui-field · .ui-label

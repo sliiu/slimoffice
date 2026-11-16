@@ -580,7 +580,7 @@ export {
   type ApplyCustomThemeOpts,
   type ApplyThemeOpts,
   type ThemeDef,
-} from "@ppt/themes";
+} from "@sliiu/present-themes";
 export { openBookmarkDialog } from "./bookmark-dialog";
 export { ApplyThemeVariantCmd } from "./theme-variant-cmd";
 export { THEME_VARIANT_OPTIONS } from "./theme-variants";

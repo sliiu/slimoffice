@@ -22,7 +22,7 @@
 //     具体 PPT 硬编码。
 //   - 直接原地 mutate `pres`，同时返回一份可读的 report 供日志 / 未来 UI 使用。
 
-import type { Paint, Presentation, Shape, Slide, TextRun, TextShape } from "@ppt/core";
+import type { Paint, Presentation, Shape, Slide, TextRun, TextShape } from "@sliiu/present-core";
 import {
   contrastRatio,
   parseHex,

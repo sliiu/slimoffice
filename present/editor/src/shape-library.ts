@@ -13,7 +13,7 @@
 //   3. 圆角 / 切角矩形可用原生 RectShape (rx) 或 polygon 多点近似 —— 这里圆角矩形
 //      用 RectShape + rx，切角矩形用 polygon。
 
-import type { Rect } from "@ppt/core";
+import type { Rect } from "@sliiu/present-core";
 import {
   extraArrowEntries,
   extraBasicEntries,

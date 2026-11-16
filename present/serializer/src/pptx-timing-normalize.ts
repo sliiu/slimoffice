@@ -13,7 +13,7 @@
 // 这里只改序列化副本；内存树保持不动，编辑器契约不受影响。
 // 已是标准结构的树（从 .pptx 解析进来的）原样通过。
 
-import { ooxml } from "@ppt/animation";
+import { ooxml } from "@sliiu/present-animation";
 
 type OoxmlTiming = ooxml.OoxmlTiming;
 type TimeNode = ooxml.TimeNode;

@@ -3,13 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SlideMediaTable = exports.DeckMediaRegistry = exports.MediaTable = void 0;
 exports.writePptx = writePptx;
 exports.buildDeckParts = buildDeckParts;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const zip_write_1 = require("./zip-write");
 const xml_util_1 = require("./xml-util");
 const media_table_1 = require("./media-table");
 const embedding_table_1 = require("./embedding-table");
 const embedded_font_export_1 = require("./embedded-font-export");
-const core_2 = require("@sliiu/present-core");
+const present_core_2 = require("@sliiu/present-core");
 const pptx_shapes_1 = require("./pptx-shapes");
 const pptx_smartart_1 = require("./pptx-smartart");
 const pptx_ink_1 = require("./pptx-ink");
@@ -370,7 +370,7 @@ class SlideDiagramCollector {
         const files = (0, pptx_smartart_1.buildSmartArtPartFiles)({
             idx,
             layout: group.smartArtMeta.layout,
-            items: (0, core_2.extractSmartArtItems)(group),
+            items: (0, present_core_2.extractSmartArtItems)(group),
             bbox: group.bbox,
             childrenXml,
             drawingMedia: drawingMedia.list(),
@@ -400,7 +400,7 @@ function renderSlide(slide, media, slideSize, charts, links, embeddings, diagram
     const bg = (0, pptx_shapes_1.backgroundToXml)(slide.background, { media }, slideSize, slide.bgRef);
     // entrance 目标被 runtime 压成 opacity=0（parser timing pass / applyInitialEntranceState）；
     // 写盘时必须视作可见，否则 fill / stroke alpha 被烘焙成 0，shape 保存后整片消失。
-    const entranceHidden = (0, core_1.computeInitialEntranceState)(slide).hiddenShapes;
+    const entranceHidden = (0, present_core_1.computeInitialEntranceState)(slide).hiddenShapes;
     const ctx = {
         media,
         spIdCounter,
@@ -743,7 +743,7 @@ function renderPresentation(pres, plan, notesPlan, embeddedFontLst = "") {
   ${embeddedFontLst}
   <p:sldSz cx="${cxEmu}" cy="${cyEmu}"${sldSzTypeAttr(pres.size.width, pres.size.height)}/>
   <p:notesSz cx="${notesCx}" cy="${notesCy}"/>
-${renderCustomShowsXml(pres)}${renderPhotoAlbumXml(pres.photoAlbum)}${renderKinsokuXml(pres.kinsoku)}${(0, pptx_default_text_style_1.renderDefaultTextStyleXml)((0, core_1.ooxmlLangFromProofingId)((0, core_1.getProofingLanguage)(pres)), pres.defaultTextStyle)}
+${renderCustomShowsXml(pres)}${renderPhotoAlbumXml(pres.photoAlbum)}${renderKinsokuXml(pres.kinsoku)}${(0, pptx_default_text_style_1.renderDefaultTextStyleXml)((0, present_core_1.ooxmlLangFromProofingId)((0, present_core_1.getProofingLanguage)(pres)), pres.defaultTextStyle)}
 ${renderModifyVerifierXml(pres.modifyVerifier)}${sectionLst}
 </p:presentation>`;
 }

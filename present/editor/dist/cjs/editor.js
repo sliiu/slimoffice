@@ -34,9 +34,9 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mountEditor = mountEditor;
-const core_1 = require("@sliiu/present-core");
-const renderer_1 = require("@sliiu/present-renderer");
-const player_1 = require("@sliiu/present-player");
+const present_core_1 = require("@sliiu/present-core");
+const present_renderer_1 = require("@sliiu/present-renderer");
+const present_player_1 = require("@sliiu/present-player");
 const file_kind_1 = require("./file-kind");
 const file_progress_1 = require("./file-progress");
 const selection_1 = require("./selection");
@@ -47,7 +47,7 @@ const slide_commands_1 = require("./slide-commands");
 const crop_frame_1 = require("./crop-frame");
 const shape_library_1 = require("./shape-library");
 const shape_factory_1 = require("./shape-factory");
-const parser_1 = require("@sliiu/present-parser");
+const present_parser_1 = require("@sliiu/present-parser");
 const inspector_1 = require("./inspector");
 const ribbon_1 = require("./ribbon");
 const lecture_panel_1 = require("./lecture-panel");
@@ -211,7 +211,7 @@ function mountEditor(host, initialPres, opts = {}) {
     (0, ui_style_1.ensureUiStyles)(host.ownerDocument);
     const backend = opts.backend ?? "svg";
     let pres = initialPres;
-    const stack = new core_1.CommandStack(pres);
+    const stack = new present_core_1.CommandStack(pres);
     let editorPlugins = null;
     const selection = new selection_1.Selection();
     // 入场动画的 "初始 hide" 状态在 parser 解析阶段就已写入 shape.opacity / initialOverrides；
@@ -222,7 +222,7 @@ function mountEditor(host, initialPres, opts = {}) {
     //      保留，destroy 时再写回。
     const mountEntrShapes = new Set();
     for (const slide of pres.slides) {
-        const st = (0, core_1.computeInitialEntranceState)(slide);
+        const st = (0, present_core_1.computeInitialEntranceState)(slide);
         for (const s of st.hiddenShapes)
             mountEntrShapes.add(s);
     }
@@ -354,9 +354,9 @@ function mountEditor(host, initialPres, opts = {}) {
     stack.execute = (cmd) => {
         if (!committingLive)
             commitLivePreview();
-        if (!(0, core_1.canApplyEditCommand)(pres, cmd)) {
+        if (!(0, present_core_1.canApplyEditCommand)(pres, cmd)) {
             showToast((0, i18n_1.t)("protect.blocked"));
-            throw new core_1.EditingBlockedError();
+            throw new present_core_1.EditingBlockedError();
         }
         rawStackExecute(cmd);
         editorPlugins?.notifyCommand({ label: cmd.label, kind: "apply" });
@@ -774,10 +774,10 @@ function mountEditor(host, initialPres, opts = {}) {
             statusSlide.textContent = (0, i18n_1.t)("editor.status.slideMaster");
         }
         else {
-            const prot = (0, core_1.getPresentationProtection)(pres);
+            const prot = (0, present_core_1.getPresentationProtection)(pres);
             if (prot) {
                 const badge = prot.kind === "final" ? (0, i18n_1.t)("protect.badgeFinal") : (0, i18n_1.t)("protect.badgeRestricted");
-                const office = pres.modifyVerifier && (0, core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier)
+                const office = pres.modifyVerifier && (0, present_core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier)
                     ? ` · ${(0, i18n_1.t)("protect.badgeOffice")}`
                     : "";
                 statusSlide.textContent = `${badge}${office}`;
@@ -1102,7 +1102,7 @@ function mountEditor(host, initialPres, opts = {}) {
     // 跨 slide 切换 / backend 切换都不会重复跑 WebGL。
     // bake 完成后通过 onSlideBaked 通知宿主，让 playground 把对应缩略图也刷成 baked
     // 状态——shape.src/bbox 被 bake mutate 后，缩略图重建 Scene 即可拿到 baked PNG。
-    const bakeRuntime = (0, player_1.createBake3DRuntime)({
+    const bakeRuntime = (0, present_player_1.createBake3DRuntime)({
         onSlideBaked: (s) => {
             const idx = pres.slides.indexOf(s);
             if (idx >= 0)
@@ -1189,13 +1189,13 @@ function mountEditor(host, initialPres, opts = {}) {
             snapToGrid,
             snapToObjects: snapToShapes,
         };
-        if ((0, core_1.viewGuidesSnapshot)(next) === (0, core_1.viewGuidesSnapshot)(prev))
+        if ((0, present_core_1.viewGuidesSnapshot)(next) === (0, present_core_1.viewGuidesSnapshot)(prev))
             return;
         try {
             stack.execute(new view_show_commands_1.SetViewGuidesCmd(next));
         }
         catch (e) {
-            if (!(0, core_1.isEditingBlockedError)(e))
+            if (!(0, present_core_1.isEditingBlockedError)(e))
                 throw e;
         }
         // 保护态下 execute 会 toast 并抛 EditingBlockedError：从 pres 回读，避免本地 UI 脏掉。
@@ -1496,19 +1496,19 @@ function mountEditor(host, initialPres, opts = {}) {
         const size = viewCanvasSize();
         if (editorContext.kind === "master") {
             const pseudo = buildMasterPseudoSlide(pres, editorContext, slide);
-            return (0, renderer_1.createScene)(pseudo, size);
+            return (0, present_renderer_1.createScene)(pseudo, size);
         }
         if (editorContext.kind === "notesMaster") {
             const pseudo = (0, aux_master_utils_1.buildAuxMasterPseudoSlide)(pres, "notesMaster", editorContext.masterId);
             if (pseudo)
-                return (0, renderer_1.createScene)(pseudo, size);
+                return (0, present_renderer_1.createScene)(pseudo, size);
         }
         if (editorContext.kind === "handoutMaster") {
             const pseudo = (0, aux_master_utils_1.buildAuxMasterPseudoSlide)(pres, "handoutMaster", editorContext.masterId);
             if (pseudo)
-                return (0, renderer_1.createScene)(pseudo, size);
+                return (0, present_renderer_1.createScene)(pseudo, size);
         }
-        return (0, renderer_1.createScene)(slide, size, { masters: pres.masters });
+        return (0, present_renderer_1.createScene)(slide, size, { masters: pres.masters });
     };
     // 编辑器舞台不跑 slide 间过渡（仅 player / 放映模式才跑）；这里仅保留可能的旧 ghost
     // 引用，以便 drawSlide 在切页时清理（一般 active 始终为 null）。
@@ -1575,16 +1575,16 @@ function mountEditor(host, initialPres, opts = {}) {
             activeTransitionGhost = null;
         }
         const scene = buildScene(slide);
-        const chromeBg = (0, renderer_1.stageChromeBackground)(slide);
+        const chromeBg = (0, present_renderer_1.stageChromeBackground)(slide);
         stage.style.background = chromeBg;
         const transparentChrome = chromeBg === "transparent";
         // 普通编辑：伸出白色幻灯片的形状仍画在灰色工作区。阅读视图保持裁切。
         const clipToSlide = presentationView !== "normal";
         const be = backend === "svg"
-            ? new renderer_1.SvgBackend(scene, stage, { transparent: transparentChrome, clipToSlide })
+            ? new present_renderer_1.SvgBackend(scene, stage, { transparent: transparentChrome, clipToSlide })
             : backend === "canvas"
-                ? new renderer_1.CanvasBackend(scene, stage, { transparent: transparentChrome })
-                : new renderer_1.HybridBackend(scene, stage, { background: chromeBg, clipToSlide });
+                ? new present_renderer_1.CanvasBackend(scene, stage, { transparent: transparentChrome })
+                : new present_renderer_1.HybridBackend(scene, stage, { background: chromeBg, clipToSlide });
         // 在销毁旧 backend 之前，强制把新 backend 的 scene 同步绘制到 DOM。
         // 否则新 backend 默认走 rAF 调度，旧 backend 被移除后直到下一帧才有内容。
         be.flush();
@@ -2901,7 +2901,7 @@ function mountEditor(host, initialPres, opts = {}) {
             if (!s || s.kind !== "path" || !s.presetType)
                 return;
             const local = (0, shape_transform_1.inverseNodeTransform)(s, pt.x, pt.y);
-            s.presetAdj = (0, parser_1.dragOfficialAdjustHandle)(s.presetType, s.bbox, drag.startAdj, drag.handleIndex, local.x - s.bbox.x, local.y - s.bbox.y);
+            s.presetAdj = (0, present_parser_1.dragOfficialAdjustHandle)(s.presetType, s.bbox, drag.startAdj, drag.handleIndex, local.x - s.bbox.x, local.y - s.bbox.y);
             regeneratePathShape(s);
             drag.moved = true;
             scheduleDragRedraw();
@@ -3741,7 +3741,7 @@ function mountEditor(host, initialPres, opts = {}) {
             onKey(e);
         }
         catch (err) {
-            if (!(0, core_1.isEditingBlockedError)(err))
+            if (!(0, present_core_1.isEditingBlockedError)(err))
                 throw err;
         }
     });
@@ -3754,7 +3754,7 @@ function mountEditor(host, initialPres, opts = {}) {
             onKey(e);
         }
         catch (err) {
-            if (!(0, core_1.isEditingBlockedError)(err))
+            if (!(0, present_core_1.isEditingBlockedError)(err))
                 throw err;
         }
     };
@@ -3845,7 +3845,7 @@ function mountEditor(host, initialPres, opts = {}) {
     };
     const insertSlideAfterCurrent = () => {
         const at = Math.min(pres.slides.length, index + 1);
-        const slide = (0, core_1.createSlideFromMaster)(pres.masters, {
+        const slide = (0, present_core_1.createSlideFromMaster)(pres.masters, {
             index: at,
             preferredTypes: ["obj", "titleOnly", "twoObj", "title", "blank"],
         });
@@ -4060,7 +4060,7 @@ function mountEditor(host, initialPres, opts = {}) {
         if (shape.kind !== "text")
             return;
         shape.name = name;
-        const text = (0, core_1.resolveFieldText)(field, { slideIndex: index });
+        const text = (0, present_core_1.resolveFieldText)(field, { slideIndex: index });
         shape.paragraphs = [
             {
                 runs: [{ text, field, fontSize: 12, color: "#6b7280" }],
@@ -4837,7 +4837,7 @@ function mountEditor(host, initialPres, opts = {}) {
         }
     };
     const previewFills = (ids, paint) => {
-        if (!(0, core_1.canApplyEditCommand)(pres, { label: "Set fill" })) {
+        if (!(0, present_core_1.canApplyEditCommand)(pres, { label: "Set fill" })) {
             rejectLiveColor();
             return true;
         }
@@ -4878,7 +4878,7 @@ function mountEditor(host, initialPres, opts = {}) {
         return ranges && ranges.length > 0 ? ranges : undefined;
     };
     const previewTextColors = (ids, color) => {
-        if (!(0, core_1.canApplyEditCommand)(pres, { label: "Text style" })) {
+        if (!(0, present_core_1.canApplyEditCommand)(pres, { label: "Text style" })) {
             rejectLiveColor();
             return true;
         }
@@ -5113,7 +5113,7 @@ function mountEditor(host, initialPres, opts = {}) {
                 const sc = runtime?.scene;
                 const cur = pres.slides[index];
                 if (sc && cur)
-                    (0, renderer_1.applyEntranceHideToScene)(sc, cur);
+                    (0, present_renderer_1.applyEntranceHideToScene)(sc, cur);
             }
             else {
                 drawSlide(index);
@@ -6194,9 +6194,9 @@ function mountEditor(host, initialPres, opts = {}) {
         ].join(";");
         let be = null;
         if (prevSlide) {
-            const chromeBg = (0, renderer_1.stageChromeBackground)(prevSlide);
+            const chromeBg = (0, present_renderer_1.stageChromeBackground)(prevSlide);
             el.style.background = chromeBg;
-            be = new renderer_1.SvgBackend(buildScene(prevSlide), el, { transparent: chromeBg === "transparent" });
+            be = new present_renderer_1.SvgBackend(buildScene(prevSlide), el, { transparent: chromeBg === "transparent" });
             be.flush();
         }
         else {
@@ -6224,10 +6224,10 @@ function mountEditor(host, initialPres, opts = {}) {
                 if (t.kind === "morph" && index > 0) {
                     const prevSlide = pres.slides[index - 1];
                     const curSlide = pres.slides[index];
-                    const prevScene = (0, renderer_1.createScene)(prevSlide, pres.size, { masters: pres.masters });
-                    const curScene = (0, renderer_1.createScene)(curSlide, pres.size, { masters: pres.masters });
-                    const layers = (0, renderer_1.mountMorphTransitionLayers)(stageWrap, stage, prevScene, curScene, {
-                        chromeBg: (0, renderer_1.stageChromeBackground)(prevSlide),
+                    const prevScene = (0, present_renderer_1.createScene)(prevSlide, pres.size, { masters: pres.masters });
+                    const curScene = (0, present_renderer_1.createScene)(curSlide, pres.size, { masters: pres.masters });
+                    const layers = (0, present_renderer_1.mountMorphTransitionLayers)(stageWrap, stage, prevScene, curScene, {
+                        chromeBg: (0, present_renderer_1.stageChromeBackground)(prevSlide),
                     });
                     try {
                         await runFx(layers.ghost, layers.target, t);
@@ -6242,7 +6242,7 @@ function mountEditor(host, initialPres, opts = {}) {
                     const prevOverlayVis = overlay.style.visibility;
                     overlay.style.visibility = "hidden";
                     try {
-                        await (0, player_1.runStageTransition)(ghost.el, stage, t);
+                        await (0, present_player_1.runStageTransition)(ghost.el, stage, t);
                     }
                     finally {
                         overlay.style.visibility = prevOverlayVis;
@@ -7009,31 +7009,31 @@ function mountEditor(host, initialPres, opts = {}) {
     let slideshowUseTimings = opts.slideshowUseTimings ?? true;
     let slideshowPlayNarrations = opts.slideshowPlayNarrations ?? true;
     const commitShowPropertiesFromLocals = (mediaControls) => {
-        const uiNow = (0, core_1.showPropertiesToUi)(pres.showPr);
-        const next = (0, core_1.applyUiToShowProperties)(pres.showPr, {
+        const uiNow = (0, present_core_1.showPropertiesToUi)(pres.showPr);
+        const next = (0, present_core_1.applyUiToShowProperties)(pres.showPr, {
             loop: slideshowLoop,
             windowed: windowedMode,
             useTimings: slideshowUseTimings,
             playNarrations: slideshowPlayNarrations,
             showMediaControls: mediaControls ?? uiNow.showMediaControls,
         });
-        if ((0, core_1.showPropertiesSnapshot)(next) === (0, core_1.showPropertiesSnapshot)(pres.showPr))
+        if ((0, present_core_1.showPropertiesSnapshot)(next) === (0, present_core_1.showPropertiesSnapshot)(pres.showPr))
             return;
         try {
             stack.execute(new view_show_commands_1.SetShowPropertiesCmd(next));
         }
         catch (e) {
-            if (!(0, core_1.isEditingBlockedError)(e))
+            if (!(0, present_core_1.isEditingBlockedError)(e))
                 throw e;
         }
-        const ui = (0, core_1.showPropertiesToUi)(pres.showPr);
+        const ui = (0, present_core_1.showPropertiesToUi)(pres.showPr);
         slideshowLoop = ui.loop;
         windowedMode = ui.windowed;
         slideshowUseTimings = ui.useTimings;
         slideshowPlayNarrations = ui.playNarrations;
     };
     syncSlideshowLocalsFromPres = () => {
-        const ui = (0, core_1.showPropertiesToUi)(pres.showPr);
+        const ui = (0, present_core_1.showPropertiesToUi)(pres.showPr);
         slideshowLoop = ui.loop;
         windowedMode = ui.windowed;
         slideshowUseTimings = ui.useTimings;
@@ -7351,7 +7351,7 @@ function mountEditor(host, initialPres, opts = {}) {
             refreshStatus();
         });
     };
-    const isProtected = () => (0, core_1.isPresentationEditingBlocked)(pres);
+    const isProtected = () => (0, present_core_1.isPresentationEditingBlocked)(pres);
     const helpLinks = opts.helpLinks ?? {};
     const openHelp = () => {
         (0, help_dialog_1.openHelpDialog)(host.ownerDocument, helpLinks);
@@ -7551,8 +7551,8 @@ function mountEditor(host, initialPres, opts = {}) {
         getShareUrl: opts.getShareUrl,
         save: opts.save,
         openEmbedFonts,
-        openVbaInfo: (0, core_1.presentationHasVbaProject)(pres) ? openVbaInfo : undefined,
-        hasVbaProject: () => (0, core_1.presentationHasVbaProject)(pres),
+        openVbaInfo: (0, present_core_1.presentationHasVbaProject)(pres) ? openVbaInfo : undefined,
+        hasVbaProject: () => (0, present_core_1.presentationHasVbaProject)(pres),
         openFile: opts.openFile,
         openRecent: opts.openRecent,
         newPresentation: opts.newPresentation,
@@ -8003,7 +8003,7 @@ function mountEditor(host, initialPres, opts = {}) {
                         slideshowUseTimings = next.useTimings;
                         slideshowPlayNarrations = next.playNarrations;
                         commitShowPropertiesFromLocals(next.showMediaControls);
-                        const ui = (0, core_1.showPropertiesToUi)(pres.showPr);
+                        const ui = (0, present_core_1.showPropertiesToUi)(pres.showPr);
                         opts.onSlideshowSetupChange({
                             loop: ui.loop,
                             windowed: ui.windowed,
@@ -8133,7 +8133,7 @@ function mountEditor(host, initialPres, opts = {}) {
     editorPlugins?.notifySlideChange();
     editorPlugins?.notifySelectionChange();
     root.focus();
-    if ((0, core_1.isPresentationEditingBlocked)(pres)) {
+    if ((0, present_core_1.isPresentationEditingBlocked)(pres)) {
         showToast((0, i18n_1.t)("protect.openedHint"));
     }
     // 协作命令 apply / revert 后刷新舞台与各面板（与本地 execute 后的刷新范围一致）。
@@ -8165,8 +8165,8 @@ function mountEditor(host, initialPres, opts = {}) {
             for (const [s, v] of userOpacityZero)
                 s.opacity = v;
             for (const slide of pres.slides) {
-                const fresh = (0, core_1.computeInitialEntranceState)(slide);
-                (0, core_1.applyInitialEntranceState)(slide, fresh);
+                const fresh = (0, present_core_1.computeInitialEntranceState)(slide);
+                (0, present_core_1.applyInitialEntranceState)(slide, fresh);
             }
             // 关闭任何遗留的「放映插件选择」popover —— 它被挂在 doc.body 上而不是 root
             // 内，因此 root.remove() 不会自动连带清掉。
@@ -8338,13 +8338,13 @@ function mountEditor(host, initialPres, opts = {}) {
             editorPlugins?.notifyPresentationChange();
         },
         applyRemoteCommand(cmd) {
-            if (!(0, core_1.canApplyEditCommand)(pres, cmd))
+            if (!(0, present_core_1.canApplyEditCommand)(pres, cmd))
                 return;
             stack.applyExternal(cmd, "apply");
             refreshAfterRemote();
         },
         revertRemoteCommand(cmd) {
-            if (!(0, core_1.canApplyEditCommand)(pres, cmd))
+            if (!(0, present_core_1.canApplyEditCommand)(pres, cmd))
                 return;
             stack.applyExternal(cmd, "revert");
             refreshAfterRemote();
@@ -8524,7 +8524,7 @@ function offsetShape(s, dx, dy) {
         if (s.presetType)
             regeneratePathShape(s);
         else
-            s.d = (0, core_1.translatePathD)(s.d, dx, dy);
+            s.d = (0, present_core_1.translatePathD)(s.d, dx, dy);
     }
     if (s.kind === "group") {
         for (const c of s.children)
@@ -8973,7 +8973,7 @@ function drawSelectionFrame(doc, svg, b, pxToSlide, worldTransform = "") {
 function drawPresetAdjHandles(doc, svg, s, pxToSlide, worldTransform = "") {
     if (!s.presetType)
         return;
-    const handles = (0, parser_1.listOfficialAdjustHandles)(s.presetType, s.bbox, s.presetAdj ?? {});
+    const handles = (0, present_parser_1.listOfficialAdjustHandles)(s.presetType, s.bbox, s.presetAdj ?? {});
     if (!handles.length)
         return;
     const NS = "http://www.w3.org/2000/svg";
@@ -9175,7 +9175,7 @@ function translateInPlace(s, dx, dy) {
         if (s.presetType)
             regeneratePathShape(s);
         else
-            s.d = (0, core_1.translatePathD)(s.d, dx, dy);
+            s.d = (0, present_core_1.translatePathD)(s.d, dx, dy);
     }
     if (s.kind === "group")
         for (const c of s.children)

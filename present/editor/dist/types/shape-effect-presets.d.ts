@@ -1,5 +1,5 @@
 import type { ShapeEffectsPatch } from "./commands.js";
-import type { MessageKey } from "./i18n.js";
+import type { MessageKey } from "./i18n/index.js";
 export interface ShapeEffectPreset {
     id: string;
     labelKey: MessageKey;

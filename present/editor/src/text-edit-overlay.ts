@@ -32,13 +32,13 @@
 //   wrap=false / vertOverflow=clip              →  white-space + overflow
 //
 // 所有"slide 单位 → 屏幕 px"的换算都乘 stageScale；缺省值（insets / 行距系数 /
-// 兜底字号 / bullet 编号规则）一律从 @ppt/renderer 的 text-shared 取，避免与渲染
+// 兜底字号 / bullet 编号规则）一律从 @sliiu/present-renderer 的 text-shared 取，避免与渲染
 // 端各写一份而漂移。
 //
 // 注意：这是 OOXML 文本模型到 HTML inline 样式的**近似**映射，只用于编辑期视觉。
 // 提交后由渲染器按完整 ‹rPr› 输出权威外观。已知未镜像项见文件末尾注释。
 // ============================================================================
-import type { Paint, Shape, Stroke, TextParagraph, TextRun, TextShape } from "@ppt/core";
+import type { Paint, Shape, Stroke, TextParagraph, TextRun, TextShape } from "@sliiu/present-core";
 import { paintedTextColor } from "./live-color";
 import type { TextCharRange } from "./text-char-style";
 import {
@@ -61,7 +61,7 @@ import {
   buildStackedGlyphs,
   wrapGlyphsIntoColumns,
   type StackedGlyph,
-} from "@ppt/renderer";
+} from "@sliiu/present-renderer";
 import { overlayWorldTransformCss } from "./shape-transform";
 
 /** overlay 的 bullet 占位元素标记；读回文本时必须跳过，否则项目符号会被写进正文。 */

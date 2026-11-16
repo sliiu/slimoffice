@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 // @ts-expect-error jsdom ships without types in this repo; tests run via tsx.
 import { JSDOM } from "jsdom";
-import { dismissAllModals } from "@ppt/ui";
+import { dismissAllModals } from "@sliiu/present-ui";
 import { openTextPromptDialog } from "./dialog.js";
 
 function installDom(): { doc: Document; KeyboardEvent: typeof KeyboardEvent } {

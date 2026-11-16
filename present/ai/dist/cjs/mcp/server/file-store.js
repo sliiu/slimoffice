@@ -10,8 +10,8 @@ exports.createFileDeckStore = createFileDeckStore;
 exports.resolveDeckFile = resolveDeckFile;
 const promises_1 = require("node:fs/promises");
 const node_path_1 = __importDefault(require("node:path"));
-const parser_1 = require("@sliiu/present-parser");
-const serializer_1 = require("@sliiu/present-serializer");
+const present_parser_1 = require("@sliiu/present-parser");
+const present_serializer_1 = require("@sliiu/present-serializer");
 const DECK_EXT = new Set([".pptx", ".pptm"]);
 function createFileDeckStore(rootDir) {
     const root = node_path_1.default.resolve(rootDir);
@@ -28,7 +28,7 @@ function createFileDeckStore(rootDir) {
                 const info = await (0, promises_1.stat)(file);
                 let slideCount = 0;
                 try {
-                    const pres = await (0, parser_1.parsePptx)(await (0, promises_1.readFile)(file), { mediaMode: "data" });
+                    const pres = await (0, present_parser_1.parsePptx)(await (0, promises_1.readFile)(file), { mediaMode: "data" });
                     slideCount = pres.slides.length;
                 }
                 catch {
@@ -46,11 +46,11 @@ function createFileDeckStore(rootDir) {
         },
         async load(deckId) {
             const file = resolveDeckFile(root, deckId);
-            return (0, parser_1.parsePptx)(await (0, promises_1.readFile)(file), { mediaMode: "data" });
+            return (0, present_parser_1.parsePptx)(await (0, promises_1.readFile)(file), { mediaMode: "data" });
         },
         async save(deckId, pres) {
             const file = resolveDeckFile(root, deckId);
-            const bytes = (0, serializer_1.writePptx)(pres);
+            const bytes = (0, present_serializer_1.writePptx)(pres);
             const tmp = `${file}.${process.pid}.writing`;
             await (0, promises_1.writeFile)(tmp, bytes);
             await (0, promises_1.rename)(tmp, file);

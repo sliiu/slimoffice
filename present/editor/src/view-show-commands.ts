@@ -1,4 +1,4 @@
-import type { EditCommand, Presentation, ShowProperties, ViewGuides } from "@ppt/core";
+import type { EditCommand, Presentation, ShowProperties, ViewGuides } from "@sliiu/present-core";
 
 function cloneJson<T>(v: T | undefined): T | undefined {
   return v === undefined ? undefined : (JSON.parse(JSON.stringify(v)) as T);

@@ -1,5 +1,5 @@
-import type { Presentation, PresentationSource, ShowProperties } from "@ppt/core";
-import { showPropertiesHasContent, showPropertiesSnapshot } from "@ppt/core";
+import type { Presentation, PresentationSource, ShowProperties } from "@sliiu/present-core";
+import { showPropertiesHasContent, showPropertiesSnapshot } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
 import { esc, xmlHeader } from "./xml-util";
 

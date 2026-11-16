@@ -1,5 +1,5 @@
-import type { SlideTransition } from "@ppt/core";
-import { runTransition as runFx } from "@ppt/transition-fx";
+import type { SlideTransition } from "@sliiu/present-core";
+import { runTransition as runFx } from "@sliiu/present-transition-fx";
 
 /** 2D transitions available on Free / Lite during SaaS playback. */
 const BASIC_TRANSITION_KINDS = new Set([

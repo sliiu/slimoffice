@@ -1,4 +1,4 @@
-export declare const themeTools: (import("...js").ToolDef<{
+export declare const themeTools: (import("../index.js").ToolDef<{
     topic?: string | undefined;
     audience?: string | undefined;
     scenario?: string | undefined;
@@ -6,6 +6,6 @@ export declare const themeTools: (import("...js").ToolDef<{
     styleHint?: string | undefined;
     withMotion?: boolean | undefined;
     preserveImageBackgrounds?: boolean | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     variant: "bold" | "cool" | "subtle" | "warm";
 }>)[];

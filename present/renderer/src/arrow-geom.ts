@@ -1,4 +1,4 @@
-import type { ArrowKind } from "@ppt/core";
+import type { ArrowKind } from "@sliiu/present-core";
 
 // 线端箭头（headEnd / tailEnd）的几何，SVG 与 Canvas 两个 backend 共用，保证导出一致。
 // 尺寸单位为 strokeWidth 的倍数（与 SVG markerUnits="strokeWidth" 一致）。

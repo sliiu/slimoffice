@@ -1,4 +1,4 @@
-import type { DeckComment, Presentation } from "@ppt/core";
+import type { DeckComment, Presentation } from "@sliiu/present-core";
 
 function remapIndexAfterSlideMove(from: number, to: number, idx: number): number {
   if (idx === from) return to;

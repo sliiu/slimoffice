@@ -2,12 +2,12 @@ import { CommandStack, type EditCommand, type Presentation, type Slide, type Med
 import { Selection } from "./selection.js";
 import { type CommentAssignUi } from "./comments-panel.js";
 import { type HelpLinks } from "./help-dialog.js";
-import { type EditorPlugin, type EditorPluginCatalogEntry } from "./editor-plugins.js";
+import { type EditorPlugin, type EditorPluginCatalogEntry } from "./editor-plugins/index.js";
 import { type DesignerAiResult } from "./designer-dialog.js";
 import { type SlideshowSetupState } from "./setup-slideshow-dialog.js";
 import { type DevDumpSection } from "./dev-panel.js";
 import { type ContextMenuItem } from "./context-menu.js";
-import { type Locale } from "./i18n.js";
+import { type Locale } from "./i18n/index.js";
 import { type AiInlineUi } from "./ai-inline-box.js";
 import { type PresentationViewMode } from "./presentation-views.js";
 export type InsertShapeKind = "rect" | "ellipse" | "text" | "triangle" | "star" | "arrow" | "line" | (string & {});

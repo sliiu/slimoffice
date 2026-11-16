@@ -9,7 +9,7 @@ exports.fromScratchSldIds = fromScratchSldIds;
 exports.renderSectionLstXml = renderSectionLstXml;
 exports.renderSectionExtXml = renderSectionExtXml;
 exports.patchSectionLst = patchSectionLst;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const xml_util_1 = require("./xml-util");
 exports.SECTION_LST_URI = "{521415D9-36F7-43E2-AB2F-B90AF26B5E84}";
@@ -34,7 +34,7 @@ function sectionIdToGuid(id) {
     return `{${raw.slice(0, 8)}-${raw.slice(8, 12)}-4${raw.slice(13, 16)}-A${raw.slice(17, 20)}-${raw.slice(20, 32)}}`.toUpperCase();
 }
 function sectionsForWrite(pres) {
-    return (0, core_1.normalizeDeckSections)(pres.sections, pres.slides.length);
+    return (0, present_core_1.normalizeDeckSections)(pres.sections, pres.slides.length);
 }
 /** from-scratch sldId 约定与 `renderPresentation` 一致：256 + index。 */
 function fromScratchSldIds(slideCount) {
@@ -46,7 +46,7 @@ function renderSectionLstXml(sections, sldIds) {
 }
 function renderSectionExtXml(sections, sldIds) {
     const slideCount = sldIds.length;
-    const list = (0, core_1.normalizeDeckSections)(sections, slideCount);
+    const list = (0, present_core_1.normalizeDeckSections)(sections, slideCount);
     if (!list.length || !slideCount)
         return "";
     const rows = [];

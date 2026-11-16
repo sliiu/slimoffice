@@ -8,8 +8,8 @@ import type {
   SmartArtItem,
   SmartArtLayoutKind,
   VideoShape,
-} from "@ppt/core";
-import { extractSmartArtItems, mediaTrimBounds, serializeSmartArtItemsText } from "@ppt/core";
+} from "@sliiu/present-core";
+import { extractSmartArtItems, mediaTrimBounds, serializeSmartArtItemsText } from "@sliiu/present-core";
 import { formatByteSize, isOleEmbedOverLimit, oleEmbedByteSize } from "./ole-cmd";
 import { model3DDataUrlByteSize } from "./model3d-load";
 import { formatRecordingDuration, RECORDING_LARGE_BYTES } from "./video-export";

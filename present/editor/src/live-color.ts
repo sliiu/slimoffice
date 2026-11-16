@@ -1,7 +1,7 @@
 // 拖动取色时直接改已挂上的 SVG 填充，避免每帧拆掉整页再重建。
 // 调用方负责在松手时把模型还原并落一条命令。
 
-import type { Paint, Shape, TextRun } from "@ppt/core";
+import type { Paint, Shape, TextRun } from "@sliiu/present-core";
 
 export interface FillSnap {
   shape: Shape;

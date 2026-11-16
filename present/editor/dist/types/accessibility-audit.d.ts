@@ -1,5 +1,5 @@
 import type { Presentation } from "@sliiu/present-core";
-import { type MessageKey } from "./i18n.js";
+import { type MessageKey } from "./i18n/index.js";
 export type AccessibilityIssueKind = "contrast" | "empty-slide" | "tiny-text" | "missing-alt" | "image-overlap" | "missing-title";
 export interface AccessibilityIssue {
     slideIndex: number;

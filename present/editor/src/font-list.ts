@@ -1,4 +1,4 @@
-import { bindCombobox, type ComboboxHandle } from "@ppt/ui";
+import { bindCombobox, type ComboboxHandle } from "@sliiu/present-ui";
 
 // 编辑器公用的"常见字体清单"。
 //

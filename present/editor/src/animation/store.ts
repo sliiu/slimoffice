@@ -1,8 +1,8 @@
 // AnimationStore：把 OOXML timing 展平为编辑器视角的扁平 Effect 列表。
 // 维护 Effect ↔ OOXML cTn 节点的双向映射，便于 UI 增删改查。
 
-import { ooxml } from "@ppt/animation";
-import type { Slide } from "@ppt/core";
+import { ooxml } from "@sliiu/present-animation";
+import type { Slide } from "@sliiu/present-core";
 
 type OoxmlTiming = ooxml.OoxmlTiming;
 type TimeNode = ooxml.TimeNode;

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.slideEntryHasStructureDiff = exports.slideEntryHasTextPatches = exports.summarizeCompareEntries = exports.comparePresentationMeta = exports.comparedSlideParagraphs = exports.compareDeckTexts = exports.compareDeckStructured = void 0;
 exports.openCompareDialog = openCompareDialog;
 const dialog_1 = require("./dialog");
-const parser_1 = require("@sliiu/present-parser");
+const present_parser_1 = require("@sliiu/present-parser");
 const compare_deck_1 = require("./compare-deck");
 const review_export_1 = require("./review-export");
 const i18n_1 = require("./i18n");
@@ -302,7 +302,7 @@ function openCompareDialog(doc, ctx) {
             fileLabel.textContent = (0, i18n_1.t)("compare.loading");
             try {
                 const buf = await file.arrayBuffer();
-                other = await (0, parser_1.parsePptx)(buf);
+                other = await (0, present_parser_1.parsePptx)(buf);
                 entries = (0, compare_deck_1.compareDeckStructured)(ctx.pres, other);
                 renderMeta();
                 fileLabel.textContent = file.name;

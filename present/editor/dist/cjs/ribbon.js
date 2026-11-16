@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildRibbon = buildRibbon;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const live_color_1 = require("./live-color");
 const i18n_1 = require("./i18n");
 const aid_color_1 = require("./aid-color");
@@ -33,7 +33,7 @@ function runRibbonCommand(fn) {
         fn();
     }
     catch (e) {
-        if (!(0, core_1.isEditingBlockedError)(e))
+        if (!(0, present_core_1.isEditingBlockedError)(e))
             throw e;
     }
 }

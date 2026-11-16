@@ -2,8 +2,8 @@
 // URI：{521415D9-36F7-43E2-AB2F-B90AF26B5E84}
 // 每个 section 的 p14:sldId@id 对应 presentation sldIdLst 里的 sldId@id。
 
-import type { DeckSection, Presentation, PresentationSource } from "@ppt/core";
-import { normalizeDeckSections } from "@ppt/core";
+import type { DeckSection, Presentation, PresentationSource } from "@sliiu/present-core";
+import { normalizeDeckSections } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
 import { esc } from "./xml-util";
 import type { RoundTripOptions } from "./pptx-roundtrip";

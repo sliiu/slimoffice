@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SECTION_LST_URI = void 0;
 exports.parsePresentationSectionLst = parsePresentationSectionLst;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const xml_1 = require("./xml");
 exports.SECTION_LST_URI = "{521415D9-36F7-43E2-AB2F-B90AF26B5E84}";
 function parsePresentationSectionLst(presEl, slideCount) {
@@ -48,5 +48,5 @@ function parsePresentationSectionLst(presEl, slideCount) {
             startIndex: start,
         });
     }
-    return (0, core_1.normalizeDeckSections)(out, slideCount);
+    return (0, present_core_1.normalizeDeckSections)(out, slideCount);
 }

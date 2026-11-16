@@ -1,6 +1,6 @@
 import { bindEditorModal } from "./dialog";
-import type { Presentation } from "@ppt/core";
-import { parsePptx } from "@ppt/parser";
+import type { Presentation } from "@sliiu/present-core";
+import { parsePptx } from "@sliiu/present-parser";
 import {
   compareDeckStructured,
   comparePresentationMeta,

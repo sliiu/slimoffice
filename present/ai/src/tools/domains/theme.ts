@@ -6,7 +6,7 @@
 // 落到 IR，无需用户离开 chat 去 settings tab 改 themeId。
 
 import { z } from "zod";
-import { ApplyThemeVariantCmd } from "@ppt/editor/commands";
+import { ApplyThemeVariantCmd } from "@sliiu/present-editor/commands";
 import { defineTool, err } from "../types";
 import { isConfigUsable } from "../../config/presets";
 import { generateTheme, generateThemeWithMotion } from "../../generate/stages/theme";

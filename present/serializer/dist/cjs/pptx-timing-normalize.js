@@ -16,7 +16,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.normalizeTimingForOoxml = normalizeTimingForOoxml;
 exports.needsOoxmlNormalization = needsOoxmlNormalization;
-const animation_1 = require("@sliiu/present-animation");
+const present_animation_1 = require("@sliiu/present-animation");
 const EFFECT_NODE_TYPES = new Set(["clickEffect", "withEffect", "afterEffect"]);
 // 编辑器把这些"效果级"字段写在包装 par 上；PowerPoint 读效果 par。搬过去时包装层优先。
 const EFFECT_LEVEL_FIELDS = ["repeatCount", "repeatDur", "autoRev", "accel", "decel", "spd"];
@@ -52,7 +52,7 @@ function needsOoxmlNormalization(timing) {
     if (!timing)
         return false;
     const hasDelay = (n) => {
-        const ctn = animation_1.ooxml.getCTn(n);
+        const ctn = present_animation_1.ooxml.getCTn(n);
         if (ctn.delay !== undefined)
             return true;
         return (ctn.childTnLst ?? []).some(hasDelay) || (ctn.subTnLst ?? []).some(hasDelay);
@@ -63,13 +63,13 @@ function needsOoxmlNormalization(timing) {
     if (!mainSeq)
         return false;
     return (mainSeq.ctn.childTnLst ?? []).some((c) => {
-        const nodeType = animation_1.ooxml.getCTn(c).nodeType;
+        const nodeType = present_animation_1.ooxml.getCTn(c).nodeType;
         return c.kind === "par" && nodeType !== undefined && EFFECT_NODE_TYPES.has(nodeType);
     });
 }
 // ---- cTn.delay → stCondLst/cond@delay ----
 function hoistDelays(n) {
-    const ctn = animation_1.ooxml.getCTn(n);
+    const ctn = present_animation_1.ooxml.getCTn(n);
     if (ctn.delay !== undefined) {
         mergeDelayIntoConds(ctn, ctn.delay);
         delete ctn.delay;
@@ -101,7 +101,7 @@ function groupMainSeqChildren(children, mainSeqId, ids, converted) {
     const out = [];
     let current = null;
     for (const child of children) {
-        const nodeType = animation_1.ooxml.getCTn(child).nodeType;
+        const nodeType = present_animation_1.ooxml.getCTn(child).nodeType;
         if (child.kind !== "par" || !nodeType || !EFFECT_NODE_TYPES.has(nodeType)) {
             out.push(child);
             current = adoptCanonicalGroup(child);
@@ -154,7 +154,7 @@ function adoptCanonicalGroup(node) {
         const startMs = numericCondDelay(wg.ctn.stCondLst);
         withGroups.push({ node: wg, startMs });
         for (const eff of wg.ctn.childTnLst ?? []) {
-            endMs = Math.max(endMs, startMs + numericCondDelay(animation_1.ooxml.getCTn(eff).stCondLst) + effectDurMs(eff));
+            endMs = Math.max(endMs, startMs + numericCondDelay(present_animation_1.ooxml.getCTn(eff).stCondLst) + effectDurMs(eff));
         }
     }
     return { node, withGroups, endMs };
@@ -206,13 +206,13 @@ function setNumericCondDelay(ctn, delayMs) {
 }
 // 效果实际跨度：叶子 (cond delay + dur) 的最大值。容器 dur 显式且 >1ms 时优先。
 function effectDurMs(node) {
-    const ctn = animation_1.ooxml.getCTn(node);
-    if (animation_1.ooxml.isContainer(node)) {
+    const ctn = present_animation_1.ooxml.getCTn(node);
+    if (present_animation_1.ooxml.isContainer(node)) {
         if (typeof ctn.dur === "number" && ctn.dur > 1)
             return ctn.dur;
         let max = 0;
         for (const c of ctn.childTnLst ?? []) {
-            max = Math.max(max, numericCondDelay(animation_1.ooxml.getCTn(c).stCondLst) + effectDurMs(c));
+            max = Math.max(max, numericCondDelay(present_animation_1.ooxml.getCTn(c).stCondLst) + effectDurMs(c));
         }
         return max;
     }
@@ -238,9 +238,9 @@ function ensureBuildEntries(timing, effects) {
     }
 }
 function firstShapeTarget(node) {
-    if (animation_1.ooxml.isBehavior(node) || animation_1.ooxml.isMedia(node))
-        return animation_1.ooxml.getTgtEl(node)?.spTgt;
-    for (const c of animation_1.ooxml.getChildren(node)) {
+    if (present_animation_1.ooxml.isBehavior(node) || present_animation_1.ooxml.isMedia(node))
+        return present_animation_1.ooxml.getTgtEl(node)?.spTgt;
+    for (const c of present_animation_1.ooxml.getChildren(node)) {
         const t = firstShapeTarget(c);
         if (t)
             return t;
@@ -269,8 +269,8 @@ function tgtIsDangling(tgt) {
 }
 /** 返回 false 表示该节点应被移除。`keepEmpty` 只对 tnLst 顶层为真；tmRoot / mainSeq 等骨架自身永远保留。 */
 function pruneNode(n, keepEmpty) {
-    if (animation_1.ooxml.isBehavior(n) || animation_1.ooxml.isMedia(n))
-        return !tgtIsDangling(animation_1.ooxml.getTgtEl(n));
+    if (present_animation_1.ooxml.isBehavior(n) || present_animation_1.ooxml.isMedia(n))
+        return !tgtIsDangling(present_animation_1.ooxml.getTgtEl(n));
     const ctn = n.ctn;
     const skeleton = ctn.nodeType === "tmRoot" || ctn.nodeType === "mainSeq" || ctn.nodeType === "interactiveSeq";
     const dropCond = (c) => !tgtIsDangling(c.tgtEl);
@@ -298,7 +298,7 @@ function pruneNode(n, keepEmpty) {
 // ---- 杂项 ----
 function findMainSeq(timing) {
     for (const top of timing.tnLst) {
-        if (!animation_1.ooxml.isContainer(top))
+        if (!present_animation_1.ooxml.isContainer(top))
             continue;
         for (const c of top.ctn.childTnLst ?? []) {
             if (c.kind === "seq" && c.ctn.nodeType === "mainSeq")
@@ -311,12 +311,12 @@ class CTnIdAllocator {
     max = 1;
     constructor(timing) {
         const visit = (n) => {
-            const id = Number(animation_1.ooxml.getCTn(n).id);
+            const id = Number(present_animation_1.ooxml.getCTn(n).id);
             if (Number.isFinite(id) && id > this.max)
                 this.max = id;
-            for (const c of animation_1.ooxml.getChildren(n))
+            for (const c of present_animation_1.ooxml.getChildren(n))
                 visit(c);
-            for (const c of animation_1.ooxml.getCTn(n).subTnLst ?? [])
+            for (const c of present_animation_1.ooxml.getCTn(n).subTnLst ?? [])
                 visit(c);
         };
         for (const n of timing.tnLst)

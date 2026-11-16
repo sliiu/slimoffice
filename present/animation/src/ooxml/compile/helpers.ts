@@ -1,5 +1,5 @@
 // Shared low-level helpers reused across compile/*.
-// All exports stay internal to the @ppt/animation package.
+// All exports stay internal to the @sliiu/present-animation package.
 
 import { bySplineEasing } from "../easing";
 import type { EasingFn } from "../../types";

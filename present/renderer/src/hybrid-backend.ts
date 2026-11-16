@@ -1,4 +1,4 @@
-import type { Shape } from "@ppt/core";
+import type { Shape } from "@sliiu/present-core";
 import type { Scene } from "./scene-node";
 import { SvgBackend } from "./svg-backend";
 import { CanvasBackend } from "./canvas-backend";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { scaleTextShapeForAutofit } from "./text-autofit.js";
-import type { TextShape } from "@ppt/core";
+import type { TextShape } from "@sliiu/present-core";
 
 describe("scaleTextShapeForAutofit", () => {
   it("scales run fontSize and paragraph spacing", () => {

@@ -17,8 +17,8 @@ import type {
   SlideMaster,
   SlideSize,
   TextStyles as CoreTextStyles,
-} from "@ppt/core";
-import { getOrigin, setOrigin, VBA_PROJECT_PART_PATH } from "@ppt/core";
+} from "@sliiu/present-core";
+import { getOrigin, setOrigin, VBA_PROJECT_PART_PATH } from "@sliiu/present-core";
 import { boolish } from "./units";
 import type { Baker } from "./shape-3d";
 import { findByLocalName, findAllByLocalName, attr, orderedChildren, stripNs, type XmlNode } from "./xml";
@@ -27,7 +27,7 @@ import { loadArchive, type PptxArchive } from "./zip";
 import { findPresentationPath, loadRels, loadXmlPart } from "./parts";
 import { applyClrMapToTheme, parseTheme, type ThemeData } from "./theme";
 import { parseTimingOoxml, resolveTimingSoundTargets } from "./timing-ooxml";
-import { collectEntranceTargets } from "@ppt/animation";
+import { collectEntranceTargets } from "@sliiu/present-animation";
 import { parseBuildList } from "./bld-list";
 import { parseSlideTransition } from "./transition";
 import { MediaResolver, type MediaMode } from "./media";
@@ -79,7 +79,7 @@ import {
   kinsokuSnapshot,
   viewGuidesSnapshot,
   showPropertiesSnapshot,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { parsePPrDefaults, readRunProps, type TextCtx } from "./text";
 import { parsePresentationSectionLst } from "./sections";
 import { findByLocalName as findEl } from "./xml";
@@ -208,7 +208,7 @@ export function parseFromArchive(archive: PptxArchive, opts: ParseOptions = {}):
   const tableStyleMap: TableStyleMap | undefined = loadTableStyles(archive, tableStylesPath, fillCtx);
   const commentAuthors = loadCommentAuthors(archive, presRels);
   const modernAuthors = loadModernAuthors(archive, presRels);
-  const deckComments: import("@ppt/core").DeckComment[] = [];
+  const deckComments: import("@sliiu/present-core").DeckComment[] = [];
   const slides = parseSlides(
     archive,
     presEl,
@@ -370,7 +370,7 @@ export function parseFromArchive(archive: PptxArchive, opts: ParseOptions = {}):
       viewPropsPartPath,
       showPrSnapshot: showPropertiesSnapshot(pres.showPr),
       presPropsPartPath,
-    } satisfies import("@ppt/core").PresentationSource,
+    } satisfies import("@sliiu/present-core").PresentationSource,
     enumerable: false,
     configurable: true,
     writable: true,
@@ -404,7 +404,7 @@ export function attachFillStrokeSnapshots(shapes: unknown): void {
     if ("stroke" in shape) {
       setOrigin(shape, {
         stroke: shape.stroke !== undefined
-          ? (deepCloneJson(shape.stroke) as import("@ppt/core").Stroke)
+          ? (deepCloneJson(shape.stroke) as import("@sliiu/present-core").Stroke)
           : undefined,
       });
     }
@@ -442,19 +442,19 @@ export function attachFillStrokeSnapshots(shapes: unknown): void {
     }
     if (shape.kind === "chart" && "chart" in shape) {
       setOrigin(shape, {
-        chart: deepCloneJson((shape as { chart: unknown }).chart) as import("@ppt/core").ChartDef,
+        chart: deepCloneJson((shape as { chart: unknown }).chart) as import("@sliiu/present-core").ChartDef,
       });
     }
-    const meta3D = (shape as { meta3D?: import("@ppt/core").Sp3DInfo }).meta3D;
+    const meta3D = (shape as { meta3D?: import("@sliiu/present-core").Sp3DInfo }).meta3D;
     if (meta3D) {
-      setOrigin(shape, { meta3D: deepCloneJson(meta3D) as import("@ppt/core").Sp3DInfo });
+      setOrigin(shape, { meta3D: deepCloneJson(meta3D) as import("@sliiu/present-core").Sp3DInfo });
     }
     // effects 基线始终记录（含"解析期就没有效果"的空数组）：serializer 靠
     // `模型值 == 基线` 判定未编辑 → 保留 raw `<a:effectLst>` 原字节。缺基线时
     // 会被当成"用户新加了效果"而写出，把 effectRef 继承来的阴影钉死进 spPr。
-    const fx = (shape as { effects?: import("@ppt/core").ShapeEffect[] }).effects;
+    const fx = (shape as { effects?: import("@sliiu/present-core").ShapeEffect[] }).effects;
     setOrigin(shape, {
-      effects: deepCloneJson(fx ?? []) as import("@ppt/core").ShapeEffect[],
+      effects: deepCloneJson(fx ?? []) as import("@sliiu/present-core").ShapeEffect[],
     });
     if (Array.isArray(shape.children)) attachFillStrokeSnapshots(shape.children);
   }
@@ -562,11 +562,11 @@ function idFromPath(p: string): string {
 // parser 内部 TxStyles → core TextStyles：字段结构一致，只是 array 空判断 / 空对象剥离。
 function convertTxStylesToCore(s: TxStyles | undefined): CoreTextStyles | undefined {
   if (!s) return undefined;
-  const conv = (arr: LevelStyle[]): import("@ppt/core").LevelStyleSpec[] | undefined => {
+  const conv = (arr: LevelStyle[]): import("@sliiu/present-core").LevelStyleSpec[] | undefined => {
     if (arr.length === 0) return undefined;
-    const out: import("@ppt/core").LevelStyleSpec[] = arr.map((l) => ({
-      pPr: l.pPr && Object.keys(l.pPr).length ? (l.pPr as import("@ppt/core").TextParagraphDefaults) : undefined,
-      rPr: l.rPr && Object.keys(l.rPr).length ? (l.rPr as import("@ppt/core").TextRunDefaults) : undefined,
+    const out: import("@sliiu/present-core").LevelStyleSpec[] = arr.map((l) => ({
+      pPr: l.pPr && Object.keys(l.pPr).length ? (l.pPr as import("@sliiu/present-core").TextParagraphDefaults) : undefined,
+      rPr: l.rPr && Object.keys(l.rPr).length ? (l.rPr as import("@sliiu/present-core").TextRunDefaults) : undefined,
       bullet: l.bullet,
     }));
     // 全空数组（lvl1..lvl9 都是空对象）就当无值。
@@ -592,11 +592,11 @@ function loadAuxMasters(
   media: MediaResolver,
   relType: string,
   embeddedFontFamilies?: string[],
-): import("@ppt/core").SlideMaster[] | undefined {
+): import("@sliiu/present-core").SlideMaster[] | undefined {
   const rootName: "notesMaster" | "handoutMaster" = relType.endsWith(TYPE_NOTES_MASTER)
     ? "notesMaster"
     : "handoutMaster";
-  const out: import("@ppt/core").SlideMaster[] = [];
+  const out: import("@sliiu/present-core").SlideMaster[] = [];
   for (const r of presRels.list) {
     if (!r.type.endsWith(relType)) continue;
     const path = presRels.resolve(r.id);
@@ -610,7 +610,7 @@ function loadAuxMasters(
       const parsed = parseLstStyle(notesStyleEl, { theme: applyClrMapToTheme(theme, part.clrMap) });
       txStyles = convertTxStylesToCore({ title: [], body: parsed, other: [] });
     }
-    const sm: import("@ppt/core").SlideMaster = {
+    const sm: import("@sliiu/present-core").SlideMaster = {
       id,
       name: id,
       background: part.background,
@@ -643,11 +643,11 @@ function loadAuxMasters(
 function parseDefaultTextStyle(
   presEl: XmlNode | undefined,
   ctx: TextCtx,
-): import("@ppt/core").TextStyles | undefined {
+): import("@sliiu/present-core").TextStyles | undefined {
   if (!presEl) return undefined;
   const dts = findByLocalName(presEl, "defaultTextStyle");
   if (!dts) return undefined;
-  const body: import("@ppt/core").LevelStyleSpec[] = [];
+  const body: import("@sliiu/present-core").LevelStyleSpec[] = [];
   let any = false;
   const pushLvl = (key: string): void => {
     const el = findByLocalName(dts, key);
@@ -935,7 +935,7 @@ function getLayout(
 // 收集嵌入字体的唯一"基底族名"（去重 + 保留首次出现顺序），不包括 "X Bold" / "X Italic"
 // 这类按 PowerPoint 命名习惯生成的子族别名 —— 子族通常仍指向同一 TTF，因此用基底名作为脚本
 // 兜底已足够，避免 font-family 列表过度膨胀。
-function collectEmbeddedFontFamilies(fonts: import("@ppt/core").EmbeddedFont[]): string[] {
+function collectEmbeddedFontFamilies(fonts: import("@sliiu/present-core").EmbeddedFont[]): string[] {
   const SUFFIXES = [" Bold Italic", " Bold", " Italic"];
   const out: string[] = [];
   const seen = new Set<string>();
@@ -964,10 +964,10 @@ function parseSlides(
   masterCache: Map<string, MasterPart>,
   layoutCache: Map<string, LayoutPart>,
   embeddedFontFamilies?: string[],
-  defaultTextStyle?: import("@ppt/core").TextStyles,
+  defaultTextStyle?: import("@sliiu/present-core").TextStyles,
   tableStyleMap?: TableStyleMap,
   commentAuthors?: import("./comments").CommentAuthorIndex,
-  deckComments?: import("@ppt/core").DeckComment[],
+  deckComments?: import("@sliiu/present-core").DeckComment[],
   modernAuthors?: import("./modern-comments").ModernAuthorIndex,
 ): Slide[] {
   const sldIdLst = findByLocalName(presEl, "sldIdLst");
@@ -1033,10 +1033,10 @@ function parseSlide(
   masterCache: Map<string, MasterPart>,
   layoutCache: Map<string, LayoutPart>,
   embeddedFontFamilies?: string[],
-  defaultTextStyle?: import("@ppt/core").TextStyles,
+  defaultTextStyle?: import("@sliiu/present-core").TextStyles,
   tableStyleMap?: TableStyleMap,
   commentAuthors?: import("./comments").CommentAuthorIndex,
-  deckComments?: import("@ppt/core").DeckComment[],
+  deckComments?: import("@sliiu/present-core").DeckComment[],
   modernAuthors?: import("./modern-comments").ModernAuthorIndex,
   resolveSlideNumber?: (partPath: string) => number | undefined,
 ): Slide | undefined {
@@ -1298,7 +1298,7 @@ function parseSlide(
       commentsSnapshot: slideComments.length ? JSON.stringify(slideComments) : "",
       commentsPartPath,
       commentsModern,
-    } satisfies import("@ppt/core").SlideSource,
+    } satisfies import("@sliiu/present-core").SlideSource,
     enumerable: false,
     configurable: true,
     writable: true,

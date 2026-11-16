@@ -21,8 +21,8 @@ import {
   type Stroke,
   type TextRun,
   type TextShape,
-} from "@ppt/core";
-import { createShapeFromPreset } from "@ppt/editor/commands";
+} from "@sliiu/present-core";
+import { createShapeFromPreset } from "@sliiu/present-editor/commands";
 import type { ColorTheme } from "./color-theme.js";
 import { onRoleText, paletteOf, type ColorPalette } from "./color-theme.js";
 import type { VisualSystem } from "./visual-system.js";
@@ -454,7 +454,7 @@ function emitTable(el: PaintedEl, pal: ColorPalette, sys: VisualSystem, id: stri
 
 /**
  * Shape ids MUST start with `sp_`: the whole animation stack derives the OOXML
- * `spTgt.spid` by stripping that prefix (`@ppt/editor` insertEffect) and resolves
+ * `spTgt.spid` by stripping that prefix (`@sliiu/present-editor` insertEffect) and resolves
  * targets back as `sp_${spid}` (`computeInitialEntranceState`, the player runtime).
  * A `dg_…` id used to slip past that contract — effects were written, no shape
  * matched, so nothing was hidden at slide start and no entrance ever played.

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.imagesPerSlide = imagesPerSlide;
 exports.gridForLayout = gridForLayout;
 exports.buildPhotoAlbumSlides = buildPhotoAlbumSlides;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const shape_factory_1 = require("./shape-factory");
 const MARGIN = 0.05;
 const CELL_PAD = 8;
@@ -100,7 +100,7 @@ function buildPhotoAlbumSlides(pres, images, album, startIndex) {
     for (let i = 0; i < images.length; i += perSlide) {
         const batch = images.slice(i, i + perSlide);
         const slideIdx = startIndex + slides.length;
-        const slide = (0, core_1.createSlideFromMaster)(pres.masters, {
+        const slide = (0, present_core_1.createSlideFromMaster)(pres.masters, {
             index: slideIdx,
             layoutType: "blank",
             preferredTypes: ["blank", "obj", "titleOnly"],

@@ -18,7 +18,7 @@
 //   - setChartType：在已有数据基础上换 chart type（柱 → 折线），不重写 series。
 
 import { z } from "zod";
-import { AddShapeCmd, SetChartDefCmd, createChart } from "@ppt/editor/commands";
+import { AddShapeCmd, SetChartDefCmd, createChart } from "@sliiu/present-editor/commands";
 import type {
   AreaChartDef,
   BarChartDef,
@@ -31,7 +31,7 @@ import type {
   ScatterChartDef,
   StockChartDef,
   SurfaceChartDef,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { defineTool, ok, err } from "../types";
 
 const colorRe = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
@@ -288,7 +288,7 @@ export const chartTools = [
 
 // ---- 辅助 ----
 
-function findChartShape(slide: import("@ppt/core").Slide, id: string): import("@ppt/core").ChartShape | undefined {
+function findChartShape(slide: import("@sliiu/present-core").Slide, id: string): import("@sliiu/present-core").ChartShape | undefined {
   for (const layer of slide.layers) {
     for (const s of layer.shapes) {
       const f = findChart(s, id);
@@ -298,7 +298,7 @@ function findChartShape(slide: import("@ppt/core").Slide, id: string): import("@
   return undefined;
 }
 
-function findChart(s: import("@ppt/core").Shape, id: string): import("@ppt/core").ChartShape | undefined {
+function findChart(s: import("@sliiu/present-core").Shape, id: string): import("@sliiu/present-core").ChartShape | undefined {
   if (s.id === id && s.kind === "chart") return s;
   if (s.kind === "group") {
     for (const c of s.children) {

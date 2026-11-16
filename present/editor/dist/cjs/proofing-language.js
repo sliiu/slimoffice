@@ -5,9 +5,9 @@ exports.localeToProofingLangId = localeToProofingLangId;
 exports.getStoredProofingLanguage = getStoredProofingLanguage;
 exports.getEffectiveProofingLanguage = getEffectiveProofingLanguage;
 exports.proofingLangTag = proofingLangTag;
-const core_1 = require("@sliiu/present-core");
-Object.defineProperty(exports, "getProofingLanguage", { enumerable: true, get: function () { return core_1.getProofingLanguage; } });
-Object.defineProperty(exports, "setProofingLanguageMeta", { enumerable: true, get: function () { return core_1.setProofingLanguageMeta; } });
+const present_core_1 = require("@sliiu/present-core");
+Object.defineProperty(exports, "getProofingLanguage", { enumerable: true, get: function () { return present_core_1.getProofingLanguage; } });
+Object.defineProperty(exports, "setProofingLanguageMeta", { enumerable: true, get: function () { return present_core_1.setProofingLanguageMeta; } });
 const i18n_1 = require("./i18n");
 exports.PROOFING_LANGUAGES = [
     { id: "en", labelKey: "proofing.lang.en", tag: "en" },
@@ -40,7 +40,7 @@ function localeToProofingLangId(locale) {
 }
 /** presentation 元数据中显式存储的校对语言；未设置时返回 undefined。 */
 function getStoredProofingLanguage(pres) {
-    return (0, core_1.normalizeProofingLangId)(pres.meta?.[core_1.PROOFING_LANG_META_KEY]);
+    return (0, present_core_1.normalizeProofingLangId)(pres.meta?.[present_core_1.PROOFING_LANG_META_KEY]);
 }
 /** 运行时校对语言：优先元数据，否则跟随当前 UI locale。 */
 function getEffectiveProofingLanguage(pres) {

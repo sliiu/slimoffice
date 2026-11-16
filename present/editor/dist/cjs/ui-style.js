@@ -14,7 +14,7 @@ exports.observeHostDevMode = observeHostDevMode;
 exports.closeRibbonMoreDialogs = closeRibbonMoreDialogs;
 exports.closeRibbonMoreUnlessFromMoreDialog = closeRibbonMoreUnlessFromMoreDialog;
 exports.hasOpenRibbonPopover = hasOpenRibbonPopover;
-const ui_1 = require("@sliiu/present-ui");
+const present_ui_1 = require("@sliiu/present-ui");
 const RIBBON_STYLE_ID = "ppt-editor-ribbon-style";
 /** Editor top bar — 48px L|C|R; view bar / command row / status bar below. Legacy group/button classes still style popovers. */
 const RIBBON_CSS = `
@@ -2202,7 +2202,7 @@ body.ppt-right-panel-resizing,
 body.ppt-right-panel-resizing * { cursor: col-resize !important; user-select: none !important; }
 `;
 function ensureUiStyles(doc) {
-    (0, ui_1.ensureUiStyles)(doc);
+    (0, present_ui_1.ensureUiStyles)(doc);
     let ribbonStyle = doc.getElementById(RIBBON_STYLE_ID);
     if (!ribbonStyle) {
         ribbonStyle = doc.createElement("style");
@@ -2225,7 +2225,7 @@ function ensureUiStyles(doc) {
     doc.head.appendChild(style);
 }
 /** 样式类名常量，便于在 cssText 模板里拼接。 */
-exports.SCROLL_CLASS = ui_1.SCROLL_CLASS;
+exports.SCROLL_CLASS = present_ui_1.SCROLL_CLASS;
 exports.RANGE_INPUT_CLASS = "ppt-range";
 exports.COLOR_SWATCH_CLASS = "ppt-color-swatch";
 exports.CONTROL_INPUT_CLASS = "ppt-control";

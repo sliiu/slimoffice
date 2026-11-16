@@ -6,7 +6,7 @@ import type {
   ChartView3D,
   ClassicChartType,
   RadarChartDef,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { findAllByLocalName, findByLocalName, attr, type XmlNode } from "./xml";
 import type { ThemeData } from "./theme";
 import { resolveColor } from "./theme";

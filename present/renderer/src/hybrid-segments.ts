@@ -1,5 +1,5 @@
-import { needs3DRender, shape3DInfo, shapeSupports3D } from "@ppt/three-bake";
-import type { Model3DShape, Shape } from "@ppt/core";
+import { needs3DRender, shape3DInfo, shapeSupports3D } from "@sliiu/present-three-bake";
+import type { Model3DShape, Shape } from "@sliiu/present-core";
 import type { SceneNode } from "./scene-node";
 
 const BITMAP_KINDS = new Set<Shape["kind"]>(["image", "chart"]);

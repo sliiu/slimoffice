@@ -15,7 +15,7 @@
 //     灯管，纵向收在版心之外；角部只留细线、括号、角标这类结构性小元素。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildDecorationShapesShared = buildDecorationShapesShared;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 /**
  * content 页允许保留的装饰单体最大面积占比（相对 slide 面积）。
  * 实测分布：氛围光晕/大色块类（Glow/Blob/Arc/Mist/Soft）全部 >5%，
@@ -33,7 +33,7 @@ function buildDecorationShapesShared(dec, ctx) {
         visible: true,
         locked,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
     });
     const mkRect = (bbox, color, alpha, name = "Decor") => ({
         ...base(),

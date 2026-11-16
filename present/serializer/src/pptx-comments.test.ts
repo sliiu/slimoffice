@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { DeckComment } from "@ppt/core";
+import type { DeckComment } from "@sliiu/present-core";
 import { exportableComments, slideCommentsForExport } from "./pptx-comments.js";
 
 function c(partial: Partial<DeckComment> & Pick<DeckComment, "id" | "slideIndex">): DeckComment {

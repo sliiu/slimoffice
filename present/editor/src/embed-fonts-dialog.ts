@@ -1,7 +1,7 @@
 import { bindEditorModal } from "./dialog";
-import type { CommandStack, EmbeddedFont, Presentation } from "@ppt/core";
-import { collectUsedFontFaces, collectUsedTypefaces, isFontFaceEmbedded, isTypefaceEmbedded, bytesToFontDataUrl } from "@ppt/core";
-import { findFontPreset } from "@ppt/themes";
+import type { CommandStack, EmbeddedFont, Presentation } from "@sliiu/present-core";
+import { collectUsedFontFaces, collectUsedTypefaces, isFontFaceEmbedded, isTypefaceEmbedded, bytesToFontDataUrl } from "@sliiu/present-core";
+import { findFontPreset } from "@sliiu/present-themes";
 import { EmbedFontsCmd } from "./embed-fonts-cmd";
 import { fetchPresetFontDataUrl } from "./font-embed-fetch";
 import { t } from "./i18n";

@@ -2,7 +2,7 @@
 // 动画面板 - 列出当前 slide 的所有动画，支持选择/排序/删除/新增/属性编辑。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mountAnimationPanel = mountAnimationPanel;
-const animation_1 = require("@sliiu/present-animation");
+const present_animation_1 = require("@sliiu/present-animation");
 const commands_1 = require("./commands");
 const store_1 = require("./store");
 const preset_picker_1 = require("./preset-picker");
@@ -16,7 +16,7 @@ function presetNameFor(cls, presetId) {
     let fallback;
     if (cls === "entr" || cls === "emph" || cls === "exit" || cls === "path") {
         try {
-            const found = animation_1.ooxml
+            const found = present_animation_1.ooxml
                 .listPresets(cls)
                 .find((p) => p.id === presetId || p.ids.includes(presetId));
             if (found) {
@@ -97,10 +97,10 @@ function subtypeOptions(cls, presetId, current) {
     const exit = cls === "exit";
     let values = [];
     let kind;
-    const tpl = animation_1.ooxml.findPresetTemplate(cls, presetId);
+    const tpl = present_animation_1.ooxml.findPresetTemplate(cls, presetId);
     if (tpl?._subtypes) {
-        values = animation_1.ooxml.presetTemplateSubtypes(tpl);
-        kind = animation_1.ooxml.presetTemplateSubtypeKind(tpl);
+        values = present_animation_1.ooxml.presetTemplateSubtypes(tpl);
+        kind = present_animation_1.ooxml.presetTemplateSubtypeKind(tpl);
         if (kind === "compass") {
             values = COMPASS_ORDER.filter((v) => values.includes(v));
         }
@@ -111,7 +111,7 @@ function subtypeOptions(cls, presetId, current) {
         }
     }
     else if (!tpl &&
-        animation_1.ooxml.listPresets(cls).find((p) => p.id === presetId || p.ids.includes(presetId))?.supportsSubtype) {
+        present_animation_1.ooxml.listPresets(cls).find((p) => p.id === presetId || p.ids.includes(presetId))?.supportsSubtype) {
         values = COMPASS_ORDER;
         kind = "compass";
     }

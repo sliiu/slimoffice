@@ -1,4 +1,4 @@
-export declare const shapeTools: (import("...js").ToolDef<{
+export declare const shapeTools: (import("../index.js").ToolDef<{
     slideIdx: number;
     bbox: {
         x: number;
@@ -16,7 +16,7 @@ export declare const shapeTools: (import("...js").ToolDef<{
     vAlign?: "bottom" | "middle" | "top" | undefined;
     fillColor?: string | undefined;
     name?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     preset: string;
     bbox: {
@@ -60,7 +60,7 @@ export declare const shapeTools: (import("...js").ToolDef<{
     opacity?: number | undefined;
     rotation?: number | undefined;
     name?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     x1: number;
     y1: number;
@@ -72,7 +72,7 @@ export declare const shapeTools: (import("...js").ToolDef<{
     headArrow?: "arrow" | "diamond" | "none" | "oval" | "stealth" | "triangle" | undefined;
     tailArrow?: "arrow" | "diamond" | "none" | "oval" | "stealth" | "triangle" | undefined;
     name?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     src: string;
     bbox?: {
@@ -84,17 +84,17 @@ export declare const shapeTools: (import("...js").ToolDef<{
     autoplay?: boolean | undefined;
     loop?: boolean | undefined;
     name?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     sourceSlideIdx: number;
     sourceShapeId: string;
     targetSlideIdx: number;
     targetShapeId: string;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     shapeIds: string[];
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     category?: "arrows" | "basic" | "callouts" | "flowchart" | "lines" | "rect" | "starsBanners" | undefined;
 }>)[];

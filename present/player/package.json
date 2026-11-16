@@ -45,12 +45,12 @@
   "dependencies": {
     "lucide": "^1.48.0",
     "pngjs": "^7.0.0",
-    "@sliiu/present-animation": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-core": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-plugin-sdk": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-renderer": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-three-bake": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-transition-fx": "0.0.0-nightly.20261116031027"
+    "@sliiu/present-animation": "workspace:*",
+    "@sliiu/present-core": "workspace:*",
+    "@sliiu/present-plugin-sdk": "workspace:*",
+    "@sliiu/present-renderer": "workspace:*",
+    "@sliiu/present-three-bake": "workspace:*",
+    "@sliiu/present-transition-fx": "workspace:*"
   },
   "devDependencies": {
     "vite": "^8.3.1"

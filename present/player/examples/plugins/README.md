@@ -14,7 +14,7 @@
 ```js
 // scripts/export-html.mjs
 import { readFileSync } from "node:fs";
-import { buildHtml } from "@ppt/player";
+import { buildHtml } from "@sliiu/present-player";
 
 const playerScript = readFileSync("./packages/player/dist/player.iife.js", "utf8");
 const inspector = readFileSync("./packages/player/examples/plugins/inspector.js", "utf8");
@@ -99,7 +99,7 @@ PPTPlayer.definePlugin({
 ## 运行时动态注册（ESM 场景）
 
 ```ts
-import { mount } from "@ppt/player";
+import { mount } from "@sliiu/present-player";
 
 const handle = mount(host, pres);
 

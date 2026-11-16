@@ -17,7 +17,7 @@ exports.captureFormatSnapshot = captureFormatSnapshot;
 exports.isWordArtStackedVert = isWordArtStackedVert;
 exports.textRowOrderRtl = textRowOrderRtl;
 exports.textRowOrderPatch = textRowOrderPatch;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const crop_frame_1 = require("./crop-frame");
 const selection_1 = require("./selection");
 const connector_glue_1 = require("./connector-glue");
@@ -49,7 +49,7 @@ function resolveTarget(pres, target) {
             shapes: main.shapes,
             setShapes: (next) => { main.shapes = next; },
             get background() { return slide.background; },
-            setBackground: (next) => { (0, core_1.assignSlideBackground)(slide, next); },
+            setBackground: (next) => { (0, present_core_1.assignSlideBackground)(slide, next); },
         };
     }
     if (target.kind === "notesMaster") {
@@ -66,7 +66,7 @@ function resolveTarget(pres, target) {
             shapes: master.shapes,
             setShapes: (next) => { master.shapes = next; },
             get background() { return master.background; },
-            setBackground: (next) => { (0, core_1.assignSlideBackground)(master, next); },
+            setBackground: (next) => { (0, present_core_1.assignSlideBackground)(master, next); },
         };
     }
     const master = pres.masters?.find((m) => m.id === target.masterId);
@@ -77,7 +77,7 @@ function resolveTarget(pres, target) {
         shapes: layout.shapes,
         setShapes: (next) => { layout.shapes = next; },
         get background() { return layout.background; },
-        setBackground: (next) => { (0, core_1.assignSlideBackground)(layout, next); },
+        setBackground: (next) => { (0, present_core_1.assignSlideBackground)(layout, next); },
     };
 }
 function resolveAuxMaster(masters, masterId) {
@@ -88,7 +88,7 @@ function resolveAuxMaster(masters, masterId) {
         shapes: master.shapes,
         setShapes: (next) => { master.shapes = next; },
         get background() { return master.background; },
-        setBackground: (next) => { (0, core_1.assignSlideBackground)(master, next); },
+        setBackground: (next) => { (0, present_core_1.assignSlideBackground)(master, next); },
     };
 }
 function backgroundHost(pres, target) {
@@ -199,7 +199,7 @@ class MoveShapeCmd {
             return;
         const s = resolveSyntheticTextBox(pres, this.slideIdx, root);
         translateShape(s, this.dx, this.dy);
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
         followGluedConnectors(pres, this.slideIdx, s);
     }
     revert(pres) {
@@ -232,7 +232,7 @@ function translateShape(s, dx, dy) {
         if (s.presetType)
             regeneratePathFromPreset(s);
         else
-            s.d = (0, core_1.translatePathD)(s.d, dx, dy);
+            s.d = (0, present_core_1.translatePathD)(s.d, dx, dy);
     }
     if (s.kind === "group")
         for (const c of s.children)
@@ -306,7 +306,7 @@ class SetLineEndpointsCmd {
             else if (this.glue.endCxn)
                 s.endCxn = this.glue.endCxn;
         }
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -379,7 +379,7 @@ class SetPathConnectorEndsCmd {
                 s.endCxn = this.glue.endCxn;
         }
         regeneratePathFromPreset(s);
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -404,7 +404,7 @@ class SetPathConnectorEndsCmd {
             s.endCxn = this.prev.endCxn;
         else
             delete s.endCxn;
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
     }
 }
 exports.SetPathConnectorEndsCmd = SetPathConnectorEndsCmd;
@@ -434,7 +434,7 @@ class SetPolygonPointsCmd {
         }
         s.points = this.points.map((p) => [p[0], p[1]]);
         s.bbox = { ...this.bbox };
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -469,7 +469,7 @@ class SetPresetAdjCmd {
         }
         s.presetAdj = { ...this.nextAdj };
         regeneratePathFromPreset(s);
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -506,11 +506,11 @@ class ResizeShapeCmd {
             return;
         const s = resolveSyntheticTextBox(pres, this.slideIdx, root);
         if (s.kind === "group" && s.smartArtMeta) {
-            const items = (0, core_1.extractSmartArtItems)(s);
+            const items = (0, present_core_1.extractSmartArtItems)(s);
             this.smartArtRevert = { bbox: { ...s.bbox }, items: items.map((it) => ({ ...it })) };
             s.bbox = { ...this.next };
-            (0, core_1.rebuildSmartArtChildren)(s, items);
-            (0, core_1.markDirty)(s, "bbox");
+            (0, present_core_1.rebuildSmartArtChildren)(s, items);
+            (0, present_core_1.markDirty)(s, "bbox");
             followGluedConnectors(pres, this.slideIdx, s);
             return;
         }
@@ -519,7 +519,7 @@ class ResizeShapeCmd {
         const prev = { ...s.bbox };
         rescale(s, prev, this.next);
         s.bbox = { ...this.next };
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
         reattachAndFollowGlue(pres, this.slideIdx, s);
     }
     revert(pres) {
@@ -531,7 +531,7 @@ class ResizeShapeCmd {
             return;
         if (s.kind === "group" && s.smartArtMeta && this.smartArtRevert) {
             s.bbox = { ...this.smartArtRevert.bbox };
-            (0, core_1.rebuildSmartArtChildren)(s, this.smartArtRevert.items);
+            (0, present_core_1.rebuildSmartArtChildren)(s, this.smartArtRevert.items);
             followGluedConnectors(pres, this.slideIdx, s);
             return;
         }
@@ -780,7 +780,7 @@ class EditTextCmd {
                 runs: [{ ...deepClone(fallbackRun), text: line }],
             };
         });
-        (0, core_1.markDirty)(text, "text");
+        (0, present_core_1.markDirty)(text, "text");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -877,15 +877,15 @@ class SetFillCmd {
             this.batchPrev = targets.map((c) => ({ id: c.id, prev: c.fill }));
             for (const c of targets) {
                 c.fill = this.next;
-                (0, core_1.markDirty)(c, "fill");
+                (0, present_core_1.markDirty)(c, "fill");
             }
-            (0, core_1.markDirty)(root, "fill");
+            (0, present_core_1.markDirty)(root, "fill");
             return;
         }
         const s = targets[0];
         this.prev = s.fill;
         s.fill = this.next;
-        (0, core_1.markDirty)(s, "fill");
+        (0, present_core_1.markDirty)(s, "fill");
     }
     revert(pres) {
         const root = shapeAt(pres, this.slideIdx, this.id);
@@ -931,9 +931,9 @@ class SetStrokeCmd {
             this.batchPrev = cells.map((c) => ({ id: c.id, prev: c.stroke }));
             for (const c of cells) {
                 c.stroke = this.next;
-                (0, core_1.markDirty)(c, "stroke");
+                (0, present_core_1.markDirty)(c, "stroke");
             }
-            (0, core_1.markDirty)(root, "stroke");
+            (0, present_core_1.markDirty)(root, "stroke");
             return;
         }
         const splits = multiPathSplitChildren(root, "stroke");
@@ -941,9 +941,9 @@ class SetStrokeCmd {
             this.batchPrev = splits.map((c) => ({ id: c.id, prev: c.stroke }));
             for (const c of splits) {
                 c.stroke = this.next;
-                (0, core_1.markDirty)(c, "stroke");
+                (0, present_core_1.markDirty)(c, "stroke");
             }
-            (0, core_1.markDirty)(root, "stroke");
+            (0, present_core_1.markDirty)(root, "stroke");
             return;
         }
         const s = pickStyleTarget(root);
@@ -951,7 +951,7 @@ class SetStrokeCmd {
             return;
         this.prev = s.stroke;
         s.stroke = this.next;
-        (0, core_1.markDirty)(s, "stroke");
+        (0, present_core_1.markDirty)(s, "stroke");
     }
     revert(pres) {
         const root = shapeAt(pres, this.slideIdx, this.id);
@@ -1064,7 +1064,7 @@ class SetTextStyleCmd {
             const text = texts[0];
             this.prevParagraphs = text.paragraphs.map(deepClone);
             text.paragraphs = (0, text_char_style_1.applyStyleToCharRanges)(this.prevParagraphs, this.ranges, this.patch);
-            (0, core_1.markDirty)(text, "textStyle");
+            (0, present_core_1.markDirty)(text, "textStyle");
             return;
         }
         this.prev = new Map();
@@ -1086,7 +1086,7 @@ class SetTextStyleCmd {
                     this.prev.set(r, before);
                 }
             }
-            (0, core_1.markDirty)(text, "textStyle");
+            (0, present_core_1.markDirty)(text, "textStyle");
         }
     }
     revert(pres) {
@@ -1152,7 +1152,7 @@ class ClearTextFormattingCmd {
                         delete rAny[k];
                 }
             }
-            (0, core_1.markDirty)(text, "textStyle");
+            (0, present_core_1.markDirty)(text, "textStyle");
         }
     }
     revert(_pres) {
@@ -1224,7 +1224,7 @@ class AddShapeCmd {
             shapes: layer.shapes,
             setShapes: (next) => { layer.shapes = next; },
             get background() { return slide.background; },
-            setBackground: (next) => { (0, core_1.assignSlideBackground)(slide, next); },
+            setBackground: (next) => { (0, present_core_1.assignSlideBackground)(slide, next); },
         };
     }
     apply(pres) {
@@ -1311,7 +1311,7 @@ class DuplicateShapeCmd {
         offsetShapeTree(this.copy, this.dx, this.dy);
         this.insertAt = srcIdx >= 0 ? srcIdx + 1 : layer.shapes.length;
         layer.shapes.splice(this.insertAt, 0, this.copy);
-        (0, core_1.markDirty)(this.copy, "bbox");
+        (0, present_core_1.markDirty)(this.copy, "bbox");
     }
     revert(pres) {
         if (!this.copy)
@@ -1350,7 +1350,7 @@ class SetTextAlignCmd {
                 this.prev.set(p, p.align);
                 p.align = this.align;
             }
-            (0, core_1.markDirty)(text, "paragraph");
+            (0, present_core_1.markDirty)(text, "paragraph");
         }
     }
     revert(pres) {
@@ -1426,7 +1426,7 @@ class SetParagraphBulletCmd {
                         p.indent = DEFAULT_BULLET_INDENT;
                 }
             }
-            (0, core_1.markDirty)(text, "paragraph");
+            (0, present_core_1.markDirty)(text, "paragraph");
         }
     }
     revert(pres) {
@@ -1478,7 +1478,7 @@ class SetParagraphRtlCmd {
                 else
                     delete p.rtl;
             }
-            (0, core_1.markDirty)(text, "paragraph");
+            (0, present_core_1.markDirty)(text, "paragraph");
         }
     }
     revert(pres) {
@@ -1532,7 +1532,7 @@ class SetParagraphCjkCmd {
                     delete p.latinLnBrk;
                 }
             }
-            (0, core_1.markDirty)(text, "paragraph");
+            (0, present_core_1.markDirty)(text, "paragraph");
         }
     }
     revert(pres) {
@@ -1594,7 +1594,7 @@ class SetParagraphSpacingCmd {
                 this.prev.set(p, snap);
                 applySpacingToParagraph(p, this.patch);
             }
-            (0, core_1.markDirty)(text, "paragraph");
+            (0, present_core_1.markDirty)(text, "paragraph");
         }
     }
     revert(_pres) {
@@ -1662,7 +1662,7 @@ class SetRichTextCmd {
             return;
         this.prev = text.paragraphs.map(deepClone);
         text.paragraphs = this.nextParagraphs.map(richParagraphToCore);
-        (0, core_1.markDirty)(text, "text");
+        (0, present_core_1.markDirty)(text, "text");
     }
     revert(pres) {
         const root = shapeAt(pres, this.slideIdx, this.id);
@@ -1696,7 +1696,7 @@ class SetParagraphsCmd {
             return;
         this.prev = text.paragraphs.map(deepClone);
         text.paragraphs = this.nextParagraphs.map(deepClone);
-        (0, core_1.markDirty)(text, "text");
+        (0, present_core_1.markDirty)(text, "text");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -1706,7 +1706,7 @@ class SetParagraphsCmd {
         if (!text || text.kind !== "text")
             return;
         text.paragraphs = this.prev.map(deepClone);
-        (0, core_1.markDirty)(text, "text");
+        (0, present_core_1.markDirty)(text, "text");
     }
 }
 exports.SetParagraphsCmd = SetParagraphsCmd;
@@ -1751,7 +1751,7 @@ class ChangeTextCaseCmd {
                     r.text = applyCaseToText(r.text, this.mode);
             }
         }
-        (0, core_1.markDirty)(text, "text");
+        (0, present_core_1.markDirty)(text, "text");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -1761,7 +1761,7 @@ class ChangeTextCaseCmd {
         if (!text || text.kind !== "text")
             return;
         text.paragraphs = this.prev.map(deepClone);
-        (0, core_1.markDirty)(text, "text");
+        (0, present_core_1.markDirty)(text, "text");
     }
 }
 exports.ChangeTextCaseCmd = ChangeTextCaseCmd;
@@ -1948,7 +1948,7 @@ function richRunToCore(r) {
     if (r.highlight !== undefined)
         run.highlight = r.highlight;
     if (r.hyperlinkUrl !== undefined) {
-        const url = (0, core_1.sanitizeExternalUrl)(r.hyperlinkUrl);
+        const url = (0, present_core_1.sanitizeExternalUrl)(r.hyperlinkUrl);
         if (url)
             run.hyperlink = { kind: "url", target: url };
     }
@@ -2031,7 +2031,7 @@ class SetTextBodyCmd {
                 }
             }
             this.prev.set(text, snap);
-            (0, core_1.markDirty)(text, "text");
+            (0, present_core_1.markDirty)(text, "text");
         }
     }
     revert(_pres) {
@@ -2154,7 +2154,7 @@ class SetShapeEffectsCmd {
             delete s.effects;
         else
             s.effects = effects;
-        (0, core_1.markDirty)(s, "effects");
+        (0, present_core_1.markDirty)(s, "effects");
     }
     revert(_pres) {
         if (!this.snap)
@@ -2168,7 +2168,7 @@ class SetShapeEffectsCmd {
             s.effects = this.snap.effects.map(deepClone);
         else
             delete s.effects;
-        (0, core_1.markDirty)(s, "effects");
+        (0, present_core_1.markDirty)(s, "effects");
     }
 }
 exports.SetShapeEffectsCmd = SetShapeEffectsCmd;
@@ -2191,7 +2191,7 @@ class SetShape3DCmd {
             this.prev = s.meta3D ? deepClone(s.meta3D) : undefined;
         if (this.patch.clear) {
             delete s.meta3D;
-            (0, core_1.markDirty)(s, "meta3D");
+            (0, present_core_1.markDirty)(s, "meta3D");
             return;
         }
         const base = s.meta3D
@@ -2221,7 +2221,7 @@ class SetShape3DCmd {
         delete base.bakedBBox;
         delete base.bakedNatural;
         s.meta3D = base;
-        (0, core_1.markDirty)(s, "meta3D");
+        (0, present_core_1.markDirty)(s, "meta3D");
     }
     revert(_pres) {
         const s = shapeAt(_pres, this.slideIdx, this.id);
@@ -2306,7 +2306,7 @@ class SetCropFrameCmd {
         rescale(s, prevBox, this.nextBbox);
         s.bbox = { ...this.nextBbox };
         (0, crop_frame_1.assignCrop)(s, this.nextCrop, (0, crop_frame_1.cropHost)(s) === "fill" ? "fill" : undefined);
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
         reattachAndFollowGlue(pres, this.slideIdx, s);
     }
     revert(pres) {
@@ -2422,7 +2422,7 @@ class SetImageDescrCmd {
 }
 exports.SetImageDescrCmd = SetImageDescrCmd;
 function cloneHyperlink(h) {
-    return (0, core_1.sanitizeHyperlinkRef)(h ? { ...h, ...(h.sound ? { sound: { ...h.sound } } : {}) } : undefined);
+    return (0, present_core_1.sanitizeHyperlinkRef)(h ? { ...h, ...(h.sound ? { sound: { ...h.sound } } : {}) } : undefined);
 }
 /** Shape-level OOXML `a:hlinkClick` / `a:hlinkHover` (not run-level hyperlink). */
 class SetShapeHyperlinkCmd {
@@ -2499,7 +2499,7 @@ class SetChartDefCmd {
         this.shapeRef = s;
         this.prev = deepClone(this.shapeRef.chart);
         this.shapeRef.chart = deepClone(this.next);
-        (0, core_1.markDirty)(this.shapeRef, "chart");
+        (0, present_core_1.markDirty)(this.shapeRef, "chart");
     }
     revert(_pres) {
         if (!this.shapeRef || !this.prev)
@@ -2541,8 +2541,8 @@ class SetSlideBackgroundCmd {
             return;
         this.prev = slide.background;
         this.prevBgRef = slide.bgRef;
-        (0, core_1.assignSlideBackground)(slide, this.next);
-        (0, core_1.markDirty)(slide, "background");
+        (0, present_core_1.assignSlideBackground)(slide, this.next);
+        (0, present_core_1.markDirty)(slide, "background");
     }
     revert(pres) {
         const slide = pres.slides[this.slideIdx];
@@ -2584,7 +2584,7 @@ class SetBackgroundTargetCmd {
         if (this.target.kind === "slide") {
             const slide = pres.slides[this.target.slideIdx];
             if (slide)
-                (0, core_1.markDirty)(slide, "background");
+                (0, present_core_1.markDirty)(slide, "background");
         }
     }
     revert(pres) {
@@ -2700,7 +2700,7 @@ class SetShapeRotationCmd {
             return;
         this.prev = s.transform.rotation;
         s.transform = { ...s.transform, rotation: this.next };
-        (0, core_1.markDirty)(s, "transform");
+        (0, present_core_1.markDirty)(s, "transform");
         reattachAndFollowGlue(pres, this.slideIdx, s);
     }
     revert(pres) {
@@ -2730,7 +2730,7 @@ class SetShapeOpacityCmd {
             return;
         this.prev = s.opacity;
         s.opacity = Math.max(0, Math.min(1, this.next));
-        (0, core_1.markDirty)(s, "opacity");
+        (0, present_core_1.markDirty)(s, "opacity");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -2761,7 +2761,7 @@ class FlipShapeCmd {
         else
             s.transform = { ...s.transform, scaleY: -s.transform.scaleY };
         this.flipped = true;
-        (0, core_1.markDirty)(s, "transform");
+        (0, present_core_1.markDirty)(s, "transform");
         followGluedConnectors(pres, this.slideIdx, s);
     }
     revert(pres) {
@@ -2822,7 +2822,7 @@ class SetShapeVisibleCmd {
             return;
         this.prev = s.visible;
         s.visible = this.visible;
-        (0, core_1.markDirty)(s, "visible");
+        (0, present_core_1.markDirty)(s, "visible");
     }
     revert(pres) {
         const s = shapeAt(pres, this.slideIdx, this.id);
@@ -2976,7 +2976,7 @@ class SetShapeBboxCmd {
         const prev = { ...s.bbox };
         rescale(s, prev, this.next);
         s.bbox = { ...this.next };
-        (0, core_1.markDirty)(s, "bbox");
+        (0, present_core_1.markDirty)(s, "bbox");
         reattachAndFollowGlue(pres, this.slideIdx, s);
     }
     revert(pres) {
@@ -3181,7 +3181,7 @@ class AlignShapesCmd {
                     break;
             }
             translateShape(s, dx, dy);
-            (0, core_1.markDirty)(s, "bbox");
+            (0, present_core_1.markDirty)(s, "bbox");
             return { id: s.id, dx, dy };
         });
     }
@@ -3232,7 +3232,7 @@ class DistributeShapesCmd {
             const dy = axis === "v" ? targetCenter - proj(s) : 0;
             if (dx !== 0 || dy !== 0) {
                 translateShape(s, dx, dy);
-                (0, core_1.markDirty)(s, "bbox");
+                (0, present_core_1.markDirty)(s, "bbox");
                 this.deltas.push({ id: s.id, dx, dy });
             }
         }
@@ -3419,11 +3419,11 @@ function tableCellOwner(group, row, col) {
     return fallback ? { row, col, shape: fallback } : undefined;
 }
 function markTableCellsDirty(group, cells) {
-    (0, core_1.markDirty)(group, "bbox");
+    (0, present_core_1.markDirty)(group, "bbox");
     for (const c of cells) {
-        (0, core_1.markDirty)(c, "bbox");
-        (0, core_1.markDirty)(c, "fill");
-        (0, core_1.markDirty)(c, "text");
+        (0, present_core_1.markDirty)(c, "bbox");
+        (0, present_core_1.markDirty)(c, "fill");
+        (0, present_core_1.markDirty)(c, "text");
     }
 }
 function cellPlainText(s) {
@@ -4042,8 +4042,8 @@ class SetTableCellStyleCmd {
         }
         relayoutTableCells(g);
         markTableCellsDirty(g, [s]);
-        (0, core_1.markDirty)(s, "fill");
-        (0, core_1.markDirty)(s, "stroke");
+        (0, present_core_1.markDirty)(s, "fill");
+        (0, present_core_1.markDirty)(s, "stroke");
     }
     revert(pres) {
         const g = findTableGroup(pres, this.slideIdx, this.groupId);

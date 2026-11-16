@@ -9,7 +9,7 @@
 // 画面上"已经被父 group 转过 / 翻过"的文字错位——典型场景是解析后的
 // TextBox（带 txBody 的形状会拆成 group(_base, _text)，旋转留在外层 group）。
 // ============================================================================
-import type { Rect, Shape, Transform } from "@ppt/core";
+import type { Rect, Shape, Transform } from "@sliiu/present-core";
 
 /** bbox + transform，命中测试 / 锚点补偿不需要完整 Shape。 */
 export type XfrmNode = { bbox: Rect; transform?: Transform };

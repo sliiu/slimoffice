@@ -16,10 +16,10 @@ exports.bannedLayoutsForFamily = bannedLayoutsForFamily;
 exports.clampOutlineToStyleFamily = clampOutlineToStyleFamily;
 exports.imageryForFamily = imageryForFamily;
 const zod_1 = require("zod");
-const themes_1 = require("@sliiu/present-themes");
-Object.defineProperty(exports, "BUILTIN_THEME_IDS", { enumerable: true, get: function () { return themes_1.BUILTIN_THEME_IDS; } });
+const present_themes_1 = require("@sliiu/present-themes");
+Object.defineProperty(exports, "BUILTIN_THEME_IDS", { enumerable: true, get: function () { return present_themes_1.BUILTIN_THEME_IDS; } });
 /** 大纲 themeId：内置 + `ai`（视觉主题在生成幻灯片阶段单独设计，compile 用 themeOverride）。 */
-exports.OUTLINE_THEME_IDS = [...themes_1.BUILTIN_THEME_IDS, "ai"];
+exports.OUTLINE_THEME_IDS = [...present_themes_1.BUILTIN_THEME_IDS, "ai"];
 const OutlineThemeIdSchema = zod_1.z.enum(exports.OUTLINE_THEME_IDS);
 // ---- Outline ----
 /** outline / SlideSpec 共用的 layout 词表（与 compile/layouts.ts LAYOUT_KINDS 保持一致）。 */
@@ -109,7 +109,7 @@ exports.OutlineDesignBriefSchema = zod_1.z.object({
 exports.OutlineSchema = zod_1.z.object({
     title: zod_1.z.string().describe("Presentation title shown on cover."),
     subtitle: zod_1.z.string().optional(),
-    themeId: OutlineThemeIdSchema.describe(`Theme id: one of ${themes_1.BUILTIN_THEME_IDS.join(" | ")}, or "ai" when visuals will be AI-designed (not a built-in preset).`),
+    themeId: OutlineThemeIdSchema.describe(`Theme id: one of ${present_themes_1.BUILTIN_THEME_IDS.join(" | ")}, or "ai" when visuals will be AI-designed (not a built-in preset).`),
     slides: zod_1.z.array(exports.OutlineItemSchema).min(1).max(40).describe("Slide outline."),
     designBrief: exports.OutlineDesignBriefSchema.optional(),
 });

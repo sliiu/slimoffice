@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Presentation, TextShape } from "@ppt/core";
+import type { Presentation, TextShape } from "@sliiu/present-core";
 import { validateAndRepairPresentation } from "./validate.js";
 
 function deck(shape: TextShape): Presentation {

@@ -4,9 +4,9 @@
 // 与 insertTextBox / setRichText 的区别：艺术字默认更大、居中、带 outline/shadow preset。
 
 import { z } from "zod";
-import type { Shape, ShapeEffect, Stroke, TextRun } from "@ppt/core";
-import { AddShapeCmd, EditTextCmd, SetTextStyleCmd, type TextStylePatch } from "@ppt/editor/commands";
-import { WORDART_PRESETS, type WordArtGradient, type WordArtShadowKind } from "@ppt/editor/commands";
+import type { Shape, ShapeEffect, Stroke, TextRun } from "@sliiu/present-core";
+import { AddShapeCmd, EditTextCmd, SetTextStyleCmd, type TextStylePatch } from "@sliiu/present-editor/commands";
+import { WORDART_PRESETS, type WordArtGradient, type WordArtShadowKind } from "@sliiu/present-editor/commands";
 import { defineTool, ok, err } from "../types";
 
 const colorRe = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
@@ -126,8 +126,8 @@ function genShapeId(prefix = "wa"): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function findWordArt(slide: import("@ppt/core").Slide, shapeId: string): import("@ppt/core").TextShape | null {
-  const walk = (shapes: Shape[]): import("@ppt/core").TextShape | null => {
+function findWordArt(slide: import("@sliiu/present-core").Slide, shapeId: string): import("@sliiu/present-core").TextShape | null {
+  const walk = (shapes: Shape[]): import("@sliiu/present-core").TextShape | null => {
     for (const s of shapes) {
       if (s.id === shapeId && s.kind === "text" && s.name === "WordArt") return s;
       if (s.kind === "group") {

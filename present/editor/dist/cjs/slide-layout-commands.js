@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResetSlideToLayoutCmd = exports.ApplySlideLayoutCmd = void 0;
-const parser_1 = require("@sliiu/present-parser");
+const present_parser_1 = require("@sliiu/present-parser");
 const slide_layout_utils_1 = require("./slide-layout-utils");
 function deepClone(v) {
     if (typeof structuredClone === "function")
@@ -24,7 +24,7 @@ function applyLayoutToSlide(pres, slideIdx, layoutRef) {
     const placeholders = (0, slide_layout_utils_1.cloneLayoutPlaceholders)(layout);
     (0, slide_layout_utils_1.replaceSlideMainShapes)(slide, placeholders);
     (0, slide_layout_utils_1.syncRawMainShapes)(slide, placeholders);
-    return (0, parser_1.recomputeSlideInheritance)(pres, slideIdx);
+    return (0, present_parser_1.recomputeSlideInheritance)(pres, slideIdx);
 }
 /** Switch the current slide to another master layout and reset placeholders. */
 class ApplySlideLayoutCmd {
@@ -54,7 +54,7 @@ class ApplySlideLayoutCmd {
         slide.layoutRef = this.prevLayoutRef ? { ...this.prevLayoutRef } : undefined;
         (0, slide_layout_utils_1.replaceSlideMainShapes)(slide, this.prevShapes.map((s) => deepClone(s)));
         (0, slide_layout_utils_1.syncRawMainShapes)(slide, this.prevShapes);
-        (0, parser_1.recomputeSlideInheritance)(pres, this.slideIdx);
+        (0, present_parser_1.recomputeSlideInheritance)(pres, this.slideIdx);
     }
 }
 exports.ApplySlideLayoutCmd = ApplySlideLayoutCmd;
@@ -80,7 +80,7 @@ class ResetSlideToLayoutCmd {
             return;
         (0, slide_layout_utils_1.replaceSlideMainShapes)(slide, this.prevShapes.map((s) => deepClone(s)));
         (0, slide_layout_utils_1.syncRawMainShapes)(slide, this.prevShapes);
-        (0, parser_1.recomputeSlideInheritance)(pres, this.slideIdx);
+        (0, present_parser_1.recomputeSlideInheritance)(pres, this.slideIdx);
     }
 }
 exports.ResetSlideToLayoutCmd = ResetSlideToLayoutCmd;

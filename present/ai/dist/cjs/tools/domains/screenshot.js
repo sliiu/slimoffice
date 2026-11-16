@@ -4,7 +4,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.screenshotTools = void 0;
 const zod_1 = require("zod");
-const player_1 = require("@sliiu/present-player");
+const present_player_1 = require("@sliiu/present-player");
 const types_1 = require("../types");
 function bytesToBase64(bytes) {
     if (typeof Buffer !== "undefined")
@@ -34,7 +34,7 @@ exports.screenshotTools = [
             const slide = pres.slides[slideIdx];
             if (!slide)
                 return { ok: false, error: `slideIdx ${slideIdx} out of range (have ${pres.slides.length})` };
-            const blob = await (0, player_1.snapshotSlide)(slide, pres.size, { width: 960, masters: pres.masters });
+            const blob = await (0, present_player_1.snapshotSlide)(slide, pres.size, { width: 960, masters: pres.masters });
             const png = new Uint8Array(await blob.arrayBuffer());
             const slides = [{ slideIdx, pngBase64: bytesToBase64(png) }];
             return { ok: true, slides, note: `Slide ${slideIdx} rendered.` };

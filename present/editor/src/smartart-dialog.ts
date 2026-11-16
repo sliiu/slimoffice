@@ -1,5 +1,5 @@
-import type { SmartArtLayoutKind } from "@ppt/core";
-import { SMARTART_LAYOUT_KINDS, SMARTART_LAYOUT_LABELS } from "@ppt/core";
+import type { SmartArtLayoutKind } from "@sliiu/present-core";
+import { SMARTART_LAYOUT_KINDS, SMARTART_LAYOUT_LABELS } from "@sliiu/present-core";
 import { showDialog } from "./dialog";
 import { t } from "./i18n";
 

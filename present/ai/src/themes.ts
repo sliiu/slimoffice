@@ -1,1 +1,1 @@
-export * from "@ppt/themes";
+export * from "@sliiu/present-themes";

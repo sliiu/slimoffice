@@ -1,5 +1,5 @@
-import type { DeckComment } from "@ppt/core";
-import { COMMENT_META_TAG } from "@ppt/core";
+import type { DeckComment } from "@sliiu/present-core";
+import { COMMENT_META_TAG } from "@sliiu/present-core";
 import type { PptxArchive } from "./zip";
 import { strFromU8 } from "fflate";
 import { loadXmlPart, type RelMap } from "./parts";

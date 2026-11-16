@@ -26,7 +26,7 @@ exports.hfToXml = hfToXml;
 exports.sldRootAttrXml = sldRootAttrXml;
 exports.cSldNameAttr = cSldNameAttr;
 exports.clrMapOvrXml = clrMapOvrXml;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const xml_util_1 = require("./xml-util");
 const media_table_1 = require("./media-table");
 const image_size_1 = require("./image-size");
@@ -147,7 +147,7 @@ function shapeToXmlInner(s, ctx) {
                 fill: s.fill ?? { kind: "solid", color: "#0f172a" },
                 stroke: s.stroke ?? { paint: { kind: "solid", color: "#334155" }, width: 1 },
                 name: s.name || "Web embed",
-                descr: s.descr || (0, core_1.encodeWebEmbedDescr)(embed),
+                descr: s.descr || (0, present_core_1.encodeWebEmbedDescr)(embed),
                 hyperlink: s.hyperlink ?? (url ? { kind: "url", target: url } : undefined),
             }, ctx);
         }

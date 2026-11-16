@@ -1,4 +1,4 @@
-import type { Document } from "@document/core";
+import type { Document } from "@sliiu/document-core";
 import { zipSync } from "fflate";
 
 /** Writes the original parts back. Nothing is rebuilt, so an unread part stays byte for byte. */

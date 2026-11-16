@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { BarChartDef } from "@ppt/core";
+import type { BarChartDef } from "@sliiu/present-core";
 import { renderChartSpaceXml } from "./pptx-chart.js";
 
 const bars: BarChartDef = {

@@ -1,5 +1,5 @@
-import { isDocTable, type DocBlock, type DocParagraph, type Document } from "@document/core";
-import { paginate } from "@document/renderer";
+import { isDocTable, type DocBlock, type DocParagraph, type Document } from "@sliiu/document-core";
+import { paginate } from "@sliiu/document-renderer";
 
 export interface DocumentView {
   destroy(): void;

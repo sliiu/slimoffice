@@ -10,7 +10,7 @@ import {
   type SlideMaster,
   type Template,
   type TextShape,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { autoAnimatePresentation } from "../animations";
 import { speechPlanFromOutlineItem } from "./reveal-order";
 import type { Outline, OutlineItem, OutlineLayoutHint } from "./schema";

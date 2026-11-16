@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 // @ts-expect-error jsdom ships without types in this repo; tests run via tsx.
 import { JSDOM } from "jsdom";
-import { CommandStack, identityTransform, type DeckComment, type Presentation, type TextShape } from "@ppt/core";
+import { CommandStack, identityTransform, type DeckComment, type Presentation, type TextShape } from "@sliiu/present-core";
 import { mountCommentsPanel, type CommentAssignUi } from "./comments-panel.js";
 
 function installDom(): Document {

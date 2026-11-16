@@ -1,4 +1,4 @@
-import type { GroupShape, Shape, Stroke, TextShape } from "@ppt/core";
+import type { GroupShape, Shape, Stroke, TextShape } from "@sliiu/present-core";
 import { attrs, esc, pxToEmu } from "./xml-util";
 import { aTxBodyToXml, allocSpId, fillToXml, graphicFrameLocksXml, hlinkTagXml, nvPrXml, strokeToXml, type ShapeCtx } from "./pptx-shapes";
 

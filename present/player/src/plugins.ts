@@ -1,10 +1,10 @@
 // 播放器插件系统 — 运行时实现
 //
 // 所有对外类型（Plugin / PluginContext / PluginUIHost / 事件类型 / 缩略图 / UI 选项等）
-// 都从 `@ppt/plugin-sdk` 导入并 re-export，保证 SDK 和 player 用同一份契约。
+// 都从 `@sliiu/present-plugin-sdk` 导入并 re-export，保证 SDK 和 player 用同一份契约。
 // 本文件只负责 player-side 的 EventBus / PluginManager / PresentationInfo 构造。
 
-import type { Presentation, Slide } from "@ppt/core";
+import type { Presentation, Slide } from "@sliiu/present-core";
 import type {
   Plugin,
   PlayerEventBus,
@@ -17,10 +17,10 @@ import type {
   SlideChangeEvent,
   SlideInfo,
   UIHandle,
-} from "@ppt/plugin-sdk";
+} from "@sliiu/present-plugin-sdk";
 
-// Re-export 公共类型，方便 @ppt/player 自身的消费者直接拿（ESM 用户既可以从
-// @ppt/plugin-sdk 也可以从 @ppt/player 取，保持向后兼容）。
+// Re-export 公共类型，方便 @sliiu/present-player 自身的消费者直接拿（ESM 用户既可以从
+// @sliiu/present-plugin-sdk 也可以从 @sliiu/present-player 取，保持向后兼容）。
 export type {
   ContextMenuItemKind,
   EventUnsubscribe,
@@ -51,7 +51,7 @@ export type {
   ThumbnailTarget,
   ToolbarButtonOptions,
   UIHandle,
-} from "@ppt/plugin-sdk";
+} from "@sliiu/present-plugin-sdk";
 
 // ---------------------------------------------------------------------------
 // EventBus

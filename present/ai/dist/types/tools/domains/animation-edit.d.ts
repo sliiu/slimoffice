@@ -1,3 +1,3 @@
-export declare const animationEditTools: import("...js").ToolDef<{
+export declare const animationEditTools: import("../index.js").ToolDef<{
     slideIdx: number;
 }>[];

@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.animUnitOf = animUnitOf;
 exports.splitLines = splitLines;
 exports.emitPresentation = emitPresentation;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const commands_1 = require("@sliiu/present-editor/commands");
 const color_theme_js_1 = require("./color-theme.js");
 const visual_system_js_1 = require("./visual-system.js");
@@ -21,7 +21,7 @@ function base() {
         visible: true,
         locked: false,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
     };
 }
 /** Shadows are cast in the darker palette token — `ink` is near-white on dark-paper systems. */
@@ -225,7 +225,7 @@ function emitDiagram(el, pal, sys, id) {
         id: `${id}_i${i}`,
         text: it.body ? `${it.title}\n${it.body}` : it.title,
     }));
-    const children = (0, core_1.buildSmartArtShapes)(d.layout, items, el.bbox);
+    const children = (0, present_core_1.buildSmartArtShapes)(d.layout, items, el.bbox);
     if (!children.length)
         return undefined;
     recolorDiagram(children, pal, sys, d.layout);

@@ -2,7 +2,7 @@
 // 编辑舞台上的出镜。字节仍在本机引用里，不写成幻灯片上的视频形状。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mountLectureStagePip = mountLectureStagePip;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 function mountLectureStagePip(stage, overlay, deps) {
     const doc = stage.ownerDocument;
     const video = doc.createElement("video");
@@ -30,7 +30,7 @@ function mountLectureStagePip(stage, overlay, deps) {
             const token = ++gen;
             const pres = deps.getPres();
             const slide = deps.getSlide();
-            const take = slide ? (0, core_1.lectureTakeFor)(pres.lecture, slide.id) : undefined;
+            const take = slide ? (0, present_core_1.lectureTakeFor)(pres.lecture, slide.id) : undefined;
             const ref = !deps.hidden() && deps.cameraSrc && take?.cameraRef ? take.cameraRef : null;
             if (!ref || !slide) {
                 shownRef = null;
@@ -39,7 +39,7 @@ function mountLectureStagePip(stage, overlay, deps) {
                 revoke();
                 return;
             }
-            const rect = (0, core_1.lecturePipRect)(pres.size, pres.lecture?.frame);
+            const rect = (0, present_core_1.lecturePipRect)(pres.size, pres.lecture?.frame);
             video.style.left = `${(rect.x / pres.size.width) * 100}%`;
             video.style.top = `${(rect.y / pres.size.height) * 100}%`;
             video.style.width = `${(rect.w / pres.size.width) * 100}%`;

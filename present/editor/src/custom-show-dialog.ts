@@ -1,4 +1,4 @@
-import type { CustomShow, Presentation } from "@ppt/core";
+import type { CustomShow, Presentation } from "@sliiu/present-core";
 import { showDialog } from "./dialog";
 import { t } from "./i18n";
 

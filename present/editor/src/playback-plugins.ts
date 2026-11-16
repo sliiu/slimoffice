@@ -1,7 +1,7 @@
 // 播放插件选择 —— 编辑器视图中让用户挑选「放映时加载哪些插件」。
 //
 // 设计要点：
-//   1. 这是一个纯 UI 描述（不依赖 @ppt/player / Plugin 对象本身），
+//   1. 这是一个纯 UI 描述（不依赖 @sliiu/present-player / Plugin 对象本身），
 //      让编辑器包不需要对 player 产生硬依赖；宿主负责把 `PlaybackPluginEntry`
 //      列表传给编辑器，再把编辑器返回的 id 列表映射回真正的 Plugin。
 //   2. 列表面板做成 anchored popover：从顶栏一个按钮触发，列出所有插件 +

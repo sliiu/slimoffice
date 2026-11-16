@@ -15,7 +15,7 @@ exports.paintPinnedCharSelection = paintPinnedCharSelection;
 exports.clearPinnedCharSelection = clearPinnedCharSelection;
 exports.readEditorParagraphs = readEditorParagraphs;
 const live_color_1 = require("./live-color");
-const renderer_1 = require("@sliiu/present-renderer");
+const present_renderer_1 = require("@sliiu/present-renderer");
 const shape_transform_1 = require("./shape-transform");
 /** overlay 的 bullet 占位元素标记；读回文本时必须跳过，否则项目符号会被写进正文。 */
 const BULLET_ATTR = "data-ppt-bullet";
@@ -31,8 +31,8 @@ const STACK_ATTR = "data-ppt-vert-stack";
  * padLeft = padRight = (tIns + bIns) / 2 恰好等于 renderer 的 (w − innerW) / 2。
  */
 function textOverlayBox(s, scale) {
-    const ins = s.insets ?? renderer_1.DEFAULT_TEXT_INSETS;
-    const swap = (0, renderer_1.vertRotateDeg)(s.vert) !== 0;
+    const ins = s.insets ?? present_renderer_1.DEFAULT_TEXT_INSETS;
+    const swap = (0, present_renderer_1.vertRotateDeg)(s.vert) !== 0;
     const cx = s.bbox.x + s.bbox.w / 2;
     const cy = s.bbox.y + s.bbox.h / 2;
     const w = swap ? s.bbox.h : s.bbox.w;
@@ -46,7 +46,7 @@ function textOverlayBox(s, scale) {
         width: w * scale,
         height: h * scale,
         pad: { l: pad.l * scale, t: pad.t * scale, r: pad.r * scale, b: pad.b * scale },
-        rotation: (0, renderer_1.textTotalRotationDeg)(s),
+        rotation: (0, present_renderer_1.textTotalRotationDeg)(s),
     };
 }
 /** 把 overlay 的位置 / 尺寸 / 旋转写到 style 上；缩放变化时可重复调用。 */
@@ -118,17 +118,17 @@ function buildTextEditOverlay(opts) {
     // ---- shape 级阴影 / 效果 ----
     const filters = [];
     if (s.shadow && s.shadow.kind === "outer") {
-        const c = (0, renderer_1.hexWithAlpha)(s.shadow.color, s.shadow.alpha);
+        const c = (0, present_renderer_1.hexWithAlpha)(s.shadow.color, s.shadow.alpha);
         filters.push(`drop-shadow(${s.shadow.dx * scale}px ${s.shadow.dy * scale}px ${s.shadow.blur * scale}px ${c})`);
     }
-    const shapeFx = (0, renderer_1.textEffectsCssFilter)(s.effects, scale);
+    const shapeFx = (0, present_renderer_1.textEffectsCssFilter)(s.effects, scale);
     if (shapeFx)
         filters.push(shapeFx);
     if (filters.length)
         el.style.filter = filters.join(" ");
     // ---- vAlign / 换行 / 竖排 ----
     el.style.display = "flex";
-    if ((0, renderer_1.isVerticalStack)(s.vert)) {
+    if ((0, present_renderer_1.isVerticalStack)(s.vert)) {
         // 竖排堆叠：renderer 走逐字符列布局，不是 CSS writing-mode。
         // writing-mode:vertical-rl 会把拉丁字侧躺、行距变成列宽，双击后视觉全变。
         el.setAttribute(STACK_ATTR, s.vert ?? "");
@@ -186,11 +186,11 @@ function buildTextEditOverlay(opts) {
 function renderParagraphsInto(editor, s, scale, doc, fontScale = 1) {
     while (editor.firstChild)
         editor.removeChild(editor.firstChild);
-    if ((0, renderer_1.isVerticalStack)(s.vert)) {
+    if ((0, present_renderer_1.isVerticalStack)(s.vert)) {
         renderStackedInto(editor, s, scale, doc, fontScale);
         return;
     }
-    const bulletState = (0, renderer_1.newBulletNumState)();
+    const bulletState = (0, present_renderer_1.newBulletNumState)();
     for (const para of s.paragraphs) {
         editor.appendChild(buildParagraph(para, scale * fontScale, scale, doc, bulletState));
     }
@@ -209,12 +209,12 @@ function renderParagraphsInto(editor, s, scale, doc, fontScale = 1) {
  */
 function renderStackedInto(editor, s, scale, doc, fontScale) {
     const vert = s.vert;
-    const ltr = (0, renderer_1.stackedColumnsLtr)(vert, s.rtlCol);
-    const ins = s.insets ?? renderer_1.DEFAULT_TEXT_INSETS;
+    const ltr = (0, present_renderer_1.stackedColumnsLtr)(vert, s.rtlCol);
+    const ins = s.insets ?? present_renderer_1.DEFAULT_TEXT_INSETS;
     const innerH = Math.max(0, s.bbox.h - ins.t - ins.b);
     const px = scale * fontScale;
     const spcCol = Math.max(0, s.spcCol ?? 0) * scale;
-    const bulletState = (0, renderer_1.newBulletNumState)();
+    const bulletState = (0, present_renderer_1.newBulletNumState)();
     editor.style.flexDirection = ltr ? "row" : "row-reverse";
     editor.style.justifyContent = "flex-start";
     editor.style.alignItems = "stretch";
@@ -229,8 +229,8 @@ function renderStackedInto(editor, s, scale, doc, fontScale) {
         paraEl.style.flex = "0 0 auto";
         paraEl.style.minWidth = "0";
         paraEl.style.height = "100%";
-        const glyphs = (0, renderer_1.buildStackedGlyphs)(p, undefined, vert);
-        const cols = glyphs.length === 0 ? [[]] : (0, renderer_1.wrapGlyphsIntoColumns)(glyphs, innerH);
+        const glyphs = (0, present_renderer_1.buildStackedGlyphs)(p, undefined, vert);
+        const cols = glyphs.length === 0 ? [[]] : (0, present_renderer_1.wrapGlyphsIntoColumns)(glyphs, innerH);
         const annotated = annotateDroppedStackedGlyphs(glyphs, cols);
         annotated.forEach((colGlyphs, wi) => {
             paraEl.appendChild(buildStackedColumn(p, colGlyphs, wi === 0, s, px, scale, doc, bulletState));
@@ -284,7 +284,7 @@ function stackedColumnJustify(p, s) {
     return "flex-start";
 }
 function buildStackedColumn(p, glyphs, showBullet, s, fontPxScale, geomScale, doc, bulletState) {
-    const fallbackFs = (0, renderer_1.paragraphFallbackFontSize)(p);
+    const fallbackFs = (0, present_renderer_1.paragraphFallbackFontSize)(p);
     const visible = glyphs.filter((g) => !g.hidden).map((g) => g.glyph);
     const colW = (visible.length ? visible.reduce((m, g) => Math.max(m, g.fontSize), 0) : fallbackFs) * fontPxScale;
     const col = doc.createElement("div");
@@ -297,11 +297,11 @@ function buildStackedColumn(p, glyphs, showBullet, s, fontPxScale, geomScale, do
     col.style.flex = "0 0 auto";
     col.style.boxSizing = "border-box";
     col.style.overflow = "visible";
-    const label = showBullet ? (0, renderer_1.advanceBulletLabel)(p, bulletState) : null;
+    const label = showBullet ? (0, present_renderer_1.advanceBulletLabel)(p, bulletState) : null;
     const picture = showBullet && p.bullet?.kind === "picture" ? p.bullet : null;
     if (picture) {
         const first = visible[0];
-        const step = (first?.stepY ?? fallbackFs * renderer_1.DEFAULT_LINE_HEIGHT_FACTOR) * fontPxScale;
+        const step = (first?.stepY ?? fallbackFs * present_renderer_1.DEFAULT_LINE_HEIGHT_FACTOR) * fontPxScale;
         const img = buildPictureBullet(p, picture, fontPxScale, geomScale, doc, !!p.rtl, 0, 0);
         img.style.position = "relative";
         img.style.left = "auto";
@@ -321,7 +321,7 @@ function buildStackedColumn(p, glyphs, showBullet, s, fontPxScale, geomScale, do
         cell.style.height = `${first.stepY * fontPxScale}px`;
         cell.style.width = "100%";
         cell.style.lineHeight = "1";
-        cell.style.fontSize = `${(0, renderer_1.bulletFontSize)(p.bullet, first.fontSize) * fontPxScale}px`;
+        cell.style.fontSize = `${(0, present_renderer_1.bulletFontSize)(p.bullet, first.fontSize) * fontPxScale}px`;
         const family = ("font" in p.bullet ? p.bullet.font : undefined) ?? p.runs[0]?.fontFamily;
         if (family)
             cell.style.fontFamily = family;
@@ -388,7 +388,7 @@ function buildParagraph(p, fontPxScale, geomScale, doc, bulletState) {
     div.style.flex = "0 1 auto";
     div.style.alignSelf = "stretch";
     const rtl = !!p.rtl;
-    const fallbackFs = (0, renderer_1.paragraphFallbackFontSize)(p);
+    const fallbackFs = (0, present_renderer_1.paragraphFallbackFontSize)(p);
     // §21.1.2.2.4 algn — start/end 是方向相关的，配合 direction 天然实现 rtl 互换
     // （renderer 里由 mapVisualAlign 做同一件事）。
     if (rtl)
@@ -418,7 +418,7 @@ function buildParagraph(p, fontPxScale, geomScale, doc, bulletState) {
         div.style.lineHeight = `${exactLineHeightPx * fontPxScale}px`;
     }
     else {
-        div.style.lineHeight = String((0, renderer_1.lineHeightFactor)(p));
+        div.style.lineHeight = String((0, present_renderer_1.lineHeightFactor)(p));
     }
     if (p.spaceBeforePx)
         div.style.marginTop = `${p.spaceBeforePx * fontPxScale}px`;
@@ -436,12 +436,12 @@ function buildParagraph(p, fontPxScale, geomScale, doc, bulletState) {
         div.style.paddingInlineEnd = `${marR * geomScale}px`;
     if (!hasBullet && indent > 0)
         div.style.textIndent = `${indent * geomScale}px`;
-    const paraFx = (0, renderer_1.pickRunEffectsCssFilter)(p.runs, geomScale);
+    const paraFx = (0, present_renderer_1.pickRunEffectsCssFilter)(p.runs, geomScale);
     if (paraFx)
         div.style.filter = paraFx;
     // bullet：绝对定位在 marL+indent 处（支持悬挂缩进），contenteditable=false +
     // [data-ppt-bullet] 标记，读回正文时被剔除。
-    const label = (0, renderer_1.advanceBulletLabel)(p, bulletState);
+    const label = (0, present_renderer_1.advanceBulletLabel)(p, bulletState);
     // §21.1.2.4.3 buBlip 图片项目符号：advanceBulletLabel 只吐字符/编号，图片要单独走
     // <img>。renderer 对图片 bullet 不要求段落有文字，这里保持一致。
     const picture = p.bullet?.kind === "picture" ? p.bullet : null;
@@ -470,8 +470,8 @@ function buildParagraph(p, fontPxScale, geomScale, doc, bulletState) {
     return div;
 }
 function buildPictureBullet(p, bullet, fontPxScale, geomScale, doc, rtl, marL, indent) {
-    const fallbackFs = (0, renderer_1.paragraphFallbackFontSize)(p);
-    const size = (0, renderer_1.bulletFontSize)(bullet, p.runs[0]?.fontSize ?? renderer_1.FALLBACK_FONT_SIZE) * fontPxScale;
+    const fallbackFs = (0, present_renderer_1.paragraphFallbackFontSize)(p);
+    const size = (0, present_renderer_1.bulletFontSize)(bullet, p.runs[0]?.fontSize ?? present_renderer_1.FALLBACK_FONT_SIZE) * fontPxScale;
     const img = doc.createElement("img");
     img.setAttribute(BULLET_ATTR, "1");
     img.setAttribute("contenteditable", "false");
@@ -485,7 +485,7 @@ function buildPictureBullet(p, bullet, fontPxScale, geomScale, doc, rtl, marL, i
         img.style.left = off;
     // renderer 把图片底边放在首行基线上（y = baseline − bulletFs）。基线相对段顶的
     // 距离就是 text-layout.ts 的 ascent = 行高 − 0.25 × 字号。
-    const ascent = ((0, renderer_1.paragraphLineHeightPx)(p, fallbackFs) - 0.25 * fallbackFs) * fontPxScale;
+    const ascent = ((0, present_renderer_1.paragraphLineHeightPx)(p, fallbackFs) - 0.25 * fallbackFs) * fontPxScale;
     img.style.top = `${ascent - size}px`;
     img.style.width = `${size}px`;
     img.style.height = `${size}px`;
@@ -497,7 +497,7 @@ function buildPictureBullet(p, bullet, fontPxScale, geomScale, doc, rtl, marL, i
 function buildBullet(p, label, fontPxScale, geomScale, doc, rtl, marL, indent) {
     const bullet = p.bullet;
     const firstRun = p.runs[0];
-    const runFs = firstRun?.fontSize ?? renderer_1.FALLBACK_FONT_SIZE;
+    const runFs = firstRun?.fontSize ?? present_renderer_1.FALLBACK_FONT_SIZE;
     const span = doc.createElement("span");
     span.setAttribute(BULLET_ATTR, "1");
     span.setAttribute("contenteditable", "false");
@@ -510,7 +510,7 @@ function buildBullet(p, label, fontPxScale, geomScale, doc, rtl, marL, indent) {
     else
         span.style.left = off;
     span.style.top = "0";
-    span.style.fontSize = `${(0, renderer_1.bulletFontSize)(bullet, runFs) * fontPxScale}px`;
+    span.style.fontSize = `${(0, present_renderer_1.bulletFontSize)(bullet, runFs) * fontPxScale}px`;
     const family = ("font" in bullet ? bullet.font : undefined) ?? firstRun?.fontFamily;
     if (family)
         span.style.fontFamily = family;
@@ -586,7 +586,7 @@ function applyRunStyle(span, run, fontPxScale, geomScale, fallbackFs) {
         span.style.webkitTextStroke =
             `${run.textOutline.width * geomScale}px ${outline}`;
     }
-    const fx = (0, renderer_1.textEffectsCssFilter)(run.effects, geomScale);
+    const fx = (0, present_renderer_1.textEffectsCssFilter)(run.effects, geomScale);
     if (fx)
         span.style.filter = fx;
 }
@@ -598,7 +598,7 @@ function applyRunStyle(span, run, fontPxScale, geomScale, fallbackFs) {
  * 必须在 overlay 已插入文档（有布局）之后调用。返回最终采用的 fontScale。
  */
 function fitOverlayAutofit(editor, s, scale, doc) {
-    if ((0, renderer_1.isVerticalStack)(s.vert) || s.autoFit?.kind !== "normAutofit" || s.paragraphs.length === 0)
+    if ((0, present_renderer_1.isVerticalStack)(s.vert) || s.autoFit?.kind !== "normAutofit" || s.paragraphs.length === 0)
         return 1;
     const box = textOverlayBox(s, scale);
     const innerH = box.height - box.pad.t - box.pad.b;
@@ -640,7 +640,7 @@ function fitOverlayAutofit(editor, s, scale, doc) {
  * 必须在 overlay 已插入文档、且 fitOverlayAutofit 重排完之后调用。
  */
 function alignOverlayBaselines(editor, s, scale, doc, fontScale = 1) {
-    if ((0, renderer_1.isVerticalStack)(s.vert))
+    if ((0, present_renderer_1.isVerticalStack)(s.vert))
         return;
     const paras = Array.from(editor.children);
     const px = scale * fontScale;
@@ -649,8 +649,8 @@ function alignOverlayBaselines(editor, s, scale, doc, fontScale = 1) {
         const div = paras[i];
         if (!p || !div)
             continue;
-        const baseFs = (0, renderer_1.paragraphFallbackFontSize)(p);
-        const expected = ((0, renderer_1.paragraphLineHeightPx)(p, baseFs) - 0.25 * baseFs) * px;
+        const baseFs = (0, present_renderer_1.paragraphFallbackFontSize)(p);
+        const expected = ((0, present_renderer_1.paragraphLineHeightPx)(p, baseFs) - 0.25 * baseFs) * px;
         const probe = doc.createElement("span");
         probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
         div.insertBefore(probe, div.firstChild);
@@ -662,7 +662,7 @@ function alignOverlayBaselines(editor, s, scale, doc, fontScale = 1) {
         const delta = expected - measured;
         // 只做亚行高级别的微调。量出离谱的值（字体还没加载完、或无布局环境）宁可不动，
         // 否则补偿本身会变成新的"文字乱跳"。
-        if (Math.abs(delta) > (0, renderer_1.paragraphLineHeightPx)(p, baseFs) * px * 0.5)
+        if (Math.abs(delta) > (0, present_renderer_1.paragraphLineHeightPx)(p, baseFs) * px * 0.5)
             continue;
         div.style.position = "relative";
         div.style.top = `${delta}px`;
@@ -1026,7 +1026,7 @@ function hasAnyText(p) {
     return false;
 }
 function solidCss(color, alpha) {
-    return alpha !== undefined && alpha < 1 ? (0, renderer_1.hexWithAlpha)(color, alpha) : color;
+    return alpha !== undefined && alpha < 1 ? (0, present_renderer_1.hexWithAlpha)(color, alpha) : color;
 }
 function strokeToCssColor(stroke) {
     if (!stroke)

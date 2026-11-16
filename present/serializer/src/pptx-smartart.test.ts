@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { GroupShape, LineShape, PathShape, PolygonShape, RectShape } from "@ppt/core";
+import type { GroupShape, LineShape, PathShape, PolygonShape, RectShape } from "@sliiu/present-core";
 import { catForSmartArtLayout, layoutUniqueId, offsetShapeTree, SLIMPPT_LAYOUT_URN } from "./pptx-smartart.js";
 
 const meta = {

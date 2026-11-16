@@ -1,4 +1,4 @@
-import type { Shape, Sp3DInfo } from "@ppt/core";
+import type { Shape, Sp3DInfo } from "@sliiu/present-core";
 
 // 实时 WebGL 与离屏烘焙共用的形状范围。文字框用正面贴图（字形画进这张图）再挤出。
 // 组合本身不进；组合里的子形状各自判断。

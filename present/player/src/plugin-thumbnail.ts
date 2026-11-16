@@ -17,8 +17,8 @@
 //   - 渐变 / 滤镜 / 阴影 / 路径裁剪
 // 播放舞台另走 applyEntranceHideToScene，缩略图不跟「点击前隐藏」。
 
-import type { Presentation, Slide } from "@ppt/core";
-import { SvgBackend, createScene, revealDesignedAppearance, stageChromeBackground } from "@ppt/renderer";
+import type { Presentation, Slide } from "@sliiu/present-core";
+import { SvgBackend, createScene, revealDesignedAppearance, stageChromeBackground } from "@sliiu/present-renderer";
 import type {
   ThumbnailAPI,
   ThumbnailHandle,

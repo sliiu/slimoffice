@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openVbaInfoDialog = openVbaInfoDialog;
 const dialog_1 = require("./dialog");
-const core_1 = require("@sliiu/present-core");
-const core_2 = require("@sliiu/present-core");
-const parser_1 = require("@sliiu/present-parser");
+const present_core_1 = require("@sliiu/present-core");
+const present_core_2 = require("@sliiu/present-core");
+const present_parser_1 = require("@sliiu/present-parser");
 const i18n_1 = require("./i18n");
 const view_export_1 = require("./view-export");
 const ui_style_1 = require("./ui-style");
@@ -28,10 +28,10 @@ function downloadBytes(doc, bytes, fileName, mime) {
 }
 /** Read-only VBA project summary — macros are never executed in SlimPPT. */
 function openVbaInfoDialog(doc, pres) {
-    if (!(0, core_2.presentationHasVbaProject)(pres))
+    if (!(0, present_core_2.presentationHasVbaProject)(pres))
         return;
     const meta = pres.vbaProject;
-    const projectBytes = pres.__source?.files.get(core_1.VBA_PROJECT_PART_PATH);
+    const projectBytes = pres.__source?.files.get(present_core_1.VBA_PROJECT_PART_PATH);
     const overlay = doc.createElement("div");
     overlay.className = "local-picker-overlay";
     overlay.style.cssText = ui_style_1.DIALOG_OVERLAY_CSS;
@@ -224,11 +224,11 @@ function openVbaInfoDialog(doc, pres) {
     const readModuleSource = (moduleName, streamName) => {
         if (!projectBytes || !streamName)
             return null;
-        return (0, parser_1.readVbaModuleSource)(projectBytes, { name: moduleName, streamName }, meta?.codepage ?? 1252);
+        return (0, present_parser_1.readVbaModuleSource)(projectBytes, { name: moduleName, streamName }, meta?.codepage ?? 1252);
     };
     const renderProcedures = (source) => {
         procList.replaceChildren();
-        const procs = (0, parser_1.parseVbaModuleProcedures)(source);
+        const procs = (0, present_parser_1.parseVbaModuleProcedures)(source);
         if (!procs.length) {
             const empty = doc.createElement("span");
             empty.style.color = "var(--muted-foreground,#a1a1aa)";
@@ -360,7 +360,7 @@ function openVbaInfoDialog(doc, pres) {
         if (!selectedModule || !selectedSource)
             return;
         const stem = selectedModule.name.replace(/[^\w.-]+/g, "_");
-        downloadBytes(doc, (0, parser_1.formatVbaBasExport)(selectedModule.name, selectedSource), `${stem}.bas`, "text/plain");
+        downloadBytes(doc, (0, present_parser_1.formatVbaBasExport)(selectedModule.name, selectedSource), `${stem}.bas`, "text/plain");
     });
     previewActions.append(copyBtn, exportModuleBtn);
     rightCol.append(procHead, procList, preview, previewActions);
@@ -371,7 +371,7 @@ function openVbaInfoDialog(doc, pres) {
             procHits.style.display = "none";
             return;
         }
-        const hits = (0, parser_1.searchVbaProceduresInProject)(projectBytes, modules, q, meta?.codepage ?? 1252);
+        const hits = (0, present_parser_1.searchVbaProceduresInProject)(projectBytes, modules, q, meta?.codepage ?? 1252);
         if (!hits.length) {
             procHits.style.display = "none";
             return;
@@ -438,7 +438,7 @@ function openVbaInfoDialog(doc, pres) {
         exportAllBtn.textContent = (0, i18n_1.t)("vbaInfo.exportAllModules");
         exportAllBtn.style.cssText = copyBtn.style.cssText;
         exportAllBtn.addEventListener("click", () => {
-            const text = (0, parser_1.exportAllVbaModulesBas)(projectBytes, modules, meta?.codepage ?? 1252);
+            const text = (0, present_parser_1.exportAllVbaModulesBas)(projectBytes, modules, meta?.codepage ?? 1252);
             if (!text.trim())
                 return;
             const stem = (meta?.projectName || "vbaProject").replace(/[^\w.-]+/g, "_");

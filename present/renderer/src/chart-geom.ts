@@ -1,4 +1,4 @@
-import type { BarChartDef, ChartDef, ChartSeries, SurfaceChartDef } from "@ppt/core";
+import type { BarChartDef, ChartDef, ChartSeries, SurfaceChartDef } from "@sliiu/present-core";
 
 export interface PlotRect {
   x: number;

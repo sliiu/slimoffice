@@ -1,4 +1,4 @@
-import type { Layer, Presentation, Shape, Slide, SlideLayout, SlideMaster } from "@ppt/core";
+import type { Layer, Presentation, Shape, Slide, SlideLayout, SlideMaster } from "@sliiu/present-core";
 import { genShapeId } from "./shape-factory";
 
 function deepClone<T>(v: T): T {

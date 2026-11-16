@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { identityTransform, type Presentation, type Shape, type TextRun } from "@ppt/core";
+import { identityTransform, type Presentation, type Shape, type TextRun } from "@sliiu/present-core";
 import { ApplyCustomThemeCmd } from "./theme-commands.js";
 import { getTheme } from "./themes.js";
 

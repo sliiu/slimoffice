@@ -1,4 +1,4 @@
-import type { SlideTransition } from "@ppt/core";
+import type { SlideTransition } from "@sliiu/present-core";
 import * as fx2d from "./2d";
 import * as fx3d from "./3d";
 import * as fxGl from "./webgl";

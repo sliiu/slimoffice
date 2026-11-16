@@ -1,4 +1,4 @@
-import type { Presentation, PresentationSource, SlideSource } from "@ppt/core";
+import type { Presentation, PresentationSource, SlideSource } from "@sliiu/present-core";
 
 export interface ReattachOptions {
   /**

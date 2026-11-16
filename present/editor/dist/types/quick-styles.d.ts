@@ -1,5 +1,5 @@
 import type { Paint, Stroke } from "@sliiu/present-core";
-import type { MessageKey } from "./i18n.js";
+import type { MessageKey } from "./i18n/index.js";
 export interface QuickStylePreset {
     id: string;
     labelKey: MessageKey;

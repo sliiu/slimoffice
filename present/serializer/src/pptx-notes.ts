@@ -9,7 +9,7 @@
 // 之前 from-scratch 完全不产这些部件：AI 生成 deck（skill Step 6 的演讲备注）
 // 和 setSlideNotes 工具写入的 slide.notes 一经导出即丢失。
 
-import type { Presentation, SlideMaster } from "@ppt/core";
+import type { Presentation, SlideMaster } from "@sliiu/present-core";
 import { esc, xmlHeader } from "./xml-util";
 import type { MediaRegistrar } from "./media-table";
 import {

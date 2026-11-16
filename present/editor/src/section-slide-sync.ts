@@ -1,5 +1,5 @@
-import type { DeckSection, Presentation } from "@ppt/core";
-import { normalizeDeckSections } from "@ppt/core";
+import type { DeckSection, Presentation } from "@sliiu/present-core";
+import { normalizeDeckSections } from "@sliiu/present-core";
 
 function remapIndexAfterSlideMove(from: number, to: number, idx: number): number {
   if (idx === from) return to;

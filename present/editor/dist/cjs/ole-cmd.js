@@ -7,8 +7,8 @@ exports.oleEmbedByteSize = oleEmbedByteSize;
 exports.dataUrlByteSize = dataUrlByteSize;
 exports.isOleEmbedOverLimit = isOleEmbedOverLimit;
 exports.formatByteSize = formatByteSize;
-const core_1 = require("@sliiu/present-core");
-const parser_1 = require("@sliiu/present-parser");
+const present_core_1 = require("@sliiu/present-core");
+const present_parser_1 = require("@sliiu/present-parser");
 let oleSeq = 1;
 function bytesToBase64(bytes) {
     let bin = "";
@@ -43,16 +43,16 @@ function dataUrlToBytes(dataUrl) {
 /** Build an `OleObjectShape` for editor insert. */
 function buildOleShape(input) {
     const { fileName, embedSrc, bbox, showAsIcon = true } = input;
-    const progId = (0, parser_1.guessOleProgId)(fileName);
+    const progId = (0, present_parser_1.guessOleProgId)(fileName);
     const embedFileName = fileName.split(/[/\\]/).pop() ?? fileName;
-    const typeLabel = (0, parser_1.oleTypeLabel)(progId, embedFileName);
-    const badgeText = (0, parser_1.oleBadgeText)(progId, embedFileName, typeLabel);
+    const typeLabel = (0, present_parser_1.oleTypeLabel)(progId, embedFileName);
+    const badgeText = (0, present_parser_1.oleBadgeText)(progId, embedFileName, typeLabel);
     const objectName = embedFileName.replace(/\.[^.]+$/, "") || embedFileName;
     let previewSrc;
     let previewKind;
     const bytes = dataUrlToBytes(embedSrc);
     if (bytes) {
-        const payload = (0, parser_1.extractOlePreviewPayload)(bytes, embedFileName, progId);
+        const payload = (0, present_parser_1.extractOlePreviewPayload)(bytes, embedFileName, progId);
         if (payload) {
             previewSrc = `data:${payload.mime};base64,${bytesToBase64(payload.bytes)}`;
             previewKind = payload.kind;
@@ -64,7 +64,7 @@ function buildOleShape(input) {
         zIndex: 0,
         kind: "ole",
         bbox,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         visible: true,
         locked: false,
         opacity: 1,
@@ -76,7 +76,7 @@ function buildOleShape(input) {
         isLinked: false,
         typeLabel,
         badgeText,
-        badgeColor: (0, parser_1.oleBadgeColor)(progId, embedFileName),
+        badgeColor: (0, present_parser_1.oleBadgeColor)(progId, embedFileName),
         previewSrc,
         previewKind,
         fill: { kind: "solid", color: "#f8fafc", alpha: 1 },

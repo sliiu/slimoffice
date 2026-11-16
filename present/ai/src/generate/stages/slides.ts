@@ -6,7 +6,7 @@
 
 import type { LanguageModel } from "ai";
 import { z } from "zod";
-import type { Presentation, Slide } from "@ppt/core";
+import type { Presentation, Slide } from "@sliiu/present-core";
 import type { GuidanceInput, Outline, SlideSpecZ } from "../schema";
 import { SlideSpecSchema } from "../schema";
 import type { HostSkillStore } from "../../skills/types";

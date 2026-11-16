@@ -2,7 +2,7 @@
 // 没有 DOM 的 MCP 进程不走这里，由服务器改调无头浏览器。
 
 import { z } from "zod";
-import { snapshotSlide } from "@ppt/player";
+import { snapshotSlide } from "@sliiu/present-player";
 import { defineTool } from "../types";
 
 export interface SlidePngPayload {

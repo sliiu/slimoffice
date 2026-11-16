@@ -1,6 +1,6 @@
-import type { FieldResolveContext, TextParagraph, TextRun } from "@ppt/core";
+import type { FieldResolveContext, TextParagraph, TextRun } from "@sliiu/present-core";
 import { withFontFallback } from "./font-stack";
-import { runDisplayText } from "@ppt/core";
+import { runDisplayText } from "@sliiu/present-core";
 import { lineHeightFactor } from "./text-shared";
 
 // 与 backend 保持一致的"东亚 / CJK"判定（用于 eaVert 直立判断与 wrapping 时的"逐字可断"决策）。

@@ -7,7 +7,7 @@ import type {
   SlideLayout,
   SlideMaster,
   TextStyles,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 
 // 阶段 2.2：母版/版式编辑专属命令。所有命令都直接 mutate `pres.masters[]`，
 // 编辑器在执行后必须对所有引用了该 master/layout 的 slide 调
@@ -247,9 +247,9 @@ export class SetPlaceholderTypeCmd implements EditCommand {
 // patch 走"merge"语义 —— 只覆盖指定 level + 字段，其它保持。
 export type TxStyleScope = "title" | "body" | "other";
 export type LevelStylePatch = {
-  pPr?: import("@ppt/core").TextParagraphDefaults;
-  rPr?: import("@ppt/core").TextRunDefaults;
-  bullet?: import("@ppt/core").BulletDef;
+  pPr?: import("@sliiu/present-core").TextParagraphDefaults;
+  rPr?: import("@sliiu/present-core").TextRunDefaults;
+  bullet?: import("@sliiu/present-core").BulletDef;
 };
 
 export class SetMasterTxStylesCmd implements EditCommand {

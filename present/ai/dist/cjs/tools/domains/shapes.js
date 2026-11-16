@@ -25,7 +25,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.shapeTools = void 0;
 const zod_1 = require("zod");
 const commands_1 = require("@sliiu/present-editor/commands");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const types_1 = require("../types");
 // 用于 video/audio shape id 唯一性（与 image-tools.genId 同构，避免循环 import）。
 function genMediaId(prefix) {
@@ -315,7 +315,7 @@ exports.shapeTools = [
                 name: name ?? "Video",
                 kind: "video",
                 bbox: box,
-                transform: (0, core_1.identityTransform)(),
+                transform: (0, present_core_1.identityTransform)(),
                 zIndex: 0,
                 visible: true,
                 locked: false,
@@ -364,7 +364,7 @@ exports.shapeTools = [
                 name: name ?? "Audio",
                 kind: "audio",
                 bbox: box,
-                transform: (0, core_1.identityTransform)(),
+                transform: (0, present_core_1.identityTransform)(),
                 zIndex: 0,
                 visible: true,
                 locked: false,
@@ -762,7 +762,7 @@ exports.shapeTools = [
                 return (0, types_1.err)(`shape ${input.shapeId} not found on slide ${input.slideIdx}`);
             }
             if (input.kind === "url") {
-                const url = (0, core_1.sanitizeExternalUrl)(input.url);
+                const url = (0, present_core_1.sanitizeExternalUrl)(input.url);
                 if (!url)
                     return (0, types_1.err)("kind=url requires an http(s) or mailto URL.");
             }
@@ -778,7 +778,7 @@ exports.shapeTools = [
             }
             const link = { kind: input.kind };
             if (input.kind === "url")
-                link.target = (0, core_1.sanitizeExternalUrl)(input.url);
+                link.target = (0, present_core_1.sanitizeExternalUrl)(input.url);
             if (input.kind === "slide")
                 link.target = String(input.slideNumber);
             if (input.tooltip)

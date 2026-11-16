@@ -1,6 +1,6 @@
 // PowerPoint 2010+ `<p14:sectionLst>` → `pres.sections`。
-import type { DeckSection } from "@ppt/core";
-import { normalizeDeckSections } from "@ppt/core";
+import type { DeckSection } from "@sliiu/present-core";
+import { normalizeDeckSections } from "@sliiu/present-core";
 import { attr, findAllByLocalName, findByLocalName, type XmlNode } from "./xml";
 
 export const SECTION_LST_URI = "{521415D9-36F7-43E2-AB2F-B90AF26B5E84}";

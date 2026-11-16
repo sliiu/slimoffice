@@ -8,10 +8,10 @@ exports.videoOutputSize = videoOutputSize;
 exports.framesFor = framesFor;
 exports.narrationClips = narrationClips;
 exports.exportSlideshowVideo = exportSlideshowVideo;
-const animation_1 = require("@sliiu/present-animation");
-const core_1 = require("@sliiu/present-core");
-const player_1 = require("@sliiu/present-player");
-const renderer_1 = require("@sliiu/present-renderer");
+const present_animation_1 = require("@sliiu/present-animation");
+const present_core_1 = require("@sliiu/present-core");
+const present_player_1 = require("@sliiu/present-player");
+const present_renderer_1 = require("@sliiu/present-renderer");
 const video_export_1 = require("./video-export");
 /** Cap click steps recorded per slide so a looping timeline cannot run away. */
 exports.MAX_VIDEO_CLICK_STEPS = 24;
@@ -112,17 +112,17 @@ async function openLiveSlide(slide, pres, scale) {
     host.style.width = `${pres.size.width}px`;
     host.style.height = `${pres.size.height}px`;
     document.body.appendChild(host);
-    const scene = (0, renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
-    (0, renderer_1.applyEntranceHideToScene)(scene, slide);
-    const backend = new renderer_1.CanvasBackend(scene, host, { pixelRatio: scale });
-    const bake = (0, player_1.createBake3DRuntime)();
+    const scene = (0, present_renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
+    (0, present_renderer_1.applyEntranceHideToScene)(scene, slide);
+    const backend = new present_renderer_1.CanvasBackend(scene, host, { pixelRatio: scale });
+    const bake = (0, present_player_1.createBake3DRuntime)();
     bake.kick(slide, scene);
     await bake.waitForAll();
     backend.flush();
-    await (0, renderer_1.waitForImagesLoaded)();
+    await (0, present_renderer_1.waitForImagesLoaded)();
     backend.flush();
-    const ticker = new animation_1.ooxml.ManualTicker();
-    const play = (0, player_1.buildOoxmlPlayback)(slide, scene, { slideWidth: pres.size.width, slideHeight: pres.size.height }, { themeColors: pres.theme?.colors, ticker });
+    const ticker = new present_animation_1.ooxml.ManualTicker();
+    const play = (0, present_player_1.buildOoxmlPlayback)(slide, scene, { slideWidth: pres.size.width, slideHeight: pres.size.height }, { themeColors: pres.theme?.colors, ticker });
     return {
         canvas: backend.canvas,
         flush: () => backend.flush(),
@@ -281,11 +281,11 @@ async function exportSlideshowVideo(pres, opts) {
             decoded.clear();
         }
     }
-    const pipRect = (0, core_1.lecturePipRect)({ width: canvas.width, height: canvas.height }, pres.lecture?.frame);
+    const pipRect = (0, present_core_1.lecturePipRect)({ width: canvas.width, height: canvas.height }, pres.lecture?.frame);
     const cameras = new Map();
     const ownedUrls = [];
     for (const slide of slides) {
-        const ref = (0, core_1.lectureTakeFor)(pres.lecture, slide.id)?.cameraRef;
+        const ref = (0, present_core_1.lectureTakeFor)(pres.lecture, slide.id)?.cameraRef;
         if (!ref)
             continue;
         const src = ref.startsWith("idb:") ? (await opts?.resolveLectureCamera?.(ref)) ?? null : ref;

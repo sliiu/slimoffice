@@ -1,4 +1,4 @@
-// @ppt/ui — shared design system (shadcn-flavoured) for the SlimPPT editor.
+// @sliiu/present-ui — shared design system (shadcn-flavoured) for the SlimPPT editor.
 //
 // Tokens mirror the 官网 (landing-page-for-qingu). The React console imports
 // ./tokens.css into Tailwind; the vanilla editor/playground inject the same

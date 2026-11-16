@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Paint, Stroke } from "@ppt/core";
+import type { Paint, Stroke } from "@sliiu/present-core";
 import { setupCamera } from "./camera";
 import { applyLightRig } from "./light-rig";
 import { buildMaterial, pickPrimaryColor } from "./material";

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseShapeTree = parseShapeTree;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const units_1 = require("./units");
 const xml_1 = require("./xml");
 const fill_1 = require("./fill");
@@ -624,7 +624,7 @@ function applyFontRefToParagraphs(paragraphs, styleEl, ctx) {
     }));
 }
 function readXfrm(xfrm, group) {
-    const transform = (0, core_1.identityTransform)();
+    const transform = (0, present_core_1.identityTransform)();
     if (!xfrm)
         return { bbox: { x: 0, y: 0, w: 0, h: 0 }, transform };
     const off = (0, xml_1.findByLocalName)(xfrm, "off");
@@ -816,7 +816,7 @@ function parseSp(node, ctx, zIndex, group) {
                         zIndex: zIndex + i / 200,
                         kind: "path",
                         bbox,
-                        transform: (0, core_1.identityTransform)(),
+                        transform: (0, present_core_1.identityTransform)(),
                         fill: (0, fill_1.modulatePaint)(fill, sp.fillMod),
                         stroke: undefined,
                         d: sp.d,
@@ -831,7 +831,7 @@ function parseSp(node, ctx, zIndex, group) {
                         zIndex: zIndex + 0.5 + i / 200,
                         kind: "path",
                         bbox,
-                        transform: (0, core_1.identityTransform)(),
+                        transform: (0, present_core_1.identityTransform)(),
                         fill: undefined,
                         stroke,
                         d: sp.d,
@@ -864,7 +864,7 @@ function parseSp(node, ctx, zIndex, group) {
                 ...base,
                 id: meta.id + "_base",
                 placeholder: undefined,
-                transform: (0, core_1.identityTransform)(),
+                transform: (0, present_core_1.identityTransform)(),
             };
             const textShape = {
                 ...meta,
@@ -884,7 +884,7 @@ function parseSp(node, ctx, zIndex, group) {
                 // 如果 preset 给出可用的 textRect（如 pie/roundRect/...），用它做文字
                 // 布局区域；否则回退到形状 bbox。bbox.w/h <= 0 时（退化情况）也回退。
                 bbox: textRectBox && textRectBox.w > 0 && textRectBox.h > 0 ? textRectBox : bbox,
-                transform: (0, core_1.identityTransform)(),
+                transform: (0, present_core_1.identityTransform)(),
                 paragraphs,
                 vAlign: bodyInfo.vAlign,
                 wrap: bodyInfo.wrap,
@@ -932,7 +932,7 @@ function parseSp(node, ctx, zIndex, group) {
 function promoteWebEmbed(s) {
     if (!s)
         return s;
-    const decoded = (0, core_1.decodeWebEmbedDescr)(s.descr);
+    const decoded = (0, present_core_1.decodeWebEmbedDescr)(s.descr);
     if (!decoded)
         return s;
     return {
@@ -1107,7 +1107,7 @@ function parsePic(node, ctx, zIndex, group) {
     // runtime 把 opacity 写成 0 当作 entrance hide"（snapshot=1, 内存=0）—— 后者不该
     // 被烘焙回 OOXML 否则文件每次保存都多出一个 <a:alphaModFix amt="0"/>，再被解析又
     // 互相循环，破坏 round-trip 幂等。
-    (0, core_1.setOrigin)(out, { opacity: blipAlpha ?? 1 });
+    (0, present_core_1.setOrigin)(out, { opacity: blipAlpha ?? 1 });
     return out;
 }
 function parseSvgBlipSrc(blipEl, ctx) {

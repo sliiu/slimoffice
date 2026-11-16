@@ -4,7 +4,7 @@ exports.mountSlideSorterView = mountSlideSorterView;
 exports.mountOutlineView = mountOutlineView;
 exports.mountNotesPageView = mountNotesPageView;
 const slide_commands_1 = require("./slide-commands");
-const renderer_1 = require("@sliiu/present-renderer");
+const present_renderer_1 = require("@sliiu/present-renderer");
 const virtual_list_1 = require("./virtual-list");
 const i18n_1 = require("./i18n");
 function collectSlideText(slide) {
@@ -31,11 +31,11 @@ function collectSlideText(slide) {
 }
 function renderThumb(host, slide, size, masters) {
     host.replaceChildren();
-    const chrome = (0, renderer_1.stageChromeBackground)(slide);
+    const chrome = (0, present_renderer_1.stageChromeBackground)(slide);
     const transparent = chrome === "transparent";
     try {
-        const scene = (0, renderer_1.createScene)(slide, size, { masters });
-        const be = new renderer_1.SvgBackend(scene, host, { transparent, preview: true });
+        const scene = (0, present_renderer_1.createScene)(slide, size, { masters });
+        const be = new present_renderer_1.SvgBackend(scene, host, { transparent, preview: true });
         if (!transparent)
             be.root.style.background = chrome;
         be.root.setAttribute("preserveAspectRatio", "xMidYMid meet");

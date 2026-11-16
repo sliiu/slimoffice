@@ -5,7 +5,7 @@
 // 计时）和三个命令（上一页 / 下一页 / 跳到某页）。传输不在这里 —— 宿主可能走 WebSocket、WebRTC
 // 或同一条链接里的 BroadcastChannel；这一层只保证两端说同一种话，并且开源包不依赖任何私有服务。
 
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 
 /** 手机 → 讲者。 */
 export type RemoteCommand =

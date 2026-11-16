@@ -5,15 +5,15 @@ exports.serializeTransition = serializeTransition;
 exports.serializeTiming = serializeTiming;
 exports.remapTimingSpids = remapTimingSpids;
 exports.mergeMediaTiming = mergeMediaTiming;
-const animation_1 = require("@sliiu/present-animation");
-const core_1 = require("@sliiu/present-core");
+const present_animation_1 = require("@sliiu/present-animation");
+const present_core_1 = require("@sliiu/present-core");
 const media_table_1 = require("./media-table");
 const pptx_timing_normalize_1 = require("./pptx-timing-normalize");
 const xml_util_1 = require("./xml-util");
 // 由 OOXML 标定常量推导 spd 三档的判定边界 — 即 fast/med 与 med/slow 的中点。
 // 这样 dur ↔ spd 互推时不引入任何启发式幻数。
-const SPD_FAST_MED_BOUNDARY = (core_1.TRANSITION_SPEED_TO_SEC.fast + core_1.TRANSITION_SPEED_TO_SEC.med) / 2;
-const SPD_MED_SLOW_BOUNDARY = (core_1.TRANSITION_SPEED_TO_SEC.med + core_1.TRANSITION_SPEED_TO_SEC.slow) / 2;
+const SPD_FAST_MED_BOUNDARY = (present_core_1.TRANSITION_SPEED_TO_SEC.fast + present_core_1.TRANSITION_SPEED_TO_SEC.med) / 2;
+const SPD_MED_SLOW_BOUNDARY = (present_core_1.TRANSITION_SPEED_TO_SEC.med + present_core_1.TRANSITION_SPEED_TO_SEC.slow) / 2;
 // ECMA-376 §19.5.50 p:transition — slide 级过渡。与 @sliiu/present-parser parseSlideTransition 对称。
 //
 // 写盘形状对齐 PowerPoint 自己的输出（[MS-PPTX] §2.3 Slide Transitions）：
@@ -284,12 +284,12 @@ function rewriteTimeNodeSpids(n, toWritten) {
         rewriteCondSpids(n.prevCondLst, toWritten);
         rewriteCondSpids(n.nextCondLst, toWritten);
     }
-    const ctn = animation_1.ooxml.getCTn(n);
+    const ctn = present_animation_1.ooxml.getCTn(n);
     rewriteCondSpids(ctn.stCondLst, toWritten);
     rewriteCondSpids(ctn.endCondLst, toWritten);
     if (ctn.endSync)
         rewriteTgtSpids(ctn.endSync.tgtEl, toWritten);
-    rewriteTgtSpids(animation_1.ooxml.getTgtEl(n), toWritten);
+    rewriteTgtSpids(present_animation_1.ooxml.getTgtEl(n), toWritten);
     for (const ch of ctn.childTnLst ?? [])
         rewriteTimeNodeSpids(ch, toWritten);
     for (const ch of ctn.subTnLst ?? [])

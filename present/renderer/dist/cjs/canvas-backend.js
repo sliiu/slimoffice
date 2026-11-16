@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CanvasBackend = void 0;
 exports.rasterizeShapeFront = rasterizeShapeFront;
 const font_stack_1 = require("./font-stack");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const scene_node_1 = require("./scene-node");
 const paint_canvas_1 = require("./paint-canvas");
 const metafile_preview_1 = require("./metafile-preview");
@@ -21,7 +21,7 @@ const text_wordart_1 = require("./text-wordart");
 const text_warp_1 = require("./text-warp");
 const ole_render_1 = require("./ole-render");
 const model3d_render_1 = require("./model3d-render");
-const three_bake_1 = require("@sliiu/present-three-bake");
+const present_three_bake_1 = require("@sliiu/present-three-bake");
 // vert 旋转角 / 竖排判定 / bullet 编号 / 缺省 insets 全部来自 ./text-shared，
 // 与 svg-backend 和编辑器的行内文本编辑器共用同一套规则。
 const text_shared_1 = require("./text-shared");
@@ -257,7 +257,7 @@ class CanvasBackend {
             ctx.filter = ctx.filter && ctx.filter !== "none" ? `${ctx.filter} ${fxFilter}` : fxFilter;
         // 离屏光栅：three-bake 把 3D 烘进 meta3D.bakedSrc 后，image 和自选形状都画这张 PNG。
         // 还没烘出来时继续走下面的 2D。live 舞台上的 3D 形状不进这个 backend。
-        const info3d = this.drawingFront ? undefined : (0, three_bake_1.shape3DInfo)(s);
+        const info3d = this.drawingFront ? undefined : (0, present_three_bake_1.shape3DInfo)(s);
         const baked3d = info3d?.bakedSrc;
         if (baked3d) {
             const bimg = (0, paint_canvas_1.getImage)(baked3d, () => this.scheduleRedraw());
@@ -1170,7 +1170,7 @@ class CanvasBackend {
         const entries = [];
         let absIdx = 0;
         for (const run of p.runs) {
-            const runText = (0, core_1.runDisplayText)(run, { slideIndex: this.scene.slide.index });
+            const runText = (0, present_core_1.runDisplayText)(run, { slideIndex: this.scene.slide.index });
             const rfs = run.fontSize ?? fallbackFs;
             const it = run.italic ? "italic " : "";
             const fw = run.fontWeight ?? "normal";

@@ -1,5 +1,5 @@
-import type { Presentation } from "@ppt/core";
-import { getPresentationProtection, summarizeOfficeModifyVerifier } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
+import { getPresentationProtection, summarizeOfficeModifyVerifier } from "@sliiu/present-core";
 import {
   accessibilityIssueDetail,
   auditPresentationAccessibility,

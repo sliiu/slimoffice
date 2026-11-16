@@ -1,4 +1,4 @@
-import type { TextRun, TextShape } from "@ppt/core";
+import type { TextRun, TextShape } from "@sliiu/present-core";
 import { FALLBACK_FONT_SIZE } from "./text-shared";
 
 export interface WarpSample {

@@ -1,6 +1,6 @@
 // 字符选区上的文字样式。选区按 UTF-16 下标，和 contenteditable 的 Range 偏移一致。
 
-import type { TextParagraph, TextRun } from "@ppt/core";
+import type { TextParagraph, TextRun } from "@sliiu/present-core";
 import type { TextStylePatch } from "./commands";
 
 export interface TextCharRange {

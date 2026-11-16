@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { identityTransform, type RectShape, type Slide, type SlideMaster } from "@ppt/core";
+import { identityTransform, type RectShape, type Slide, type SlideMaster } from "@sliiu/present-core";
 import { composeSlideForRender } from "./compose.js";
 
 function rect(id: string, extra: Partial<Pick<RectShape, "placeholder" | "userDrawn">> = {}): RectShape {

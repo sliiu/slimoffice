@@ -1,6 +1,6 @@
 // 生成流水线的公共类型：PipelineEvent 进度事件 + GenerateOptions + UsageMetrics。
 
-import type { Presentation, Template } from "@ppt/core";
+import type { Presentation, Template } from "@sliiu/present-core";
 import type { AiConfig } from "../config/types";
 import { defaultConfig } from "../config/types";
 import { isConfigUsable } from "../config/presets";

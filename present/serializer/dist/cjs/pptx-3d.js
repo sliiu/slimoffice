@@ -5,7 +5,7 @@ exports.hasMeta3DForWrite = hasMeta3DForWrite;
 exports.meta3DToXml = meta3DToXml;
 exports.meta3DEqual = meta3DEqual;
 exports.patchSpPr3DIn = patchSpPr3DIn;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const raw_xml_1 = require("./raw-xml");
 const xml_util_1 = require("./xml-util");
 /** Strip runtime bake fields — only OOXML-round-trippable 3D params remain. */
@@ -143,10 +143,10 @@ function strip3DNodes(children) {
 /** Sync `<a:scene3d>` / `<a:sp3d>` under `<p:spPr>` from `shape.meta3D`. */
 function patchSpPr3DIn(spPr, shape, opts, partPath) {
     const desired = meta3DForWrite(shape.meta3D);
-    const origin = (0, core_1.getOrigin)(shape)?.meta3D;
+    const origin = (0, present_core_1.getOrigin)(shape)?.meta3D;
     if (!hasMeta3DForWrite(desired) && !origin)
         return;
-    if (!(0, core_1.isDirty)(shape, "meta3D") &&
+    if (!(0, present_core_1.isDirty)(shape, "meta3D") &&
         meta3DEqual(desired, origin) &&
         (!desired || meta3DEqual(desired, shape.meta3D))) {
         return;

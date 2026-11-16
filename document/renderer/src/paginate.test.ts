@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_PAGE, type Document } from "@document/core";
+import { DEFAULT_PAGE, type Document } from "@sliiu/document-core";
 import { paginate } from "./index";
 
 function document(count: number): Document {

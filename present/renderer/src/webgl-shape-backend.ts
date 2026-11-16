@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Rect, Shape } from "@ppt/core";
+import type { Rect, Shape } from "@sliiu/present-core";
 import {
   applyTextureCrop,
   buildThreeScene,
@@ -14,7 +14,7 @@ import {
   shapeSupports3D,
   type BuiltScene,
   type ResolvedScene3D,
-} from "@ppt/three-bake";
+} from "@sliiu/present-three-bake";
 import type { Scene, SceneNode } from "./scene-node";
 import { accumulatedAffine, chainHidden, chainOpacity, cssAffineForBox } from "./node-affine";
 import { shapeFrontImageSrc } from "./shape-front";
@@ -31,7 +31,7 @@ import { shapeFrontImageSrc } from "./shape-front";
 //     ResizeObserver 跟随更新；每个 shape 的 wrapper 用 slide 单位定位。
 //   - 共享一个 WebGLRenderer（单 GL context），逐 shape 渲染到其 backing 尺寸再 drawImage
 //     到该 shape 的 2D 展示 canvas，避免 per-shape GL context 累积。
-//   - 几何/材质/相机全部复用 @ppt/three-bake 的 buildThreeScene / createSceneCamera，
+//   - 几何/材质/相机全部复用 @sliiu/present-three-bake 的 buildThreeScene / createSceneCamera，
 //     与离屏光栅（缩略图/截图）完全一致。
 //   - 每帧 2D 变换（tx/ty/rotation/scale/opacity）经 node.on() 同步到 wrapper CSS，
 //     不重渲 GL（3D 相机不随动画变）；仅 resize / 贴图加载完成时重渲 GL。

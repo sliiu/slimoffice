@@ -1,4 +1,4 @@
-import { TRANSITION_SPEED_TO_SEC as SPEED_TO_SEC, type SlideTransition } from "@ppt/core";
+import { TRANSITION_SPEED_TO_SEC as SPEED_TO_SEC, type SlideTransition } from "@sliiu/present-core";
 import type { RelMap } from "./parts";
 import {
   attr,

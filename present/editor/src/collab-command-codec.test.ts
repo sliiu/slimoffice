@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { deserializeCollabCommand, serializeCollabCommand } from "./collab-command-codec.js";
 import { ReplaceImageSrcCmd, SetSlideSizeCmd, slideTarget, SetBackgroundTargetCmd } from "./commands.js";
 import { ApplyThemeVariantCmd } from "./theme-variant-cmd.js";

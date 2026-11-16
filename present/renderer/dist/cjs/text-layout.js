@@ -7,7 +7,7 @@ exports.applyKinsoku = applyKinsoku;
 exports.glueUnbrokenEastAsian = glueUnbrokenEastAsian;
 exports.wrapParagraphIntoLines = wrapParagraphIntoLines;
 const font_stack_1 = require("./font-stack");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const text_shared_1 = require("./text-shared");
 // 与 backend 保持一致的"东亚 / CJK"判定（用于 eaVert 直立判断与 wrapping 时的"逐字可断"决策）。
 function isEastAsianChar(cp) {
@@ -262,7 +262,7 @@ function wrapParagraphIntoLines(p, maxWidth, fallbackFs, ctx, firstLineMaxWidth,
         if (!closedInRun) {
             for (let i = runIdx + 1; i < p.runs.length; i++) {
                 const run = p.runs[i];
-                const t = fieldCtx ? (0, core_1.runDisplayText)(run, fieldCtx) : run.text;
+                const t = fieldCtx ? (0, present_core_1.runDisplayText)(run, fieldCtx) : run.text;
                 const k = t.indexOf("\t");
                 chunks.push({ run, text: k >= 0 ? t.slice(0, k) : t });
                 if (k >= 0)
@@ -283,7 +283,7 @@ function wrapParagraphIntoLines(p, maxWidth, fallbackFs, ctx, firstLineMaxWidth,
     };
     for (let ri = 0; ri < p.runs.length; ri++) {
         const run = p.runs[ri];
-        const runText = fieldCtx ? (0, core_1.runDisplayText)(run, fieldCtx) : run.text;
+        const runText = fieldCtx ? (0, present_core_1.runDisplayText)(run, fieldCtx) : run.text;
         const fs = run.fontSize ?? fallbackFs;
         setMeasureFontFor(ctx, run, fs);
         const ls = run.letterSpacing ?? 0;

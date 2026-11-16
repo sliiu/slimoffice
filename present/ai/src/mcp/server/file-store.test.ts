@@ -3,9 +3,9 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
-import type { Presentation } from "@ppt/core";
-import { parsePptx } from "@ppt/parser";
-import { writePptx } from "@ppt/serializer";
+import type { Presentation } from "@sliiu/present-core";
+import { parsePptx } from "@sliiu/present-parser";
+import { writePptx } from "@sliiu/present-serializer";
 import { createFileDeckStore, resolveDeckFile } from "./file-store.js";
 
 function tinyPres(name: string): Presentation {

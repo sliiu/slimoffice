@@ -17,8 +17,8 @@ import type {
   TextParagraph,
   TextRun,
   TextStyles,
-} from "@ppt/core";
-import { encodeWebEmbedDescr } from "@ppt/core";
+} from "@sliiu/present-core";
+import { encodeWebEmbedDescr } from "@sliiu/present-core";
 import { attrs, esc, firstCssTypeface, hex, parseColor, pxToEmu, pxToHundredthPt, tag, underlineToOoxml } from "./xml-util";
 import type { MediaRegistrar } from "./media-table";
 import {

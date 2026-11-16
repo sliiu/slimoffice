@@ -1,5 +1,5 @@
-import type { DrawingGuide, Presentation, PresentationSource, ViewGuides } from "@ppt/core";
-import { pxToGuidePos, viewGuidesHasContent, viewGuidesSnapshot } from "@ppt/core";
+import type { DrawingGuide, Presentation, PresentationSource, ViewGuides } from "@sliiu/present-core";
+import { pxToGuidePos, viewGuidesHasContent, viewGuidesSnapshot } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
 import { esc, pxToEmu, xmlHeader } from "./xml-util";
 

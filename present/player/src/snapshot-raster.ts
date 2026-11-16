@@ -1,6 +1,6 @@
-import type { Presentation, Slide } from "@ppt/core";
-import { CanvasBackend, createScene, revealDesignedAppearance, shapeFrontImageSrc, waitForImagesLoaded, type Scene } from "@ppt/renderer";
-import { createBake3DRuntime, shape3DInfo } from "@ppt/three-bake";
+import type { Presentation, Slide } from "@sliiu/present-core";
+import { CanvasBackend, createScene, revealDesignedAppearance, shapeFrontImageSrc, waitForImagesLoaded, type Scene } from "@sliiu/present-renderer";
+import { createBake3DRuntime, shape3DInfo } from "@sliiu/present-three-bake";
 import { loadEmbeddedFonts } from "./fonts";
 
 /** Screen / thumbnail baseline (CSS px treated as 96 DPI). */
@@ -39,7 +39,7 @@ export interface SnapshotOptions {
   quality?: number;
   // 阶段 2.1：master/layout 装饰由 renderer.compose 合成。截图时传入 masters
   // 才能渲出母版装饰；不传则只截 slide 内容（向后兼容）。
-  masters?: import("@ppt/core").SlideMaster[];
+  masters?: import("@sliiu/present-core").SlideMaster[];
 }
 
 export interface PdfExportOptions extends SnapshotOptions {

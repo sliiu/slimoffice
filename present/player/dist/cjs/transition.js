@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.clampTransitionForPlan = clampTransitionForPlan;
 exports.snapshotStage = snapshotStage;
 exports.runTransition = runTransition;
-const transition_fx_1 = require("@sliiu/present-transition-fx");
+const present_transition_fx_1 = require("@sliiu/present-transition-fx");
 /** 2D transitions available on Free / Lite during SaaS playback. */
 const BASIC_TRANSITION_KINDS = new Set([
     "cut",
@@ -75,7 +75,7 @@ async function runTransition(ghost, stage, transition) {
         wrap.style.overflow = "hidden";
     }
     try {
-        await (0, transition_fx_1.runTransition)(ghost, stage, transition);
+        await (0, present_transition_fx_1.runTransition)(ghost, stage, transition);
     }
     finally {
         stage.style.clipPath = "";

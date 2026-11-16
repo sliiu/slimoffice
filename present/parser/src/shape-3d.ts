@@ -9,13 +9,13 @@ import type {
   Sp3DInfo,
   Sp3DParams,
   Sphere3D,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 
-// 3D 数据类型的**唯一来源**是 @ppt/core（packages/core/src/three-d.ts）。这里只做
+// 3D 数据类型的**唯一来源**是 @sliiu/present-core（packages/core/src/three-d.ts）。这里只做
 // 「OOXML → 那些类型」的忠实解析，不展开 preset、不补默认值 —— 那些 PowerPoint 私有
 // 数值与默认逻辑全部归渲染侧效果层（packages/three-bake/src/presets.ts + resolve.ts）。
 //
-// 为向后兼容，旧的从 "@ppt/parser" 引用这些类型的代码仍可用：见 packages/parser/src/index.ts
+// 为向后兼容，旧的从 "@sliiu/present-parser" 引用这些类型的代码仍可用：见 packages/parser/src/index.ts
 // 的 re-export。
 export type {
   Baker,
@@ -26,7 +26,7 @@ export type {
   Sp3DInfo,
   Camera3D,
   LightRig3D,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 
 /** `<a:rot lat lon rev>` → 度（原值 ÷ 60000）。 */
 function parseSphere(rot: XmlNode): Sphere3D {

@@ -6,7 +6,7 @@ import {
   type DocSection,
   type DocTable,
   type Document,
-} from "@document/core";
+} from "@sliiu/document-core";
 
 const TWIP = 96 / 1440;
 const LINE = 22;

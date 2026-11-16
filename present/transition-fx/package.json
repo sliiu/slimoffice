@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sliiu/present-core": "0.0.0-nightly.20261116031027"
+    "@sliiu/present-core": "workspace:*"
   },
   "module": "./dist/esm/index.js",
   "repository": {

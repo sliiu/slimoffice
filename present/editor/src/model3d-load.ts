@@ -1,4 +1,4 @@
-import type { Model3DPreset } from "@ppt/core";
+import type { Model3DPreset } from "@sliiu/present-core";
 
 export type Model3DMime = "model/gltf-binary" | "model/gltf+json";
 

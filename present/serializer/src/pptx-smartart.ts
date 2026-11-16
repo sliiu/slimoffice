@@ -5,8 +5,8 @@
 // 五件套。PowerPoint / WPS 把它当 SmartArt 对象打开；我们自己再 parse 时走
 // 已有的 parseSmartArtByRel（drawing spTree → group children）。
 
-import type { Shape, SmartArtItem, SmartArtLayoutKind } from "@ppt/core";
-import { SMARTART_LAYOUT_LABELS, translatePathD } from "@ppt/core";
+import type { Shape, SmartArtItem, SmartArtLayoutKind } from "@sliiu/present-core";
+import { SMARTART_LAYOUT_LABELS, translatePathD } from "@sliiu/present-core";
 import { esc, pxToEmu, xmlHeader } from "./xml-util";
 
 export const DGM_GRAPHIC_URI = "http://schemas.openxmlformats.org/drawingml/2006/diagram";

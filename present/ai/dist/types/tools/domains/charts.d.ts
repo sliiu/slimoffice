@@ -1,4 +1,4 @@
-export declare const chartTools: (import("...js").ToolDef<{
+export declare const chartTools: (import("../index.js").ToolDef<{
     slideIdx: number;
     bbox: {
         x: number;
@@ -38,7 +38,7 @@ export declare const chartTools: (import("...js").ToolDef<{
         numFmt?: string | undefined;
     } | undefined;
     name?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
     categories?: string[] | undefined;
@@ -55,7 +55,7 @@ export declare const chartTools: (import("...js").ToolDef<{
         }[];
         color?: string | undefined;
     }[] | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
     title?: string | undefined;
@@ -71,7 +71,7 @@ export declare const chartTools: (import("...js").ToolDef<{
         position?: string | undefined;
         numFmt?: string | undefined;
     } | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
     type: "area" | "bar" | "bubble" | "column" | "doughnut" | "line" | "pie" | "radar" | "scatter" | "stock" | "surface";

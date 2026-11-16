@@ -1,4 +1,4 @@
-import type { OleObjectShape } from "@ppt/core";
+import type { OleObjectShape } from "@sliiu/present-core";
 import { getImage } from "./paint-canvas";
 
 const SVG_NS = "http://www.w3.org/2000/svg";

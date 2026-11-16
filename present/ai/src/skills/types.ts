@@ -16,7 +16,7 @@
 //   - MCP tools 集在每次 send 前 freeze（中途切换需重发）；Skills 也按"启用集"
 //     在拼 prompt 时取值，下一个 turn 即生效，无中途切换问题。
 //   - MCP 的开关只走 localStorage；Skill 的"内容"由宿主存储（HostSkillStore）
-//     管理（保持 @ppt/ai 不直读 localStorage 的边界）。
+//     管理（保持 @sliiu/present-ai 不直读 localStorage 的边界）。
 
 import type { z } from "zod";
 import type { GenerateBriefFieldId } from "./brief-fields";
@@ -94,7 +94,7 @@ export interface SkillEnabledState {
 /**
  * 宿主注入的 user skill 存储抽象。
  *
- * 与 HostChatStore 同心智：@ppt/ai 不直接读 localStorage，playground 侧基于
+ * 与 HostChatStore 同心智：@sliiu/present-ai 不直接读 localStorage，playground 侧基于
  * 自己的存储格式实现这个接口。
  *
  * 设计要点：

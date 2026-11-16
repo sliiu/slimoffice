@@ -27,7 +27,7 @@ import {
   type ParagraphSpacingPatch,
   type RichParagraph,
   type TextBodyPatch,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { defineTool, err } from "../types";
 
 const colorRe = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;

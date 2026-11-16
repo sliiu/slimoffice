@@ -20,7 +20,7 @@
 //
 // 状态：每张 slide 各自一份笔迹列表，按 visibleIndex 索引；切页时切换可见层。
 
-import type { Plugin } from "@ppt/plugin-sdk";
+import type { Plugin } from "@sliiu/present-plugin-sdk";
 import { lucideSvg } from "../icons";
 import { createTranslator } from "../i18n";
 

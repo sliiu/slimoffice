@@ -1,5 +1,5 @@
 import type { Paint } from "@sliiu/present-core";
-import type { MessageKey } from "./i18n.js";
+import type { MessageKey } from "./i18n/index.js";
 export interface FillGradientPreset {
     id: string;
     labelKey: MessageKey;

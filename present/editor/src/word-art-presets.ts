@@ -1,6 +1,6 @@
 // WordArt 预设数据（与 dialog.ts 的 WordArt 编辑器共用）。
 //
-// 单独成文件的原因：@ppt/ai 的 WordArt 工具（浏览器对话 + Node MCP server）
+// 单独成文件的原因：@sliiu/present-ai 的 WordArt 工具（浏览器对话 + Node MCP server）
 // 需要这份纯数据，而 dialog.ts 是重 UI 模块（i18n / icons / DOM），Node 下
 // 无法加载。本文件必须保持 DOM-free。
 

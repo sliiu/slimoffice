@@ -16,7 +16,7 @@
 
 import { generateText, type LanguageModel } from "ai";
 import { z } from "zod";
-import type { Paint, Presentation, Shape, TextShape } from "@ppt/core";
+import type { Paint, Presentation, Shape, TextShape } from "@sliiu/present-core";
 import { withGenerateJsonSlot, isTimeoutLlmError, LLM_TIMEOUT } from "../../llm/limit";
 import { extractLlmUsage, type LlmUsage } from "../../llm/usage";
 import { throwIfAborted } from "../abort";

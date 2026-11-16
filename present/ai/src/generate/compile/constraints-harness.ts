@@ -1,4 +1,4 @@
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import type { GuidanceInput, Outline } from "../schema";
 import { compilePresentation, outlineToFallbackSpec } from "./compile";
 import { formatGatePassMarkdown, reportGateResult, type GatePassReport } from "../qa/gates-report";

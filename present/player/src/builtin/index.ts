@@ -1,9 +1,9 @@
 // 内置插件清单
 //
-// 这些插件随 @ppt/player 一同分发，编辑器 / 宿主可以通过 `BUILTIN_PLUGINS`
+// 这些插件随 @sliiu/present-player 一同分发，编辑器 / 宿主可以通过 `BUILTIN_PLUGINS`
 // 拿到完整的可选清单，渲染一个「选择放映时加载哪些插件」的勾选 UI。
 
-import type { Plugin } from "@ppt/plugin-sdk";
+import type { Plugin } from "@sliiu/present-plugin-sdk";
 import { whiteboardPlugin } from "./whiteboard";
 import { laserPointerPlugin } from "./laser-pointer";
 import { outlinePlugin } from "./outline";

@@ -6,7 +6,7 @@ exports.injectScratchPresentationTags = injectScratchPresentationTags;
 exports.injectScratchSlideTags = injectScratchSlideTags;
 exports.patchSlideCustomDataTags = patchSlideCustomDataTags;
 exports.patchCommentMetaTags = patchCommentMetaTags;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const xml_util_1 = require("./xml-util");
 exports.REL_TYPE_TAGS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags";
@@ -65,12 +65,12 @@ function allocRelId(relsXml) {
     return `rId${n}`;
 }
 const SLIMPPT_TAG_KEYS = new Set([
-    core_1.COMMENT_META_TAG,
-    core_1.EDITOR_PLUGINS_META_TAG,
-    core_1.PLAYBACK_PLUGINS_META_TAG,
-    core_1.PROTECTION_META_TAG,
-    core_1.PROOFING_LANG_META_TAG,
-    core_1.SECTIONS_META_TAG,
+    present_core_1.COMMENT_META_TAG,
+    present_core_1.EDITOR_PLUGINS_META_TAG,
+    present_core_1.PLAYBACK_PLUGINS_META_TAG,
+    present_core_1.PROTECTION_META_TAG,
+    present_core_1.PROOFING_LANG_META_TAG,
+    present_core_1.SECTIONS_META_TAG,
 ]);
 function isSlimPptTag(name) {
     return SLIMPPT_TAG_KEYS.has(name);
@@ -87,36 +87,36 @@ function userTagsFingerprint(tags) {
     return JSON.stringify(Object.entries(userTagsOf(tags)).sort(([a], [b]) => a.localeCompare(b)));
 }
 function applySlimPptKeys(tags, pres) {
-    const nextComment = (0, core_1.buildCommentMeta)(pres.comments) ?? "";
-    const nextProtection = (0, core_1.buildProtectionMeta)(pres) ?? "";
-    const nextEditorPlugins = (0, core_1.buildEditorPluginsMeta)(pres) ?? "";
-    const nextPlaybackPlugins = (0, core_1.buildPlaybackPluginsMeta)(pres) ?? "";
-    const nextSections = (0, core_1.buildDeckSectionsMeta)(pres) ?? "";
-    const nextProofingLang = (0, core_1.buildProofingLangMeta)(pres) ?? "";
+    const nextComment = (0, present_core_1.buildCommentMeta)(pres.comments) ?? "";
+    const nextProtection = (0, present_core_1.buildProtectionMeta)(pres) ?? "";
+    const nextEditorPlugins = (0, present_core_1.buildEditorPluginsMeta)(pres) ?? "";
+    const nextPlaybackPlugins = (0, present_core_1.buildPlaybackPluginsMeta)(pres) ?? "";
+    const nextSections = (0, present_core_1.buildDeckSectionsMeta)(pres) ?? "";
+    const nextProofingLang = (0, present_core_1.buildProofingLangMeta)(pres) ?? "";
     if (nextComment)
-        tags[core_1.COMMENT_META_TAG] = nextComment;
+        tags[present_core_1.COMMENT_META_TAG] = nextComment;
     else
-        delete tags[core_1.COMMENT_META_TAG];
+        delete tags[present_core_1.COMMENT_META_TAG];
     if (nextProtection)
-        tags[core_1.PROTECTION_META_TAG] = nextProtection;
+        tags[present_core_1.PROTECTION_META_TAG] = nextProtection;
     else
-        delete tags[core_1.PROTECTION_META_TAG];
+        delete tags[present_core_1.PROTECTION_META_TAG];
     if (nextEditorPlugins)
-        tags[core_1.EDITOR_PLUGINS_META_TAG] = nextEditorPlugins;
+        tags[present_core_1.EDITOR_PLUGINS_META_TAG] = nextEditorPlugins;
     else
-        delete tags[core_1.EDITOR_PLUGINS_META_TAG];
+        delete tags[present_core_1.EDITOR_PLUGINS_META_TAG];
     if (nextPlaybackPlugins)
-        tags[core_1.PLAYBACK_PLUGINS_META_TAG] = nextPlaybackPlugins;
+        tags[present_core_1.PLAYBACK_PLUGINS_META_TAG] = nextPlaybackPlugins;
     else
-        delete tags[core_1.PLAYBACK_PLUGINS_META_TAG];
+        delete tags[present_core_1.PLAYBACK_PLUGINS_META_TAG];
     if (nextSections)
-        tags[core_1.SECTIONS_META_TAG] = nextSections;
+        tags[present_core_1.SECTIONS_META_TAG] = nextSections;
     else
-        delete tags[core_1.SECTIONS_META_TAG];
+        delete tags[present_core_1.SECTIONS_META_TAG];
     if (nextProofingLang)
-        tags[core_1.PROOFING_LANG_META_TAG] = nextProofingLang;
+        tags[present_core_1.PROOFING_LANG_META_TAG] = nextProofingLang;
     else
-        delete tags[core_1.PROOFING_LANG_META_TAG];
+        delete tags[present_core_1.PROOFING_LANG_META_TAG];
     return { nextComment, nextProtection, nextEditorPlugins, nextPlaybackPlugins, nextSections, nextProofingLang };
 }
 function syncUserTags(tags, custom) {
@@ -187,26 +187,26 @@ function patchSlimPptSidecarTags(pres, archive, opts = {}) {
     const presSrc = pres.__source;
     const inArchive = readSidecarTags(archive, presSrc);
     const slim = {
-        nextComment: (0, core_1.buildCommentMeta)(pres.comments) ?? "",
-        nextProtection: (0, core_1.buildProtectionMeta)(pres) ?? "",
-        nextEditorPlugins: (0, core_1.buildEditorPluginsMeta)(pres) ?? "",
-        nextPlaybackPlugins: (0, core_1.buildPlaybackPluginsMeta)(pres) ?? "",
-        nextSections: (0, core_1.buildDeckSectionsMeta)(pres) ?? "",
-        nextProofingLang: (0, core_1.buildProofingLangMeta)(pres) ?? "",
+        nextComment: (0, present_core_1.buildCommentMeta)(pres.comments) ?? "",
+        nextProtection: (0, present_core_1.buildProtectionMeta)(pres) ?? "",
+        nextEditorPlugins: (0, present_core_1.buildEditorPluginsMeta)(pres) ?? "",
+        nextPlaybackPlugins: (0, present_core_1.buildPlaybackPluginsMeta)(pres) ?? "",
+        nextSections: (0, present_core_1.buildDeckSectionsMeta)(pres) ?? "",
+        nextProofingLang: (0, present_core_1.buildProofingLangMeta)(pres) ?? "",
     };
     const userChanged = userTagsFingerprint(pres.customData?.tags) !== userTagsFingerprint(inArchive);
     const slimUnchanged = slim.nextComment === (presSrc?.commentMetaSnapshot ?? "") &&
-        slim.nextComment === (inArchive[core_1.COMMENT_META_TAG] ?? "") &&
+        slim.nextComment === (inArchive[present_core_1.COMMENT_META_TAG] ?? "") &&
         slim.nextProtection === (presSrc?.protectionMetaSnapshot ?? "") &&
-        slim.nextProtection === (inArchive[core_1.PROTECTION_META_TAG] ?? "") &&
+        slim.nextProtection === (inArchive[present_core_1.PROTECTION_META_TAG] ?? "") &&
         slim.nextEditorPlugins === (presSrc?.editorPluginsMetaSnapshot ?? "") &&
-        slim.nextEditorPlugins === (inArchive[core_1.EDITOR_PLUGINS_META_TAG] ?? "") &&
+        slim.nextEditorPlugins === (inArchive[present_core_1.EDITOR_PLUGINS_META_TAG] ?? "") &&
         slim.nextPlaybackPlugins === (presSrc?.playbackPluginsMetaSnapshot ?? "") &&
-        slim.nextPlaybackPlugins === (inArchive[core_1.PLAYBACK_PLUGINS_META_TAG] ?? "") &&
+        slim.nextPlaybackPlugins === (inArchive[present_core_1.PLAYBACK_PLUGINS_META_TAG] ?? "") &&
         slim.nextSections === (presSrc?.sectionsMetaSnapshot ?? "") &&
-        slim.nextSections === (inArchive[core_1.SECTIONS_META_TAG] ?? "") &&
+        slim.nextSections === (inArchive[present_core_1.SECTIONS_META_TAG] ?? "") &&
         slim.nextProofingLang === (presSrc?.proofingLangMetaSnapshot ?? "") &&
-        slim.nextProofingLang === (inArchive[core_1.PROOFING_LANG_META_TAG] ?? "");
+        slim.nextProofingLang === (inArchive[present_core_1.PROOFING_LANG_META_TAG] ?? "");
     if (slimUnchanged && !userChanged)
         return;
     const tags = { ...inArchive };

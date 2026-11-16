@@ -1,7 +1,7 @@
 // ECMA-376 Part 1 §22.1 Office Math (OMML).
 // PowerPoint / WPS 插入公式时写 `<a14:m>` / `<m:oMath>`；老客户端读 `<mc:Fallback>` 里的栅格图。
 
-import type { TextRun } from "@ppt/core";
+import type { TextRun } from "@sliiu/present-core";
 import { attr, findByLocalName, orderedChildren, stripNs, type XmlNode } from "./xml";
 
 export interface OmmlMarkup {

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import * as assert from "node:assert/strict";
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { compilePresentation, outlineToFallbackSpec } from "../compile/compile";
 import {
   DARK_LAUNCH_WIZARD_GUIDANCE,

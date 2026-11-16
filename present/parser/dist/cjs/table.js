@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseTable = parseTable;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const xml_1 = require("./xml");
 const units_1 = require("./units");
 const fill_1 = require("./fill");
@@ -110,7 +110,7 @@ function emptyHiddenCell(r, c, bbox) {
         opacity: 1,
         kind: "text",
         bbox,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         paragraphs: [{ runs: [{ text: "" }] }],
         wrap: true,
         cellMeta: { hidden: true, gridSpan: 1, rowSpan: 1 },
@@ -178,7 +178,7 @@ function makeTextCell(tc, meta, cellBbox, hidden, styleFlags, rowCount, colCount
         opacity: 1,
         kind: "text",
         bbox: cellBbox,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         paragraphs,
         fill: fill ?? (hidden ? undefined : { kind: "solid", color: "#ffffff" }),
         stroke: stroke ?? (hidden || borders ? undefined : { paint: { kind: "solid", color: "#cccccc" }, width: 0.5 }),

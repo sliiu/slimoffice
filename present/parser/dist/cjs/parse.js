@@ -5,7 +5,7 @@ exports.parsePptx = parsePptx;
 exports.parseFromArchive = parseFromArchive;
 exports.attachFillStrokeSnapshots = attachFillStrokeSnapshots;
 exports.applyMediaAutoplayFromTiming = applyMediaAutoplayFromTiming;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const units_1 = require("./units");
 const xml_1 = require("./xml");
 const units_2 = require("./units");
@@ -14,7 +14,7 @@ Object.defineProperty(exports, "loadArchive", { enumerable: true, get: function 
 const parts_1 = require("./parts");
 const theme_1 = require("./theme");
 const timing_ooxml_1 = require("./timing-ooxml");
-const animation_1 = require("@sliiu/present-animation");
+const present_animation_1 = require("@sliiu/present-animation");
 const bld_list_1 = require("./bld-list");
 const transition_1 = require("./transition");
 const media_1 = require("./media");
@@ -29,7 +29,7 @@ const inherit_1 = require("./inherit");
 const tx_styles_1 = require("./tx-styles");
 const comments_1 = require("./comments");
 const modern_comments_1 = require("./modern-comments");
-const core_2 = require("@sliiu/present-core");
+const present_core_2 = require("@sliiu/present-core");
 const text_1 = require("./text");
 const sections_1 = require("./sections");
 const xml_2 = require("./xml");
@@ -155,8 +155,8 @@ function parseFromArchive(archive, opts = {}) {
     const kinsoku = parseKinsoku(presEl);
     const modifyVerifier = parseModifyVerifier(presEl);
     const customData = parseCustomData(presEl, presRels, archive);
-    const hasVbaProject = archive.files.has(core_1.VBA_PROJECT_PART_PATH);
-    const vbaProjectBytes = hasVbaProject ? archive.getBytes(core_1.VBA_PROJECT_PART_PATH) : undefined;
+    const hasVbaProject = archive.files.has(present_core_1.VBA_PROJECT_PART_PATH);
+    const vbaProjectBytes = hasVbaProject ? archive.getBytes(present_core_1.VBA_PROJECT_PART_PATH) : undefined;
     const vbaProjectMeta = vbaProjectBytes ? (0, vba_project_parse_1.parseVbaProjectMetadata)(vbaProjectBytes) : undefined;
     const notesMasters = loadAuxMasters(archive, presRels, presTheme, media, TYPE_NOTES_MASTER, embeddedFontFamilies);
     const handoutMasters = loadAuxMasters(archive, presRels, presTheme, media, TYPE_HANDOUT_MASTER, embeddedFontFamilies);
@@ -164,9 +164,9 @@ function parseFromArchive(archive, opts = {}) {
         if (!deckComments.some((c) => c.parentId || c.resolved)) {
             (0, comments_1.linkImportedCommentThreads)(deckComments);
         }
-        const metaRaw = customData?.tags?.[core_2.COMMENT_META_TAG] ??
+        const metaRaw = customData?.tags?.[present_core_2.COMMENT_META_TAG] ??
             (0, comments_1.loadCommentMetaFromArchive)(archive, presRels);
-        (0, core_2.applyCommentMeta)(deckComments, metaRaw);
+        (0, present_core_2.applyCommentMeta)(deckComments, metaRaw);
     }
     const pres = {
         id: opts.baseId ?? "pres_" + Math.random().toString(36).slice(2, 9),
@@ -201,34 +201,34 @@ function parseFromArchive(archive, opts = {}) {
     const { showPr, presPropsPartPath } = (0, pres_props_1.parseShowProperties)(archive, presRels);
     if (showPr)
         pres.showPr = showPr;
-    const protectionRaw = customData?.tags?.[core_2.PROTECTION_META_TAG] ??
-        (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.PROTECTION_META_TAG);
-    (0, core_2.applyProtectionMeta)(pres, protectionRaw);
-    const editorPluginsRaw = customData?.tags?.[core_2.EDITOR_PLUGINS_META_TAG] ??
-        (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.EDITOR_PLUGINS_META_TAG);
-    (0, core_2.applyEditorPluginsMeta)(pres, editorPluginsRaw);
-    const playbackPluginsRaw = customData?.tags?.[core_2.PLAYBACK_PLUGINS_META_TAG] ??
-        (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.PLAYBACK_PLUGINS_META_TAG);
-    (0, core_2.applyPlaybackPluginsMeta)(pres, playbackPluginsRaw);
+    const protectionRaw = customData?.tags?.[present_core_2.PROTECTION_META_TAG] ??
+        (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.PROTECTION_META_TAG);
+    (0, present_core_2.applyProtectionMeta)(pres, protectionRaw);
+    const editorPluginsRaw = customData?.tags?.[present_core_2.EDITOR_PLUGINS_META_TAG] ??
+        (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.EDITOR_PLUGINS_META_TAG);
+    (0, present_core_2.applyEditorPluginsMeta)(pres, editorPluginsRaw);
+    const playbackPluginsRaw = customData?.tags?.[present_core_2.PLAYBACK_PLUGINS_META_TAG] ??
+        (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.PLAYBACK_PLUGINS_META_TAG);
+    (0, present_core_2.applyPlaybackPluginsMeta)(pres, playbackPluginsRaw);
     const sectionsFromLst = (0, sections_1.parsePresentationSectionLst)(presEl, slides.length);
     if (sectionsFromLst.length) {
         pres.sections = sectionsFromLst;
     }
     else {
-        const sectionsRaw = customData?.tags?.[core_2.SECTIONS_META_TAG] ??
-            (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.SECTIONS_META_TAG);
-        (0, core_2.applyDeckSectionsMeta)(pres, sectionsRaw);
+        const sectionsRaw = customData?.tags?.[present_core_2.SECTIONS_META_TAG] ??
+            (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.SECTIONS_META_TAG);
+        (0, present_core_2.applyDeckSectionsMeta)(pres, sectionsRaw);
     }
-    const proofingLangRaw = customData?.tags?.[core_2.PROOFING_LANG_META_TAG] ??
-        (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.PROOFING_LANG_META_TAG);
-    (0, core_2.applyProofingLangMeta)(pres, proofingLangRaw);
-    if (!pres.meta?.[core_2.PROOFING_LANG_META_KEY]) {
+    const proofingLangRaw = customData?.tags?.[present_core_2.PROOFING_LANG_META_TAG] ??
+        (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.PROOFING_LANG_META_TAG);
+    (0, present_core_2.applyProofingLangMeta)(pres, proofingLangRaw);
+    if (!pres.meta?.[present_core_2.PROOFING_LANG_META_KEY]) {
         const ooxmlLang = defaultTextStyle?.body?.[1]?.rPr?.lang ?? defaultTextStyle?.body?.[0]?.rPr?.lang;
-        const fromXml = (0, core_2.proofingIdFromOoxmlLang)(ooxmlLang);
+        const fromXml = (0, present_core_2.proofingIdFromOoxmlLang)(ooxmlLang);
         if (fromXml)
-            (0, core_2.setProofingLanguageMeta)(pres, fromXml);
+            (0, present_core_2.setProofingLanguageMeta)(pres, fromXml);
     }
-    (0, core_2.applyModifyVerifierProtection)(pres);
+    (0, present_core_2.applyModifyVerifierProtection)(pres);
     // round-trip 保存：把原始 archive 字节以非可枚举属性挂到 Presentation 上。
     // serializer 在 `pres.__source` 存在时走「surgical patch」路径，避免「从内存模型
     // 重建 OOXML」造成的母版/版式/主题/动画/Chart/SmartArt/嵌入字体等大量丢失。
@@ -245,41 +245,41 @@ function parseFromArchive(archive, opts = {}) {
             modernAuthorsPartPath: (0, modern_comments_1.modernAuthorsPartPath)(archive, presRels),
             commentsModern,
             commentsSnapshot: deckComments.length ? JSON.stringify(deckComments) : "",
-            commentMetaSnapshot: (0, core_2.buildCommentMeta)(deckComments) ??
-                customData?.tags?.[core_2.COMMENT_META_TAG] ??
+            commentMetaSnapshot: (0, present_core_2.buildCommentMeta)(deckComments) ??
+                customData?.tags?.[present_core_2.COMMENT_META_TAG] ??
                 (0, comments_1.loadCommentMetaFromArchive)(archive, presRels) ??
                 "",
-            protectionMetaSnapshot: (0, core_2.buildProtectionMeta)(pres) ??
-                customData?.tags?.[core_2.PROTECTION_META_TAG] ??
-                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.PROTECTION_META_TAG) ??
+            protectionMetaSnapshot: (0, present_core_2.buildProtectionMeta)(pres) ??
+                customData?.tags?.[present_core_2.PROTECTION_META_TAG] ??
+                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.PROTECTION_META_TAG) ??
                 "",
-            editorPluginsMetaSnapshot: (0, core_2.buildEditorPluginsMeta)(pres) ??
-                customData?.tags?.[core_2.EDITOR_PLUGINS_META_TAG] ??
-                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.EDITOR_PLUGINS_META_TAG) ??
+            editorPluginsMetaSnapshot: (0, present_core_2.buildEditorPluginsMeta)(pres) ??
+                customData?.tags?.[present_core_2.EDITOR_PLUGINS_META_TAG] ??
+                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.EDITOR_PLUGINS_META_TAG) ??
                 "",
-            playbackPluginsMetaSnapshot: (0, core_2.buildPlaybackPluginsMeta)(pres) ??
-                customData?.tags?.[core_2.PLAYBACK_PLUGINS_META_TAG] ??
-                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.PLAYBACK_PLUGINS_META_TAG) ??
+            playbackPluginsMetaSnapshot: (0, present_core_2.buildPlaybackPluginsMeta)(pres) ??
+                customData?.tags?.[present_core_2.PLAYBACK_PLUGINS_META_TAG] ??
+                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.PLAYBACK_PLUGINS_META_TAG) ??
                 "",
-            sectionsMetaSnapshot: (0, core_2.buildDeckSectionsMeta)(pres) ??
-                customData?.tags?.[core_2.SECTIONS_META_TAG] ??
-                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.SECTIONS_META_TAG) ??
+            sectionsMetaSnapshot: (0, present_core_2.buildDeckSectionsMeta)(pres) ??
+                customData?.tags?.[present_core_2.SECTIONS_META_TAG] ??
+                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.SECTIONS_META_TAG) ??
                 "",
-            proofingLangMetaSnapshot: (0, core_2.buildProofingLangMeta)(pres) ??
-                customData?.tags?.[core_2.PROOFING_LANG_META_TAG] ??
-                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, core_2.PROOFING_LANG_META_TAG) ??
+            proofingLangMetaSnapshot: (0, present_core_2.buildProofingLangMeta)(pres) ??
+                customData?.tags?.[present_core_2.PROOFING_LANG_META_TAG] ??
+                (0, comments_1.loadMetaTagFromArchive)(archive, presRels, present_core_2.PROOFING_LANG_META_TAG) ??
                 "",
             tagsPartPath: (0, slide_like_1.followFirstRelByType)(presRels, "/tags"),
             macroEnabled: hasVbaProject,
-            vbaProjectPartPath: hasVbaProject ? core_1.VBA_PROJECT_PART_PATH : undefined,
+            vbaProjectPartPath: hasVbaProject ? present_core_1.VBA_PROJECT_PART_PATH : undefined,
             fontsSnapshot: fonts.length
                 ? JSON.stringify(fonts.map((f) => ({ family: f.family, weight: f.weight, style: f.style, src: f.src })))
                 : "",
             photoAlbumSnapshot: (0, photo_album_1.photoAlbumSnapshot)(photoAlbum),
-            kinsokuSnapshot: (0, core_2.kinsokuSnapshot)(pres.kinsoku),
-            viewGuidesSnapshot: (0, core_2.viewGuidesSnapshot)(pres.viewGuides),
+            kinsokuSnapshot: (0, present_core_2.kinsokuSnapshot)(pres.kinsoku),
+            viewGuidesSnapshot: (0, present_core_2.viewGuidesSnapshot)(pres.viewGuides),
             viewPropsPartPath,
-            showPrSnapshot: (0, core_2.showPropertiesSnapshot)(pres.showPr),
+            showPrSnapshot: (0, present_core_2.showPropertiesSnapshot)(pres.showPr),
             presPropsPartPath,
         },
         enumerable: false,
@@ -308,12 +308,12 @@ function attachFillStrokeSnapshots(shapes) {
             continue;
         const shape = s;
         if ("fill" in shape) {
-            (0, core_1.setOrigin)(shape, {
+            (0, present_core_1.setOrigin)(shape, {
                 fill: shape.fill !== undefined ? deepCloneJson(shape.fill) : undefined,
             });
         }
         if ("stroke" in shape) {
-            (0, core_1.setOrigin)(shape, {
+            (0, present_core_1.setOrigin)(shape, {
                 stroke: shape.stroke !== undefined
                     ? deepCloneJson(shape.stroke)
                     : undefined,
@@ -325,7 +325,7 @@ function attachFillStrokeSnapshots(shapes) {
         // ppt/media/imageN.png 并污染 _rels，造成文件体积每轮翻倍。
         if ((shape.kind === "image" || shape.kind === "video" || shape.kind === "audio") &&
             "src" in shape) {
-            (0, core_1.setOrigin)(shape, { src: typeof shape.src === "string" ? shape.src : undefined });
+            (0, present_core_1.setOrigin)(shape, { src: typeof shape.src === "string" ? shape.src : undefined });
         }
         // 给所有 shape 留一个 opacity 快照，记录"解析时 OOXML 里实际表达的 alpha"。
         //   - geom/text/group 的 opacity 在 OOXML 没有原生表达 → 解析时一律是 1
@@ -338,31 +338,31 @@ function attachFillStrokeSnapshots(shapes) {
         // 持久化下去。serializer 用 (shape.opacity vs __opacitySnapshot) 判断"用户是否
         // 真的编辑过 opacity"：相等 → 没改 → 按 snapshot 写；不等 → 用户改了 → 按内存值写。
         // parsePic 已为 image 写过 origin.opacity（来自 alphaModFix），不要覆盖；其余 shape 默认 1。
-        if ((0, core_1.getOrigin)(shape)?.opacity === undefined) {
+        if ((0, present_core_1.getOrigin)(shape)?.opacity === undefined) {
             const o = shape.opacity;
-            (0, core_1.setOrigin)(shape, { opacity: typeof o === "number" ? o : 1 });
+            (0, present_core_1.setOrigin)(shape, { opacity: typeof o === "number" ? o : 1 });
         }
         // bbox 基线：记录解析期（继承解析后）的绝对 bbox。占位符 shape 的 raw <p:spPr> 常常没有
         // <a:xfrm>，几何全继承自 layout/master —— 没有 raw 字节可比。serializer 靠这条基线在
         // 「raw 无 xfrm」时判断是否需要插入显式 xfrm（用户移动了占位符），且缓存恢复后仍有效。
         const bb = shape.bbox;
         if (bb && typeof bb.x === "number" && typeof bb.y === "number") {
-            (0, core_1.setOrigin)(shape, { bbox: { x: bb.x, y: bb.y, w: bb.w, h: bb.h } });
+            (0, present_core_1.setOrigin)(shape, { bbox: { x: bb.x, y: bb.y, w: bb.w, h: bb.h } });
         }
         if (shape.kind === "chart" && "chart" in shape) {
-            (0, core_1.setOrigin)(shape, {
+            (0, present_core_1.setOrigin)(shape, {
                 chart: deepCloneJson(shape.chart),
             });
         }
         const meta3D = shape.meta3D;
         if (meta3D) {
-            (0, core_1.setOrigin)(shape, { meta3D: deepCloneJson(meta3D) });
+            (0, present_core_1.setOrigin)(shape, { meta3D: deepCloneJson(meta3D) });
         }
         // effects 基线始终记录（含"解析期就没有效果"的空数组）：serializer 靠
         // `模型值 == 基线` 判定未编辑 → 保留 raw `<a:effectLst>` 原字节。缺基线时
         // 会被当成"用户新加了效果"而写出，把 effectRef 继承来的阴影钉死进 spPr。
         const fx = shape.effects;
-        (0, core_1.setOrigin)(shape, {
+        (0, present_core_1.setOrigin)(shape, {
             effects: deepCloneJson(fx ?? []),
         });
         if (Array.isArray(shape.children))
@@ -1016,7 +1016,7 @@ function parseSlide(archive, slidePath, index, presTheme, media, masterCache, la
         }
         return v;
     };
-    for (const t of (0, animation_1.collectEntranceTargets)(ooxmlTiming, { getTextSlices: textSlicesFor })) {
+    for (const t of (0, present_animation_1.collectEntranceTargets)(ooxmlTiming, { getTextSlices: textSlicesFor })) {
         const slot = ensure(t.spid);
         if (t.paraRange && !t.charRange) {
             for (let p = t.paraRange.st; p <= t.paraRange.end; p++)

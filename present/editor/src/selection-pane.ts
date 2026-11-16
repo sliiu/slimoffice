@@ -1,4 +1,4 @@
-import type { CommandStack, Shape, Slide } from "@ppt/core";
+import type { CommandStack, Shape, Slide } from "@sliiu/present-core";
 import { SetShapeVisibleCmd } from "./commands";
 import type { Selection } from "./selection";
 import { t } from "./i18n";

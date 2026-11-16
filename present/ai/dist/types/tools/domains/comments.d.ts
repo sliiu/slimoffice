@@ -1,5 +1,5 @@
-export declare const commentTools: (import("...js").ToolDef<{
+export declare const commentTools: (import("../index.js").ToolDef<{
     slideIdx?: number | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     commentId: string;
 }>)[];

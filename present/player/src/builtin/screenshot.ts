@@ -1,5 +1,5 @@
-import type { Plugin } from "@ppt/plugin-sdk";
-import { CanvasBackend, waitForImagesLoaded, type Scene } from "@ppt/renderer";
+import type { Plugin } from "@sliiu/present-plugin-sdk";
+import { CanvasBackend, waitForImagesLoaded, type Scene } from "@sliiu/present-renderer";
 import { createTranslator } from "../i18n";
 
 function pptFileBase(ctx: { presentation: { title?: string }; shared: Record<string, unknown> }): string {

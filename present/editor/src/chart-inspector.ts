@@ -1,6 +1,6 @@
 // Inspector：图表数据表编辑（categories × series 网格，对齐 PowerPoint「编辑数据」）。
 
-import type { BubbleChartDef, ChartDef, ChartSeries, ChartShape, CommandStack, ScatterChartDef } from "@ppt/core";
+import type { BubbleChartDef, ChartDef, ChartSeries, ChartShape, CommandStack, ScatterChartDef } from "@sliiu/present-core";
 import { SetChartDefCmd } from "./commands";
 import { t } from "./i18n";
 

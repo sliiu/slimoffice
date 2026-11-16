@@ -1,7 +1,7 @@
 // 阶段：艺术总监评审的 rubric 组装 + 弱页换 layout 重试。
 
 import type { LanguageModel } from "ai";
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import type { GuidanceInput, Outline, OutlineLayoutHint, SlideSpecZ } from "../schema";
 import { bannedLayoutsForFamily, imageryForFamily } from "../schema";
 import type { HostSkillStore } from "../../skills/types";

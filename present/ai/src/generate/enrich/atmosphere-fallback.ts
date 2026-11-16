@@ -2,7 +2,7 @@
 // 给仍是 solid / 过平背景的页叠电影感渐变 + aurora 光晕，避免 dark-launch 等
 // 全出血风格在无图时退化成「一块纯色 + 白字」。
 
-import type { Paint, Presentation, Shape } from "@ppt/core";
+import type { Paint, Presentation, Shape } from "@sliiu/present-core";
 import { buildDecorationShapesShared } from "../../decorations";
 import type { ThemeDef } from "../../themes";
 

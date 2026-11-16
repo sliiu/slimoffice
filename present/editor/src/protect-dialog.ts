@@ -1,5 +1,5 @@
 import { bindEditorModal } from "./dialog";
-import type { ModifyVerifier, Presentation, PresentationProtection } from "@ppt/core";
+import type { ModifyVerifier, Presentation, PresentationProtection } from "@sliiu/present-core";
 import {
   buildOfficeModifyVerifier,
   getPresentationProtection,
@@ -7,7 +7,7 @@ import {
   summarizeOfficeModifyVerifier,
   assertCanUnprotect,
   isUnprotectFailedError,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { t } from "./i18n";
 import { copyTextToClipboard } from "./insert-meta";
 import { exportProtectionStatusText, exportProtectionCompactText, exportProtectionReadinessText, formatProtectionReadinessLine } from "./review-export";

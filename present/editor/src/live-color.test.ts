@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 // @ts-expect-error jsdom ships without types in this repo; tests run via tsx.
 import { JSDOM } from "jsdom";
-import type { Paint, Presentation, Shape, TextRun } from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+import type { Paint, Presentation, Shape, TextRun } from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import { fillTargetsFor, SetTextStyleCmd, textShapesForColor } from "./commands.js";
 import {
   captureFills,

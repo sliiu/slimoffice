@@ -6,7 +6,7 @@
 // 触发条件见 needs3DRender：相机 rot 非平凡 / extrusionH>0 / 声明了 bevel。
 // 性能：bake 是 OffscreenCanvas + WebGLRenderer 的一次性渲染，per-shape 30-100 ms。
 
-import type { Shape, Slide, Sp3DInfo } from "@ppt/core";
+import type { Shape, Slide, Sp3DInfo } from "@sliiu/present-core";
 import { bakeSp3d } from "./bake-sp3d";
 import { shape3DInfo, shape3DPathD, shapeSupports3D } from "./shape-path";
 import type { Shape3DResult } from "./types";

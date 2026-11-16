@@ -25,7 +25,7 @@ import {
   showPropertiesToUi,
   applyUiToShowProperties,
   showPropertiesSnapshot,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import {
   HybridBackend,
   SvgBackend,
@@ -35,8 +35,8 @@ import {
   mountMorphTransitionLayers,
   stageChromeBackground,
   type Scene,
-} from "@ppt/renderer";
-import { createBake3DRuntime, runStageTransition, type Bake3DRuntime } from "@ppt/player";
+} from "@sliiu/present-renderer";
+import { createBake3DRuntime, runStageTransition, type Bake3DRuntime } from "@sliiu/present-player";
 import { combinedReadRatio, mediaKindOf } from "./file-kind";
 import { hideFileProgress, readAsDataURL, setFileProgress, showFileProgress } from "./file-progress";
 
@@ -142,7 +142,7 @@ import {
 } from "./crop-frame";
 import { SHAPE_BY_ID } from "./shape-library";
 import { applyOfficialPresetGeometry, createChart, createShapeFromPreset, officeInsertStyleRefs } from "./shape-factory";
-import { dragOfficialAdjustHandle, listOfficialAdjustHandles } from "@ppt/parser";
+import { dragOfficialAdjustHandle, listOfficialAdjustHandles } from "@sliiu/present-parser";
 import { mountInspector, type InspectorHandle } from "./inspector";
 import { buildRibbon } from "./ribbon";
 import { mountLecturePanel, type LecturePanel } from "./lecture-panel";
@@ -325,7 +325,7 @@ import {
   type PresentationViewHost,
   type PresentationViewMode,
 } from "./presentation-views";
-import type { BulletDef, HyperlinkRef, PathShape, ShapeEffect, ShadowEffect, Stroke, TextRun, TextShape } from "@ppt/core";
+import type { BulletDef, HyperlinkRef, PathShape, ShapeEffect, ShadowEffect, Stroke, TextRun, TextShape } from "@sliiu/present-core";
 
 // 旧版固定 7 种 + 任意 shape-library preset id（如 roundRect / pentagon /
 // rightArrow / flowChartProcess 等）。union with `(string & {})` 让 TypeScript
@@ -354,7 +354,7 @@ const STAGE_PADDING = 16;
 /**
  * 编辑器视图中暴露的「放映时可选插件」描述。宿主（playground / 业务壳）把
  * 完整的可选清单传入；编辑器仅维护选中状态并通过 onPlaybackPluginsChange 回写，
- * 不持有真正的 Plugin 对象。这样 @ppt/editor 不需要硬依赖 @ppt/player。
+ * 不持有真正的 Plugin 对象。这样 @sliiu/present-editor 不需要硬依赖 @sliiu/present-player。
  */
 export interface PlaybackPluginOption {
   id: string;
@@ -2821,17 +2821,17 @@ export function mountEditor(host: HTMLElement, initialPres: Presentation, opts: 
         pendingCellSelect?: string;
       }
     | { type: "resize"; id: string; startX: number; startY: number; startBbox: Rect; corner: string; snapshot: PosSnapshot; moved: boolean }
-    | { type: "lineEndpoint"; id: string; end: "start" | "end"; snapshot: PosSnapshot; moved: boolean; snapped?: { startCxn?: import("@ppt/core").ShapeCxnEnd | null; endCxn?: import("@ppt/core").ShapeCxnEnd | null } }
+    | { type: "lineEndpoint"; id: string; end: "start" | "end"; snapshot: PosSnapshot; moved: boolean; snapped?: { startCxn?: import("@sliiu/present-core").ShapeCxnEnd | null; endCxn?: import("@sliiu/present-core").ShapeCxnEnd | null } }
     | {
         type: "connectorEndpoint";
         id: string;
         end: "start" | "end";
         snapshot: PosSnapshot;
-        startTransform: import("@ppt/core").Transform;
-        startCxn?: import("@ppt/core").ShapeCxnEnd;
-        endCxn?: import("@ppt/core").ShapeCxnEnd;
+        startTransform: import("@sliiu/present-core").Transform;
+        startCxn?: import("@sliiu/present-core").ShapeCxnEnd;
+        endCxn?: import("@sliiu/present-core").ShapeCxnEnd;
         moved: boolean;
-        snapped?: { startCxn?: import("@ppt/core").ShapeCxnEnd | null; endCxn?: import("@ppt/core").ShapeCxnEnd | null };
+        snapped?: { startCxn?: import("@sliiu/present-core").ShapeCxnEnd | null; endCxn?: import("@sliiu/present-core").ShapeCxnEnd | null };
       }
     | { type: "polygonVertex"; id: string; vertex: number; snapshot: PosSnapshot; moved: boolean }
     | { type: "adjHandle"; id: string; handleIndex: number; startAdj: Record<string, number>; moved: boolean }
@@ -5649,7 +5649,7 @@ export function mountEditor(host: HTMLElement, initialPres: Presentation, opts: 
     }
   };
 
-  const applyAlignToSelection = (align: NonNullable<import("@ppt/core").TextParagraph["align"]>): void => {
+  const applyAlignToSelection = (align: NonNullable<import("@sliiu/present-core").TextParagraph["align"]>): void => {
     for (const id of selection.values) {
       stack.execute(new SetTextAlignCmd(index, id, align));
     }
@@ -5717,7 +5717,7 @@ export function mountEditor(host: HTMLElement, initialPres: Presentation, opts: 
     }
   };
 
-  const getSelectionTextVert = (): import("@ppt/core").TextShape["vert"] | undefined => {
+  const getSelectionTextVert = (): import("@sliiu/present-core").TextShape["vert"] | undefined => {
     const slide = viewSlide();
     if (!slide) return undefined;
     for (const id of selection.values) {
@@ -5753,7 +5753,7 @@ export function mountEditor(host: HTMLElement, initialPres: Presentation, opts: 
     return undefined;
   };
 
-  const firstSelectedTextRun = (): import("@ppt/core").TextRun | undefined => {
+  const firstSelectedTextRun = (): import("@sliiu/present-core").TextRun | undefined => {
     const slide = viewSlide();
     if (!slide) return undefined;
     for (const id of selection.values) {
@@ -5773,7 +5773,7 @@ export function mountEditor(host: HTMLElement, initialPres: Presentation, opts: 
     return undefined;
   };
 
-  const firstSelectedParagraph = (): import("@ppt/core").TextParagraph | undefined => {
+  const firstSelectedParagraph = (): import("@sliiu/present-core").TextParagraph | undefined => {
     const slide = viewSlide();
     if (!slide) return undefined;
     for (const id of selection.values) {
@@ -5923,7 +5923,7 @@ export function mountEditor(host: HTMLElement, initialPres: Presentation, opts: 
     const isGroup = isSelectionGroup();
     const locked = isSelectionLocked();
     const canPaste = clipboard.length > 0;
-    let singleOle: import("@ppt/core").OleObjectShape | null = null;
+    let singleOle: import("@sliiu/present-core").OleObjectShape | null = null;
     let cropShape: Shape | null = null;
     if (selection.values.size === 1) {
       const slide = pres.slides[index];
@@ -6589,7 +6589,7 @@ export function mountEditor(host: HTMLElement, initialPres: Presentation, opts: 
     previewBusy = true;
     void (async () => {
       try {
-        const runFx = (await import("@ppt/transition-fx")).runTransition;
+        const runFx = (await import("@sliiu/present-transition-fx")).runTransition;
         if (t.kind === "morph" && index > 0) {
           const prevSlide = pres.slides[index - 1]!;
           const curSlide = pres.slides[index]!;

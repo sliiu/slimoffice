@@ -1,7 +1,7 @@
 // 审阅批注（Review → Comments）。走 comment-commands，自动 undo。
 
 import { z } from "zod";
-import type { DeckComment } from "@ppt/core";
+import type { DeckComment } from "@sliiu/present-core";
 import {
   AddCommentCmd,
   DeleteCommentCmd,
@@ -10,7 +10,7 @@ import {
   ResolveSlideCommentsCmd,
   SetCommentAnchorCmd,
   genCommentId,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { defineTool, ok, err } from "../types";
 
 export const commentTools = [

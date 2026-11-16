@@ -32,7 +32,7 @@ import {
 } from "../template-fill";
 import type { ModelFilePart } from "../../source-files/complete";
 import { responsesAuth, type ResponsesAuth } from "../../source-files/support";
-import type { Template } from "@ppt/core";
+import type { Template } from "@sliiu/present-core";
 import { generateSpecJson } from "../aliases";
 import { ensureConfig, type GenerateOptions } from "../types";
 import { UPGRADE_FROM_BULLETS } from "../qa/ensure-spec-quality";

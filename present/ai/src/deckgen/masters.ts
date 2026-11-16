@@ -16,7 +16,7 @@ import {
   type SlideLayout,
   type SlideMaster,
   type TextShape,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { CANVAS, typeRole, type VisualSystem } from "./visual-system.js";
 import { paletteOf, type ColorTheme } from "./color-theme.js";
 import { LAYOUT_IDS } from "./ids.js";

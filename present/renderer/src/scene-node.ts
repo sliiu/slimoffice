@@ -1,6 +1,6 @@
-import type { Animatable } from "@ppt/animation";
-import type { AudioShape, ClipState, Paint, Shape, Slide, VideoShape } from "@ppt/core";
-import { mediaTrimBounds } from "@ppt/core";
+import type { Animatable } from "@sliiu/present-animation";
+import type { AudioShape, ClipState, Paint, Shape, Slide, VideoShape } from "@sliiu/present-core";
+import { mediaTrimBounds } from "@sliiu/present-core";
 import { composeSlideForRender } from "./compose";
 
 export interface ParaOverride {
@@ -667,7 +667,7 @@ export interface Scene {
 // 阶段 2.1：createScene 可选 masters 参数。传入后 master/layout 装饰由 compose 实时合成；
 // 不传则只渲染 slide.layers，向后兼容旧调用方（脚本 / inline 测试 slide）。
 export interface CreateSceneOptions {
-  masters?: import("@ppt/core").SlideMaster[];
+  masters?: import("@sliiu/present-core").SlideMaster[];
 }
 
 export function createScene(

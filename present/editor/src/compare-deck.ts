@@ -7,9 +7,9 @@ import type {
   SlideTransition,
   TextParagraph,
   TextShape,
-} from "@ppt/core";
-import { getPresentationProtection } from "@ppt/core";
-import type { ooxml } from "@ppt/animation";
+} from "@sliiu/present-core";
+import { getPresentationProtection } from "@sliiu/present-core";
+import type { ooxml } from "@sliiu/present-animation";
 import { findShape } from "./selection";
 import { listTextShapeIds, shapePlainText, slideTextLines, walkTextShapes } from "./proofing-text";
 

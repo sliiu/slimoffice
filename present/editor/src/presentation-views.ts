@@ -1,6 +1,6 @@
-import type { Presentation, Shape, Slide } from "@ppt/core";
+import type { Presentation, Shape, Slide } from "@sliiu/present-core";
 import { computeSlideMoveTarget } from "./slide-commands";
-import { createScene, stageChromeBackground, SvgBackend } from "@ppt/renderer";
+import { createScene, stageChromeBackground, SvgBackend } from "@sliiu/present-renderer";
 import {
   VIRTUAL_LIST_THRESHOLD,
   createVirtualGrid,

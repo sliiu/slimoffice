@@ -15,7 +15,7 @@ import type {
   StrokeAlign,
   StrokeCompound,
   StrokeDashPreset,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { angle60kToDeg, boolish, percentToFloat } from "./units";
 import { findAllByLocalName, findByLocalName, attr, orderedChildren, stripNs, type XmlNode } from "./xml";
 import { resolveColor, resolveColorEx, type ThemeData, type ThemeStyleEntry } from "./theme";
@@ -323,9 +323,9 @@ function parseImage(blip: XmlNode, ctx: FillCtx): Paint | undefined {
 }
 
 export function parseColorAdjust(blipEl: XmlNode):
-  | import("@ppt/core").ImageColorAdjust
+  | import("@sliiu/present-core").ImageColorAdjust
   | undefined {
-  const adjust: import("@ppt/core").ImageColorAdjust = {};
+  const adjust: import("@sliiu/present-core").ImageColorAdjust = {};
   for (const child of orderedChildren(blipEl)) {
     const local = stripNs(child.tag);
     const n = child.node;
@@ -684,12 +684,12 @@ function readEffectChildren(parent: XmlNode, ctx: FillCtx): ShapeEffect[] {
     } else if (local === "lum") {
       const bright = attr(n, "bright");
       const contrast = attr(n, "contrast");
-      const e: import("@ppt/core").LumEffect = { kind: "lum" };
+      const e: import("@sliiu/present-core").LumEffect = { kind: "lum" };
       if (bright !== undefined) e.bright = Number(bright) / 100000;
       if (contrast !== undefined) e.contrast = Number(contrast) / 100000;
       out.push(e);
     } else if (local === "hsl") {
-      const e: import("@ppt/core").HslEffect = { kind: "hsl" };
+      const e: import("@sliiu/present-core").HslEffect = { kind: "hsl" };
       const hue = attr(n, "hue");
       const sat = attr(n, "sat");
       const lum = attr(n, "lum");
@@ -698,7 +698,7 @@ function readEffectChildren(parent: XmlNode, ctx: FillCtx): ShapeEffect[] {
       if (lum !== undefined) e.lum = Number(lum) / 100000;
       out.push(e);
     } else if (local === "tint") {
-      const e: import("@ppt/core").TintColorEffect = { kind: "tint" };
+      const e: import("@sliiu/present-core").TintColorEffect = { kind: "tint" };
       const hue = attr(n, "hue");
       const amt = attr(n, "amt");
       if (hue !== undefined) e.hue = Number(hue) / 60000;
@@ -713,7 +713,7 @@ function readEffectChildren(parent: XmlNode, ctx: FillCtx): ShapeEffect[] {
       const c2 = resolveColor(n, ctx.theme);
       out.push({ kind: "fillOverlay", color: c2, blend: validBlend });
     } else if (local === "xfrm") {
-      const e: import("@ppt/core").XfrmEffect = { kind: "xfrm" };
+      const e: import("@sliiu/present-core").XfrmEffect = { kind: "xfrm" };
       const sx = attr(n, "sx");
       const sy = attr(n, "sy");
       const kx = attr(n, "kx");
@@ -756,7 +756,7 @@ function readEffectChildren(parent: XmlNode, ctx: FillCtx): ShapeEffect[] {
       const cont = findByLocalName(n, "cont");
       if (cont) out.push(...readEffectChildren(cont, ctx));
     } else if (local === "relOff") {
-      const e: import("@ppt/core").RelOffsetEffect = { kind: "relOff" };
+      const e: import("@sliiu/present-core").RelOffsetEffect = { kind: "relOff" };
       const tx = attr(n, "tx");
       const ty = attr(n, "ty");
       if (tx !== undefined) e.tx = Number(tx) / 100000;
@@ -945,14 +945,14 @@ export function modulatePaint(
   return paint;
 }
 
-function parseArrowEnd(node: XmlNode | undefined): import("@ppt/core").ArrowEnd | undefined {
+function parseArrowEnd(node: XmlNode | undefined): import("@sliiu/present-core").ArrowEnd | undefined {
   if (!node) return undefined;
   const t = attr(node, "type");
   if (!t || t === "none") return undefined;
   const w = attr(node, "w");
   const len = attr(node, "len");
   return {
-    kind: t as import("@ppt/core").ArrowKind,
+    kind: t as import("@sliiu/present-core").ArrowKind,
     w: (w as "sm" | "med" | "lg" | undefined) ?? undefined,
     len: (len as "sm" | "med" | "lg" | undefined) ?? undefined,
   };

@@ -1,5 +1,5 @@
-import type { EditCommand, EmbeddedFont, Presentation, PresentationOptions } from "@ppt/core";
-import { mergeEmbeddedFonts, removeEmbeddedFontFamilies } from "@ppt/core";
+import type { EditCommand, EmbeddedFont, Presentation, PresentationOptions } from "@sliiu/present-core";
+import { mergeEmbeddedFonts, removeEmbeddedFontFamilies } from "@sliiu/present-core";
 
 export class EmbedFontsCmd implements EditCommand {
   readonly label: string;

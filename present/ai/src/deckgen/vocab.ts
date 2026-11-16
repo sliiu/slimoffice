@@ -4,7 +4,7 @@
  * reported back in the repair prompt. Nothing here carries hex.
  */
 
-import { SMARTART_LAYOUT_KINDS, type SmartArtLayoutKind } from "@ppt/core";
+import { SMARTART_LAYOUT_KINDS, type SmartArtLayoutKind } from "@sliiu/present-core";
 import { icons } from "lucide";
 import type { DeviceKind } from "./ir.js";
 

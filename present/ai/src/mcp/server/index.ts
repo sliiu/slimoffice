@@ -17,12 +17,12 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import {
   composeContactSheet,
   SCREENSHOT_SHEET_LIMIT,
   screenshotSlidesViaBrowser,
-} from "@ppt/player/browser-screenshot";
+} from "@sliiu/present-player/browser-screenshot";
 import { createHeadlessPort, type DocumentPort } from "../../kernel/port";
 import { buildEditToolDefs } from "../../tools";
 import { createToolRuntime, type ToolDef } from "../../tools/types";
@@ -120,9 +120,9 @@ function promoteSlideImages(result: unknown): McpToolResult | null {
 function loadBundledPlayerScript(): string {
   const req = createRequire(import.meta.url);
   try {
-    return readFileSync(req.resolve("@ppt/player/iife"), "utf8");
+    return readFileSync(req.resolve("@sliiu/present-player/iife"), "utf8");
   } catch {
-    throw new Error("Player bundle is missing. Build @ppt/player so dist/player.iife.js exists.");
+    throw new Error("Player bundle is missing. Build @sliiu/present-player so dist/player.iife.js exists.");
   }
 }
 

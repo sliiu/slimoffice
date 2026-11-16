@@ -1,4 +1,4 @@
-import type { Layer, Shape, Slide, SlideMaster } from "@ppt/core";
+import type { Layer, Shape, Slide, SlideMaster } from "@sliiu/present-core";
 
 // 阶段 2.1：把 slide.layoutRef 指向的 master/layout 装饰 shape 实时合成为渲染 layer，
 // 替代阶段 1 中 parser 把副本注入 slide.layers[0]/[1] 的做法。这使得 deck 级

@@ -3,9 +3,9 @@
 // svg-backend / canvas-backend 的 redraw。原来的实现内联在这里、又在 editor 端
 // 不可用，现在通用部分（walk slide / dedupe / waitForAll）下沉到 three-bake/runtime.ts。
 
-import { createBake3DRuntime as createCore, needs3DBake, shape3DInfo, type Bake3DRuntime as CoreRuntime } from "@ppt/three-bake";
-import type { Shape, Slide } from "@ppt/core";
-import { shapeFrontImageSrc, type Scene } from "@ppt/renderer";
+import { createBake3DRuntime as createCore, needs3DBake, shape3DInfo, type Bake3DRuntime as CoreRuntime } from "@sliiu/present-three-bake";
+import type { Shape, Slide } from "@sliiu/present-core";
+import { shapeFrontImageSrc, type Scene } from "@sliiu/present-renderer";
 
 export interface Bake3DRuntimeOpts {
   /**

@@ -5,9 +5,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fontTools = void 0;
 const zod_1 = require("zod");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const commands_1 = require("@sliiu/present-editor/commands");
-const themes_1 = require("@sliiu/present-themes");
+const present_themes_1 = require("@sliiu/present-themes");
 const types_1 = require("../types");
 const summaries_1 = require("../summaries");
 const formatEnum = zod_1.z.enum(["embedded-opentype", "truetype", "opentype", "woff", "woff2"]);
@@ -31,8 +31,8 @@ function inferFormat(src) {
     return "truetype";
 }
 function fontSnapshot(pres) {
-    const used = (0, core_1.collectUsedTypefaces)(pres);
-    const usedFaces = (0, core_1.collectUsedFontFaces)(pres);
+    const used = (0, present_core_1.collectUsedTypefaces)(pres);
+    const usedFaces = (0, present_core_1.collectUsedFontFaces)(pres);
     const embedded = (pres.fonts ?? []).map((f) => ({
         family: f.family,
         weight: f.weight,
@@ -41,7 +41,7 @@ function fontSnapshot(pres) {
         src: (0, summaries_1.elideUrlForSummary)(f.src),
     }));
     const missing = usedFaces
-        .filter((f) => !(0, core_1.isFontFaceEmbedded)(pres, f.family, f.weight, f.style))
+        .filter((f) => !(0, present_core_1.isFontFaceEmbedded)(pres, f.family, f.weight, f.style))
         .map((f) => `${f.family}@${f.weight}${f.style === "italic" ? "i" : ""}`);
     return {
         embedTrueTypeFonts: !!pres.options?.embedTrueTypeFonts,
@@ -52,8 +52,8 @@ function fontSnapshot(pres) {
     };
 }
 function googleCssUrl(family, weight) {
-    const name = (0, core_1.canonicalTypeface)(family) ?? (0, core_1.firstNamedTypeface)(family) ?? family.trim();
-    const preset = (0, themes_1.findFontPreset)(name);
+    const name = (0, present_core_1.canonicalTypeface)(family) ?? (0, present_core_1.firstNamedTypeface)(family) ?? family.trim();
+    const preset = (0, present_themes_1.findFontPreset)(name);
     if (preset?.cssUrl)
         return preset.cssUrl;
     const q = encodeURIComponent(name).replace(/%20/g, "+");
@@ -76,7 +76,7 @@ async function fetchFamilyDataUrl(family, weight) {
     if (!bytes?.length)
         return null;
     const mime = bytes[0] === 0x4f && bytes[1] === 0x54 ? "font/otf" : "font/ttf";
-    return (0, core_1.bytesToFontDataUrl)(bytes, mime);
+    return (0, present_core_1.bytesToFontDataUrl)(bytes, mime);
 }
 async function fetchFamilyWeight(family, weight) {
     const src = await fetchFamilyDataUrl(family, weight);
@@ -136,7 +136,7 @@ exports.fontTools = [
             const pres = rt.getPres();
             const skip = skipExisting !== false;
             const autoUsed = usedOnly ?? (!families?.length && !faces?.length && !remove?.length);
-            const usedFaces = (0, core_1.collectUsedFontFaces)(pres);
+            const usedFaces = (0, present_core_1.collectUsedFontFaces)(pres);
             const weightsByFamily = new Map();
             const addWeight = (family, weight) => {
                 const list = weightsByFamily.get(family) ?? [];
@@ -148,7 +148,7 @@ exports.fontTools = [
                     addWeight(face.family, face.weight);
             }
             for (const raw of families ?? []) {
-                const family = (0, core_1.canonicalTypeface)(raw) ?? raw.trim();
+                const family = (0, present_core_1.canonicalTypeface)(raw) ?? raw.trim();
                 if (!family)
                     continue;
                 const used = usedFaces.filter((f) => f.family === family).map((f) => f.weight);
@@ -165,7 +165,7 @@ exports.fontTools = [
             const failed = [];
             for (const [family, usedWeights] of weightsByFamily) {
                 for (const weight of googleWeightsForUsed(usedWeights)) {
-                    if (skip && (0, core_1.isFontFaceEmbedded)(pres, family, weight)) {
+                    if (skip && (0, present_core_1.isFontFaceEmbedded)(pres, family, weight)) {
                         skipped.push(`${family}@${weight}`);
                         continue;
                     }

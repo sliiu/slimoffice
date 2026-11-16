@@ -1,5 +1,5 @@
-import type { Rect, Transform } from "@ppt/core";
-import type { OleObjectShape, ShapeMeta } from "@ppt/core";
+import type { Rect, Transform } from "@sliiu/present-core";
+import type { OleObjectShape, ShapeMeta } from "@sliiu/present-core";
 import { boolish, emuToPx } from "./units";
 import { attr, findByLocalName, pickAlternateContentChildren, type XmlNode } from "./xml";
 import type { RelMap } from "./parts";

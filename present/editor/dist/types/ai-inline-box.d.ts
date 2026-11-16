@@ -1,4 +1,4 @@
-import type { MessageKey } from "./i18n.js";
+import type { MessageKey } from "./i18n/index.js";
 import { type ScreenRect } from "./selection-format-bar.js";
 export interface AiInlineUi {
     /** 处理中，停止时调用 stop。 */

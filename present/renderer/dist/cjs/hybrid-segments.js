@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildHybridSegments = buildHybridSegments;
-const three_bake_1 = require("@sliiu/present-three-bake");
+const present_three_bake_1 = require("@sliiu/present-three-bake");
 const BITMAP_KINDS = new Set(["image", "chart"]);
 function shapeIsLive3D(s) {
-    return (0, three_bake_1.shapeSupports3D)(s) && (0, three_bake_1.needs3DRender)((0, three_bake_1.shape3DInfo)(s));
+    return (0, present_three_bake_1.shapeSupports3D)(s) && (0, present_three_bake_1.needs3DRender)((0, present_three_bake_1.shape3DInfo)(s));
 }
 function shapeIsLiveModel3D(s) {
     return s.kind === "model3d" && Boolean(s.glbSrc);

@@ -12,7 +12,7 @@
 // 这里把该逻辑做成纯函数，与 parser 算法保持一致（hasVisibleBaseFill / _text 子形状
 // 路径 / iterate 切片等关键细节），供 editor 在 destroy / 进入放映前调用。
 
-import { ooxml } from "@ppt/animation";
+import { ooxml } from "@sliiu/present-animation";
 import type {
   InitialCharRangeOverride,
   InitialParaOverride,

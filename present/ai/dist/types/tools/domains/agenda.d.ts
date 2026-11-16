@@ -26,7 +26,7 @@ export declare function buildAgendaSlide(pres: Presentation, opts: {
     }>;
     cjk?: boolean;
 }): Slide;
-export declare const agendaTools: import("...js").ToolDef<{
+export declare const agendaTools: import("../index.js").ToolDef<{
     insertAt?: number | undefined;
     title?: string | undefined;
     items?: {

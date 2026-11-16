@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { identityTransform, type Presentation, type Slide, type TextShape } from "@ppt/core";
+import { identityTransform, type Presentation, type Slide, type TextShape } from "@sliiu/present-core";
 import { createHeadlessPort } from "../../kernel/port";
 import { createToolRuntime } from "../types";
 import { defaultConfig } from "../../config/types";

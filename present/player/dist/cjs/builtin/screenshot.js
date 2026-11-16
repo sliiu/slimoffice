@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.screenshotPlugin = void 0;
-const renderer_1 = require("@sliiu/present-renderer");
+const present_renderer_1 = require("@sliiu/present-renderer");
 const i18n_1 = require("../i18n");
 function pptFileBase(ctx) {
     const raw = String(ctx.shared["ppt:fileName"] ?? ctx.presentation.title ?? "").trim();
@@ -32,10 +32,10 @@ async function rasterLiveScene(scene) {
     const host = document.createElement("div");
     host.style.cssText = `position:fixed;left:-99999px;top:0;width:${scene.width}px;height:${scene.height}px`;
     document.body.appendChild(host);
-    const be = new renderer_1.CanvasBackend(scene, host, { pixelRatio: window.devicePixelRatio || 1 });
+    const be = new present_renderer_1.CanvasBackend(scene, host, { pixelRatio: window.devicePixelRatio || 1 });
     try {
         be.flush();
-        await (0, renderer_1.waitForImagesLoaded)();
+        await (0, present_renderer_1.waitForImagesLoaded)();
         be.flush();
         return await canvasToBlob(be.canvas);
     }

@@ -3,7 +3,7 @@
 // Shown as a right-rail tab only while the host has `body.dev-mode`.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mountDevPanel = mountDevPanel;
-const transition_fx_1 = require("@sliiu/present-transition-fx");
+const present_transition_fx_1 = require("@sliiu/present-transition-fx");
 const i18n_1 = require("./i18n");
 const insert_meta_1 = require("./insert-meta");
 const ui_style_1 = require("./ui-style");
@@ -224,14 +224,14 @@ function mountDevPanel(parent, opts) {
             wrap.appendChild(line((0, i18n_1.t)("ribbon.transition.morphStatsNoNext")));
         }
         else {
-            const report = (0, transition_fx_1.auditMorphSlides)(from, to);
-            const breakdown = report.pairs.length ? ` · ${(0, transition_fx_1.formatMorphMatchReasonBreakdown)(report)}` : "";
-            const stats = line((0, transition_fx_1.formatMorphReadinessLine)(report) + breakdown);
+            const report = (0, present_transition_fx_1.auditMorphSlides)(from, to);
+            const breakdown = report.pairs.length ? ` · ${(0, present_transition_fx_1.formatMorphMatchReasonBreakdown)(report)}` : "";
+            const stats = line((0, present_transition_fx_1.formatMorphReadinessLine)(report) + breakdown);
             stats.style.color = "#a3e635";
             wrap.appendChild(stats);
         }
         if (multi) {
-            const deckLines = (0, transition_fx_1.formatMorphDeckChromeLines)(opts.pres);
+            const deckLines = (0, present_transition_fx_1.formatMorphDeckChromeLines)(opts.pres);
             wrap.appendChild(line(deckLines.stats));
             wrap.appendChild(line(deckLines.readiness));
             wrap.appendChild(line((0, i18n_1.t)("ribbon.transition.morphPairCoverage", {
@@ -246,34 +246,34 @@ function mountDevPanel(parent, opts) {
         };
         const buttons = [];
         if (from && to) {
-            const report = () => (0, transition_fx_1.auditMorphSlides)(from, to);
+            const report = () => (0, present_transition_fx_1.auditMorphSlides)(from, to);
             buttons.push(mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphAudit"), copyPair(() => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphAuditText)(report(), { fromSlide: idx, toSlide: idx + 1 }));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphAuditText)(report(), { fromSlide: idx, toSlide: idx + 1 }));
             })), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphIssues"), copyPair(() => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphAuditText)(report(), { fromSlide: idx, toSlide: idx + 1, filter: "issues" }));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphAuditText)(report(), { fromSlide: idx, toSlide: idx + 1, filter: "issues" }));
             })), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphIssuesCompact"), copyPair(() => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphIssuesCompactText)(report(), { fromSlide: idx, toSlide: idx + 1 }));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphIssuesCompactText)(report(), { fromSlide: idx, toSlide: idx + 1 }));
             })), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphPairCompact"), copyPair(() => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphPairCompactText)(report(), { fromSlide: idx, toSlide: idx + 1 }));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphPairCompactText)(report(), { fromSlide: idx, toSlide: idx + 1 }));
             })), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphReadiness"), copyPair(() => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphReadinessText)(report(), { fromSlide: idx, toSlide: idx + 1 }));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphReadinessText)(report(), { fromSlide: idx, toSlide: idx + 1 }));
             })));
         }
         if (multi) {
             buttons.push(mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphDeckAudit"), () => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphDeckAuditText)(opts.pres));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphDeckAuditText)(opts.pres));
             }), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphDeckCompact"), () => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphDeckCompactText)(opts.pres));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphDeckCompactText)(opts.pres));
             }), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphDeckIssuesCompact"), () => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphDeckIssuesCompactText)(opts.pres));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphDeckIssuesCompactText)(opts.pres));
             }), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphDeckReadiness"), () => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphDeckReadinessText)(opts.pres));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphDeckReadinessText)(opts.pres));
             }), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphDeckFiltered"), () => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphDeckFilteredCompactText)(opts.pres, "issues"));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphDeckFilteredCompactText)(opts.pres, "issues"));
             }), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphPairCoverage"), () => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphPairCoverageText)(opts.pres));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphPairCoverageText)(opts.pres));
             }), mkBtn((0, i18n_1.t)("ribbon.transition.copyMorphUnmatched"), () => {
-                void (0, insert_meta_1.copyTextToClipboard)((0, transition_fx_1.exportMorphUnmatchedShapesText)(opts.pres));
+                void (0, insert_meta_1.copyTextToClipboard)((0, present_transition_fx_1.exportMorphUnmatchedShapesText)(opts.pres));
             }));
         }
         if (multi && opts.gotoSlide) {
@@ -284,13 +284,13 @@ function mountDevPanel(parent, opts) {
                         opts.gotoSlide?.(entry.fromIndex);
                 }));
             };
-            const deck = () => (0, transition_fx_1.auditMorphDeck)(opts.pres);
-            jump(() => (0, transition_fx_1.findWeakestMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoWeakestMorph"));
-            jump(() => (0, transition_fx_1.findStrongestMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoStrongestMorph"));
-            jump(() => (0, transition_fx_1.findMostIssueMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoMostIssueMorph"));
-            jump(() => (0, transition_fx_1.findHighestPathCoverageMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoHighestPathMorph"));
-            jump(() => (0, transition_fx_1.findFirstIssueMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoFirstIssueMorph"));
-            jump(() => (0, transition_fx_1.findLowestPathCoverageMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoLowestPathMorph"));
+            const deck = () => (0, present_transition_fx_1.auditMorphDeck)(opts.pres);
+            jump(() => (0, present_transition_fx_1.findWeakestMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoWeakestMorph"));
+            jump(() => (0, present_transition_fx_1.findStrongestMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoStrongestMorph"));
+            jump(() => (0, present_transition_fx_1.findMostIssueMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoMostIssueMorph"));
+            jump(() => (0, present_transition_fx_1.findHighestPathCoverageMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoHighestPathMorph"));
+            jump(() => (0, present_transition_fx_1.findFirstIssueMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoFirstIssueMorph"));
+            jump(() => (0, present_transition_fx_1.findLowestPathCoverageMorphPair)(deck()), (0, i18n_1.t)("ribbon.transition.gotoLowestPathMorph"));
         }
         if (buttons.length)
             wrap.appendChild(btnRow(...buttons));

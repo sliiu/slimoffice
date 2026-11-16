@@ -4,15 +4,15 @@
 // 等高层操作封装成走 CommandStack 的命令，使 AI 改动可整体 undo。
 //
 // 复用策略：所有命令都通过 deepClone slide.ooxmlTiming 实现 revert（与
-// @ppt/editor/animation/commands.ts 同样思路；那里只覆盖单 effect 增删，
+// @sliiu/present-editor/animation/commands.ts 同样思路；那里只覆盖单 effect 增删，
 // 这里覆盖更高层操作）。
 //
 // Phase A 升级：ApplyAutoAnimationsCmd 接收 bundleId（minimal/cinematic/
 // editorial/playful），同时写入 slide.transition（页间过渡）；revert 时一并复位。
 // 没传 bundleId 时由 animations.resolveBundleForPresentation 推断。
 
-import type { EditCommand, Presentation, Slide, SlideTransition } from "@ppt/core";
-import type { ooxml } from "@ppt/animation";
+import type { EditCommand, Presentation, Slide, SlideTransition } from "@sliiu/present-core";
+import type { ooxml } from "@sliiu/present-animation";
 import {
   applyAnimationsToSlide,
   applyBundleTransitionToSlide,

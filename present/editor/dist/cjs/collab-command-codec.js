@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.serializeCollabCommand = serializeCollabCommand;
 exports.deserializeCollabCommand = deserializeCollabCommand;
-const core_1 = require("@sliiu/present-core");
-const themes_1 = require("@sliiu/present-themes");
+const present_core_1 = require("@sliiu/present-core");
+const present_themes_1 = require("@sliiu/present-themes");
 const master_commands_1 = require("./master-commands");
 const commands_1 = require("./animation/commands");
 const comment_commands_1 = require("./comment-commands");
@@ -151,7 +151,7 @@ class WireRebuildSmartArtCmd {
             return;
         if (this.layout)
             g.smartArtMeta = { layout: this.layout };
-        (0, core_1.rebuildSmartArtChildren)(g, this.items, g.smartArtMeta?.layout);
+        (0, present_core_1.rebuildSmartArtChildren)(g, this.items, g.smartArtMeta?.layout);
     }
     revert(_pres) {
         // remote-only apply path
@@ -1111,7 +1111,7 @@ function serializeCollabCommand(cmd) {
             payload: { slideIdx: readField(cmd, "slideIdx") },
         };
     }
-    if (cmd instanceof themes_1.ApplyThemeCmd) {
+    if (cmd instanceof present_themes_1.ApplyThemeCmd) {
         return {
             type: "applyTheme",
             payload: {
@@ -1120,7 +1120,7 @@ function serializeCollabCommand(cmd) {
             },
         };
     }
-    if (cmd instanceof themes_1.ApplyCustomThemeCmd) {
+    if (cmd instanceof present_themes_1.ApplyCustomThemeCmd) {
         return {
             type: "applyCustomTheme",
             payload: {
@@ -1494,12 +1494,12 @@ function deserializeCollabCommand(wire) {
         case "clearInkOnSlide":
             return new ink_commands_1.ClearInkOnSlideCmd(Number(p.slideIdx));
         case "applyTheme":
-            return new themes_1.ApplyThemeCmd(String(p.themeId ?? ""), p.opts ?? {});
+            return new present_themes_1.ApplyThemeCmd(String(p.themeId ?? ""), p.opts ?? {});
         case "applyCustomTheme": {
             const theme = p.theme;
             if (!theme)
                 return null;
-            return new themes_1.ApplyCustomThemeCmd(theme, p.opts ?? {});
+            return new present_themes_1.ApplyCustomThemeCmd(theme, p.opts ?? {});
         }
         case "setSlideLayoutRef":
             return new master_commands_1.SetSlideLayoutRefCmd(Number(p.slideIdx), p.next);

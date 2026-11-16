@@ -3,7 +3,7 @@
 
 import {
   ooxml,
-} from "@ppt/animation";
+} from "@sliiu/present-animation";
 import { boolish } from "./units";
 import {
   attr,

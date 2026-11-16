@@ -24,13 +24,13 @@ exports.openHeaderFooterDialog = openHeaderFooterDialog;
 const i18n_1 = require("./i18n");
 const icons_1 = require("./icons");
 const ui_style_1 = require("./ui-style");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const font_list_1 = require("./font-list");
 const font_size_1 = require("./font-size");
-const ui_1 = require("@sliiu/present-ui");
+const present_ui_1 = require("@sliiu/present-ui");
 /** Editor task dialog: backdrop, Esc, Enter, title close, and one task at a time. */
 function bindEditorModal(opts) {
-    return (0, ui_1.bindModalDismiss)({
+    return (0, present_ui_1.bindModalDismiss)({
         ...opts,
         layer: "task",
         closeLabel: opts.closeLabel ?? (0, i18n_1.t)("dialog.dismiss"),
@@ -329,7 +329,7 @@ editing = false) {
             familyInput.type = "text";
             familyInput.style.cssText = inputStyle();
             familyInput.value = state.fontFamily;
-            const familyCombo = (0, ui_1.bindCombobox)(familyInput, {
+            const familyCombo = (0, present_ui_1.bindCombobox)(familyInput, {
                 options: WORDART_FONT_OPTIONS.map((f) => ({ value: f.value, label: f.label })),
                 optionStyle: (item) => `font-family:${item.value}`,
                 onChange: (v) => {
@@ -840,7 +840,7 @@ function openHyperlinkDialog(doc, context) {
                 const k = kindSel.value;
                 urlBox.style.display = k === "url" ? "block" : "none";
                 slideBox.style.display = k === "slide" ? "block" : "none";
-                const okEnabled = k === "url" ? (0, core_1.isSafeExternalUrl)(urlInput.value)
+                const okEnabled = k === "url" ? (0, present_core_1.isSafeExternalUrl)(urlInput.value)
                     : k === "slide" ? slideSel.value !== ""
                         : k === "sound" ? soundSrc.length > 0
                             : true;
@@ -875,7 +875,7 @@ function openHyperlinkDialog(doc, context) {
                     ? { src: soundSrc, ...(soundName ? { name: soundName } : {}) }
                     : undefined;
                 if (k === "url") {
-                    const target = (0, core_1.sanitizeExternalUrl)(urlInput.value);
+                    const target = (0, present_core_1.sanitizeExternalUrl)(urlInput.value);
                     if (!target)
                         return null;
                     return { kind: "url", target, tooltip, sound };

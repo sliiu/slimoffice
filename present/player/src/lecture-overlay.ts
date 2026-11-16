@@ -1,4 +1,4 @@
-import type { LectureFrame } from "@ppt/core";
+import type { LectureFrame } from "@sliiu/present-core";
 
 export interface LectureOverlay {
   setVideo(src: string | null): void;

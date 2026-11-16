@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.paginate = paginate;
-const core_1 = require("@sliiu/document-core");
+const document_core_1 = require("@sliiu/document-core");
 const TWIP = 96 / 1440;
 const LINE = 22;
 const TABLE_ROW = 28;
@@ -47,7 +47,7 @@ function contentHeight(page) {
     return Math.max(LINE, (page.height - page.margin.top - page.margin.bottom) * TWIP);
 }
 function blockHeight(block) {
-    if ((0, core_1.isDocTable)(block))
+    if ((0, document_core_1.isDocTable)(block))
         return tableHeight(block);
     return Math.max(LINE, ...block.runs.map((run) => (run.fontSize ?? 11) * 1.4));
 }

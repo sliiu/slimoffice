@@ -12,11 +12,11 @@ import type {
   TextShape,
   TextVert,
   TextVertOverflow,
-} from "@ppt/core";
-import { getOrigin, setOrigin, sanitizeHyperlinkRef } from "@ppt/core";
+} from "@sliiu/present-core";
+import { getOrigin, setOrigin, sanitizeHyperlinkRef } from "@sliiu/present-core";
 
 // 从 core 单一定义重导出，保持 parser 既有 `import { ExplicitRPrSnapshot } from "./text"` 兼容。
-export type { ExplicitRPrSnapshot } from "@ppt/core";
+export type { ExplicitRPrSnapshot } from "@sliiu/present-core";
 import { parse3DInfo, type Sp3DInfo } from "./shape-3d";
 import { parseFill, resolveShapeStroke, parseEffectListFull } from "./fill";
 import { emuToPx, percentToFloat, ptToPx, stHundredthPtToPx } from "./units";
@@ -1004,7 +1004,7 @@ function hlinkSnapshot(h: HyperlinkRef): NonNullable<ExplicitRPrSnapshotLocal["h
   };
 }
 
-type ExplicitRPrSnapshotLocal = import("@ppt/core").ExplicitRPrSnapshot;
+type ExplicitRPrSnapshotLocal = import("@sliiu/present-core").ExplicitRPrSnapshot;
 
 /** ECMA-376 CT_Hyperlink：shape / run 的 hlinkClick、hlinkHover、hlinkMouseOver。 */
 export function parseHlinkNode(node: XmlNode | undefined, ctx: TextCtx): HyperlinkRef | undefined {

@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateModel3DGlbCmd = exports.InsertModel3DCmd = void 0;
 exports.model3DPresetById = model3DPresetById;
 exports.buildModel3DShape = buildModel3DShape;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 let model3dSeq = 1;
 function model3DPresetById(id) {
-    return core_1.MODEL3D_PRESETS.find((p) => p.id === id);
+    return present_core_1.MODEL3D_PRESETS.find((p) => p.id === id);
 }
 /** Build a `Model3DShape` for editor insert (caller supplies resolved `glbSrc` data URL). */
 function buildModel3DShape(presetId, glbSrc, bbox, objectName) {
@@ -18,7 +18,7 @@ function buildModel3DShape(presetId, glbSrc, bbox, objectName) {
         zIndex: 0,
         kind: "model3d",
         bbox,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         objectName: objectName ?? preset?.label ?? "3D Model",
         glbSrc,
         camera: { preset: "orbit", rot: { lat: 15, lon: 25 } },

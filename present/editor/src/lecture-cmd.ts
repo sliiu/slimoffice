@@ -6,7 +6,7 @@ import {
   type Lecture,
   type LectureFrame,
   type Presentation,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 
 function cloneLecture(lecture: Lecture | undefined): Lecture | undefined {
   if (!lecture) return undefined;

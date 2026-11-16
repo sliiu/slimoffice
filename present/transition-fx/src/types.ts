@@ -1,4 +1,4 @@
-import type { SlideTransition } from "@ppt/core";
+import type { SlideTransition } from "@sliiu/present-core";
 
 export interface TransitionCtx {
   ghost: HTMLElement;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { identityTransform, type RectShape, type Slide, type TextShape } from "@ppt/core";
-import { createScene } from "@ppt/renderer";
+import { identityTransform, type RectShape, type Slide, type TextShape } from "@sliiu/present-core";
+import { createScene } from "@sliiu/present-renderer";
 import { findHyperlinkAt, nodeShownForPointer } from "./link-hit.js";
 
 function rect(id: string, x: number, y: number, extra: Partial<RectShape> = {}): RectShape {

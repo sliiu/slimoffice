@@ -9,7 +9,7 @@ Object.defineProperty(exports, "normalizeSystemId", { enumerable: true, get: fun
 const vocab_js_1 = require("../deckgen/vocab.js");
 const ir_js_1 = require("../deckgen/ir.js");
 const snap_js_1 = require("../deckgen/snap.js");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const PaintRoleSchema = zod_1.z.enum(["bg", "surface", "ink", "muted", "line", "accent", "accentSoft"]);
 const BBoxSchema = zod_1.z.object({
     x: zod_1.z.number(),
@@ -108,7 +108,7 @@ exports.CanvasElementSchema = zod_1.z.object({
     link: zod_1.z.number().optional(),
     diagram: zod_1.z
         .object({
-        layout: zod_1.z.enum(core_1.SMARTART_LAYOUT_KINDS),
+        layout: zod_1.z.enum(present_core_1.SMARTART_LAYOUT_KINDS),
         items: zod_1.z.array(zod_1.z.union([zod_1.z.string(), zod_1.z.object({ title: zod_1.z.string(), body: zod_1.z.string().optional() })])),
     })
         .optional(),

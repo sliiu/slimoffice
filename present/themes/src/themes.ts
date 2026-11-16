@@ -196,7 +196,7 @@ export interface ThemeDef {
    * AI 生成主题（generateTheme）通常会写 linear/radial gradient，让发布会风
    * / 暗色主题立刻有"层次感"。
    */
-  backgroundPaint?: import("@ppt/core").Paint;
+  backgroundPaint?: import("@sliiu/present-core").Paint;
   /** 装饰层：compile.ts 在 render 后追加到 layer.shapes 顶部（z 最低）。 */
   decoration?: ThemeDecoration;
   /**
@@ -905,7 +905,7 @@ export function realizeGeneratedTheme(
     if (monoPreset) injectFontCss(monoPreset.cssUrl, monoPreset.family);
   }
 
-  let backgroundPaint: import("@ppt/core").Paint | undefined;
+  let backgroundPaint: import("@sliiu/present-core").Paint | undefined;
   if (spec.background.kind === "linear") {
     backgroundPaint = {
       kind: "linear",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Shape, Slide, TextShape } from "@ppt/core";
+import type { Shape, Slide, TextShape } from "@sliiu/present-core";
 import { autoAnimateSlide } from "./animations.js";
 
 function text(id: string, x: number, y: number, w = 200, h = 40, name = id): TextShape {

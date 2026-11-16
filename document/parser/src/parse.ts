@@ -7,7 +7,7 @@ import {
   type DocSection,
   type DocTable,
   type Document,
-} from "@document/core";
+} from "@sliiu/document-core";
 import { loadArchive, type OfficeArchive } from "./zip";
 import { attr, child, children, ordered, parseXml, text, type XmlNode } from "./xml";
 

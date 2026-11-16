@@ -1,7 +1,7 @@
 // OoxmlTiming → XML 序列化（ECMA-376 §19.5）。
 
-import { ooxml } from "@ppt/animation";
-import { TRANSITION_SPEED_TO_SEC, type SlideTransition } from "@ppt/core";
+import { ooxml } from "@sliiu/present-animation";
+import { TRANSITION_SPEED_TO_SEC, type SlideTransition } from "@sliiu/present-core";
 import type { MediaRegistrar } from "./media-table";
 import { REL_TYPE_AUDIO } from "./media-table";
 import { normalizeTimingForOoxml } from "./pptx-timing-normalize";
@@ -25,7 +25,7 @@ type TimeAnimValue = ooxml.TimeAnimValue;
 type Iterate = ooxml.Iterate;
 type BuildEntry = ooxml.BuildEntry;
 
-// ECMA-376 §19.5.50 p:transition — slide 级过渡。与 @ppt/parser parseSlideTransition 对称。
+// ECMA-376 §19.5.50 p:transition — slide 级过渡。与 @sliiu/present-parser parseSlideTransition 对称。
 //
 // 写盘形状对齐 PowerPoint 自己的输出（[MS-PPTX] §2.3 Slide Transitions）：
 //   - ECMA 2006 的 21 种 prst 直接写 <p:KIND/>；

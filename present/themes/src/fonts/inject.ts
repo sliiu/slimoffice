@@ -1,4 +1,4 @@
-import { firstNamedTypeface, canonicalTypeface } from "@ppt/core";
+import { firstNamedTypeface, canonicalTypeface } from "@sliiu/present-core";
 
 // 浏览器内字体注入工具：把 Google Fonts CSS 链接以 idempotent 方式塞进 <head>，
 // 让 SVG / Canvas / DOM 渲染时都能正确解析到指定 fontFamily。

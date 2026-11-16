@@ -10,7 +10,7 @@ exports.absolutizeLeadingMove = absolutizeLeadingMove;
 exports.lucidePathData = lucidePathData;
 exports.scalePathData = scalePathData;
 exports.iconPathShape = iconPathShape;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const lucide_1 = require("lucide");
 function kebabToPascal(id) {
     return id.replace(/[-_]+(.)/g, (_, c) => c.toUpperCase()).replace(/^(.)/, (m) => m.toUpperCase());
@@ -209,7 +209,7 @@ function iconPathShape(icon, bbox, opts) {
         visible: true,
         locked: false,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         kind: "path",
         bbox: { x: bbox.x + (bbox.w - side) / 2, y: bbox.y + (bbox.h - side) / 2, w: side, h: side },
         d,

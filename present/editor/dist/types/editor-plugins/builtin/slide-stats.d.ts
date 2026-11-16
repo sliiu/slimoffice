@@ -3,5 +3,5 @@ export declare const slideStatsEditorPlugin: {
     id: "official:slide-stats";
     name: string;
     version: string;
-    activate(ctx: import("...js").EditorPluginContext): () => void;
+    activate(ctx: import("../index.js").EditorPluginContext): () => void;
 };

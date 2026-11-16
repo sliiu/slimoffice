@@ -1,4 +1,4 @@
-export declare const wordArtTools: (import("...js").ToolDef<Record<string, never>> | import("...js").ToolDef<{
+export declare const wordArtTools: (import("../index.js").ToolDef<Record<string, never>> | import("../index.js").ToolDef<{
     preset?: string | undefined;
     fontFamily?: string | undefined;
     fontSize?: number | undefined;
@@ -17,7 +17,7 @@ export declare const wordArtTools: (import("...js").ToolDef<Record<string, never
         w: number;
         h: number;
     } | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     preset?: string | undefined;
     fontFamily?: string | undefined;
     fontSize?: number | undefined;

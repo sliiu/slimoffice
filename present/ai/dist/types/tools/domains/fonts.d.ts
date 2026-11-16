@@ -1,4 +1,4 @@
-export declare const fontTools: (import("...js").ToolDef<Record<string, never>> | import("...js").ToolDef<{
+export declare const fontTools: (import("../index.js").ToolDef<Record<string, never>> | import("../index.js").ToolDef<{
     families?: string[] | undefined;
     faces?: {
         family: string;

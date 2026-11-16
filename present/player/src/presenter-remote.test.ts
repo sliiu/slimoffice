@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Presentation, Slide } from "@ppt/core";
+import type { Presentation, Slide } from "@sliiu/present-core";
 import { buildPresenterPageHtml, createPresenterBridge, notesForSlide, type RemoteTarget } from "./presenter-remote";
 
 function slide(id: string, title: string, notes?: string): Slide {

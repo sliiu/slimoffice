@@ -6,7 +6,7 @@ exports.bboxFromPoints = bboxFromPoints;
 exports.inkStrokeStyle = inkStrokeStyle;
 exports.buildInkPathShape = buildInkPathShape;
 exports.hitInkShapeAt = hitInkShapeAt;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const shape_factory_1 = require("./shape-factory");
 function isInkShapeId(id) {
     return id.startsWith("sp_ink_");
@@ -50,7 +50,7 @@ function buildInkPathShape(points, mode, penColor = "#111827", penWidth = 3) {
         locked: false,
         opacity: 1,
         bbox: bboxFromPoints(points, pad),
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         fill: { kind: "none" },
         stroke: {
             paint: { kind: "solid", color, alpha },

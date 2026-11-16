@@ -9,7 +9,7 @@ import {
   type Slide,
   type TextRun,
   type SlideMaster,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import {
   buildMastersFromThemeDef,
   findLayoutRefByType,

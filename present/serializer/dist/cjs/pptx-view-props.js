@@ -4,7 +4,7 @@ exports.CT_VIEW_PROPS = exports.REL_TYPE_VIEW_PROPS = void 0;
 exports.renderViewPropsXml = renderViewPropsXml;
 exports.injectScratchViewProps = injectScratchViewProps;
 exports.patchViewProps = patchViewProps;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const xml_util_1 = require("./xml-util");
 exports.REL_TYPE_VIEW_PROPS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps";
@@ -18,7 +18,7 @@ function boolAttr(v) {
 function renderGuideLst(guides) {
     const rows = (guides ?? [])
         .map((g) => {
-        const pos = (0, core_1.pxToGuidePos)(g.pos);
+        const pos = (0, present_core_1.pxToGuidePos)(g.pos);
         return g.orient === "horz"
             ? `<p:guide orient="horz" pos="${pos}"/>`
             : `<p:guide pos="${pos}"/>`;
@@ -137,7 +137,7 @@ function patchSlideViewSection(xml, g) {
 }
 /** from-scratch：把 `pres.viewGuides` 写成 `ppt/viewProps.xml`。 */
 function injectScratchViewProps(pres, files) {
-    if (!(0, core_1.viewGuidesHasContent)(pres.viewGuides))
+    if (!(0, present_core_1.viewGuidesHasContent)(pres.viewGuides))
         return;
     const path = "ppt/viewProps.xml";
     files[path] = renderViewPropsXml(pres.viewGuides);
@@ -149,11 +149,11 @@ function injectScratchViewProps(pres, files) {
 /** round-trip：仅当参考线 / 网格开关相对解析快照有改动时 patch viewProps。 */
 function patchViewProps(pres, archive, opts = {}) {
     const presSrc = pres.__source;
-    const nextSnap = (0, core_1.viewGuidesSnapshot)(pres.viewGuides);
+    const nextSnap = (0, present_core_1.viewGuidesSnapshot)(pres.viewGuides);
     const prevSnap = presSrc?.viewGuidesSnapshot ?? "";
     if (nextSnap === prevSnap)
         return;
-    if (!(0, core_1.viewGuidesHasContent)(pres.viewGuides)) {
+    if (!(0, present_core_1.viewGuidesHasContent)(pres.viewGuides)) {
         return;
     }
     const path = presSrc?.viewPropsPartPath ?? "ppt/viewProps.xml";

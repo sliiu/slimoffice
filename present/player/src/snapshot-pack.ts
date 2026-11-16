@@ -1,4 +1,4 @@
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { dataUrlsToPdf, toAB } from "./pdf";
 import { PDF_EXPORT_DPI, snapshotAllForPdf, type PdfExportOptions } from "./snapshot-raster";
 import { buildStoredZip } from "./zip-store";

@@ -18,7 +18,7 @@ import {
   SetTableCellStyleCmd,
   UnmergeTableCellsCmd,
   createTable,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import { defineTool, ok, err } from "../types";
 
 const colorRe = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;

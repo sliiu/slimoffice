@@ -1,4 +1,4 @@
-import type { Rect } from "@ppt/core";
+import type { Rect } from "@sliiu/present-core";
 import { findByLocalName, findAllByLocalName, attr, orderedChildren, type XmlNode, stripNs } from "./xml";
 
 export type FillMod = "norm" | "lighten" | "lightenLess" | "darken" | "darkenLess" | "none";

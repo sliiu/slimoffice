@@ -1,4 +1,4 @@
-import { computeInitialEntranceState, type Slide } from "@ppt/core";
+import { computeInitialEntranceState, type Slide } from "@sliiu/present-core";
 import type { Scene } from "./scene-node";
 
 /**

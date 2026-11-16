@@ -5,7 +5,7 @@
  * vocabulary — not a title dumped in the 5% margin.
  */
 
-import type { Rect } from "@ppt/core";
+import type { Rect } from "@sliiu/present-core";
 import { SLOT_CAPS, type PaintRole } from "./ids.js";
 import { imageSlotsAllowed, resolveLayout } from "./layouts.js";
 import { displaySize, typeRole, CANVAS, type TypeRole, type VisualSystem } from "./visual-system.js";

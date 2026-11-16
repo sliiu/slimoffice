@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sliiu/present-animation": "0.0.0-nightly.20261116031027"
+    "@sliiu/present-animation": "workspace:*"
   },
   "module": "./dist/esm/index.js",
   "repository": {

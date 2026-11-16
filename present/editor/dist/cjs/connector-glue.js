@@ -13,7 +13,7 @@ exports.snapCxnSite = snapCxnSite;
 exports.followGlueToSites = followGlueToSites;
 exports.reattachConnectorGlue = reattachConnectorGlue;
 exports.followGlueOnTranslate = followGlueOnTranslate;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const shape_transform_1 = require("./shape-transform");
 exports.CXN_SNAP_PX = 14;
 /** OOXML ST_ShapeType 连接符。与 serializer `CONNECTOR_PRESETS` 对齐。 */
@@ -81,7 +81,7 @@ function applyPathConnectorEnds(s, start, end) {
         scaleX: flipH ? -ax : ax,
         scaleY: flipV ? -ay : ay,
     };
-    (0, core_1.markDirty)(s, "bbox");
+    (0, present_core_1.markDirty)(s, "bbox");
 }
 /** 形状对外连接点：自定义几何用 cxnPoints，否则 bbox 四边中点（Office 矩形默认）。 */
 function cxnSitesOf(shape) {
@@ -152,7 +152,7 @@ function syncLineBbox(s) {
         w: Math.max(1, Math.abs(s.x2 - s.x1)),
         h: Math.max(1, Math.abs(s.y2 - s.y1)),
     };
-    (0, core_1.markDirty)(s, "bbox");
+    (0, present_core_1.markDirty)(s, "bbox");
 }
 /**
  * 按目标当前连接点位置，把粘在它上面的直线 / 肘形 / 曲线连接符端点吸回去。

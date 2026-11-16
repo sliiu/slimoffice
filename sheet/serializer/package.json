@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "fflate": "^0.8.3",
-    "@sliiu/sheet-core": "0.0.0-nightly.20261116031027"
+    "@sliiu/sheet-core": "workspace:*"
   },
   "module": "./dist/esm/index.js",
   "repository": {

@@ -6,7 +6,7 @@
 // 实现：一个 absolute-positioned 的 div 跟随鼠标，pointer-events: none，
 // 不影响任何点击 / 动画触发。
 
-import type { Plugin } from "@ppt/plugin-sdk";
+import type { Plugin } from "@sliiu/present-plugin-sdk";
 import { createTranslator } from "../i18n";
 
 export const laserPointerPlugin: Plugin = {

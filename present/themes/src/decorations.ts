@@ -13,8 +13,8 @@
 //     还每页重复同一对圆。大面积氛围元素一律走「左右出血的横向光带 / 山脊」或贴边
 //     灯管，纵向收在版心之外；角部只留细线、括号、角标这类结构性小元素。
 
-import { identityTransform } from "@ppt/core";
-import type { EllipseShape, RectShape, Shape, SlideSize } from "@ppt/core";
+import { identityTransform } from "@sliiu/present-core";
+import type { EllipseShape, RectShape, Shape, SlideSize } from "@sliiu/present-core";
 import type { ThemeDecoration, ThemePalette } from "./themes";
 
 export interface DecorationContext {

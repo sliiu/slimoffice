@@ -1,4 +1,4 @@
-export declare const tableTools: (import("...js").ToolDef<{
+export declare const tableTools: (import("../index.js").ToolDef<{
     slideIdx: number;
     rows: number;
     cols: number;
@@ -18,30 +18,30 @@ export declare const tableTools: (import("...js").ToolDef<{
     fontFamily?: string | undefined;
     fontSize?: number | undefined;
     name?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     tableShapeId: string;
     afterRow: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     tableShapeId: string;
     rowIdx: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     tableShapeId: string;
     afterCol: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     tableShapeId: string;
     colIdx: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     tableShapeId: string;
     startRow: number;
     startCol: number;
     endRow: number;
     endCol: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
     tableShapeId: string;
     row: number;

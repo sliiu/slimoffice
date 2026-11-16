@@ -1,4 +1,4 @@
-import { isEditingBlockedError, type BulletDef, type CommandHistoryEntry, type TextParagraph, type TextRun } from "@ppt/core";
+import { isEditingBlockedError, type BulletDef, type CommandHistoryEntry, type TextParagraph, type TextRun } from "@sliiu/present-core";
 import type { InsertShapeKind, SaveFormat } from "./editor";
 import type { PasteSpecialMode } from "./paste-special-dialog";
 import type { TextStylePatch, ParagraphSpacingPatch } from "./commands";
@@ -11,7 +11,7 @@ import { bindEditorModal } from "./dialog";
 import { openShapePickerDialog } from "./shape-picker-dialog";
 import { bindFontFamilyCombobox } from "./font-list";
 import { DEFAULT_FONT_PT, fontPxFromPt, formatFontPt, ptToPx, pxToPt } from "./font-size";
-import type { ComboboxHandle } from "@ppt/ui";
+import type { ComboboxHandle } from "@sliiu/present-ui";
 import { appendLabelWithIcon, fillLucideIcon, lucideSvg, mkLucideIconButton, svgIcon, type IconName } from "./icons";
 import {
   closeRibbonMoreUnlessFromMoreDialog,
@@ -183,10 +183,10 @@ export interface RibbonActions {
   setSelectionFill?: (color: string | "none") => void;
   setSelectionStroke?: (color: string | "none") => void;
   setSelectionStrokeWidth?: (px: number) => void;
-  setSelectionStrokeDash?: (preset: import("@ppt/core").StrokeDashPreset) => void;
+  setSelectionStrokeDash?: (preset: import("@sliiu/present-core").StrokeDashPreset) => void;
   setSelectionLineArrows?: (mode: "none" | "head" | "tail" | "both") => void;
   getSelectionFill?: () => string | undefined;
-  getSelectionStroke?: () => { color?: string; width?: number; dashPreset?: import("@ppt/core").StrokeDashPreset } | undefined;
+  getSelectionStroke?: () => { color?: string; width?: number; dashPreset?: import("@sliiu/present-core").StrokeDashPreset } | undefined;
   getSelectionLineArrows?: () => "none" | "head" | "tail" | "both" | undefined;
   selectionHasLine?: () => boolean;
   listFillGradientPresets?: () => Array<{ id: string; label: string; preview: string }>;
@@ -2635,7 +2635,7 @@ export function buildRibbon(doc: Document, a: RibbonActions): RibbonHandle {
             t("ribbon.shapeStyle.strokeDash"),
             "minus",
             dashOptions,
-            (v) => a.setSelectionStrokeDash?.(v as import("@ppt/core").StrokeDashPreset),
+            (v) => a.setSelectionStrokeDash?.(v as import("@sliiu/present-core").StrokeDashPreset),
             () => a.getSelectionStroke?.()?.dashPreset ?? "solid",
           ),
         );

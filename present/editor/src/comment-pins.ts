@@ -1,4 +1,4 @@
-import type { DeckComment } from "@ppt/core";
+import type { DeckComment } from "@sliiu/present-core";
 
 export function defaultCommentAnchor(
   size: { width: number; height: number },

@@ -11,7 +11,7 @@ exports.presentationFromTemplateOutline = presentationFromTemplateOutline;
 exports.repairTemplateDeck = repairTemplateDeck;
 exports.templateOutlineSystemPrompt = templateOutlineSystemPrompt;
 exports.animateTemplateDeck = animateTemplateDeck;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const animations_1 = require("../animations");
 const reveal_order_1 = require("./reveal-order");
 const copy_voice_1 = require("./copy-voice");
@@ -116,7 +116,7 @@ function presentationFromTemplateOutline(template, outline) {
     const masters = template.masters.map((m) => structuredClone(m));
     const slides = assigned.slides.map((item, index) => {
         const choice = choices.find((c) => c.id === item.templateLayoutId) ?? contentLayout(choices);
-        const slide = (0, core_1.createSlideFromMaster)(masters, {
+        const slide = (0, present_core_1.createSlideFromMaster)(masters, {
             index,
             name: item.title || `Slide ${index + 1}`,
             ...(choice ? { layoutId: choice.id } : {}),
@@ -222,6 +222,6 @@ function animateTemplateDeck(pres, opts, outline) {
             : {}),
     });
     for (const slide of pres.slides) {
-        (0, core_1.applyInitialEntranceState)(slide, (0, core_1.computeInitialEntranceState)(slide));
+        (0, present_core_1.applyInitialEntranceState)(slide, (0, present_core_1.computeInitialEntranceState)(slide));
     }
 }

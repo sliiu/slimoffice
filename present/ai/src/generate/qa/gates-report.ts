@@ -1,4 +1,4 @@
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { GATE_KINDS, runP0Gates, tallyGateFindings, type GateFinding, type GateKind, type GateResult } from "./gates";
 
 export interface GatePassReport {

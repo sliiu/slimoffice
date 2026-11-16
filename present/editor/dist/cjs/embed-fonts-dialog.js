@@ -2,15 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openEmbedFontsDialog = openEmbedFontsDialog;
 const dialog_1 = require("./dialog");
-const core_1 = require("@sliiu/present-core");
-const themes_1 = require("@sliiu/present-themes");
+const present_core_1 = require("@sliiu/present-core");
+const present_themes_1 = require("@sliiu/present-themes");
 const embed_fonts_cmd_1 = require("./embed-fonts-cmd");
 const font_embed_fetch_1 = require("./font-embed-fetch");
 const i18n_1 = require("./i18n");
 const ui_style_1 = require("./ui-style");
 function openEmbedFontsDialog(doc, pres, stack) {
-    const families = (0, core_1.collectUsedTypefaces)(pres);
-    const usedFaces = (0, core_1.collectUsedFontFaces)(pres);
+    const families = (0, present_core_1.collectUsedTypefaces)(pres);
+    const usedFaces = (0, present_core_1.collectUsedFontFaces)(pres);
     const pendingFiles = new Map();
     const overlay = doc.createElement("div");
     overlay.className = "local-picker-overlay";
@@ -55,11 +55,11 @@ function openEmbedFontsDialog(doc, pres, stack) {
             row.appendChild(name);
             const badge = doc.createElement("span");
             badge.style.cssText = "font-size:11px;color:var(--muted-foreground,#a1a1aa)";
-            badge.textContent = (0, core_1.isTypefaceEmbedded)(pres, family)
+            badge.textContent = (0, present_core_1.isTypefaceEmbedded)(pres, family)
                 ? (0, i18n_1.t)("embedFonts.statusEmbedded")
                 : (0, i18n_1.t)("embedFonts.statusMissing");
             row.appendChild(badge);
-            if (!(0, core_1.isTypefaceEmbedded)(pres, family)) {
+            if (!(0, present_core_1.isTypefaceEmbedded)(pres, family)) {
                 const browse = doc.createElement("button");
                 browse.type = "button";
                 browse.textContent = (0, i18n_1.t)("embedFonts.browse");
@@ -122,14 +122,14 @@ function openEmbedFontsDialog(doc, pres, stack) {
                     family,
                     weight: 400,
                     style: "normal",
-                    src: (0, core_1.bytesToFontDataUrl)(bytes, mime),
+                    src: (0, present_core_1.bytesToFontDataUrl)(bytes, mime),
                     format: mime.includes("otf") ? "opentype" : "truetype",
                 });
                 continue;
             }
             if (!googleOnly)
                 continue;
-            if (!(0, themes_1.findFontPreset)(family))
+            if (!(0, present_themes_1.findFontPreset)(family))
                 continue;
             const usedWeights = usedFaces.filter((f) => f.family === family).map((f) => f.weight);
             const weights = new Set([400]);
@@ -139,7 +139,7 @@ function openEmbedFontsDialog(doc, pres, stack) {
             else if (max >= 600)
                 weights.add(700);
             for (const weight of weights) {
-                if ((0, core_1.isFontFaceEmbedded)(pres, family, weight))
+                if ((0, present_core_1.isFontFaceEmbedded)(pres, family, weight))
                     continue;
                 const src = await (0, font_embed_fetch_1.fetchPresetFontDataUrl)(family, weight);
                 if (!src && weight >= 800) {

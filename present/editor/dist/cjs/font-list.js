@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FONT_FAMILIES = void 0;
 exports.bindFontFamilyCombobox = bindFontFamilyCombobox;
-const ui_1 = require("@sliiu/present-ui");
+const present_ui_1 = require("@sliiu/present-ui");
 // 编辑器公用的"常见字体清单"。
 //
 // 用途：
@@ -92,7 +92,7 @@ exports.FONT_FAMILIES = [
     "Inter",
 ];
 function bindFontFamilyCombobox(input, onChange) {
-    return (0, ui_1.bindCombobox)(input, {
+    return (0, present_ui_1.bindCombobox)(input, {
         options: [...exports.FONT_FAMILIES],
         onChange,
         optionStyle: (item) => `font-family:${JSON.stringify(item.value)}`,

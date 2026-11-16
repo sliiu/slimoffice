@@ -1,6 +1,6 @@
 // 连接符粘附：端点吸到目标形状的连接点，并在目标平移 / 缩放 / 旋转时跟着走。
-import type { PathShape, Shape, ShapeCxnEnd, Slide } from "@ppt/core";
-import { markDirty } from "@ppt/core";
+import type { PathShape, Shape, ShapeCxnEnd, Slide } from "@sliiu/present-core";
+import { markDirty } from "@sliiu/present-core";
 import { applyNodeTransform } from "./shape-transform";
 
 export const CXN_SNAP_PX = 14;

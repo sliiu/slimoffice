@@ -1,4 +1,4 @@
-import type { Presentation, Shape, Slide } from "@ppt/core";
+import type { Presentation, Shape, Slide } from "@sliiu/present-core";
 import {
   linePathFromPoints,
   morphPathCompatible,

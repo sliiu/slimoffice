@@ -1,5 +1,5 @@
-import type { EditCommand, Presentation, Shape, SlideLayoutRef } from "@ppt/core";
-import { recomputeSlideInheritance } from "@ppt/parser";
+import type { EditCommand, Presentation, Shape, SlideLayoutRef } from "@sliiu/present-core";
+import { recomputeSlideInheritance } from "@sliiu/present-parser";
 import {
   cloneLayoutPlaceholders,
   findMainLayer,

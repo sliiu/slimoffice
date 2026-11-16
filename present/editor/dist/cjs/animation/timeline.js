@@ -11,8 +11,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.computeEffectTimings = computeEffectTimings;
 exports.mountAnimTimeline = mountAnimTimeline;
-const animation_1 = require("@sliiu/present-animation");
-const player_1 = require("@sliiu/present-player");
+const present_animation_1 = require("@sliiu/present-animation");
+const present_player_1 = require("@sliiu/present-player");
 const commands_1 = require("./commands");
 const store_1 = require("./store");
 const icons_1 = require("../icons");
@@ -47,7 +47,7 @@ const COLOR = {
 // inner par 写 500ms 而叶子是 2000ms，否则第二条会画在 0.5s。
 function computeEffectTimings(effs, slide) {
     const tnIndex = slide?.ooxmlTiming
-        ? animation_1.ooxml.buildTnIndex(slide.ooxmlTiming)
+        ? present_animation_1.ooxml.buildTnIndex(slide.ooxmlTiming)
         : undefined;
     const out = [];
     let prevStart = 0;
@@ -412,7 +412,7 @@ function mountAnimTimeline(parent, opts) {
     // 时间轴 bar 用的是 tnIndex 绝对 start；seek 必须按同一套绝对时间，否则
     // 所有"单击时"动画会在 0s 一起播，playhead 往后走舞台却不再跟随时序。
     function stepAbsStartSec(step, tnIndex) {
-        const id = animation_1.ooxml.getCTn(step.source).id;
+        const id = present_animation_1.ooxml.getCTn(step.source).id;
         const entry = id && tnIndex ? tnIndex.get(id) : undefined;
         if (entry)
             return entry.start / 1000;
@@ -433,7 +433,7 @@ function mountAnimTimeline(parent, opts) {
         if (!built)
             return;
         const slide = opts.pres.slides[opts.currentSlide()];
-        const tnIndex = slide?.ooxmlTiming ? animation_1.ooxml.buildTnIndex(slide.ooxmlTiming) : undefined;
+        const tnIndex = slide?.ooxmlTiming ? present_animation_1.ooxml.buildTnIndex(slide.ooxmlTiming) : undefined;
         const tSec = playheadMs / 1000;
         for (const step of built.mainSteps) {
             const abs = stepAbsStartSec(step, tnIndex);
@@ -455,7 +455,7 @@ function mountAnimTimeline(parent, opts) {
         }
         if (playback)
             return playback;
-        const built = (0, player_1.buildOoxmlPlayback)(slide, scene, {
+        const built = (0, present_player_1.buildOoxmlPlayback)(slide, scene, {
             slideWidth: opts.pres.size.width,
             slideHeight: opts.pres.size.height,
         });

@@ -1,4 +1,4 @@
-import type { Rect, Stroke, TableCellBorders, TextShape } from "@ppt/core";
+import type { Rect, Stroke, TableCellBorders, TextShape } from "@sliiu/present-core";
 
 export function cellHasPerSideBorders(s: TextShape): boolean {
   const b = s.cellMeta?.borders;

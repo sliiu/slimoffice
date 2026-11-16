@@ -1,10 +1,10 @@
 // 编辑器全局 UI 样式入口。
 //
-// 现在委托给 @ppt/ui：注入设计 token（CSS 变量）+ 基础组件类 + 统一滚动条
+// 现在委托给 @sliiu/present-ui：注入设计 token（CSS 变量）+ 基础组件类 + 统一滚动条
 // (.ppt-scroll)。浅/深色由宿主文档的 html.dark 决定，本模块不再强制暗色。
-// 历史上这里维护过独立的滚动条 CSS，现已收敛到 @ppt/ui，避免多处重复。
+// 历史上这里维护过独立的滚动条 CSS，现已收敛到 @sliiu/present-ui，避免多处重复。
 
-import { ensureUiStyles as ensureBaseUiStyles, SCROLL_CLASS as BASE_SCROLL_CLASS } from "@ppt/ui";
+import { ensureUiStyles as ensureBaseUiStyles, SCROLL_CLASS as BASE_SCROLL_CLASS } from "@sliiu/present-ui";
 
 const RIBBON_STYLE_ID = "ppt-editor-ribbon-style";
 
@@ -123,7 +123,7 @@ const RIBBON_CSS = `
 .ppt-topbar-icon-btn:hover:not(:disabled) { background: var(--accent); }
 .ppt-topbar-icon-btn:active:not(:disabled) { transform: scale(0.97); }
 .ppt-topbar-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-/* View bar · command row · status bar. Density tokens live in @ppt/ui. */
+/* View bar · command row · status bar. Density tokens live in @sliiu/present-ui. */
 .ppt-view-bar,
 .ppt-command-bar {
   display: flex;

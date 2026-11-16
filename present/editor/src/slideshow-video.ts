@@ -1,12 +1,12 @@
-import { ooxml } from "@ppt/animation";
-import { lecturePipRect, lectureTakeFor, type Presentation, type Slide } from "@ppt/core";
-import { buildOoxmlPlayback, createBake3DRuntime } from "@ppt/player";
+import { ooxml } from "@sliiu/present-animation";
+import { lecturePipRect, lectureTakeFor, type Presentation, type Slide } from "@sliiu/present-core";
+import { buildOoxmlPlayback, createBake3DRuntime } from "@sliiu/present-player";
 import {
   applyEntranceHideToScene,
   CanvasBackend,
   createScene,
   waitForImagesLoaded,
-} from "@ppt/renderer";
+} from "@sliiu/present-renderer";
 import { ensureExportRecordingBlob } from "./video-export";
 
 /** Cap click steps recorded per slide so a looping timeline cannot run away. */

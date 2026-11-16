@@ -1,5 +1,5 @@
 // Barrel re-export for the preset data layer.
-// External code should import from "@ppt/animation" (which goes through ooxml/index.ts);
+// External code should import from "@sliiu/present-animation" (which goes through ooxml/index.ts);
 // this file is what `import "./presets"` from the ooxml package internals resolves to.
 
 export type {

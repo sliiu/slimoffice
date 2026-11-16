@@ -1,4 +1,4 @@
-// @ppt/ui design tokens.
+// @sliiu/present-ui design tokens.
 //
 // TOKENS_CSS is the runtime-injected mirror of ../tokens.css (the canonical
 // file imported by the React console's Tailwind theme). The vanilla editor /

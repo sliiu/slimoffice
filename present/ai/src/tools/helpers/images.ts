@@ -7,8 +7,8 @@
 //   2. 浏览器与 Node 双环境：FileReader / Image 不存在时走 Buffer/btoa 与
 //      "探测失败回退默认尺寸"路径（headless MCP server 可用）。
 
-import { AddShapeCmd } from "@ppt/editor/commands";
-import { identityTransform, type ImageShape, type Presentation } from "@ppt/core";
+import { AddShapeCmd } from "@sliiu/present-editor/commands";
+import { identityTransform, type ImageShape, type Presentation } from "@sliiu/present-core";
 import {
   applyProxyUrl,
   getImageProviderPreset,

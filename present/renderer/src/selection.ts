@@ -1,4 +1,4 @@
-import type { Rect } from "@ppt/core";
+import type { Rect } from "@sliiu/present-core";
 import type { Scene, SceneNode } from "./scene-node";
 
 export interface HitOptions {

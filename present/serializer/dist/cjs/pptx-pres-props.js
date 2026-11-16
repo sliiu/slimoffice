@@ -5,7 +5,7 @@ exports.renderShowPrXml = renderShowPrXml;
 exports.renderPresPropsXml = renderPresPropsXml;
 exports.injectScratchPresProps = injectScratchPresProps;
 exports.patchPresProps = patchPresProps;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const xml_util_1 = require("./xml-util");
 exports.REL_TYPE_PRES_PROPS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps";
@@ -122,7 +122,7 @@ function patchShowPrInXml(xml, s) {
     return xml.replace(/<p:presentationPr([^>]*)>/, `<p:presentationPr$1>${next}`);
 }
 function injectScratchPresProps(pres, files) {
-    if (!(0, core_1.showPropertiesHasContent)(pres.showPr))
+    if (!(0, present_core_1.showPropertiesHasContent)(pres.showPr))
         return;
     const path = "ppt/presProps.xml";
     files[path] = renderPresPropsXml(pres.showPr);
@@ -133,11 +133,11 @@ function injectScratchPresProps(pres, files) {
 }
 function patchPresProps(pres, archive, opts = {}) {
     const presSrc = pres.__source;
-    const nextSnap = (0, core_1.showPropertiesSnapshot)(pres.showPr);
+    const nextSnap = (0, present_core_1.showPropertiesSnapshot)(pres.showPr);
     const prevSnap = presSrc?.showPrSnapshot ?? "";
     if (nextSnap === prevSnap)
         return;
-    if (!(0, core_1.showPropertiesHasContent)(pres.showPr))
+    if (!(0, present_core_1.showPropertiesHasContent)(pres.showPr))
         return;
     const path = presSrc?.presPropsPartPath ?? "ppt/presProps.xml";
     const existing = archive.files.get(path);

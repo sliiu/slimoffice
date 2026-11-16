@@ -1,4 +1,4 @@
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 
 const registered = new WeakMap<Document, Set<string>>();
 

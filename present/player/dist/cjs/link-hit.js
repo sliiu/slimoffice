@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.nodeShownForPointer = nodeShownForPointer;
 exports.paragraphShownForPointer = paragraphShownForPointer;
 exports.findHyperlinkAt = findHyperlinkAt;
-const renderer_1 = require("@sliiu/present-renderer");
+const present_renderer_1 = require("@sliiu/present-renderer");
 /**
  * 放映命中：入场还没把形状画出来（自身或祖先 opacity≤0 / visible=false）时，
  * 超链和单击触发都不该吃掉这次点击。点击应落到后面的推进。
@@ -43,7 +43,7 @@ function hitTestRunLink(node, x, y, slot) {
     const shape = node.shape;
     if (shape.kind !== "text")
         return undefined;
-    const run = (0, renderer_1.hitTestTextRunAt)(shape, x, y);
+    const run = (0, present_renderer_1.hitTestTextRunAt)(shape, x, y);
     if (run?.[slot]) {
         const paraIdx = paragraphIndexOfRun(shape, run);
         if (paraIdx >= 0 && !paragraphShownForPointer(node, paraIdx))
@@ -99,7 +99,7 @@ function findHyperlinkAt(root, x, y, slot) {
             i++;
             return;
         }
-        const local = (0, renderer_1.worldToLocal)(n, x, y);
+        const local = (0, present_renderer_1.worldToLocal)(n, x, y);
         if (!hitTestRect(n.shape.bbox, local.x, local.y)) {
             i++;
             return;

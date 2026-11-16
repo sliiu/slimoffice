@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ooxml } from "@ppt/animation";
+import type { ooxml } from "@sliiu/present-animation";
 import { needsOoxmlNormalization, normalizeTimingForOoxml } from "./pptx-timing-normalize.js";
 import { serializeTiming } from "./pptx-timing.js";
 

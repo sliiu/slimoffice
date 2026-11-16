@@ -27,14 +27,14 @@
     "katex": "^0.18.9",
     "lucide": "^1.48.0",
     "tesseract.js": "^7.0.0",
-    "@sliiu/present-animation": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-core": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-parser": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-player": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-renderer": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-themes": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-transition-fx": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-ui": "0.0.0-nightly.20261116031027"
+    "@sliiu/present-animation": "workspace:*",
+    "@sliiu/present-core": "workspace:*",
+    "@sliiu/present-parser": "workspace:*",
+    "@sliiu/present-player": "workspace:*",
+    "@sliiu/present-renderer": "workspace:*",
+    "@sliiu/present-themes": "workspace:*",
+    "@sliiu/present-transition-fx": "workspace:*",
+    "@sliiu/present-ui": "workspace:*"
   },
   "module": "./dist/esm/index.js",
   "repository": {

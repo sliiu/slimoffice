@@ -7,7 +7,7 @@
  * path remains for tests and keyless builds.
  */
 
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import {
   DEFAULT_COLOR_THEME,
   assertThemePairing,

@@ -15,7 +15,7 @@
 //      守卫（见 guard.ts），新工具在定义处声明，不再维护中心名单。
 
 import type { z } from "zod";
-import { canApplyEditCommand, type EditCommand, type Presentation } from "@ppt/core";
+import { canApplyEditCommand, type EditCommand, type Presentation } from "@sliiu/present-core";
 import type { DocumentPort } from "../kernel/port";
 import type { AiConfig } from "../config/types";
 import type { HostSkillStore } from "../skills/types";

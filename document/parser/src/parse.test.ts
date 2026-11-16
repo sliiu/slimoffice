@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { strToU8, zipSync } from "fflate";
-import { isDocTable } from "@document/core";
+import { isDocTable } from "@sliiu/document-core";
 import { DocxOpenError, parseDocx } from "./parse";
 
 function docx(parts: Record<string, string>): Uint8Array {

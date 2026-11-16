@@ -3,8 +3,8 @@
 // 把 Slide.ooxmlTiming 编译为 CompiledTiming，并桥接到 renderer Scene。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildOoxmlPlayback = buildOoxmlPlayback;
-const animation_1 = require("@sliiu/present-animation");
-const renderer_1 = require("@sliiu/present-renderer");
+const present_animation_1 = require("@sliiu/present-animation");
+const present_renderer_1 = require("@sliiu/present-renderer");
 function buildOoxmlPlayback(slide, scene, size, callbacks = {}) {
     if (!slide.ooxmlTiming)
         return null;
@@ -20,10 +20,10 @@ function buildOoxmlPlayback(slide, scene, size, callbacks = {}) {
         // colorCtx，让 resolveAnimColor 可以正确还原 scheme color → hex。
         colorCtx: callbacks.themeColors ? { scheme: callbacks.themeColors } : undefined,
     };
-    const compiled = animation_1.ooxml.compileTiming(slide.ooxmlTiming, compileCtx);
-    const runtime = new animation_1.ooxml.TimingRuntime({
+    const compiled = present_animation_1.ooxml.compileTiming(slide.ooxmlTiming, compileCtx);
+    const runtime = new present_animation_1.ooxml.TimingRuntime({
         timing: compiled,
-        resolve: (id) => (0, renderer_1.resolveAnimatable)(scene, id),
+        resolve: (id) => (0, present_renderer_1.resolveAnimatable)(scene, id),
         onMediaCmd: callbacks.onMediaCmd,
         onCmd: callbacks.onCmd,
         onChange: callbacks.onChange,
@@ -57,7 +57,7 @@ function makeResolver(scene) {
         let id = baseId;
         if (spTgt.subSpId) {
             const subId = `sp_${spTgt.subSpId}`;
-            if ((0, renderer_1.resolveAnimatable)(scene, subId)) {
+            if ((0, present_renderer_1.resolveAnimatable)(scene, subId)) {
                 const sBbox = readBbox(scene, subId);
                 return { id: subId, bbox: sBbox ?? readBbox(scene, baseId) ?? defaultBox(scene) };
             }
@@ -67,7 +67,7 @@ function makeResolver(scene) {
             const charRg = spTgt.txEl.charRg;
             // 文本目标必须解析到拆分后的 _text 子形状，paraOverrides 才会
             // 被 svg-backend.renderText 读取生效。
-            const textBaseId = (0, renderer_1.resolveAnimatable)(scene, `${baseId}_text`) ? `${baseId}_text` : baseId;
+            const textBaseId = (0, present_renderer_1.resolveAnimatable)(scene, `${baseId}_text`) ? `${baseId}_text` : baseId;
             // §19.5.37 iterate 同时给出 pRg + charRg（按 wd/lt 拆分时）。makeResolver 必须
             // 生成"段落 + 字符范围"的复合 ID，不能只取 pRg ——否则按 word 拆分的入场会被
             // 误解析为整段，与初始 hide 的 charOverrides 错位（导致动画看似"启动了"但
@@ -108,11 +108,11 @@ function makeResolver(scene) {
             const lvl = spTgt.oleChartEl.lvl ?? 0;
             id = `${baseId}#olechart:${spTgt.oleChartEl.type}:${lvl}`;
         }
-        let node = (0, renderer_1.resolveAnimatable)(scene, id);
+        let node = (0, present_renderer_1.resolveAnimatable)(scene, id);
         if (!node && id !== baseId) {
             // 子目标不存在时回退到父 sp，避免动画整体丢失。
             id = baseId;
-            node = (0, renderer_1.resolveAnimatable)(scene, id);
+            node = (0, present_renderer_1.resolveAnimatable)(scene, id);
         }
         if (!node)
             return null;

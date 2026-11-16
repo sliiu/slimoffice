@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Shape, Transform } from "@ppt/core";
+import type { Shape, Transform } from "@sliiu/present-core";
 import { SceneNode } from "./scene-node";
 import { buildHybridSegments } from "./hybrid-segments";
 

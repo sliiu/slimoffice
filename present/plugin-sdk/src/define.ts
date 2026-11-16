@@ -13,7 +13,7 @@ const GLOBAL_QUEUE_KEY = "__PPTPlayerPluginQueue";
  *
  * @example browser
  * ```js
- * import { definePlugin } from "@ppt/plugin-sdk";
+ * import { definePlugin } from "@sliiu/present-plugin-sdk";
  *
  * definePlugin({
  *   id: "my-plugin",
@@ -25,7 +25,7 @@ const GLOBAL_QUEUE_KEY = "__PPTPlayerPluginQueue";
  *
  * @example node — 编写 / 测试插件
  * ```ts
- * import { definePlugin, createMockPluginContext } from "@ppt/plugin-sdk";
+ * import { definePlugin, createMockPluginContext } from "@sliiu/present-plugin-sdk";
  *
  * const myPlugin = definePlugin({
  *   id: "my-plugin",

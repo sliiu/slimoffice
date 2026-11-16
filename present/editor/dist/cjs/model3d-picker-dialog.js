@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openModel3DPickerDialog = openModel3DPickerDialog;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const dialog_1 = require("./dialog");
 const i18n_1 = require("./i18n");
 const model3d_load_1 = require("./model3d-load");
@@ -54,7 +54,7 @@ function openModel3DPickerDialog(doc, opts = {}) {
             const pickLoaded = (glbSrc, label) => {
                 ctx.close({ presetId: model3d_load_1.MODEL3D_CUSTOM_PRESET_ID, glbSrc, label });
             };
-            for (const preset of core_1.MODEL3D_PRESETS) {
+            for (const preset of present_core_1.MODEL3D_PRESETS) {
                 const btn = doc.createElement("button");
                 btn.type = "button";
                 btn.style.cssText = [

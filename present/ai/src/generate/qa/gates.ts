@@ -7,7 +7,7 @@
 // 本模块定义 **P0 门禁**：可以机器判定、必须 100% 符合的基本质量标准。
 // 未通过时 pipeline 返回 GateFailure；UI 展示结构化失败屏幕，不打开 deck。
 
-import { identityTransform, type Presentation, type Slide, type TextShape, type Shape } from "@ppt/core";
+import { identityTransform, type Presentation, type Slide, type TextShape, type Shape } from "@sliiu/present-core";
 
 // ---------------------------------------------------------------------------
 // 门禁结果类型

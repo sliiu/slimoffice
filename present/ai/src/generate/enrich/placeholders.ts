@@ -5,9 +5,9 @@
 //   - generate pipeline 的 enrichImagesInPresentation（有 spec 时从 imageQuery 拉任务）
 //   - 对话 fillImagePlaceholders 工具 + playground 回合结束后的静默补全（扫 IR）
 
-import type { ImageShape, Presentation, Rect, Slide, TextParagraph, TextRun } from "@ppt/core";
-import { identityTransform } from "@ppt/core";
-import { AddShapeCmd, DeleteShapeCmd } from "@ppt/editor/commands";
+import type { ImageShape, Presentation, Rect, Slide, TextParagraph, TextRun } from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
+import { AddShapeCmd, DeleteShapeCmd } from "@sliiu/present-editor/commands";
 import type { AiConfig } from "../../config/types";
 import type { SlideSpecZ } from "../schema";
 import type { ImageEnrichmentPriority } from "./fetch-enrichment-image";

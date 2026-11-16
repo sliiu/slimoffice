@@ -6,7 +6,7 @@
 // 可在 Node 中使用。
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.withErrorBoundary = exports.composePlugins = exports.definePlugin = void 0;
-var plugin_sdk_1 = require("@sliiu/present-plugin-sdk");
-Object.defineProperty(exports, "definePlugin", { enumerable: true, get: function () { return plugin_sdk_1.definePlugin; } });
-Object.defineProperty(exports, "composePlugins", { enumerable: true, get: function () { return plugin_sdk_1.composePlugins; } });
-Object.defineProperty(exports, "withErrorBoundary", { enumerable: true, get: function () { return plugin_sdk_1.withErrorBoundary; } });
+var present_plugin_sdk_1 = require("@sliiu/present-plugin-sdk");
+Object.defineProperty(exports, "definePlugin", { enumerable: true, get: function () { return present_plugin_sdk_1.definePlugin; } });
+Object.defineProperty(exports, "composePlugins", { enumerable: true, get: function () { return present_plugin_sdk_1.composePlugins; } });
+Object.defineProperty(exports, "withErrorBoundary", { enumerable: true, get: function () { return present_plugin_sdk_1.withErrorBoundary; } });

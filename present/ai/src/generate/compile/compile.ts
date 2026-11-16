@@ -1,4 +1,4 @@
-// 把 PresentationSpec（zod 校验过的 AI 输出）编译为 @ppt/core 的 Presentation IR。
+// 把 PresentationSpec（zod 校验过的 AI 输出）编译为 @sliiu/present-core 的 Presentation IR。
 //
 // 关键点：
 //   1. 每个 spec.slides[i] 通过 renderLayout(spec, size, theme) 得到 Shape[]，
@@ -9,8 +9,8 @@
 //      slide 只带内容 shape + layoutRef。from-scratch 导出走 serializer 的
 //      renderSlideMasterXml / renderSlideLayoutXml。
 
-import type { Paint, Presentation, Shape, Slide, SlideMaster, SlideSize, TextShape, Theme } from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+import type { Paint, Presentation, Shape, Slide, SlideMaster, SlideSize, TextShape, Theme } from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import type { GuidanceInput, PresentationSpec } from "../schema";
 import { applyCompileConstraints, isFullBleedRole, isNoBulletLayout } from "./constraints";
 import {

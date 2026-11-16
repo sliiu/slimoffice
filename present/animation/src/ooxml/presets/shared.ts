@@ -1,5 +1,5 @@
 // Shared ChannelDesc constants reused across entrance/exit/emphasis preset definitions.
-// All exports are internal to the @ppt/animation package; they are re-exported via
+// All exports are internal to the @sliiu/present-animation package; they are re-exported via
 // presets/index.ts for backwards compatibility.
 
 import type { ChannelDesc } from "./types";

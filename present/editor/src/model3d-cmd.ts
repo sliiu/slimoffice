@@ -1,5 +1,5 @@
-import type { EditCommand, Model3DShape, Presentation, Rect } from "@ppt/core";
-import { MODEL3D_PRESETS, identityTransform } from "@ppt/core";
+import type { EditCommand, Model3DShape, Presentation, Rect } from "@sliiu/present-core";
+import { MODEL3D_PRESETS, identityTransform } from "@sliiu/present-core";
 
 let model3dSeq = 1;
 

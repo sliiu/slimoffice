@@ -1,5 +1,5 @@
-import type { MediaLibraryAdapter, MediaLibraryInsertResult, MediaLibraryItem } from "@ppt/core";
-import { MEDIA_LIBRARY_DEFAULT_CATEGORY_ID, MEDIA_LIBRARY_MAX_ITEM_BYTES } from "@ppt/core";
+import type { MediaLibraryAdapter, MediaLibraryInsertResult, MediaLibraryItem } from "@sliiu/present-core";
+import { MEDIA_LIBRARY_DEFAULT_CATEGORY_ID, MEDIA_LIBRARY_MAX_ITEM_BYTES } from "@sliiu/present-core";
 import { showDialog } from "./dialog";
 import { t } from "./i18n";
 

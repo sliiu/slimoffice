@@ -1,4 +1,4 @@
-export declare const effectTools: import("...js").ToolDef<{
+export declare const effectTools: import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
 }>[];

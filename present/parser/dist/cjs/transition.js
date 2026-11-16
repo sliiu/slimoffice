@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseSlideTransition = parseSlideTransition;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const xml_1 = require("./xml");
 const KIND_TABLE = {
     fade: { kind: "fade", pickThruBlk: true },
@@ -100,7 +100,7 @@ function parseSlideTransition(rootEl, ctx) {
     const dur = (0, xml_1.attr)(transEl, "dur") ?? (0, xml_1.attr)(transEl, "p14:dur");
     const advClick = (0, xml_1.attr)(transEl, "advClick");
     const advTm = (0, xml_1.attr)(transEl, "advTm");
-    let duration = core_1.TRANSITION_SPEED_TO_SEC[spd] ?? core_1.TRANSITION_SPEED_TO_SEC.med;
+    let duration = present_core_1.TRANSITION_SPEED_TO_SEC[spd] ?? present_core_1.TRANSITION_SPEED_TO_SEC.med;
     // ECMA-376 §19.5.50 dur — 显式毫秒值（含 0）覆盖 spd。dur="0" 表示无动画过渡。
     if (dur !== undefined) {
         const n = Number(dur);

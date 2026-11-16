@@ -1,4 +1,4 @@
-export declare const slideTools: (import("...js").ToolDef<Record<string, never>> | import("...js").ToolDef<{
+export declare const slideTools: (import("../index.js").ToolDef<Record<string, never>> | import("../index.js").ToolDef<{
     spec: {
         notes?: string | undefined;
         bgImageQuery?: string | undefined;
@@ -191,27 +191,27 @@ export declare const slideTools: (import("...js").ToolDef<Record<string, never>>
     };
     insertAt?: number | undefined;
     themeId?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     slideIdx: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     from: number;
     to: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     insertAt: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     width: number;
     height: number;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     themeId: string;
     preserveImageBackgrounds?: boolean | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     startIndex: number;
     name: string;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     sectionId: string;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     langId: "de" | "en" | "es" | "fr" | "ja" | "ko" | "pt" | "zh";
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     images: {
         src: string;
         caption?: string | undefined;
@@ -225,7 +225,7 @@ export declare const slideTools: (import("...js").ToolDef<Record<string, never>>
     bw?: boolean | undefined;
     showCaptions?: boolean | undefined;
     frame?: string | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     showGuides?: boolean | undefined;
     snapToGrid?: boolean | undefined;
     snapToObjects?: boolean | undefined;
@@ -242,7 +242,7 @@ export declare const slideTools: (import("...js").ToolDef<Record<string, never>>
         pos: number;
     } | undefined;
     removeGuideIndex?: number | undefined;
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     loop?: boolean | undefined;
     kind?: "browse" | "kiosk" | "present" | undefined;
     showNarration?: boolean | undefined;

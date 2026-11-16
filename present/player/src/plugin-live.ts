@@ -1,4 +1,4 @@
-import type { PluginLiveAPI } from "@ppt/plugin-sdk";
+import type { PluginLiveAPI } from "@sliiu/present-plugin-sdk";
 
 export interface PluginLiveInbound {
   pluginId: string;

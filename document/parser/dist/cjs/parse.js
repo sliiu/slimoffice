@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DocxOpenError = void 0;
 exports.parseDocx = parseDocx;
-const core_1 = require("@sliiu/document-core");
+const document_core_1 = require("@sliiu/document-core");
 const zip_1 = require("./zip");
 const xml_1 = require("./xml");
 class DocxOpenError extends Error {
@@ -51,8 +51,8 @@ function sectionsFrom(body, archive) {
         }
     }
     if (blocks.length)
-        sections.push({ page: core_1.DEFAULT_PAGE, header: [], footer: [], blocks });
-    return sections.length ? sections : [{ page: core_1.DEFAULT_PAGE, header: [], footer: [], blocks: [] }];
+        sections.push({ page: document_core_1.DEFAULT_PAGE, header: [], footer: [], blocks });
+    return sections.length ? sections : [{ page: document_core_1.DEFAULT_PAGE, header: [], footer: [], blocks: [] }];
 }
 function sectionFrom(node, blocks, archive) {
     return {
@@ -70,13 +70,13 @@ function pageFrom(node) {
         return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
     };
     return {
-        width: number(size ? (0, xml_1.attr)(size, "w") : undefined, core_1.DEFAULT_PAGE.width),
-        height: number(size ? (0, xml_1.attr)(size, "h") : undefined, core_1.DEFAULT_PAGE.height),
+        width: number(size ? (0, xml_1.attr)(size, "w") : undefined, document_core_1.DEFAULT_PAGE.width),
+        height: number(size ? (0, xml_1.attr)(size, "h") : undefined, document_core_1.DEFAULT_PAGE.height),
         margin: {
-            top: number(margin ? (0, xml_1.attr)(margin, "top") : undefined, core_1.DEFAULT_PAGE.margin.top),
-            bottom: number(margin ? (0, xml_1.attr)(margin, "bottom") : undefined, core_1.DEFAULT_PAGE.margin.bottom),
-            left: number(margin ? (0, xml_1.attr)(margin, "left") : undefined, core_1.DEFAULT_PAGE.margin.left),
-            right: number(margin ? (0, xml_1.attr)(margin, "right") : undefined, core_1.DEFAULT_PAGE.margin.right),
+            top: number(margin ? (0, xml_1.attr)(margin, "top") : undefined, document_core_1.DEFAULT_PAGE.margin.top),
+            bottom: number(margin ? (0, xml_1.attr)(margin, "bottom") : undefined, document_core_1.DEFAULT_PAGE.margin.bottom),
+            left: number(margin ? (0, xml_1.attr)(margin, "left") : undefined, document_core_1.DEFAULT_PAGE.margin.left),
+            right: number(margin ? (0, xml_1.attr)(margin, "right") : undefined, document_core_1.DEFAULT_PAGE.margin.right),
         },
     };
 }

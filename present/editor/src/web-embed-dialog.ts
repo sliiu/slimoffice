@@ -1,6 +1,6 @@
 import { showDialog } from "./dialog";
 import { t } from "./i18n";
-import { normalizeWebEmbedUrl } from "@ppt/core";
+import { normalizeWebEmbedUrl } from "@sliiu/present-core";
 
 export interface WebEmbedDialogResult {
   embed: NonNullable<ReturnType<typeof normalizeWebEmbedUrl>>;

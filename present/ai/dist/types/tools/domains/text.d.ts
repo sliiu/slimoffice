@@ -1,4 +1,4 @@
-export declare const textTools: import("...js").ToolDef<{
+export declare const textTools: import("../index.js").ToolDef<{
     slideIdx: number;
     shapeId: string;
 }>[];

@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mount = mount;
-const core_1 = require("@sliiu/present-core");
-const core_2 = require("@sliiu/present-core");
-const renderer_1 = require("@sliiu/present-renderer");
+const present_core_1 = require("@sliiu/present-core");
+const present_core_2 = require("@sliiu/present-core");
+const present_renderer_1 = require("@sliiu/present-renderer");
 const fonts_1 = require("./fonts");
 const icons_1 = require("./icons");
 const slide_advance_1 = require("./slide-advance");
@@ -189,12 +189,12 @@ function mount(host, pres, opts = {}) {
     const lectureEnabled = () => !opts.suppressLecture &&
         !awaitingSoundConfirm &&
         playNarrationsEnabled &&
-        (0, core_1.lecturePlaybackEnabled)(opts.useSlideTimings !== false, playNarrationsEnabled) &&
+        (0, present_core_1.lecturePlaybackEnabled)(opts.useSlideTimings !== false, playNarrationsEnabled) &&
         (pres.lecture?.takes.length ?? 0) > 0;
     const activeLectureTake = (slide) => {
         if (!slide || !lectureEnabled())
             return null;
-        return (0, core_1.lectureTakeFor)(pres.lecture, slide.id) ?? null;
+        return (0, present_core_1.lectureTakeFor)(pres.lecture, slide.id) ?? null;
     };
     const clearLectureTimers = () => {
         for (const id of lectureTimers)
@@ -252,7 +252,7 @@ function mount(host, pres, opts = {}) {
         }, remain));
     };
     const skipLectureForward = (take) => {
-        const next = (0, core_1.nextLectureClickMs)(take.clicksMs, lectureElapsed());
+        const next = (0, present_core_1.nextLectureClickMs)(take.clicksMs, lectureElapsed());
         if (next == null) {
             leaveLectureToNext();
             return;
@@ -473,7 +473,7 @@ function mount(host, pres, opts = {}) {
                             el.volume = Math.max(0, Math.min(1, a.volume));
                         el.loop = !!a.loop;
                         el.muted = !!a.muted;
-                        const detachTrim = (0, core_2.attachMediaTrimPlayback)(el, a.trim, a.duration, !!a.loop);
+                        const detachTrim = (0, present_core_2.attachMediaTrimPlayback)(el, a.trim, a.duration, !!a.loop);
                         carry = { key, el, startAbs: index, numSld: a.numSld ?? 1, detachTrim };
                         carryAudios.push(carry);
                         void el.play().catch(() => undefined);
@@ -500,7 +500,7 @@ function mount(host, pres, opts = {}) {
                     el.volume = Math.max(0, Math.min(1, a.volume));
                 el.loop = !!a.loop;
                 el.muted = !!a.muted;
-                const detach = (0, core_2.attachMediaTrimPlayback)(el, a.trim, a.duration, !!a.loop);
+                const detach = (0, present_core_2.attachMediaTrimPlayback)(el, a.trim, a.duration, !!a.loop);
                 const media = el;
                 narrationDetach.push(() => {
                     detach();
@@ -650,8 +650,8 @@ function mount(host, pres, opts = {}) {
         let transitionDone;
         if (useMorphLayers && tr && runtime?.scene) {
             const prevSlide = pres.slides[prevIndex];
-            const layers = (0, renderer_1.mountMorphTransitionLayers)(stageWrap, stage, prevRuntime.scene, runtime.scene, {
-                chromeBg: (0, renderer_1.stageChromeBackground)(prevSlide),
+            const layers = (0, present_renderer_1.mountMorphTransitionLayers)(stageWrap, stage, prevRuntime.scene, runtime.scene, {
+                chromeBg: (0, present_renderer_1.stageChromeBackground)(prevSlide),
             });
             transitionDone = (0, transition_1.runTransition)(layers.ghost, layers.target, tr).finally(() => layers.cleanup());
         }
@@ -742,7 +742,7 @@ function mount(host, pres, opts = {}) {
             try {
                 // Warm scene + font registration; scene is discarded but parser-side
                 // memoization (paint cache, image preloads) primes the renderer.
-                const sc = (0, renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
+                const sc = (0, present_renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
                 void sc;
             }
             catch {
@@ -846,7 +846,7 @@ function mount(host, pres, opts = {}) {
         let best = null;
         for (const [id, rec] of flags) {
             const node = runtime.scene.root.findById(id);
-            if (!node || !(0, link_hit_1.nodeShownForPointer)(node) || !(0, renderer_1.hitTestNodeBBox)(node, pt.x, pt.y))
+            if (!node || !(0, link_hit_1.nodeShownForPointer)(node) || !(0, present_renderer_1.hitTestNodeBBox)(node, pt.x, pt.y))
                 continue;
             const z = getShapeZ(runtime.scene, id);
             if (!best || z >= best.z)
@@ -934,7 +934,7 @@ function mount(host, pres, opts = {}) {
             case "sound":
                 return true;
             case "url": {
-                const url = (0, core_2.sanitizeExternalUrl)(link.target);
+                const url = (0, present_core_2.sanitizeExternalUrl)(link.target);
                 if (url) {
                     window.open(url, "_blank", "noopener,noreferrer");
                 }
@@ -1159,7 +1159,7 @@ function mount(host, pres, opts = {}) {
             for (const n of topLevelNodes()) {
                 if (!isNodeVisible(n))
                     continue;
-                if ((0, renderer_1.hitTestNodeBBox)(n, x, y))
+                if ((0, present_renderer_1.hitTestNodeBBox)(n, x, y))
                     best = n;
             }
             return best ? toShapeInfo(best, clickIds) : null;
@@ -1914,7 +1914,7 @@ function collectImageSrcs(scene) {
 function waitForSlideAssets(scene, doc, timeoutMs = 4000) {
     const waits = [];
     for (const src of collectImageSrcs(scene)) {
-        const img = (0, renderer_1.getImage)(src);
+        const img = (0, present_renderer_1.getImage)(src);
         if (img.complete && img.naturalWidth > 0)
             continue;
         waits.push(new Promise((resolve) => {
@@ -1948,22 +1948,22 @@ function createSlideRuntime(stage, slide, pres, backend, onChange, onAnimSound, 
         else
             stage.removeChild(n);
     }
-    const scene = (0, renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
+    const scene = (0, present_renderer_1.createScene)(slide, pres.size, { masters: pres.masters });
     if (designedAppearance)
-        (0, renderer_1.revealDesignedAppearance)(scene, slide);
+        (0, present_renderer_1.revealDesignedAppearance)(scene, slide);
     else
-        (0, renderer_1.applyEntranceHideToScene)(scene, slide);
+        (0, present_renderer_1.applyEntranceHideToScene)(scene, slide);
     const detachers = [];
     let ready3D;
-    const chromeBg = (0, renderer_1.stageChromeBackground)(slide);
+    const chromeBg = (0, present_renderer_1.stageChromeBackground)(slide);
     stage.style.background = chromeBg;
     const flushable = backend === "canvas"
-        ? new renderer_1.CanvasBackend(scene, stage, { transparent: chromeBg === "transparent" })
+        ? new present_renderer_1.CanvasBackend(scene, stage, { transparent: chromeBg === "transparent" })
         : backend === "svg"
-            ? new renderer_1.SvgBackend(scene, stage, { transparent: chromeBg === "transparent" })
-            : new renderer_1.HybridBackend(scene, stage, { background: chromeBg, interactive: true });
+            ? new present_renderer_1.SvgBackend(scene, stage, { transparent: chromeBg === "transparent" })
+            : new present_renderer_1.HybridBackend(scene, stage, { background: chromeBg, interactive: true });
     detachers.push(() => flushable.destroy());
-    if (flushable instanceof renderer_1.HybridBackend)
+    if (flushable instanceof present_renderer_1.HybridBackend)
         ready3D = () => flushable.waitForReady();
     // 同步画出 video/audio，让 playSlideNarrationsFor 能复用 scene.mediaEl，
     // 而不是在 rAF 之前另建一个脱离 DOM 的 <audio>。
@@ -1982,7 +1982,7 @@ function createSlideRuntime(stage, slide, pres, backend, onChange, onAnimSound, 
                 if (info.mediaKind === "audio" && info.action === "play")
                     return;
                 onAnimSound?.(info.soundSrc);
-                const node = (0, renderer_1.resolveAnimatable)(scene, info.targetId);
+                const node = (0, present_renderer_1.resolveAnimatable)(scene, info.targetId);
                 const el = node && "mediaEl" in node ? node.mediaEl : undefined;
                 if (el) {
                     if (typeof info.vol === "number" && Number.isFinite(info.vol)) {
@@ -2004,7 +2004,7 @@ function createSlideRuntime(stage, slide, pres, backend, onChange, onAnimSound, 
                 const action = mapCmdCallToMediaAction(info.cmd);
                 if (!action)
                     return;
-                const node = (0, renderer_1.resolveAnimatable)(scene, info.targetId);
+                const node = (0, present_renderer_1.resolveAnimatable)(scene, info.targetId);
                 node?.setProperty("mediaAction", action);
             },
             // §20.1.2 把 Presentation 顶级 theme 配色表注入 compile，让 animClr/set

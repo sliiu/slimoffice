@@ -1,4 +1,4 @@
-import type { DeckSection, EditCommand, Presentation } from "@ppt/core";
+import type { DeckSection, EditCommand, Presentation } from "@sliiu/present-core";
 
 function deepCloneSections(sections: DeckSection[] | undefined): DeckSection[] | undefined {
   return sections ? sections.map((s) => ({ ...s })) : undefined;

@@ -1,9 +1,9 @@
 // 基于 OOXML 模型的播放运行时适配
 // 把 Slide.ooxmlTiming 编译为 CompiledTiming，并桥接到 renderer Scene。
 
-import { ooxml } from "@ppt/animation";
-import type { Shape, Slide, TextShape } from "@ppt/core";
-import { resolveAnimatable, type Scene } from "@ppt/renderer";
+import { ooxml } from "@sliiu/present-animation";
+import type { Shape, Slide, TextShape } from "@sliiu/present-core";
+import { resolveAnimatable, type Scene } from "@sliiu/present-renderer";
 
 type CompiledTiming = ooxml.CompiledTiming;
 type TgtEl = ooxml.TgtEl;

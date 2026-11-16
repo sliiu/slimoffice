@@ -14,7 +14,7 @@ exports.isCanvasDiagramLayout = isCanvasDiagramLayout;
 exports.isDeviceKind = isDeviceKind;
 exports.normalizeDeviceType = normalizeDeviceType;
 exports.vocabularyPromptLines = vocabularyPromptLines;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const lucide_1 = require("lucide");
 /**
  * OOXML preset geometries the author may place as `kind: "shape"`.
@@ -271,8 +271,8 @@ function lucideHasIcon(id) {
     const rec = lucide_1.icons;
     return Boolean(rec[id] ?? rec[kebabToPascal(id)]);
 }
-exports.CANVAS_DIAGRAM_LAYOUTS = core_1.SMARTART_LAYOUT_KINDS;
-const DIAGRAM_SET = new Set(core_1.SMARTART_LAYOUT_KINDS);
+exports.CANVAS_DIAGRAM_LAYOUTS = present_core_1.SMARTART_LAYOUT_KINDS;
+const DIAGRAM_SET = new Set(present_core_1.SMARTART_LAYOUT_KINDS);
 exports.DEVICE_KINDS = [
     "kpiRow",
     "stepStrip",

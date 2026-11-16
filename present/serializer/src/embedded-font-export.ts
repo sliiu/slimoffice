@@ -1,4 +1,4 @@
-import type { EmbeddedFont } from "@ppt/core";
+import type { EmbeddedFont } from "@sliiu/present-core";
 import { dataUrlToBytes } from "./zip-write";
 import { sfntToEotFntdata } from "./font-eot";
 import { esc, xmlHeader } from "./xml-util";

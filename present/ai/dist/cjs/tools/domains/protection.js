@@ -5,18 +5,18 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.protectionTools = void 0;
 const zod_1 = require("zod");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const commands_1 = require("@sliiu/present-editor/commands");
 const types_1 = require("../types");
 function protectionSnapshot(pres) {
-    const current = (0, core_1.getPresentationProtection)(pres);
-    const office = (0, core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
+    const current = (0, present_core_1.getPresentationProtection)(pres);
+    const office = (0, present_core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
     return {
         protected: current !== undefined,
         kind: current?.kind ?? null,
         setAt: current?.setAt ?? null,
-        passwordRequired: current ? (0, core_1.protectionRequiresPassword)(current, pres.modifyVerifier) : false,
-        editingBlocked: (0, core_1.isPresentationEditingBlocked)(pres),
+        passwordRequired: current ? (0, present_core_1.protectionRequiresPassword)(current, pres.modifyVerifier) : false,
+        editingBlocked: (0, present_core_1.isPresentationEditingBlocked)(pres),
         officeNative: office ? { algorithm: office.algorithm, spinCount: office.spinCount } : null,
     };
 }
@@ -49,14 +49,14 @@ exports.protectionTools = [
         tags: ["mutate"],
         execute: async (rt, { kind, password }) => {
             const pres = rt.getPres();
-            if ((0, core_1.getPresentationProtection)(pres)) {
+            if ((0, present_core_1.getPresentationProtection)(pres)) {
                 return (0, types_1.err)("Presentation is already protected. Call unprotectPresentation first (password required if passwordRequired is true).");
             }
             if (kind === "final" && password) {
                 return (0, types_1.err)("kind=final does not take a password. Use kind=restricted to set a password, or omit password.");
             }
             const trimmed = password?.trim() ?? "";
-            const officeModifyVerifier = kind === "restricted" && trimmed ? await (0, core_1.buildOfficeModifyVerifier)(trimmed) : undefined;
+            const officeModifyVerifier = kind === "restricted" && trimmed ? await (0, present_core_1.buildOfficeModifyVerifier)(trimmed) : undefined;
             const res = rt.apply(new commands_1.SetPresentationProtectionCmd({ kind, setAt: Date.now() }, undefined, officeModifyVerifier));
             if (!res.ok)
                 return res;
@@ -76,10 +76,10 @@ exports.protectionTools = [
         tags: ["mutate"],
         execute: async (rt, { password }) => {
             try {
-                await (0, core_1.assertCanUnprotect)(rt.getPres(), password);
+                await (0, present_core_1.assertCanUnprotect)(rt.getPres(), password);
             }
             catch (e) {
-                if ((0, core_1.isUnprotectFailedError)(e))
+                if ((0, present_core_1.isUnprotectFailedError)(e))
                     return (0, types_1.err)(e.message);
                 throw e;
             }

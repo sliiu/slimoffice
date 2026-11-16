@@ -1,5 +1,5 @@
-import type { PathShape, Rect } from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+import type { PathShape, Rect } from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import { genShapeId } from "./shape-factory";
 
 export type InkMode = "pen" | "highlighter" | "eraser";

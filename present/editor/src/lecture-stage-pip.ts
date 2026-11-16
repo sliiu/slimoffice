@@ -1,6 +1,6 @@
 // 编辑舞台上的出镜。字节仍在本机引用里，不写成幻灯片上的视频形状。
 
-import { lecturePipRect, lectureTakeFor, type Presentation, type Slide } from "@ppt/core";
+import { lecturePipRect, lectureTakeFor, type Presentation, type Slide } from "@sliiu/present-core";
 
 export interface LectureStagePip {
   sync(): void;

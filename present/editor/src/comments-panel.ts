@@ -1,4 +1,4 @@
-import type { CommandStack, DeckComment, Presentation, Shape } from "@ppt/core";
+import type { CommandStack, DeckComment, Presentation, Shape } from "@sliiu/present-core";
 import { findShape } from "./selection";
 import { t } from "./i18n";
 import {

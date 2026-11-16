@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mountDocument = mountDocument;
-const core_1 = require("@sliiu/document-core");
-const renderer_1 = require("@sliiu/document-renderer");
+const document_core_1 = require("@sliiu/document-core");
+const document_renderer_1 = require("@sliiu/document-renderer");
 /** Read-only pages. Editing comes later, so this view never changes the document. */
 function mountDocument(host, document) {
     host.replaceChildren();
     const root = el("div", "doc-view");
-    for (const page of (0, renderer_1.paginate)(document)) {
+    for (const page of (0, document_renderer_1.paginate)(document)) {
         const paper = el("section", "doc-page");
         paper.style.width = `${page.width}px`;
         paper.style.minHeight = `${page.height}px`;
@@ -24,7 +24,7 @@ function mountDocument(host, document) {
     return { destroy: () => host.replaceChildren() };
 }
 function renderBlock(block) {
-    if (!(0, core_1.isDocTable)(block))
+    if (!(0, document_core_1.isDocTable)(block))
         return paragraph(block);
     const table = el("table", "doc-table");
     for (const row of block.rows) {

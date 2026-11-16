@@ -9,7 +9,7 @@
 // 本地额外开两样网关没有的工具：
 //   - generate_presentation：用本机 AI 配置（AI_API_KEY 等）整份生成，花的是用户自己的额度。
 //   - render_slide：无头 Chromium 截一页给 Agent 看。需要仓库里的 player 构建
-//     （pnpm --filter @ppt/player build）和 playwright 的 Chromium；缺了就不注册这个工具。
+//     （pnpm --filter @sliiu/present-player build）和 playwright 的 Chromium；缺了就不注册这个工具。
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +17,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { envConfigStore } from "../../config/store";
 import { createFileDeckStore } from "./file-store";
 import { existsSync } from "node:fs";
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { createPptMcpServer, createPptMcpSession } from "./index";
 
 type SlideRenderer = { render(pres: Presentation, opts: { width: number; pages: number[] }): Promise<Array<{ data: Uint8Array }>>; close(): Promise<void> };

@@ -1,4 +1,4 @@
-import type { Presentation, PresentationSource, SlideSource } from "@ppt/core";
+import type { Presentation, PresentationSource, SlideSource } from "@sliiu/present-core";
 import {
   buildCommentMeta,
   buildProtectionMeta,
@@ -12,7 +12,7 @@ import {
   PROTECTION_META_TAG,
   PROOFING_LANG_META_TAG,
   SECTIONS_META_TAG,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
 import { esc } from "./xml-util";
 

@@ -2,7 +2,7 @@
 // sunburst / treemap / waterfall / funnel / pareto / histogram / boxWhisker / region 等。
 // 这些图表的部件根元素是 cx:chartSpace（命名空间 cx），其内部用 cx:plotArea / cx:series /
 // cx:plotSurface / cx:strDim / cx:numDim 描述数据，不再用 plotArea+ser 那套。
-import type { ChartDataLabels, ChartDef, ChartSeries } from "@ppt/core";
+import type { ChartDataLabels, ChartDef, ChartSeries } from "@sliiu/present-core";
 import { attr, findAllByLocalName, findByLocalName, type XmlNode } from "./xml";
 import type { ThemeData } from "./theme";
 import { resolveColor } from "./theme";

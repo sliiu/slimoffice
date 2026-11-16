@@ -15,7 +15,7 @@ exports.textStyleSummary = textStyleSummary;
 exports.findShapeDeep = findShapeDeep;
 exports.shapeSummary = shapeSummary;
 exports.slideSummary = slideSummary;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const DATA_URL_RE = /^data:([^;,]+)?(;base64)?,/i;
 /** 工具返回里省略 data: / 超长 URL，避免下一轮请求体爆炸。 */
 function elideUrlForSummary(src) {
@@ -263,7 +263,7 @@ function shapeSummary(s, depth = 0) {
         if (s.smartArtMeta) {
             extra.smartArt = {
                 layout: s.smartArtMeta.layout,
-                items: (0, core_1.extractSmartArtItems)(s),
+                items: (0, present_core_1.extractSmartArtItems)(s),
             };
         }
         return { ...base, ...extra };

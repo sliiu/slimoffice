@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openProtectDialog = openProtectDialog;
 const dialog_1 = require("./dialog");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const i18n_1 = require("./i18n");
 const insert_meta_1 = require("./insert-meta");
 const review_export_1 = require("./review-export");
 const ui_style_1 = require("./ui-style");
 function openProtectDialog(doc, pres, onApply) {
-    const current = (0, core_1.getPresentationProtection)(pres);
+    const current = (0, present_core_1.getPresentationProtection)(pres);
     const overlay = doc.createElement("div");
     overlay.className = "local-picker-overlay";
     overlay.style.cssText =
@@ -24,7 +24,7 @@ function openProtectDialog(doc, pres, onApply) {
     hint.style.cssText = "margin:0;font-size:12px;color:var(--muted-foreground,#a1a1aa);line-height:1.45";
     hint.textContent = (0, i18n_1.t)("protect.hint");
     modal.appendChild(hint);
-    const officeSummary = (0, core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
+    const officeSummary = (0, present_core_1.summarizeOfficeModifyVerifier)(pres.modifyVerifier);
     if (officeSummary) {
         const officeBanner = doc.createElement("div");
         officeBanner.style.cssText =
@@ -63,7 +63,7 @@ function openProtectDialog(doc, pres, onApply) {
             });
             modal.appendChild(when);
         }
-        const needsPassword = (0, core_1.protectionRequiresPassword)(current, pres.modifyVerifier);
+        const needsPassword = (0, present_core_1.protectionRequiresPassword)(current, pres.modifyVerifier);
         if (needsPassword) {
             const pwHint = doc.createElement("div");
             pwHint.style.cssText = "font-size:12px;color:var(--warning)";
@@ -98,10 +98,10 @@ function openProtectDialog(doc, pres, onApply) {
         unlockBtn.addEventListener("click", () => {
             void (async () => {
                 try {
-                    await (0, core_1.assertCanUnprotect)(pres, needsPassword ? pw.value : undefined);
+                    await (0, present_core_1.assertCanUnprotect)(pres, needsPassword ? pw.value : undefined);
                 }
                 catch (e) {
-                    if ((0, core_1.isUnprotectFailedError)(e)) {
+                    if ((0, present_core_1.isUnprotectFailedError)(e)) {
                         status.textContent =
                             e.reason === "incorrect_password" ? (0, i18n_1.t)("protect.badPassword") : (0, i18n_1.t)("protect.passwordRequired");
                         return;
@@ -178,7 +178,7 @@ function openProtectDialog(doc, pres, onApply) {
                 const trimmed = pw.value.trim();
                 let officeModifyVerifier;
                 if (kind === "restricted" && trimmed) {
-                    officeModifyVerifier = await (0, core_1.buildOfficeModifyVerifier)(trimmed);
+                    officeModifyVerifier = await (0, present_core_1.buildOfficeModifyVerifier)(trimmed);
                 }
                 onApply({
                     kind,

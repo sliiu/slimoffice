@@ -24,15 +24,15 @@ import type {
   SmartArtItem,
   SmartArtLayoutKind,
   TextParagraph,
-} from "@ppt/core";
-import { rebuildSmartArtChildren } from "@ppt/core";
+} from "@sliiu/present-core";
+import { rebuildSmartArtChildren } from "@sliiu/present-core";
 import {
   ApplyCustomThemeCmd,
   ApplyThemeCmd,
   type ApplyCustomThemeOpts,
   type ApplyThemeOpts,
   type ThemeDef,
-} from "@ppt/themes";
+} from "@sliiu/present-themes";
 import {
   AddLayoutCmd,
   DeleteLayoutCmd,

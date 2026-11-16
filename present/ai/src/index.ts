@@ -1,4 +1,4 @@
-// @ppt/ai v2 公共 API。
+// @sliiu/present-ai v2 公共 API。
 //
 // 模块地图（详见各目录内注释）：
 //   config/   配置层（AiConfig + 可插拔 ConfigStore：浏览器 localStorage / Node env）
@@ -9,7 +9,7 @@
 //   generate/ 阶段化生成流水线（deckgen 四层管线 + polish）
 //   skills/   builtin + 用户自定义 skill 注册表（frontmatter markdown，按 stage 注入）
 //   mcp/      client（对内：builtin 工具组 + 用户远端 HTTP/SSE MCP）
-//             server（对外：@ppt/ai/mcp-server 子路径导出，Node-only）
+//             server（对外：@sliiu/present-ai/mcp-server 子路径导出，Node-only）
 
 // ---- 配置 -----------------------------------------------------------------
 export {
@@ -173,7 +173,7 @@ export {
 //     受能力开关控制，逐轮合并进对话工具集
 //   - 用户自定义 HTTP / SSE 远端 MCP（Capabilities tab 增删改，@ai-sdk/mcp 连接池）
 //
-// 服务端方向（对外暴露 PPT 编辑）在 "@ppt/ai/mcp-server" 子路径（Node-only）。
+// 服务端方向（对外暴露 PPT 编辑）在 "@sliiu/present-ai/mcp-server" 子路径（Node-only）。
 export {
   BUILTIN_TOOL_GROUPS,
   listServers as listMcpServers,

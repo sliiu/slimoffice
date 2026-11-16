@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClearLectureCameraCmd = exports.SetLectureFrameCmd = exports.SetLectureClicksCmd = void 0;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 function cloneLecture(lecture) {
     if (!lecture)
         return undefined;
@@ -38,7 +38,7 @@ class SetLectureClicksCmd extends LectureEdit {
         this.ms = ms;
     }
     next(lecture) {
-        return (0, core_1.withLectureClick)(lecture, this.slideId, this.clickIndex, this.ms);
+        return (0, present_core_1.withLectureClick)(lecture, this.slideId, this.clickIndex, this.ms);
     }
 }
 exports.SetLectureClicksCmd = SetLectureClicksCmd;
@@ -50,7 +50,7 @@ class SetLectureFrameCmd extends LectureEdit {
         this.frame = frame;
     }
     next(lecture) {
-        return (0, core_1.withLectureFrame)(lecture, this.frame);
+        return (0, present_core_1.withLectureFrame)(lecture, this.frame);
     }
 }
 exports.SetLectureFrameCmd = SetLectureFrameCmd;
@@ -62,7 +62,7 @@ class ClearLectureCameraCmd extends LectureEdit {
         this.slideId = slideId;
     }
     next(lecture) {
-        return (0, core_1.withoutLectureCamera)(lecture, this.slideId);
+        return (0, present_core_1.withoutLectureCamera)(lecture, this.slideId);
     }
 }
 exports.ClearLectureCameraCmd = ClearLectureCameraCmd;

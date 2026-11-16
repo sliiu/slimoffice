@@ -28,8 +28,8 @@ import type {
   TextVert,
   TextStyles,
   VideoShape,
-} from "@ppt/core";
-import { assignSlideBackground, markDirty, translatePathD, extractSmartArtItems, rebuildSmartArtChildren, sanitizeHyperlinkRef, sanitizeExternalUrl, type BackgroundRef, type SmartArtItem } from "@ppt/core";
+} from "@sliiu/present-core";
+import { assignSlideBackground, markDirty, translatePathD, extractSmartArtItems, rebuildSmartArtChildren, sanitizeHyperlinkRef, sanitizeExternalUrl, type BackgroundRef, type SmartArtItem } from "@sliiu/present-core";
 import { assignCrop, cropHost, readCrop, type CropInsets } from "./crop-frame";
 import { findShape, findShapeWithLayer, isMasterCopyLayer, syntheticTextBoxGroupId } from "./selection";
 import { followGlueToSites, reattachConnectorGlue } from "./connector-glue";
@@ -70,8 +70,8 @@ export function handoutMasterTarget(masterId: string): EditTarget {
 export interface TargetContainer {
   shapes: Shape[];
   setShapes(next: Shape[]): void;
-  background?: import("@ppt/core").Paint;
-  setBackground?(next: import("@ppt/core").Paint | undefined): void;
+  background?: import("@sliiu/present-core").Paint;
+  setBackground?(next: import("@sliiu/present-core").Paint | undefined): void;
 }
 
 export function resolveTarget(pres: Presentation, target: EditTarget): TargetContainer | null {
@@ -159,8 +159,8 @@ export type TextStylePatch = Partial<
   baseline?: number | null;
   letterSpacing?: number | null;
   highlight?: string | null;
-  effects?: import("@ppt/core").ShapeEffect[] | null;
-  fill?: import("@ppt/core").Paint | null;
+  effects?: import("@sliiu/present-core").ShapeEffect[] | null;
+  fill?: import("@sliiu/present-core").Paint | null;
   bmk?: string | null;
   field?: string | null;
 };
@@ -296,12 +296,12 @@ function translateShape(s: Shape, dx: number, dy: number): void {
 // shape-library，让纯 commands 单元在 serializer / 测试场景下也能独立 import。
 // regenerate 的输入是当前 shape.bbox + presetType + presetAdj，函数内部
 // 直接 mutate shape 的 d / fillRule。
-type PresetRegen = (s: import("@ppt/core").PathShape) => void;
+type PresetRegen = (s: import("@sliiu/present-core").PathShape) => void;
 let _presetRegen: PresetRegen | null = null;
 export function registerPathPresetRegenerator(fn: PresetRegen): void {
   _presetRegen = fn;
 }
-function regeneratePathFromPreset(s: import("@ppt/core").PathShape): void {
+function regeneratePathFromPreset(s: import("@sliiu/present-core").PathShape): void {
   if (!_presetRegen || !s.presetType) return;
   _presetRegen(s);
 }

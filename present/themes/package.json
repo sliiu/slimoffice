@@ -16,8 +16,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^4.6.5",
-    "@sliiu/present-core": "0.0.0-nightly.20261116031027"
+    "zod": "4.6.5",
+    "@sliiu/present-core": "workspace:*"
   },
   "module": "./dist/esm/index.js",
   "repository": {

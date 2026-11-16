@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { TextShape } from "@ppt/core";
+import type { TextShape } from "@sliiu/present-core";
 import { harmonizePalette, mergeAuthoredPalette, onRoleText, paletteOf, seedColorTheme, themeFromAuthoredLook } from "./color-theme.js";
 import { contrastRatio, parseHex } from "../generate/qa/color.js";
 import { applyColorTheme } from "./apply-theme.js";

@@ -50,7 +50,7 @@ exports.disposeInkOcrWorker = disposeInkOcrWorker;
 exports.recognizeInkCanvas = recognizeInkCanvas;
 exports.recognizeInkPaths = recognizeInkPaths;
 exports.pathDFromPoints = pathDFromPoints;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const ink_tool_1 = require("./ink-tool");
 const OCR_PAD = 16;
 const OCR_SCALE = 3;
@@ -176,7 +176,7 @@ function rectsOverlap(a, b, slack = 8) {
 function inkPathIsLocalToBbox(sh) {
     if (!sh.d?.trim())
         return false;
-    const sampled = (0, core_1.samplePath)(sh.d, 24);
+    const sampled = (0, present_core_1.samplePath)(sh.d, 24);
     const xs = sampled.map((p) => p.x);
     const ys = sampled.map((p) => p.y);
     const minX = Math.min(...xs);

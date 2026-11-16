@@ -1,4 +1,4 @@
-import type { Model3DCamera, Model3DShape, Model3DRotation, Model3DTransform, Rect, ShapeMeta, Transform } from "@ppt/core";
+import type { Model3DCamera, Model3DShape, Model3DRotation, Model3DTransform, Rect, ShapeMeta, Transform } from "@sliiu/present-core";
 import { angle60kToDeg, emuToPx } from "./units";
 import { attr, findByLocalName, type XmlNode } from "./xml";
 import type { PptxArchive } from "./zip";

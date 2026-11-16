@@ -11,7 +11,7 @@ import type {
   ScatterChartDef,
   StockChartDef,
   SurfaceChartDef,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import {
   layoutBoxWhisker,
   layoutFunnel,

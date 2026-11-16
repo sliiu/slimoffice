@@ -4,7 +4,7 @@ exports.THEME_FONT_POOL = void 0;
 exports.isFontInjected = isFontInjected;
 exports.injectFontCss = injectFontCss;
 exports.findFontPreset = findFontPreset;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 // 浏览器内字体注入工具：把 Google Fonts CSS 链接以 idempotent 方式塞进 <head>，
 // 让 SVG / Canvas / DOM 渲染时都能正确解析到指定 fontFamily。
 //
@@ -152,7 +152,7 @@ function findFontPreset(family) {
     const exact = exports.THEME_FONT_POOL.find((p) => p.family === family || p.stack === family);
     if (exact)
         return exact;
-    const primary = (0, core_1.canonicalTypeface)(family) ?? (0, core_1.firstNamedTypeface)(family);
+    const primary = (0, present_core_1.canonicalTypeface)(family) ?? (0, present_core_1.firstNamedTypeface)(family);
     if (!primary)
         return null;
     const lower = primary.toLowerCase();

@@ -13,7 +13,7 @@ exports.deckgenMasterId = deckgenMasterId;
 exports.deckgenLayoutId = deckgenLayoutId;
 exports.ooxmlTypeForLayout = ooxmlTypeForLayout;
 exports.buildDeckgenMasters = buildDeckgenMasters;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const visual_system_js_1 = require("./visual-system.js");
 const color_theme_js_1 = require("./color-theme.js");
 const ids_js_1 = require("./ids.js");
@@ -29,7 +29,7 @@ function base() {
         visible: true,
         locked: false,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
     };
 }
 function deckgenMasterId(systemId, themeId) {

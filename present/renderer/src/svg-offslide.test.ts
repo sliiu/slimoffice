@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 // @ts-expect-error jsdom ships without types in this repo; tests run via tsx.
 import { JSDOM } from "jsdom";
-import { identityTransform, type RectShape, type Slide } from "@ppt/core";
+import { identityTransform, type RectShape, type Slide } from "@sliiu/present-core";
 import { createScene } from "./scene-node.js";
 import { SvgBackend } from "./svg-backend.js";
 

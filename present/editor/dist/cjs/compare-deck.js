@@ -9,11 +9,11 @@ exports.compareSlideTextShapes = compareSlideTextShapes;
 exports.compareDeckStructured = compareDeckStructured;
 exports.compareDeckTexts = compareDeckTexts;
 exports.comparedSlideParagraphs = comparedSlideParagraphs;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const selection_1 = require("./selection");
 const proofing_text_1 = require("./proofing-text");
 function protectionSummary(pres) {
-    const p = (0, core_1.getPresentationProtection)(pres);
+    const p = (0, present_core_1.getPresentationProtection)(pres);
     if (!p)
         return "none";
     if (p.kind === "final")

@@ -3,8 +3,8 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { identityTransform, type Presentation, type Shape } from "@ppt/core";
-import { writePptx } from "@ppt/serializer";
+import { identityTransform, type Presentation, type Shape } from "@sliiu/present-core";
+import { writePptx } from "@sliiu/present-serializer";
 import { writeFile } from "node:fs/promises";
 import { screenshotTools } from "../../tools/domains/screenshot";
 import { shapeBasicTools } from "../../tools/domains/shapes-basic";
@@ -13,7 +13,7 @@ import { createHeadlessPort } from "../../kernel/port";
 import { defaultConfig } from "../../config/types";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { findChromeBrowser, screenshotSlidesViaBrowser } from "@ppt/player/browser-screenshot";
+import { findChromeBrowser, screenshotSlidesViaBrowser } from "@sliiu/present-player/browser-screenshot";
 import { readPptxFile, writePptxFile } from "./file-pptx";
 import { PRESENT_AGENT_INSTRUCTIONS } from "./workflow";
 
@@ -109,7 +109,7 @@ describe("pptx file round-trip for an agent", () => {
     const req = createRequire(import.meta.url);
     let playerScript: string;
     try {
-      playerScript = readFileSync(req.resolve("@ppt/player/iife"), "utf8");
+      playerScript = readFileSync(req.resolve("@sliiu/present-player/iife"), "utf8");
     } catch {
       return;
     }

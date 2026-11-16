@@ -59,7 +59,7 @@ exports.exportInsertShapeSummary = exportInsertShapeSummary;
 exports.filterSmartArtLayouts = filterSmartArtLayouts;
 exports.duplicateSmartArtItemAt = duplicateSmartArtItemAt;
 exports.copyTextToClipboard = copyTextToClipboard;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const ole_cmd_1 = require("./ole-cmd");
 const model3d_load_1 = require("./model3d-load");
 const video_export_1 = require("./video-export");
@@ -111,7 +111,7 @@ function mediaMimeLabel(mime) {
 function formatMediaTrimSummary(trim, duration) {
     if (!trim || (trim.start == null && trim.end == null))
         return null;
-    const { start, end } = (0, core_1.mediaTrimBounds)(trim, duration);
+    const { start, end } = (0, present_core_1.mediaTrimBounds)(trim, duration);
     if (end <= start)
         return null;
     return `${(0, video_export_1.formatRecordingDuration)(start)} – ${(0, video_export_1.formatRecordingDuration)(end)}`;
@@ -219,7 +219,7 @@ function insertRefForShape(shape) {
         };
     }
     if (shape.kind === "group" && shape.smartArtMeta) {
-        const items = (0, core_1.extractSmartArtItems)(shape);
+        const items = (0, present_core_1.extractSmartArtItems)(shape);
         const layout = shape.smartArtMeta.layout;
         return {
             kind: "smartart",
@@ -759,7 +759,7 @@ function exportInsertShapeCompactText(shape) {
         return `${kind} ${shape.name ?? shape.id}${mime ? ` · ${mime}` : ""}${size}${large}`;
     }
     if (shape.kind === "group" && shape.smartArtMeta) {
-        const items = (0, core_1.extractSmartArtItems)(shape);
+        const items = (0, present_core_1.extractSmartArtItems)(shape);
         const pics = smartArtPictureCount(items);
         const picHint = pics ? ` · ${pics} picture(s)` : "";
         return `Diagram ${shape.smartArtMeta.layout} · ${items.length} item(s)${picHint}`;
@@ -780,7 +780,7 @@ function clearSmartArtItemPictures(items) {
 }
 function summarizeSmartArtGroup(group) {
     const layout = group.smartArtMeta?.layout ?? "list";
-    const items = (0, core_1.extractSmartArtItems)(group);
+    const items = (0, present_core_1.extractSmartArtItems)(group);
     const lines = [`Diagram (${layout})`, `${items.length} item(s)`];
     const pictures = smartArtPictureCount(items);
     if (pictures)
@@ -808,7 +808,7 @@ function exportInsertShapeSummary(shape) {
         return summarizeMediaShape(shape).join("\n");
     if (shape.kind === "group" && shape.smartArtMeta) {
         const lines = summarizeSmartArtGroup(shape);
-        const body = (0, core_1.serializeSmartArtItemsText)((0, core_1.extractSmartArtItems)(shape));
+        const body = (0, present_core_1.serializeSmartArtItemsText)((0, present_core_1.extractSmartArtItems)(shape));
         if (body.trim())
             lines.push("", body);
         return lines.join("\n");

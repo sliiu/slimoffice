@@ -16,8 +16,8 @@
 //      都是 SIL OFL 协议商用 OK。
 
 import { z } from "zod";
-import { SetTextStyleCmd } from "@ppt/editor/commands";
-import type { Shape } from "@ppt/core";
+import { SetTextStyleCmd } from "@sliiu/present-editor/commands";
+import type { Shape } from "@sliiu/present-core";
 import { injectFontCss } from "../../../fonts/inject";
 import { defineTool } from "../../../tools/types";
 import type { BuiltinToolGroup } from "../types";

@@ -1,7 +1,7 @@
 // Player 运行时 i18n
 //
 // player（含内置插件）在放映态会渲染少量 UI 文本：右键菜单项、白板工具栏、
-// 激光笔菜单等。editor 的 i18n 在 @ppt/editor，但 player 是可独立分发的运行时
+// 激光笔菜单等。editor 的 i18n 在 @sliiu/present-editor，但 player 是可独立分发的运行时
 // （导出的单文件 HTML / zip 里只带 player.iife.js，不含 editor），所以这里维护一份
 // 独立、精简的文案表。
 //

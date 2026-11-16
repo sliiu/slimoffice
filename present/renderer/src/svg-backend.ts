@@ -12,9 +12,9 @@ import type {
   TextShape,
   VideoShape,
   WebEmbedShape,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { withFontFallback } from "./font-stack";
-import { attachMediaTrimPlayback, mediaTrimBounds, isAllowedWebEmbedSrc } from "@ppt/core";
+import { attachMediaTrimPlayback, mediaTrimBounds, isAllowedWebEmbedSrc } from "@sliiu/present-core";
 import { mergeParaOverrides, netFlipParity, shapeRenderFill, shapeRenderFillBBox, type CharRangeOverride, type ParaOverride, type Scene, type SceneNode } from "./scene-node";
 import { applyStroke, renderPaint } from "./paint-svg";
 import { cellBorderSegments, cellHasPerSideBorders } from "./cell-borders";
@@ -45,7 +45,7 @@ import {
 import { autofitTextShape } from "./text-autofit";
 import { wordArtFitTransform } from "./text-wordart";
 import { flattenWarpGlyphs, placeGlyphsOnWarp, sampleWarpPath, warpActive } from "./text-warp";
-import { needs3DRender, resolveCamera, shape3DInfo } from "@ppt/three-bake";
+import { needs3DRender, resolveCamera, shape3DInfo } from "@sliiu/present-three-bake";
 import {
   DEFAULT_TEXT_INSETS,
   FALLBACK_FONT_SIZE,
@@ -1765,17 +1765,17 @@ export class SvgBackend {
   private attachTextRunEffects(
     container: SVGGElement,
     paraG: SVGGElement,
-    runs: ReadonlyArray<{ effects?: import("@ppt/core").ShapeEffect[] }>,
+    runs: ReadonlyArray<{ effects?: import("@sliiu/present-core").ShapeEffect[] }>,
   ): void {
     const effects = runs.flatMap((r) => r.effects ?? []);
-    const inner = effects.find((e): e is import("@ppt/core").ShadowEffect => e.kind === "inner");
+    const inner = effects.find((e): e is import("@sliiu/present-core").ShadowEffect => e.kind === "inner");
     if (inner) {
       const id = this.ensureTextInnerFilter(inner);
       const url = `url(#${id})`;
       const prev = paraG.style.filter;
       paraG.style.filter = prev ? `${prev} ${url}` : url;
     }
-    const refl = effects.find((e): e is import("@ppt/core").ReflectionEffect => e.kind === "reflection");
+    const refl = effects.find((e): e is import("@sliiu/present-core").ReflectionEffect => e.kind === "reflection");
     if (!refl) return;
     let box: { x: number; y: number; width: number; height: number };
     try {
@@ -1798,7 +1798,7 @@ export class SvgBackend {
     container.insertBefore(use, paraG);
   }
 
-  private ensureTextInnerFilter(inner: import("@ppt/core").ShadowEffect): string {
+  private ensureTextInnerFilter(inner: import("@sliiu/present-core").ShadowEffect): string {
     const sig = `${inner.blur}|${inner.dx}|${inner.dy}|${inner.color}|${inner.alpha}`;
     const cached = this.textInnerFilters.get(sig);
     if (cached) return cached;
@@ -1903,11 +1903,11 @@ export class SvgBackend {
       underlineColor?: string;
       strikethrough?: "none" | "single" | "double";
       color?: string;
-      fill?: import("@ppt/core").Paint;
+      fill?: import("@sliiu/present-core").Paint;
       letterSpacing?: number;
       caps?: "none" | "small" | "all";
       highlight?: string;
-      textOutline?: import("@ppt/core").Stroke;
+      textOutline?: import("@sliiu/present-core").Stroke;
     },
     override?: ParaOverride,
   ): void {
@@ -1962,7 +1962,7 @@ export class SvgBackend {
 
   private renderParaSegmented(
     paraG: SVGGElement,
-    p: import("@ppt/core").TextParagraph,
+    p: import("@sliiu/present-core").TextParagraph,
     overrides: Map<string, CharRangeOverride>,
     ax: number,
     baseline: number,
@@ -1972,7 +1972,7 @@ export class SvgBackend {
   ): void {
     type CharEntry = {
       ch: string;
-      run: import("@ppt/core").TextRun;
+      run: import("@sliiu/present-core").TextRun;
       width: number;
       ov: CharRangeOverride | undefined;
       absIdx: number;
@@ -2024,7 +2024,7 @@ export class SvgBackend {
       textEl.setAttribute("x", String(segX));
       textEl.setAttribute("y", String(baseline));
       textEl.setAttribute("text-anchor", "start");
-      let lastRun: import("@ppt/core").TextRun | null = null;
+      let lastRun: import("@sliiu/present-core").TextRun | null = null;
       let curTspan: SVGElement | null = null;
       for (const e of seg.entries) {
         if (e.run !== lastRun || !curTspan) {
@@ -2166,7 +2166,7 @@ export class SvgBackend {
   }
 
   private applyImageStroke(
-    s: import("@ppt/core").ImageShape,
+    s: import("@sliiu/present-core").ImageShape,
     b: NodeBinding,
     node: SceneNode,
   ): void {
@@ -2346,7 +2346,7 @@ export class SvgBackend {
   }
 }
 
-function paragraphMetrics(p: import("@ppt/core").TextParagraph): {
+function paragraphMetrics(p: import("@sliiu/present-core").TextParagraph): {
   height: number;
   ascent: number;
   before: number;
@@ -2376,7 +2376,7 @@ interface ParaLayoutHoriz {
   firstLineIndent: number;
 }
 
-function hasAnyText(p: import("@ppt/core").TextParagraph): boolean {
+function hasAnyText(p: import("@sliiu/present-core").TextParagraph): boolean {
   for (const r of p.runs) if (r.text && r.text !== "") return true;
   return false;
 }

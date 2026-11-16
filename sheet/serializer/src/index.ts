@@ -1,4 +1,4 @@
-import type { Workbook } from "@sheet/core";
+import type { Workbook } from "@sliiu/sheet-core";
 import { zipSync } from "fflate";
 
 /** Writes the original parts back. Nothing is rebuilt, so an unread part stays byte for byte. */

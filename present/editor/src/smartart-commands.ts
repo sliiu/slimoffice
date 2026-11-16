@@ -1,5 +1,5 @@
-import type { EditCommand, Presentation, Shape, SmartArtItem, SmartArtLayoutKind } from "@ppt/core";
-import { extractSmartArtItems, rebuildSmartArtChildren } from "@ppt/core";
+import type { EditCommand, Presentation, Shape, SmartArtItem, SmartArtLayoutKind } from "@sliiu/present-core";
+import { extractSmartArtItems, rebuildSmartArtChildren } from "@sliiu/present-core";
 import { findShape } from "./selection";
 import { convertTextShapeToSmartArt } from "./smartart-factory";
 

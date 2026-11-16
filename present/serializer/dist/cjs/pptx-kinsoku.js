@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.patchKinsoku = patchKinsoku;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const raw_xml_1 = require("./raw-xml");
 function findRootElement(tree, rootLocal) {
@@ -31,7 +31,7 @@ function kinsokuAttrs(k) {
 /** ECMA-376 §19.2.1.20 — align `<p:kinsoku>` on presentation.xml with `pres.kinsoku`. */
 function patchKinsoku(pres, archive, opts) {
     const source = pres.__source;
-    const nextSnap = (0, core_1.kinsokuSnapshot)(pres.kinsoku);
+    const nextSnap = (0, present_core_1.kinsokuSnapshot)(pres.kinsoku);
     const prevSnap = source?.kinsokuSnapshot ?? "";
     if (nextSnap === prevSnap)
         return;

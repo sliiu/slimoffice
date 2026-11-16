@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { strFromU8, unzipSync } from "fflate";
-import type { GroupShape, Presentation, RectShape, Shape } from "@ppt/core";
-import { buildSmartArtShapes } from "@ppt/core";
-import type { ooxml } from "@ppt/animation";
+import type { GroupShape, Presentation, RectShape, Shape } from "@sliiu/present-core";
+import { buildSmartArtShapes } from "@sliiu/present-core";
+import type { ooxml } from "@sliiu/present-animation";
 import { writePptx } from "./pptx-write.js";
 
 const transform = { tx: 0, ty: 0, rotation: 0, scaleX: 1, scaleY: 1, skewX: 0, skewY: 0 };

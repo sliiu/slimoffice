@@ -3,7 +3,7 @@
 // PowerPoint 可用同一密码解锁；无密码时主要在本编辑器里拦编辑。
 
 import { z } from "zod";
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import {
   getPresentationProtection,
   isPresentationEditingBlocked,
@@ -12,8 +12,8 @@ import {
   buildOfficeModifyVerifier,
   assertCanUnprotect,
   isUnprotectFailedError,
-} from "@ppt/core";
-import { SetPresentationProtectionCmd } from "@ppt/editor/commands";
+} from "@sliiu/present-core";
+import { SetPresentationProtectionCmd } from "@sliiu/present-editor/commands";
 import { defineTool, ok, err } from "../types";
 
 function protectionSnapshot(pres: Presentation) {

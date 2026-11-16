@@ -5,7 +5,7 @@ export { normalizeSystemId };
 import { DEVICE_KINDS, normalizeDeviceType, normalizeIconId } from "../deckgen/vocab.js";
 import { TEXT_TREATMENTS } from "../deckgen/ir.js";
 import { normalizeTreatment } from "../deckgen/snap.js";
-import { SMARTART_LAYOUT_KINDS } from "@ppt/core";
+import { SMARTART_LAYOUT_KINDS } from "@sliiu/present-core";
 
 const PaintRoleSchema = z.enum(["bg", "surface", "ink", "muted", "line", "accent", "accentSoft"]);
 

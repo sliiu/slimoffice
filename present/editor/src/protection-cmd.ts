@@ -1,10 +1,10 @@
-import type { EditCommand, ModifyVerifier, Presentation, PresentationProtection } from "@ppt/core";
+import type { EditCommand, ModifyVerifier, Presentation, PresentationProtection } from "@sliiu/present-core";
 import {
   cloneModifyVerifier,
   getPresentationProtection,
   setPresentationProtectionMeta,
   syncModifyVerifierWithProtection,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 
 export class SetPresentationProtectionCmd implements EditCommand {
   readonly label: string;

@@ -1,4 +1,4 @@
-import type { Rect } from "@ppt/core";
+import type { Rect } from "@sliiu/present-core";
 import {
   adjFromAdjustHandleDrag,
   evalPresetAdjustHandles,

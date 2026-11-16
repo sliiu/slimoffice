@@ -3,7 +3,7 @@
 // 导出后在没装该字体的机器上也能显示。
 
 import { z } from "zod";
-import type { EmbeddedFont, Presentation } from "@ppt/core";
+import type { EmbeddedFont, Presentation } from "@sliiu/present-core";
 import {
   bytesToFontDataUrl,
   canonicalTypeface,
@@ -11,13 +11,13 @@ import {
   collectUsedTypefaces,
   firstNamedTypeface,
   isFontFaceEmbedded,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import {
   EmbedFontsCmd,
   fetchGoogleFontBytes,
   fetchPresetFontDataUrl,
-} from "@ppt/editor/commands";
-import { findFontPreset } from "@ppt/themes";
+} from "@sliiu/present-editor/commands";
+import { findFontPreset } from "@sliiu/present-themes";
 import { defineTool, ok, err } from "../types";
 import { elideUrlForSummary } from "../summaries";
 

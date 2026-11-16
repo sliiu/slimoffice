@@ -1,4 +1,4 @@
-export declare const masterTools: (import("...js").ToolDef<Record<string, never>> | import("...js").ToolDef<{
+export declare const masterTools: (import("../index.js").ToolDef<Record<string, never>> | import("../index.js").ToolDef<{
     shapeId: string;
     patch: {
         bbox?: {
@@ -17,6 +17,6 @@ export declare const masterTools: (import("...js").ToolDef<Record<string, never>
             color?: string | undefined;
         } | undefined;
     };
-}> | import("...js").ToolDef<{
+}> | import("../index.js").ToolDef<{
     masterId: string;
 }>)[];

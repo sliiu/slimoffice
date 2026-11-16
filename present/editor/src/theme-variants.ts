@@ -1,4 +1,4 @@
-import type { Theme } from "@ppt/core";
+import type { Theme } from "@sliiu/present-core";
 
 export type ThemeVariantId = "subtle" | "bold" | "warm" | "cool";
 

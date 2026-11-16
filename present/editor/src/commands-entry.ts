@@ -1,8 +1,8 @@
-// @ppt/editor/commands —— DOM-free 命令层入口。
+// @sliiu/present-editor/commands —— DOM-free 命令层入口。
 //
-// 供 @ppt/ai（浏览器对话 + Node MCP server）使用：只暴露 EditCommand 类、
+// 供 @sliiu/present-ai（浏览器对话 + Node MCP server）使用：只暴露 EditCommand 类、
 // shape 工厂与动画 timing 纯函数，不拉编辑器 UI（dialog / toolbar / i18n /
-// CSS 导入）。主入口 "@ppt/editor" 在 Node 下无法加载（equation-dialog 等
+// CSS 导入）。主入口 "@sliiu/present-editor" 在 Node 下无法加载（equation-dialog 等
 // 会 import CSS），任何需要在 Node 运行的消费方都必须走本入口。
 //
 // ⚠️ 往这里加 re-export 前确认目标模块 DOM-free（不 import CSS / document /

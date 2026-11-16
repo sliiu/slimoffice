@@ -5,7 +5,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderDefaultTextStyleXml = renderDefaultTextStyleXml;
 exports.patchDefaultTextStyleLang = patchDefaultTextStyleLang;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const fflate_1 = require("fflate");
 const xml_util_1 = require("./xml-util");
 const pptx_shapes_1 = require("./pptx-shapes");
@@ -40,10 +40,10 @@ function patchDefaultTextStyleLang(pres, archive, opts) {
     if (!source)
         return;
     const prev = source.proofingLangMetaSnapshot ?? "";
-    const next = (0, core_1.buildProofingLangMeta)(pres) ?? "";
+    const next = (0, present_core_1.buildProofingLangMeta)(pres) ?? "";
     if (next === prev)
         return;
-    const lang = (0, core_1.ooxmlLangFromProofingId)((0, core_1.getProofingLanguage)(pres));
+    const lang = (0, present_core_1.ooxmlLangFromProofingId)((0, present_core_1.getProofingLanguage)(pres));
     const presPath = source.presentationPath ?? "ppt/presentation.xml";
     const bytes = archive.files.get(presPath);
     if (!bytes)

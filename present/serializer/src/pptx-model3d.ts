@@ -1,4 +1,4 @@
-import type { Model3DCamera, Model3DRotation, Model3DShape, Model3DTransform, Shape } from "@ppt/core";
+import type { Model3DCamera, Model3DRotation, Model3DShape, Model3DTransform, Shape } from "@sliiu/present-core";
 import { angleToEmu, attrs, esc, pxToEmu } from "./xml-util";
 import type { MediaRegistrar } from "./media-table";
 import { REL_TYPE_MODEL3D } from "./media-table";

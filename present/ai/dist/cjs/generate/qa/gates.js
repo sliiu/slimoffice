@@ -13,7 +13,7 @@ exports.ensureCoverVisual = ensureCoverVisual;
 exports.ensureNoTextOverlap = ensureNoTextOverlap;
 exports.runP0Gates = runP0Gates;
 exports.tallyGateFindings = tallyGateFindings;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 // ---------------------------------------------------------------------------
 // 各门禁实现
 // ---------------------------------------------------------------------------
@@ -366,7 +366,7 @@ function ensureCoverVisual(pres) {
             visible: true,
             locked: false,
             opacity: 1,
-            transform: (0, core_1.identityTransform)(),
+            transform: (0, present_core_1.identityTransform)(),
             fill: { kind: "solid", color: "#000000", alpha: 0.55 },
         });
     }

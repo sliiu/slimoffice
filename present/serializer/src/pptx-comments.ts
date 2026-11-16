@@ -1,4 +1,4 @@
-import type { DeckComment } from "@ppt/core";
+import type { DeckComment } from "@sliiu/present-core";
 import { esc, pxToEmu } from "./xml-util";
 
 export const REL_TYPE_COMMENTS =

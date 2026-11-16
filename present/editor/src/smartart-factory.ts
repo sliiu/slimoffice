@@ -1,6 +1,6 @@
-import type { Rect, Shape, SmartArtItem, SmartArtLayoutKind, TextShape } from "@ppt/core";
-import { buildSmartArtShapes } from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+import type { Rect, Shape, SmartArtItem, SmartArtLayoutKind, TextShape } from "@sliiu/present-core";
+import { buildSmartArtShapes } from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import { genShapeId } from "./shape-factory";
 
 export function paragraphText(p: TextShape["paragraphs"][number]): string {

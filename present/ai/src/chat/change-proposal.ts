@@ -1,7 +1,7 @@
 // 对话里的参考文档先变成改动提案。用户改完并确认后，文字原样进文稿，不再让模型改写。
 
-import { createSlideFromMaster, type Presentation, type Shape, type TextShape } from "@ppt/core";
-import { DeleteSlideCmd, InsertSlideCmd } from "@ppt/editor";
+import { createSlideFromMaster, type Presentation, type Shape, type TextShape } from "@sliiu/present-core";
+import { DeleteSlideCmd, InsertSlideCmd } from "@sliiu/present-editor";
 import { z } from "zod";
 import { contentLayout, layoutsFromMasters } from "../generate/template-fill";
 import type { DocumentPort } from "../kernel/port";

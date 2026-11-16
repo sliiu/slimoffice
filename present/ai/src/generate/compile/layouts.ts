@@ -38,8 +38,8 @@ import type {
   RectShape,
   EllipseShape,
   ImageShape,
-} from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+} from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import type { ThemeDef, TemplateLayoutId } from "../../themes";
 import { OUTLINE_LAYOUT_HINTS } from "../schema";
 import { contrastRatio, parseHex, relativeLuminance } from "../qa/color";

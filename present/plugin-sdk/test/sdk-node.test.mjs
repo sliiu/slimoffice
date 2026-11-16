@@ -1,4 +1,4 @@
-// 验证 @ppt/plugin-sdk 可在纯 Node 环境（无 window / 无 DOM）正常使用。
+// 验证 @sliiu/present-plugin-sdk 可在纯 Node 环境（无 window / 无 DOM）正常使用。
 // 用法：node --import tsx packages/plugin-sdk/test/sdk-node.test.mjs
 
 import assert from "node:assert";

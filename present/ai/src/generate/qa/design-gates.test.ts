@@ -2,7 +2,7 @@
 
 import { describe, it } from "node:test";
 import * as assert from "node:assert/strict";
-import type { Layer, Presentation, Shape, Slide, TextShape, RectShape } from "@ppt/core";
+import type { Layer, Presentation, Shape, Slide, TextShape, RectShape } from "@sliiu/present-core";
 import { LAYOUT_KINDS } from "../compile/layouts";
 import {
   runDesignGates,

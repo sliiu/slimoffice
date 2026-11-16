@@ -4,7 +4,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildStackedGlyphs = buildStackedGlyphs;
 exports.wrapGlyphsIntoColumns = wrapGlyphsIntoColumns;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const text_layout_1 = require("./text-layout");
 const text_shared_1 = require("./text-shared");
 // 半 / 全 / 零宽空白 + \t：作为竖排"列拆分点"，并在拆列后丢弃位于新列首部的此类空白。
@@ -17,7 +17,7 @@ function buildStackedGlyphs(p, para, vert, fieldCtx) {
     const baseLh = (0, text_shared_1.lineHeightFactor)(p);
     const glyphs = [];
     for (const run of p.runs) {
-        const runText = fieldCtx ? (0, core_1.runDisplayText)(run, fieldCtx) : run.text;
+        const runText = fieldCtx ? (0, present_core_1.runDisplayText)(run, fieldCtx) : run.text;
         const fs = (para?.fontSize ?? run.fontSize) ?? text_shared_1.FALLBACK_FONT_SIZE;
         // ECMA-376 §21.1.2.3.10 rPr@spc — 竖排时 letterSpacing 作为字符间垂直额外步进。
         const ls = run.letterSpacing ?? 0;

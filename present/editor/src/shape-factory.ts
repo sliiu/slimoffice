@@ -30,14 +30,14 @@ import type {
   ShapeStyleRefs,
   Stroke,
   TextShape,
-} from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+} from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import {
   officialPresetAdjDefaults,
   pathHasSubPaths,
   presetToShape,
   type PresetResult,
-} from "@ppt/parser";
+} from "@sliiu/present-parser";
 import { SHAPE_BY_ID, type ShapeGeom } from "./shape-library";
 
 // id 自增计数 —— 同毫秒内多次 createShape 也保证 id 唯一。
@@ -440,7 +440,7 @@ export interface CreateLineOptions extends BaseOpts {
   y2: number;
   color?: string;
   width?: number;
-  dashPreset?: import("@ppt/core").StrokeDashPreset;
+  dashPreset?: import("@sliiu/present-core").StrokeDashPreset;
   headArrow?: "none" | "triangle" | "stealth" | "diamond" | "oval" | "arrow";
   tailArrow?: "none" | "triangle" | "stealth" | "diamond" | "oval" | "arrow";
   stroke?: Stroke;

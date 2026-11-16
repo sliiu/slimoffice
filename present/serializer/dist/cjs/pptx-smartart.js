@@ -20,7 +20,7 @@ exports.renderDiagramDrawingRelsXml = renderDiagramDrawingRelsXml;
 exports.buildSmartArtPartFiles = buildSmartArtPartFiles;
 exports.diagramContentTypeRows = diagramContentTypeRows;
 exports.diagramSlideRelsXml = diagramSlideRelsXml;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const xml_util_1 = require("./xml-util");
 exports.DGM_GRAPHIC_URI = "http://schemas.openxmlformats.org/drawingml/2006/diagram";
 exports.REL_DIAGRAM_DATA = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData";
@@ -54,7 +54,7 @@ function offsetShapeTree(s, dx, dy) {
         return { ...s, bbox, points: s.points.map(([x, y]) => [x + dx, y + dy]) };
     }
     if (s.kind === "path" && !s.presetType) {
-        return { ...s, bbox, d: (0, core_1.translatePathD)(s.d, dx, dy) };
+        return { ...s, bbox, d: (0, present_core_1.translatePathD)(s.d, dx, dy) };
     }
     return { ...s, bbox };
 }
@@ -176,7 +176,7 @@ function renderSmartArtDataXml(items) {
 </dgm:dataModel>`;
 }
 function renderSmartArtLayoutXml(layout) {
-    const title = (0, xml_util_1.esc)(core_1.SMARTART_LAYOUT_LABELS[layout] ?? layout);
+    const title = (0, xml_util_1.esc)(present_core_1.SMARTART_LAYOUT_LABELS[layout] ?? layout);
     const cat = catForSmartArtLayout(layout);
     return `${(0, xml_util_1.xmlHeader)()}
 <dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="${(0, xml_util_1.esc)(layoutUniqueId(layout))}" minVer="12.0">

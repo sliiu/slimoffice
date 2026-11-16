@@ -2,7 +2,7 @@
 
 import { describe, it } from "node:test";
 import * as assert from "node:assert/strict";
-import type { Presentation, Slide, Layer, Shape, TextShape, RectShape } from "@ppt/core";
+import type { Presentation, Slide, Layer, Shape, TextShape, RectShape } from "@sliiu/present-core";
 import { runP0Gates, ensureCoverVisual, ensureNoTextOverlap } from "./gates";
 
 // 辅助函数：创建带默认必需字段的 mock shape

@@ -11,7 +11,7 @@
 //   - 复用 pptx-shapes 的 shapeToXml / backgroundToXml —— master/layout 的 p:bg + p:spTree
 //     与 slide 的结构完全相同，只是根元素和 clrMap/sldLayoutIdLst 不同。
 
-import type { ClrMap, Shape, SlideLayout, SlideMaster } from "@ppt/core";
+import type { ClrMap, Shape, SlideLayout, SlideMaster } from "@sliiu/present-core";
 import type { MediaRegistrar } from "./media-table";
 import { mediaRelationshipXml } from "./media-table";
 import { backgroundToXml, hfToXml, notesStyleToXml, shapeToXml, txStylesToXml } from "./pptx-shapes";

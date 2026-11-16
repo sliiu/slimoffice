@@ -25,8 +25,8 @@ exports.createTextBox = createTextBox;
 exports.createLine = createLine;
 exports.createChart = createChart;
 exports.createTable = createTable;
-const core_1 = require("@sliiu/present-core");
-const parser_1 = require("@sliiu/present-parser");
+const present_core_1 = require("@sliiu/present-core");
+const present_parser_1 = require("@sliiu/present-parser");
 const shape_library_1 = require("./shape-library");
 // id 自增计数 —— 同毫秒内多次 createShape 也保证 id 唯一。
 let _id = 0;
@@ -107,8 +107,8 @@ function baseFor(bbox, opts) {
         opacity: opts.opacity ?? 1,
         bbox: { ...bbox },
         transform: opts.rotation
-            ? { ...(0, core_1.identityTransform)(), rotation: opts.rotation }
-            : (0, core_1.identityTransform)(),
+            ? { ...(0, present_core_1.identityTransform)(), rotation: opts.rotation }
+            : (0, present_core_1.identityTransform)(),
         ...(role ? { styleRefs: officeInsertStyleRefs(role) } : {}),
     };
 }
@@ -249,27 +249,27 @@ function geometryFromPreset(r) {
 function applyOfficialPresetGeometry(s) {
     if (!s.presetType)
         return false;
-    const adj = s.presetAdj ?? (0, parser_1.officialPresetAdjDefaults)(s.presetType) ?? {};
-    const d = dFromPresetResult((0, parser_1.presetToShape)(s.presetType, s.bbox, adj));
+    const adj = s.presetAdj ?? (0, present_parser_1.officialPresetAdjDefaults)(s.presetType) ?? {};
+    const d = dFromPresetResult((0, present_parser_1.presetToShape)(s.presetType, s.bbox, adj));
     if (!d)
         return false;
     s.d = d;
-    if ((0, parser_1.pathHasSubPaths)(d))
+    if ((0, present_parser_1.pathHasSubPaths)(d))
         s.fillRule = "evenodd";
     else
         delete s.fillRule;
     return true;
 }
 function fromOfficialPresetPath(presetId, bbox, base, fill, stroke) {
-    const adj = (0, parser_1.officialPresetAdjDefaults)(presetId) ?? {};
-    const geo = geometryFromPreset((0, parser_1.presetToShape)(presetId, bbox, adj));
+    const adj = (0, present_parser_1.officialPresetAdjDefaults)(presetId) ?? {};
+    const geo = geometryFromPreset((0, present_parser_1.presetToShape)(presetId, bbox, adj));
     if (!geo)
         return null;
     return {
         ...base,
         kind: "path",
         d: geo.d,
-        fillRule: (0, parser_1.pathHasSubPaths)(geo.d) ? "evenodd" : undefined,
+        fillRule: (0, present_parser_1.pathHasSubPaths)(geo.d) ? "evenodd" : undefined,
         fill: geo.strokeOnly ? undefined : fill,
         stroke: geo.strokeOnly ? strokeForConnector(stroke) : stroke,
         presetType: presetId,
@@ -432,7 +432,7 @@ function createTable(opts) {
                 locked: false,
                 opacity: 1,
                 bbox: cellBbox,
-                transform: (0, core_1.identityTransform)(),
+                transform: (0, present_core_1.identityTransform)(),
                 kind: "text",
                 fill: { kind: "solid", color: isHeader ? headerFill : cellFill },
                 stroke: { paint: { kind: "solid", color: borderColor }, width: 1 },

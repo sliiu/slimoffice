@@ -1,4 +1,4 @@
-import type { Presentation, Shape, Slide, TextParagraph, TextShape } from "@ppt/core";
+import type { Presentation, Shape, Slide, TextParagraph, TextShape } from "@sliiu/present-core";
 
 export function paragraphPlain(p: TextParagraph): string {
   return p.runs.map((r) => r.text).join("");

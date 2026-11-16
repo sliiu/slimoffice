@@ -4,9 +4,9 @@
 
 import { readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Presentation } from "@ppt/core";
-import { parsePptx } from "@ppt/parser";
-import { writePptx } from "@ppt/serializer";
+import type { Presentation } from "@sliiu/present-core";
+import { parsePptx } from "@sliiu/present-parser";
+import { writePptx } from "@sliiu/present-serializer";
 import type { PptMcpDeckStore } from "./index";
 
 const DECK_EXT = new Set([".pptx", ".pptm"]);

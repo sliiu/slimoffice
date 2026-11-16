@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { identityTransform, type Presentation } from "@ppt/core";
+import { identityTransform, type Presentation } from "@sliiu/present-core";
 import { accessibilityIssueDetail, auditPresentationAccessibility } from "./accessibility-audit.js";
 import { getLocale, setLocale } from "./i18n/index.js";
 import { formatAccessibilityIssueLine } from "./review-export.js";

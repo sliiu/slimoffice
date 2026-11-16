@@ -2,8 +2,8 @@
  * Load VisualSystem typefaces (browser only).
  */
 
-import type { Presentation } from "@ppt/core";
-import { findFontPreset, injectFontCss } from "@ppt/themes";
+import type { Presentation } from "@sliiu/present-core";
+import { findFontPreset, injectFontCss } from "@sliiu/present-themes";
 import { isCanvasSystemId, type CanvasSystemId } from "./ids.js";
 import { fontFamiliesForSystem, resolveVisualSystem, type VisualSystem } from "./visual-system.js";
 

@@ -9,7 +9,7 @@
 // 本模块按 ChartDef 生成字面量 strDim/numDim（与经典 chart 相同策略），
 // 可被 packages/parser/src/chart-ex.ts 读回。
 
-import type { ChartDef, ChartSeries } from "@ppt/core";
+import type { ChartDef, ChartSeries } from "@sliiu/present-core";
 import { esc, xmlHeader } from "./xml-util";
 
 const CHART_EX_TYPES = new Set<ChartDef["type"]>([

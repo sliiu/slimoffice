@@ -1,4 +1,4 @@
-import type { ImageShape, Paint, Presentation, Shape, Slide, TextShape } from "@ppt/core";
+import type { ImageShape, Paint, Presentation, Shape, Slide, TextShape } from "@sliiu/present-core";
 import { t as translate, type MessageKey } from "./i18n";
 
 export type AccessibilityIssueKind =

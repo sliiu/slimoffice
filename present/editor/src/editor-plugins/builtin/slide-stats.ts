@@ -1,4 +1,4 @@
-import { OFFICIAL_EDITOR_PLUGIN_IDS } from "@ppt/core";
+import { OFFICIAL_EDITOR_PLUGIN_IDS } from "@sliiu/present-core";
 import { defineEditorPlugin } from "../define";
 
 function countShapes(pres: { slides: Array<{ layers: Array<{ shapes: unknown[] }> }> }): number {

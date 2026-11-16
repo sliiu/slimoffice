@@ -1,4 +1,4 @@
-import type { Plugin } from "@ppt/plugin-sdk";
+import type { Plugin } from "@sliiu/present-plugin-sdk";
 import { createTranslator } from "../i18n";
 
 const HOST = "ws://127.0.0.1:19520/host";

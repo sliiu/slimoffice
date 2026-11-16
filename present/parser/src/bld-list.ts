@@ -1,4 +1,4 @@
-import type { BuildSpec } from "@ppt/core";
+import type { BuildSpec } from "@sliiu/present-core";
 import { attr, findByLocalName, orderedChildren, stripNs, type XmlNode } from "./xml";
 
 export function parseBuildList(timingEl: XmlNode | undefined): BuildSpec[] {

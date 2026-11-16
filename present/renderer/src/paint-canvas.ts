@@ -1,4 +1,4 @@
-import type { GradientStop, Paint, PatternPaint, RadialGradientPaint, Rect, Stroke } from "@ppt/core";
+import type { GradientStop, Paint, PatternPaint, RadialGradientPaint, Rect, Stroke } from "@sliiu/present-core";
 import { displayImageSrc } from "./linked-src";
 import { previewImageSrc, waitForMetafilePreviews } from "./metafile-preview";
 import { waitForVideoFrames } from "./video-frame";
@@ -183,7 +183,7 @@ export function paintToCanvasStyle(
 const adjustCache = new Map<string, HTMLCanvasElement>();
 const adjustDataUrlCache = new WeakMap<HTMLCanvasElement, string>();
 
-export function adjustImage(img: HTMLImageElement, adj: import("@ppt/core").ImageColorAdjust): HTMLCanvasElement {
+export function adjustImage(img: HTMLImageElement, adj: import("@sliiu/present-core").ImageColorAdjust): HTMLCanvasElement {
   const key = `${img.src}|${JSON.stringify(adj)}`;
   const cached = adjustCache.get(key);
   if (cached) return cached;
@@ -210,7 +210,7 @@ export function adjustImage(img: HTMLImageElement, adj: import("@ppt/core").Imag
 /** 图片已加载时返回调色后的 data URL，供 SVG `<image href>` 使用。 */
 export function rasterizedAdjustHref(
   src: string,
-  adj: import("@ppt/core").ImageColorAdjust,
+  adj: import("@sliiu/present-core").ImageColorAdjust,
   onLoad?: () => void,
 ): string | undefined {
   const img = getImage(src, onLoad);
@@ -261,7 +261,7 @@ function boxBlur(buf: Uint8ClampedArray, w: number, h: number, radius: number): 
   pass(tmp, buf, false);
 }
 
-function applyAdjust(buf: Uint8ClampedArray, adj: import("@ppt/core").ImageColorAdjust): void {
+function applyAdjust(buf: Uint8ClampedArray, adj: import("@sliiu/present-core").ImageColorAdjust): void {
   const { grayscale, lum, hsl, duotone, alphaMod, biLevel, clrChange, fillOverlay } = adj;
   const duoFrom = duotone ? parseHexRGB(duotone[0]) : null;
   const duoTo = duotone ? parseHexRGB(duotone[1]) : null;

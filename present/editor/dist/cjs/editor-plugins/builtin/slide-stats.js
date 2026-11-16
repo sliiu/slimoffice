@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.slideStatsEditorPlugin = void 0;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const define_1 = require("../define");
 function countShapes(pres) {
     let n = 0;
@@ -18,7 +18,7 @@ function countOnSlide(slide) {
 }
 /** Built-in demo plugin — shows deck / slide shape counts in a floating panel. */
 exports.slideStatsEditorPlugin = (0, define_1.defineEditorPlugin)({
-    id: core_1.OFFICIAL_EDITOR_PLUGIN_IDS.slideStats,
+    id: present_core_1.OFFICIAL_EDITOR_PLUGIN_IDS.slideStats,
     name: "Slide stats",
     version: "1.0.0",
     activate(ctx) {

@@ -1,6 +1,6 @@
-import type { CommandStackInfo, EditCommand, Presentation } from "@ppt/core";
+import type { CommandStackInfo, EditCommand, Presentation } from "@sliiu/present-core";
 
-/** Editor-phase plugin — mirrors `@ppt/plugin-sdk` `Plugin` lifecycle, different context. */
+/** Editor-phase plugin — mirrors `@sliiu/present-plugin-sdk` `Plugin` lifecycle, different context. */
 export interface EditorPlugin {
   id: string;
   name?: string;

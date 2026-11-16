@@ -18,9 +18,9 @@
   "dependencies": {
     "emf-converter": "^4.8.0",
     "three": "^0.186.0",
-    "@sliiu/present-animation": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-core": "0.0.0-nightly.20261116031027",
-    "@sliiu/present-three-bake": "0.0.0-nightly.20261116031027"
+    "@sliiu/present-animation": "workspace:*",
+    "@sliiu/present-core": "workspace:*",
+    "@sliiu/present-three-bake": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.186.0"

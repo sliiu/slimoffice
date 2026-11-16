@@ -1,4 +1,4 @@
-import type { Plugin, ThumbnailHandle } from "@ppt/plugin-sdk";
+import type { Plugin, ThumbnailHandle } from "@sliiu/present-plugin-sdk";
 import { createTranslator } from "../i18n";
 
 /** Thumbnail strip for quick slide navigation. */

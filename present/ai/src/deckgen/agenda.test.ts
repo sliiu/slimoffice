@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Shape } from "@ppt/core";
+import type { Shape } from "@sliiu/present-core";
 import { compileCanvasDeck } from "./pipeline.js";
 import { resolveVisualSystem } from "./visual-system.js";
 import { seedColorTheme } from "./color-theme.js";

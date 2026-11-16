@@ -1,4 +1,4 @@
-import type { PhotoAlbum } from "@ppt/core";
+import type { PhotoAlbum } from "@sliiu/present-core";
 import { boolish } from "./units";
 import { attr, findByLocalName, type XmlNode } from "./xml";
 

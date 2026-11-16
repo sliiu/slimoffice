@@ -6,7 +6,7 @@ import type {
   TextRun,
   TextShape,
   TextStyles,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import type { TxStyles, LevelStyle } from "./tx-styles";
 import { pickStyle } from "./tx-styles";
 import { preserveRPrSnapshot } from "./text";

@@ -6,11 +6,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.smartArtTools = void 0;
 const zod_1 = require("zod");
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const commands_1 = require("@sliiu/present-editor/commands");
 const types_1 = require("../types");
 const summaries_1 = require("../summaries");
-const layoutEnum = zod_1.z.enum(core_1.SMARTART_LAYOUT_KINDS);
+const layoutEnum = zod_1.z.enum(present_core_1.SMARTART_LAYOUT_KINDS);
 function smartArtState(rt, slideIdx, groupId) {
     const slide = rt.getPres().slides[slideIdx];
     if (!slide)
@@ -22,7 +22,7 @@ function smartArtState(rt, slideIdx, groupId) {
             error: `shape ${groupId} is not a SmartArt group — convertToSmartArt first or pick a group with smartArt in listShapesOnSlide`,
         };
     }
-    return { ok: true, group: g, items: (0, core_1.extractSmartArtItems)(g), layout: g.smartArtMeta.layout };
+    return { ok: true, group: g, items: (0, present_core_1.extractSmartArtItems)(g), layout: g.smartArtMeta.layout };
 }
 exports.smartArtTools = [
     (0, types_1.defineTool)({

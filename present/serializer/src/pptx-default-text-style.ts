@@ -2,8 +2,8 @@
 // from-scratch 写出带校对 lang 的 lstStyle；round-trip 在校对语言变化时只改 lang，
 // 避免整段覆盖 Office 原有的字号 / 缩进。
 
-import type { Presentation, PresentationSource, TextStyles } from "@ppt/core";
-import { buildProofingLangMeta, getProofingLanguage, ooxmlLangFromProofingId } from "@ppt/core";
+import type { Presentation, PresentationSource, TextStyles } from "@sliiu/present-core";
+import { buildProofingLangMeta, getProofingLanguage, ooxmlLangFromProofingId } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
 import { esc } from "./xml-util";
 import type { RoundTripOptions } from "./pptx-roundtrip";

@@ -1,4 +1,4 @@
-// @ppt/plugin-sdk —— PPT 播放器插件 SDK
+// @sliiu/present-plugin-sdk —— PPT 播放器插件 SDK
 //
 // 零运行时依赖，可在浏览器（ESM/IIFE）和 Node（ESM/CJS）使用。
 //
@@ -8,7 +8,7 @@
 //   - createMockPluginContext —— Node 中单元测试插件用的桩
 //
 // 不提供：
-//   - 任何 PPT 渲染、动画运行时（那是 @ppt/player 的事）
+//   - 任何 PPT 渲染、动画运行时（那是 @sliiu/present-player 的事）
 //   - 任何对 OOXML 内部结构的直接访问（保证 ABI 稳定）
 
 export * from "./types";

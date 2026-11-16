@@ -11,7 +11,7 @@
 // 解析侧 packages/parser/src/chart.ts 读 numLit/strLit 与 c:tx/c:v，本文件的输出
 // 可被自家 parser 完整读回（round-trip 自洽）。
 
-import type { ChartAxis, ChartDataLabels, ChartDef, ChartSeries, ChartView3D, ClassicChartType, PieChartDef } from "@ppt/core";
+import type { ChartAxis, ChartDataLabels, ChartDef, ChartSeries, ChartView3D, ClassicChartType, PieChartDef } from "@sliiu/present-core";
 import { esc, parseColor, xmlHeader } from "./xml-util";
 
 // 与 parser/src/chart.ts DEFAULT_PALETTE 一致（导出→解析回来颜色不漂移）。

@@ -30,9 +30,9 @@ exports.presentationToTemplate = exports.createPresentationFromTemplate = void 0
 exports.generateTemplate = generateTemplate;
 exports.templateFromThemeDef = templateFromThemeDef;
 exports.generatePresentationFromTemplate = generatePresentationFromTemplate;
-const core_1 = require("@sliiu/present-core");
-Object.defineProperty(exports, "createPresentationFromTemplate", { enumerable: true, get: function () { return core_1.createPresentationFromTemplate; } });
-Object.defineProperty(exports, "presentationToTemplate", { enumerable: true, get: function () { return core_1.presentationToTemplate; } });
+const present_core_1 = require("@sliiu/present-core");
+Object.defineProperty(exports, "createPresentationFromTemplate", { enumerable: true, get: function () { return present_core_1.createPresentationFromTemplate; } });
+Object.defineProperty(exports, "presentationToTemplate", { enumerable: true, get: function () { return present_core_1.presentationToTemplate; } });
 const pipeline_1 = require("../pipeline");
 const themes_1 = require("../../themes");
 const snapshot_1 = require("./snapshot");
@@ -86,6 +86,6 @@ function realizeTemplate(spec, theme, size, baseId) {
 }
 async function generatePresentationFromTemplate(guidance, opts = {}) {
     const { template } = await generateTemplate(guidance, opts);
-    const pres = (0, core_1.createPresentationFromTemplate)(template);
+    const pres = (0, present_core_1.createPresentationFromTemplate)(template);
     return { pres, template };
 }

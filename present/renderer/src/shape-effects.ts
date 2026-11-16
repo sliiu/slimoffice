@@ -12,7 +12,7 @@
 //   - reflection→ SVG <use> 克隆 + 渐变 mask（svg-backend 内实现）
 // Canvas 后端只消费 cssFilter 部分（inner/softEdge/reflection 在 hybrid 模式下
 // 交给 SVG 层；纯 Canvas 后端为已知近似）。
-import type { GlowEffect, ReflectionEffect, ShadowEffect, Shape, ShapeEffect, SoftEdgeEffect } from "@ppt/core";
+import type { GlowEffect, ReflectionEffect, ShadowEffect, Shape, ShapeEffect, SoftEdgeEffect } from "@sliiu/present-core";
 
 export interface CollectedShapeEffects {
   outer: ShadowEffect[];

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InsertWebEmbedCmd = void 0;
 exports.buildWebEmbedShape = buildWebEmbedShape;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const shape_factory_1 = require("./shape-factory");
 function buildWebEmbedShape(input) {
     const { embed, bbox, allowFullscreen = true } = input;
@@ -17,7 +17,7 @@ function buildWebEmbedShape(input) {
         zIndex: 0,
         kind: "webEmbed",
         bbox,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         visible: true,
         locked: false,
         opacity: 1,
@@ -25,7 +25,7 @@ function buildWebEmbedShape(input) {
         provider: embed.provider,
         originalUrl: embed.originalUrl,
         allowFullscreen,
-        descr: (0, core_1.encodeWebEmbedDescr)(embed),
+        descr: (0, present_core_1.encodeWebEmbedDescr)(embed),
         hyperlink: { kind: "url", target: embed.originalUrl || embed.embedUrl },
     };
 }

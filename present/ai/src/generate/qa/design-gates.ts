@@ -1,6 +1,6 @@
 // Design P1 checks — separate from content six (#30). No OOXML writeback changes.
 // CI retrigger: user-token push (Actions GITHUB_TOKEN pushes do not fire pull_request workflows).
-import type { Presentation, Shape, TextShape, Slide } from "@ppt/core";
+import type { Presentation, Shape, TextShape, Slide } from "@sliiu/present-core";
 import { parseHex, relativeLuminance } from "./color";
 import { resolveVisualSystem, visualSystemPalette, type VisualSystemId } from "../visual-system";
 import { LAYOUT_KINDS } from "../compile/layouts";

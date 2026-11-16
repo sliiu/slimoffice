@@ -1,4 +1,4 @@
-// @ppt/ui vanilla DOM primitives — framework-free builders that emit the
+// @sliiu/present-ui vanilla DOM primitives — framework-free builders that emit the
 // shadcn-flavoured classes from styles.ts. The editor/playground swap their
 // ad-hoc cssText buttons/modals for these.
 

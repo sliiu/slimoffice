@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { PathShape } from "@ppt/core";
+import type { PathShape } from "@sliiu/present-core";
 import { inkPartPath, isInkPath, svgPathToPoints } from "./pptx-ink.js";
 
 const base = {

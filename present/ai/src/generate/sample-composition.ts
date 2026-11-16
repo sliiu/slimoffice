@@ -1,6 +1,6 @@
 // 样稿：本地解析出构图说明。原文、备注和图表数字不进说明。
 
-import type { Paint, Presentation, Shape, Template, TextShape } from "@ppt/core";
+import type { Paint, Presentation, Shape, Template, TextShape } from "@sliiu/present-core";
 
 export class SampleDeckError extends Error {
   readonly code: "empty" | "unreadable";

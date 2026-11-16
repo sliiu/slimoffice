@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { TextParagraph } from "@ppt/core";
+import type { TextParagraph } from "@sliiu/present-core";
 import { applyKinsoku, glueUnbrokenEastAsian, wrapParagraphIntoLines, type Token } from "./text-layout.js";
 
 /** Fixed-advance measurer: every code point is 10px wide, so line widths are easy to reason about. */

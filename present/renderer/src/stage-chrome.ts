@@ -1,4 +1,4 @@
-import type { Slide } from "@ppt/core";
+import type { Slide } from "@sliiu/present-core";
 
 /**
  * CSS background for the stage / hybrid wrapper chrome around the scene.

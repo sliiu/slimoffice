@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ApplyThemeCmd = exports.ApplyCustomThemeCmd = void 0;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const template_masters_1 = require("./template-masters");
 const themes_1 = require("./themes");
 /** 示例封面 shape 的 id 前缀 —— 换主题时按前缀识别并整组重建。 */
@@ -43,7 +43,7 @@ function buildSampleCoverShapes(theme, size, text) {
         visible: true,
         locked: false,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
     });
     const title = {
         ...base("title", "Cover Title", {
@@ -190,7 +190,7 @@ class ApplyCustomThemeCmd {
                 slide.layoutRef = ref;
             const skip = preserveImg && slide.background?.kind === "image";
             if (!skip)
-                (0, core_1.assignSlideBackground)(slide, undefined);
+                (0, present_core_1.assignSlideBackground)(slide, undefined);
         }
         pres.theme = {
             ...coreTheme,
@@ -254,7 +254,7 @@ class ApplyThemeCmd {
         for (const slide of pres.slides) {
             if (preserveImg && slide.background?.kind === "image")
                 continue;
-            (0, core_1.assignSlideBackground)(slide, { kind: "solid", color: theme.palette.bg });
+            (0, present_core_1.assignSlideBackground)(slide, { kind: "solid", color: theme.palette.bg });
         }
         pres.theme = {
             id: theme.id,

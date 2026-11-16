@@ -8,7 +8,7 @@ import {
   type LecturePipSize,
   type Presentation,
   type Slide,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 import { SetMediaPropsCmd } from "./commands";
 import { ClearLectureCameraCmd, SetLectureClicksCmd, SetLectureFrameCmd } from "./lecture-cmd";
 import { t } from "./i18n";

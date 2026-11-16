@@ -1,7 +1,7 @@
 // Developer diagnostics panel (insert-object inventory + Morph pair audit).
 // Shown as a right-rail tab only while the host has `body.dev-mode`.
 
-import type { CommandStack, Presentation, Shape, Slide } from "@ppt/core";
+import type { CommandStack, Presentation, Shape, Slide } from "@sliiu/present-core";
 import {
   auditMorphDeck,
   auditMorphSlides,
@@ -25,7 +25,7 @@ import {
   formatMorphDeckChromeLines,
   formatMorphMatchReasonBreakdown,
   formatMorphReadinessLine,
-} from "@ppt/transition-fx";
+} from "@sliiu/present-transition-fx";
 import { t } from "./i18n";
 import {
   collectInsertShapesInDeck,

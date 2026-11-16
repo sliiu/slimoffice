@@ -1,4 +1,4 @@
-export declare const motionTools: import("...js").ToolDef<{
+export declare const motionTools: import("../index.js").ToolDef<{
     topic?: string | undefined;
     audience?: string | undefined;
     scenario?: string | undefined;

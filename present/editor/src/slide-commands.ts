@@ -1,4 +1,4 @@
-import type { DeckComment, EditCommand, Presentation, Slide } from "@ppt/core";
+import type { DeckComment, EditCommand, Presentation, Slide } from "@sliiu/present-core";
 import {
   remapCommentsAfterSlideDelete,
   remapCommentsAfterSlideInsert,

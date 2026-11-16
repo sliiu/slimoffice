@@ -11,13 +11,13 @@
 //      OOXML §19.5.50 p:transition 子参数（dir / pattern / advClick / advAfter / sound）
 //      字段名保持不变，保证 round-trip 序列化不变。
 
-import type { CommandStack, Presentation } from "@ppt/core";
+import type { CommandStack, Presentation } from "@sliiu/present-core";
 import {
   auditMorphSlides,
   formatMorphMatchReasonBreakdown,
   formatMorphReadinessLine,
-} from "@ppt/transition-fx";
-import { glitterParamsFromToken, glitterToken, splitParamsFromToken, splitToken } from "@ppt/transition-fx";
+} from "@sliiu/present-transition-fx";
+import { glitterParamsFromToken, glitterToken, splitParamsFromToken, splitToken } from "@sliiu/present-transition-fx";
 import { SetSlideTransitionCmd } from "./commands";
 import { appendLabelWithIcon } from "./icons";
 import { t, type MessageKey } from "./i18n";

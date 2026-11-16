@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Presentation, Shape } from "@ppt/core";
-import { identityTransform } from "@ppt/core";
+import type { Presentation, Shape } from "@sliiu/present-core";
+import { identityTransform } from "@sliiu/present-core";
 import { AlignShapesCmd } from "./commands.js";
 
 function rect(id: string, x: number, y: number): Shape {

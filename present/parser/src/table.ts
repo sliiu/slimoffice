@@ -1,4 +1,4 @@
-import { identityTransform, type Paint, type Rect, type Shape, type Stroke, type TableMeta, type TextInsets, type TextParagraph, type TextShape } from "@ppt/core";
+import { identityTransform, type Paint, type Rect, type Shape, type Stroke, type TableMeta, type TextInsets, type TextParagraph, type TextShape } from "@sliiu/present-core";
 import { attr, findAllByLocalName, findByLocalName, type XmlNode } from "./xml";
 import { emuToPx, boolish } from "./units";
 import type { FillCtx } from "./fill";

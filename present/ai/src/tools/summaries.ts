@@ -8,8 +8,8 @@
 // 新加 shape 类型 / 改 Paint 结构时必须回头同步这几个函数，否则 AI 丢失
 // 联动检查（ripple-effect）的数据基础。
 
-import type { Paint, Shape, Slide, TextShape } from "@ppt/core";
-import { extractSmartArtItems } from "@ppt/core";
+import type { Paint, Shape, Slide, TextShape } from "@sliiu/present-core";
+import { extractSmartArtItems } from "@sliiu/present-core";
 
 const DATA_URL_RE = /^data:([^;,]+)?(;base64)?,/i;
 

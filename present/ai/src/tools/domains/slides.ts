@@ -1,7 +1,7 @@
 // Slide 列表级工具：建页 / 复制 / 删除 / 重排 / 命名 / 讲稿 / 可见性 / 背景 / 尺寸 / 主题。
 
 import { z } from "zod";
-import type { Paint, Slide, TextShape, PhotoAlbum } from "@ppt/core";
+import type { Paint, Slide, TextShape, PhotoAlbum } from "@sliiu/present-core";
 import {
   ApplySlideLayoutCmd,
   ClearInkOnSlideCmd,
@@ -20,7 +20,7 @@ import {
   addSectionAt,
   renameSection,
   removeSection,
-} from "@ppt/editor/commands";
+} from "@sliiu/present-editor/commands";
 import {
   ApplyCustomThemeCmd,
   CreateSlideFromSpecCmd,

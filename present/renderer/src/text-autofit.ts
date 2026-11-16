@@ -12,7 +12,7 @@
 // 稳定性防御：解析期 baked 结果与我们的文本测量存在字体级差异，未编辑的文件可能
 // "轻微溢出"。为避免打开旧文件就整体变小字（视觉基线漂移），仅当溢出超过 5% 时
 // 才启用重算；5% 以内视为测量误差按原样渲染（顶多贴边）。
-import type { TextParagraph, TextRun, TextShape } from "@ppt/core";
+import type { TextParagraph, TextRun, TextShape } from "@sliiu/present-core";
 import { FALLBACK_FONT_SIZE } from "./text-shared";
 
 const MIN_SCALE = 0.25;

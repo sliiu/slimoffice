@@ -32,7 +32,7 @@ import {
   type TemplateDescriptor,
   createPresentationFromTemplate,
   presentationToTemplate,
-} from "@ppt/core";
+} from "@sliiu/present-core";
 
 import { generateTheme } from "../pipeline";
 import type { GenerateOptions } from "../pipeline";

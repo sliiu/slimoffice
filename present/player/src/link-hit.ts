@@ -1,5 +1,5 @@
-import type { HyperlinkRef, Shape, TextRun, TextShape } from "@ppt/core";
-import { hitTestTextRunAt, worldToLocal, type SceneNode } from "@ppt/renderer";
+import type { HyperlinkRef, Shape, TextRun, TextShape } from "@sliiu/present-core";
+import { hitTestTextRunAt, worldToLocal, type SceneNode } from "@sliiu/present-renderer";
 
 export type LinkSlot = "hyperlink" | "hoverLink";
 

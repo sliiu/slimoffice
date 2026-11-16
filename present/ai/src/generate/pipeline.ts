@@ -3,7 +3,7 @@
 //   无 outline → narrative 模板（一键 API / 测试）
 // 配图 / QA / 艺术总监在 adapter 内跑；无 API key 时跳过 LLM pass，仍能 compile。
 
-import type { Presentation } from "@ppt/core";
+import type { Presentation } from "@sliiu/present-core";
 import { type GuidanceInput, type Outline } from "./schema";
 import type { GenerateOptions } from "./types";
 import { withGenerateWallClock, throwIfAborted } from "./abort";

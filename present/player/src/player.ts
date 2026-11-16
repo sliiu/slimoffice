@@ -1,7 +1,7 @@
-import { ooxml } from "@ppt/animation";
-import type { HyperlinkRef, LectureTake, LiveMediaTrack, Presentation, Shape, Slide, AudioShape } from "@ppt/core";
-import { lecturePlaybackEnabled, lectureTakeFor, nextLectureClickMs } from "@ppt/core";
-import { attachMediaTrimPlayback, sanitizeExternalUrl } from "@ppt/core";
+import { ooxml } from "@sliiu/present-animation";
+import type { HyperlinkRef, LectureTake, LiveMediaTrack, Presentation, Shape, Slide, AudioShape } from "@sliiu/present-core";
+import { lecturePlaybackEnabled, lectureTakeFor, nextLectureClickMs } from "@sliiu/present-core";
+import { attachMediaTrimPlayback, sanitizeExternalUrl } from "@sliiu/present-core";
 import {
   CanvasBackend,
   HybridBackend,
@@ -16,7 +16,7 @@ import {
   hitTestNodeBBox,
   type Scene,
   type SceneNode,
-} from "@ppt/renderer";
+} from "@sliiu/present-renderer";
 import { registerEmbeddedFonts } from "./fonts";
 import { mkLucideIconButton } from "./icons";
 import { autoAdvanceAfterSec, autoAdvanceWaitSec, autoplayTimelineSec, clickAdvancesSlide } from "./slide-advance";

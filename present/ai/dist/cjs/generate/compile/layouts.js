@@ -29,7 +29,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LAYOUT_KINDS = void 0;
 exports.buildMotifShapes = buildMotifShapes;
 exports.renderLayout = renderLayout;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 const schema_1 = require("../schema");
 const color_1 = require("../qa/color");
 // ============================================================================
@@ -52,7 +52,7 @@ function baseFields() {
         visible: true,
         locked: false,
         opacity: 1,
-        transform: (0, core_1.identityTransform)(),
+        transform: (0, present_core_1.identityTransform)(),
         name: "Shape",
     };
 }

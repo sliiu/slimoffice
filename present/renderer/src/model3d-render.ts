@@ -1,4 +1,4 @@
-import type { Model3DShape } from "@ppt/core";
+import type { Model3DShape } from "@sliiu/present-core";
 import { getImage } from "./paint-canvas";
 import { getModel3DPreviewFrame } from "./model3d-frame";
 

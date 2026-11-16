@@ -4,7 +4,7 @@
 //   1. 配置分三段 —— text（文本 LLM）/ image（AI 生图）/ imagery（图库检索 key）。
 //      三段完全解耦：模型、key、endpoint 都可独立 BYO。
 //   2. 持久化通过 ConfigStore 抽象（见 store.ts）注入：浏览器用 localStorage、
-//      Node（MCP server / gateway / 测试）用环境变量。@ppt/ai 内部不直读任何存储。
+//      Node（MCP server / gateway / 测试）用环境变量。@sliiu/present-ai 内部不直读任何存储。
 //   3. zod schema 负责解析未知输入（localStorage JSON / env）并补默认值，
 //      调用方拿到的 AiConfig 永远是完整结构。
 

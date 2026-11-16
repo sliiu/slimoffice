@@ -19,7 +19,7 @@ exports.ok = ok;
 exports.err = err;
 exports.createToolRuntime = createToolRuntime;
 exports.defineTool = defineTool;
-const core_1 = require("@sliiu/present-core");
+const present_core_1 = require("@sliiu/present-core");
 function ok(extra = {}) {
     return { ok: true, ...extra };
 }
@@ -33,7 +33,7 @@ function createToolRuntime(opts) {
         getPres: () => opts.port.getPres(),
         apply: (cmd) => {
             try {
-                if (!(0, core_1.canApplyEditCommand)(opts.port.getPres(), cmd)) {
+                if (!(0, present_core_1.canApplyEditCommand)(opts.port.getPres(), cmd)) {
                     return err("Presentation is protected (editing blocked). Call unprotectPresentation first (password required if listProtectionStatus.passwordRequired is true).");
                 }
                 opts.port.execute(cmd);

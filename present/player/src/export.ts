@@ -1,5 +1,5 @@
-import type { Presentation } from "@ppt/core";
-import type { PluginUIOptions } from "@ppt/plugin-sdk";
+import type { Presentation } from "@sliiu/present-core";
+import type { PluginUIOptions } from "@sliiu/present-plugin-sdk";
 import { allowedProductHome } from "./end-screen";
 import { resolvePlayerLocale } from "./i18n";
 import { buildStoredZip, type ZipFile } from "./zip-store";
@@ -161,7 +161,7 @@ export function buildHtmlBundle(
   };
 
   // 1) 深度遍历 presentation 树，重写所有"看起来像资源 URL"的字段。
-  //    遵循下列字段名约定（见 @ppt/core）：
+  //    遵循下列字段名约定（见 @sliiu/present-core）：
   //      - image/media/picture 的 `src` 字段（图片、视频、音频）
   //      - 媒体 / 视频 fill 的 `poster`
   //      - hyperlink `href`（外链不动，只重写 data: 形式的内嵌）

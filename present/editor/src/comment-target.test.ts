@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { identityTransform, type Slide, type TextShape } from "@ppt/core";
+import { identityTransform, type Slide, type TextShape } from "@sliiu/present-core";
 import { commentShapeCaption, commentShapeLabel, shapeAtPoint } from "./comment-target.js";
-import type { Shape } from "@ppt/core";
+import type { Shape } from "@sliiu/present-core";
 
 function text(id: string, label: string, x: number, y: number): TextShape {
   return {

@@ -23,7 +23,7 @@ import type {
   PlayerContextMenuAPI,
   PlayerContextMenuItem,
   UIHandle,
-} from "@ppt/plugin-sdk";
+} from "@sliiu/present-plugin-sdk";
 
 const STYLES_ID = "ppt-context-menu";
 
