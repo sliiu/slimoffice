@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/sheet-renderer",
-  "version": "0.0.0-nightly.20261116024524",
+  "version": "0.0.0-nightly.20261116031027",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sliiu/sheet-core": "0.0.0-nightly.20261116024524"
+    "@sliiu/sheet-core": "0.0.0-nightly.20261116031027"
   },
   "module": "./dist/esm/index.js",
   "repository": {

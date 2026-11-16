@@ -1,6 +1,6 @@
 {
   "name": "@sliiu/document-parser",
-  "version": "0.0.0-nightly.20261116024524",
+  "version": "0.0.0-nightly.20261116031027",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -18,7 +18,7 @@
   "dependencies": {
     "fast-xml-parser": "^5.11.1",
     "fflate": "^0.8.3",
-    "@sliiu/document-core": "0.0.0-nightly.20261116024524"
+    "@sliiu/document-core": "0.0.0-nightly.20261116031027"
   },
   "module": "./dist/esm/index.js",
   "repository": {
