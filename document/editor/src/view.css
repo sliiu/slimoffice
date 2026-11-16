@@ -1,0 +1,46 @@
+.doc-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: #d4d4d8;
+  overflow: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.doc-page {
+  background: #ffffff;
+  color: #18181b;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  box-sizing: border-box;
+}
+
+.doc-paragraph {
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.doc-header,
+.doc-footer {
+  color: #52525b;
+  font-size: 11px;
+}
+
+.doc-table {
+  border-collapse: collapse;
+  margin: 0 0 8px;
+}
+
+.doc-table td {
+  border: 1px solid #d4d4d8;
+  padding: 4px 8px;
+  vertical-align: top;
+}
+
+.doc-image {
+  display: inline-block;
+  padding: 0 4px;
+  color: #71717a;
+}

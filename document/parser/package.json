@@ -1,0 +1,40 @@
+{
+  "name": "@sliiu/document-parser",
+  "version": "0.0.0-nightly.20261116024524",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.11.1",
+    "fflate": "^0.8.3",
+    "@sliiu/document-core": "0.0.0-nightly.20261116024524"
+  },
+  "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "document/parser"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/document/parser",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "COPYRIGHT",
+    "THIRD-PARTY-NOTICES.md"
+  ]
+}

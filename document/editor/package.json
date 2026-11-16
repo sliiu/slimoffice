@@ -1,0 +1,40 @@
+{
+  "name": "@sliiu/document-editor",
+  "version": "0.0.0-nightly.20261116024524",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./view.css": "./dist/view.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sliiu/document-core": "0.0.0-nightly.20261116024524",
+    "@sliiu/document-renderer": "0.0.0-nightly.20261116024524"
+  },
+  "module": "./dist/esm/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sliiu/slimoffice.git",
+    "directory": "document/editor"
+  },
+  "homepage": "https://github.com/sliiu/slimoffice/tree/main/document/editor",
+  "bugs": {
+    "url": "https://github.com/sliiu/slimoffice/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "COPYRIGHT",
+    "THIRD-PARTY-NOTICES.md"
+  ]
+}
