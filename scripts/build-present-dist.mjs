@@ -109,7 +109,7 @@ function buildPlayerIife(dir) {
   const pkgPath = join(dir, "package.json");
   if (!existsSync(pkgPath) || !existsSync(join(dir, "vite.config.ts"))) return;
   const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-  if (pkg.name !== "@ppt/player") return;
+  if (pkg.name !== "@sliiu/present-player") return;
   // pnpm does not hoist vite to the workspace root, and vite does not export ./bin.
   // Resolve the package, then follow its bin field.
   const vitePkg = createRequire(join(dir, "package.json")).resolve("vite/package.json");
