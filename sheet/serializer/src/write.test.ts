@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { unzipSync, zipSync, strToU8 } from "fflate";
-import { writeXlsx } from "./index";
+import { blankWorkbook, writeXlsx } from "./index";
 
 test("puts every original part back unchanged", () => {
   const source = new Map<string, Uint8Array>([
@@ -15,6 +15,15 @@ test("puts every original part back unchanged", () => {
 
 test("refuses a workbook that was not opened from a file", () => {
   assert.throws(() => writeXlsx({ sheets: [] }), /no original parts/);
+});
+
+test("a bold edit uses the workbook's bold font", () => {
+  const made = blankWorkbook("销售", [[{ value: "12" }]]);
+  const cell = made.workbook.sheets[0]?.cells[0]?.[0];
+  if (cell) cell.bold = true;
+  made.workbook.edited = true;
+  const sheet = new TextDecoder().decode(unzipSync(writeXlsx(made.workbook))["xl/worksheets/sheet1.xml"]);
+  assert.match(sheet, /<c r="A1" s="1"><v>12<\/v><\/c>/);
 });
 
 test("round trip keeps the part bytes", () => {

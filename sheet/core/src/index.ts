@@ -14,4 +14,6 @@ export interface Workbook {
   sheets: Worksheet[];
   /** Original package parts, keyed by path. Writing puts these back unchanged. */
   source?: Map<string, Uint8Array>;
+  /** Set when a cell changed. Until then, writing puts the original bytes back. */
+  edited?: boolean;
 }

@@ -1,13 +1,23 @@
 .doc-view {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  min-height: 0;
   padding: 24px;
   background: #d4d4d8;
   overflow: auto;
-  height: 100%;
   box-sizing: border-box;
+}
+
+.doc-paragraph.is-selected {
+  outline: 1px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.doc-paragraph.is-hit {
+  background: #fef3c7;
 }
 
 .doc-page {

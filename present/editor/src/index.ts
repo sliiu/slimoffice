@@ -157,6 +157,7 @@ export type {
 export * from "./animation";
 export { setLocale, getLocale, registerMessages, t } from "./i18n";
 export type { Locale, MessageKey } from "./i18n";
+export { ensureUiStyles } from "./ui-style";
 export {
   DEFAULT_LUCIDE_ICON,
   normalizeLucideIconName,
