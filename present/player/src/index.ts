@@ -6,7 +6,7 @@ export type { MountOptions, PlayerHandle, Backend } from "./player";
 export { createBake3DRuntime, type Bake3DRuntime } from "./bake-3d";
 // 编辑器「预览切换」与放映共用同一套舞台裁切 + ghost 回收，避免两边效果不一致。
 export { runTransition as runStageTransition } from "./transition";
-export { buildHtml, buildHtmlBundle, bundleToZip } from "./export";
+export { buildHtml, buildHtmlBundle, bundleToZip, inlineMediaInPresentation } from "./export";
 export type {
   ExportHtmlOptions,
   BuildHtmlBundleOptions,
