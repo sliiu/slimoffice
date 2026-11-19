@@ -51,6 +51,22 @@
 
 .doc-image {
   display: inline-block;
+  max-width: 100%;
   padding: 0 4px;
   color: #71717a;
+}
+
+img.doc-image {
+  height: auto;
+}
+
+.doc-marker {
+  display: inline-block;
+  min-width: 1.5em;
+  margin-right: 0.25em;
+  user-select: none;
+}
+
+.doc-paragraph.is-current-hit {
+  outline: 2px solid #d97706;
 }

@@ -3,6 +3,10 @@ export interface DocPage {
     width: number;
     height: number;
     margin: DocPageSetup["margin"];
+    /** Page background, #rrggbb, when the document sets one. */
+    background?: string;
+    columns: number;
+    landscape: boolean;
     header: DocParagraph[];
     footer: DocParagraph[];
     blocks: DocBlock[];

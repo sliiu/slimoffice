@@ -16,7 +16,7 @@ export function blankDocument(blocks: DocBlock[] = []): { bytes: Uint8Array; doc
   const source = new Map<string, Uint8Array>([
     ["[Content_Types].xml", strToU8(CONTENT_TYPES)],
     ["_rels/.rels", strToU8(RELS)],
-    ["word/document.xml", strToU8(applyDocumentEdits(DOCUMENT, { sections: [{ page: DEFAULT_PAGE, header: [], footer: [], blocks }] }))],
+    ["word/document.xml", strToU8(applyDocumentEdits(DOCUMENT, { sections: [{ page: DEFAULT_PAGE, header: [], footer: [], blocks }] }).xml)],
   ]);
   return {
     bytes: zipSync(Object.fromEntries(source)),
