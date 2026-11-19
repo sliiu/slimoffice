@@ -293,6 +293,12 @@ importers:
 
   sheet/core: {}
 
+  sheet/formula:
+    dependencies:
+      '@sliiu/sheet-core':
+        specifier: workspace:*
+        version: link:../core
+
   sheet/parser:
     dependencies:
       '@sliiu/sheet-core':
@@ -310,6 +316,9 @@ importers:
       '@sliiu/sheet-core':
         specifier: workspace:*
         version: link:../core
+      '@sliiu/sheet-formula':
+        specifier: workspace:*
+        version: link:../formula
 
   sheet/serializer:
     dependencies:

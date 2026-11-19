@@ -59,3 +59,16 @@ test("rejects a binary .xls", async () => {
   const bytes = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0]);
   await assert.rejects(parseXlsx(bytes), (err: unknown) => err instanceof XlsxOpenError && err.code === "LEGACY_XLS");
 });
+
+test("reads a formula cell with its cache", async () => {
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/worksheets/sheet1.xml": sheet(
+      `<row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c><c r="C1"><f>A1+B1</f><v>3</v></c></row>`,
+    ),
+  });
+  const workbook = await parseXlsx(bytes);
+  const cell = workbook.sheets[0]?.cells[0]?.[2];
+  assert.equal(cell?.formula, "A1+B1");
+  assert.equal(cell?.value, "3");
+});

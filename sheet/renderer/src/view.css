@@ -6,6 +6,31 @@
   color: #18181b;
 }
 
+.sheet-formula-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-bottom: 1px solid #e4e4e7;
+  background: #fafafa;
+}
+
+.sheet-ref {
+  min-width: 64px;
+  font-size: 12px;
+  color: #52525b;
+  text-align: center;
+}
+
+.sheet-formula-input {
+  flex: 1 1 auto;
+  border: 1px solid #e4e4e7;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: inherit;
+}
+
 .sheet-frame {
   flex: 1 1 auto;
   min-height: 0;
@@ -78,4 +103,59 @@
 
 .sheet-grid td.is-formula {
   color: #52525b;
+}
+
+.sheet-grid.no-grid th,
+.sheet-grid.no-grid td {
+  border-color: transparent;
+}
+
+.sheet-grid td.is-filter-header {
+  background: #eef2ff;
+}
+
+.sheet-charts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+}
+
+.sheet-chart,
+.sheet-sparkline,
+.sheet-form-control,
+.sheet-slicer {
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.sheet-shape {
+  position: absolute;
+  border: 1px solid #1d4ed8;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #1e3a8a;
+  pointer-events: none;
+}
+
+.sheet-frame {
+  position: relative;
+}
+
+.sheet-chart-title {
+  font-size: 12px;
+  color: #52525b;
+  margin-bottom: 6px;
+}
+
+.sheet-frame.is-print-preview {
+  background:
+    linear-gradient(#f4f4f5, #f4f4f5) padding-box,
+    repeating-linear-gradient(0deg, #d4d4d8 0 1px, transparent 1px 24px) border-box;
+  box-shadow: inset 0 0 0 1px #d4d4d8;
 }

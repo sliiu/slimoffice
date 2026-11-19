@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sliiu/sheet-core": "workspace:*"
+    "@sliiu/sheet-core": "workspace:*",
+    "@sliiu/sheet-formula": "workspace:*"
   },
   "module": "./dist/esm/index.js",
   "repository": {

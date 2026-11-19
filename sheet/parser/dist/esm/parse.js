@@ -9,14 +9,33 @@ export class XlsxOpenError extends Error {
     }
 }
 const OLE_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
-/** Reads a .xlsx into sheets of shown values. Formulas are kept as text and not evaluated. */
-export async function parseXlsx(input) {
-    const bytes = input instanceof Blob ? new Uint8Array(await input.arrayBuffer()) : new Uint8Array(input);
-    assertOpenXml(bytes);
+/** Reads a .xlsx into sheets. Formula cells keep `formula` and show the cached value until recalculate. */
+export async function parseXlsx(input, options = {}) {
+    let bytes = input instanceof Blob ? new Uint8Array(await input.arrayBuffer()) : new Uint8Array(input);
+    if (isOle(bytes)) {
+        const text = new TextDecoder("utf-16le").decode(bytes);
+        if (!text.includes("EncryptedPackage"))
+            throw new XlsxOpenError("LEGACY_XLS");
+        if (!options.password)
+            throw new XlsxOpenError("ENCRYPTED_XLSX");
+        try {
+            const { decryptAgile } = await import("./crypto.js");
+            bytes = new Uint8Array(await decryptAgile(bytes, options.password));
+        }
+        catch (err) {
+            if (err && typeof err === "object" && "code" in err && err.code === "WRONG_PASSWORD") {
+                throw new XlsxOpenError("WRONG_PASSWORD");
+            }
+            throw new XlsxOpenError("ENCRYPTED_XLSX");
+        }
+    }
     const archive = loadArchive(bytes);
     const shared = sharedStrings(archive);
     const bold = boldStyles(archive);
     return { sheets: sheetsFrom(archive, shared, bold), source: archive.files };
+}
+function isOle(bytes) {
+    return bytes.length >= OLE_MAGIC.length && OLE_MAGIC.every((byte, index) => bytes[index] === byte);
 }
 function sheetsFrom(archive, shared, bold) {
     const workbook = child(parseXml(archive.getText("xl/workbook.xml") ?? ""), "workbook");
@@ -35,11 +54,18 @@ function sheetFrom(archive, path, name, shared, bold) {
             const where = cellRef(ref);
             if (!where)
                 continue;
-            const value = cellValue(cell, attr(cell, "t") ?? "", shared);
-            if (!value)
+            const formulaNode = child(cell, "f");
+            const formulaText = formulaNode?.text?.trim() ?? "";
+            const cached = cellValue(cell, attr(cell, "t") ?? "", shared);
+            if (!formulaText && !cached)
                 continue;
             const style = Number(attr(cell, "s"));
-            const item = { value };
+            const item = {
+                // Formula cells keep the expression for the formula bar; the grid shows the cache until recalculate.
+                value: formulaText ? cached || `=${formulaText}` : cached,
+            };
+            if (formulaText)
+                item.formula = formulaText.replace(/^\=/, "");
             if (Number.isInteger(style) && bold.has(style))
                 item.bold = true;
             const line = cells[where.row] ?? [];
@@ -93,12 +119,4 @@ function cellRef(ref) {
 }
 function sheetNumber(path) {
     return Number(/(\d+)\.xml$/i.exec(path)?.[1] ?? 0);
-}
-function assertOpenXml(bytes) {
-    if (bytes.length < OLE_MAGIC.length)
-        return;
-    if (!OLE_MAGIC.every((byte, index) => bytes[index] === byte))
-        return;
-    const text = new TextDecoder("utf-16le").decode(bytes);
-    throw new XlsxOpenError(text.includes("EncryptedPackage") ? "ENCRYPTED_XLSX" : "LEGACY_XLS");
 }
