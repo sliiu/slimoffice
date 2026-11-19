@@ -5,3 +5,4 @@ export declare class DocxOpenError extends Error {
     constructor(code: DocxOpenErrorCode, message: string);
 }
 export declare function parseDocx(input: ArrayBuffer | Uint8Array | Blob): Promise<Document>;
+//# sourceMappingURL=parse.d.ts.map

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { strToU8, zipSync } from "fflate";
-import { isDocTable } from "@sliiu/document-core";
+import { isDocParagraph, isDocTable } from "@sliiu/document-core";
 import { DocxOpenError, parseDocx } from "./parse";
 
 function docx(parts: Record<string, string>): Uint8Array {
@@ -21,7 +21,7 @@ test("reads paragraphs, a table, and the section page", async () => {
   assert.equal(section.page.margin.left, 850);
   const heading = section.blocks[0]!;
   assert.equal(isDocTable(heading), false);
-  if (!isDocTable(heading)) {
+  if (isDocParagraph(heading)) {
     assert.equal(heading.style, "Heading1");
     assert.equal(heading.align, "center");
     assert.deepEqual(heading.runs[0], { text: "Title", bold: true, fontSize: 16, color: "#112233" });
@@ -85,7 +85,7 @@ test("reads run marks, a list, spacing, a link, a break, and a picture", async (
   const broken = parsed.sections[0]!.blocks[2]!;
   const picture = parsed.sections[0]!.blocks[3]!;
   assert.equal(isDocTable(listed), false);
-  if (!isDocTable(listed)) {
+  if (isDocParagraph(listed)) {
     assert.deepEqual(listed.numbering, { id: "1", level: 0 });
     assert.deepEqual(listed.spacing, { before: 200, after: 120, line: 360, lineRule: "auto" });
     assert.deepEqual(listed.indent, { left: 720, firstLine: 360 });
@@ -99,12 +99,12 @@ test("reads run marks, a list, spacing, a link, a break, and a picture", async (
     assert.equal(listed.runs[0]?.bookmark, "here");
   }
   assert.equal(parsed.numbering?.["1"]?.[0]?.text, "%1.");
-  if (!isDocTable(linked)) assert.equal(linked.runs[0]?.link, "https://example.com");
-  if (!isDocTable(broken)) {
+  if (isDocParagraph(linked)) assert.equal(linked.runs[0]?.link, "https://example.com");
+  if (isDocParagraph(broken)) {
     assert.equal(broken.runs[0]?.breakBefore, "page");
     assert.equal(broken.runs[0]?.tabBefore, true);
   }
-  if (!isDocTable(picture)) {
+  if (isDocParagraph(picture)) {
     assert.equal(picture.runs[0]?.image, "rImg");
     assert.equal(picture.runs[0]?.imageType, "image/png");
     assert.ok((picture.runs[0]?.imageBytes?.length ?? 0) > 0);

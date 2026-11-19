@@ -6,3 +6,4 @@ export interface OfficeArchive {
     getText(path: string): string | undefined;
 }
 export declare function loadArchive(input: Uint8Array): OfficeArchive;
+//# sourceMappingURL=zip.d.ts.map

@@ -5,3 +5,4 @@ export { blankDocument } from "./blank.js";
  * every other original part goes back unchanged, plus a relationship for each new link.
  */
 export declare function writeDocx(document: Document): Uint8Array;
+//# sourceMappingURL=index.d.ts.map

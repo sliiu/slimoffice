@@ -4,10 +4,16 @@ exports.blankDocument = void 0;
 exports.writeDocx = writeDocx;
 const document_core_1 = require("@sliiu/document-core");
 const fflate_1 = require("fflate");
-const body_1 = require("./body");
-var blank_1 = require("./blank");
+const body_1 = require("./body.js");
+var blank_1 = require("./blank.js");
 Object.defineProperty(exports, "blankDocument", { enumerable: true, get: function () { return blank_1.blankDocument; } });
 const RELS = "word/_rels/document.xml.rels";
+const NUMBERING = "word/numbering.xml";
+const NUMBERING_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering";
+const NUMBERING_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml";
+const STYLES = "word/styles.xml";
+const STYLES_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles";
+const STYLES_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml";
 const RELS_NS = "http://schemas.openxmlformats.org/package/2006/relationships";
 const IMAGE_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image";
 const CONTENT_TYPES = "[Content_Types].xml";
@@ -31,19 +37,42 @@ function writeDocx(document) {
         throw new Error("This document has no original parts to write back");
     }
     const files = {};
+    if (document.edited) {
+        withHyphenation(document);
+        withProtection(document);
+    }
     for (const [path, bytes] of document.source)
         files[path] = bytes;
     const story = document.source.get("word/document.xml");
     if (document.edited && story) {
         const relationships = readRelationships(document.source.get(RELS));
         const pictures = pictureRelationships(document, relationships);
+        const numbering = numberingPart(document, relationships);
+        const styles = stylesPart(document, relationships);
+        const extras = referenceParts(document);
+        const notes = noteParts(document);
+        const comments = commentPart(document, relationships);
         const edited = (0, body_1.applyDocumentEdits)(withBackground((0, fflate_1.strFromU8)(story), document), document, relationships);
+        const stories = storyParts(document, edited.parts, new Set(document.source?.keys() ?? []));
         files["word/document.xml"] = (0, fflate_1.strToU8)(edited.xml);
-        const added = [...edited.added, ...pictures.added];
+        for (const [path, xml] of notes.files)
+            files[path] = (0, fflate_1.strToU8)(xml);
+        for (const [path, xml] of stories)
+            files[path] = (0, fflate_1.strToU8)(xml);
+        if (comments.xml)
+            files[COMMENTS] = (0, fflate_1.strToU8)(comments.xml);
+        const added = [...edited.added, ...pictures.added, ...(numbering.relationship ? [numbering.relationship] : []), ...(styles.relationship ? [styles.relationship] : []), ...extras.relationships, ...notes.relationships, ...(comments.relationship ? [comments.relationship] : [])];
+        if (numbering.xml)
+            files[NUMBERING] = (0, fflate_1.strToU8)(numbering.xml);
+        if (styles.xml)
+            files[STYLES] = (0, fflate_1.strToU8)(styles.xml);
+        for (const [path, xml] of extras.files)
+            files[path] = (0, fflate_1.strToU8)(xml);
         if (added.length)
             files[RELS] = (0, fflate_1.strToU8)(addRelationships((0, fflate_1.strFromU8)(files[RELS] ?? new Uint8Array()), added));
-        if (pictures.types.length)
-            files[CONTENT_TYPES] = (0, fflate_1.strToU8)(addContentTypes((0, fflate_1.strFromU8)(files[CONTENT_TYPES] ?? new Uint8Array()), pictures.types));
+        const types = [...pictures.types, ...(numbering.override ? ["numbering"] : []), ...(styles.override ? ["styles"] : []), ...extras.types, ...notes.types, ...edited.parts, ...(comments.override ? ["comment"] : [])];
+        if (types.length)
+            files[CONTENT_TYPES] = (0, fflate_1.strToU8)(addContentTypes((0, fflate_1.strFromU8)(files[CONTENT_TYPES] ?? new Uint8Array()), types));
     }
     return (0, fflate_1.zipSync)(files);
 }
@@ -55,7 +84,7 @@ function pictureRelationships(document, relationships) {
     const seen = new Set();
     for (const section of document.sections) {
         for (const block of section.blocks) {
-            if ((0, document_core_1.isDocTable)(block))
+            if ((0, document_core_1.isDocTable)(block) || (0, document_core_1.isDocRaw)(block))
                 continue;
             for (const run of block.runs) {
                 if (!run.image || known.has(run.image) || seen.has(run.image))
@@ -85,6 +114,331 @@ function storedPicture(document, id) {
         return { target: path.slice("word/".length), extension };
     }
     return undefined;
+}
+/**
+ * Writes numbering definitions the story points at that the original numbering.xml does not have,
+ * which is how a list started inside the editor survives a round trip.
+ */
+function numberingPart(document, relationships) {
+    const used = numberingIds(document);
+    if (!used.size)
+        return { override: false };
+    const existing = document.source?.get(NUMBERING);
+    const xml = existing ? (0, fflate_1.strFromU8)(existing) : "";
+    const present = new Set([...xml.matchAll(/<w:num\b[^>]*w:numId="(\d+)"/gi)].map((match) => match[1]));
+    const missing = [...used].filter((id) => /^\d+$/.test(id) && !present.has(id));
+    if (!missing.length)
+        return { override: false };
+    const nextAbstract = Math.max(0, ...[...xml.matchAll(/<w:abstractNum\b[^>]*w:abstractNumId="(\d+)"/gi)].map((match) => Number(match[1]))) + 1;
+    const built = missing.map((id, index) => abstractXml(nextAbstract + index, document.numbering?.[id] ?? [])).join("");
+    const nums = missing.map((id, index) => `<w:num w:numId="${id}"><w:abstractNumId w:val="${nextAbstract + index}"/></w:num>`).join("");
+    const linked = relationships.some((item) => item.type === NUMBERING_REL);
+    const relationship = linked ? undefined : { id: freshId(relationships), type: NUMBERING_REL, target: "numbering.xml", external: false };
+    if (/<\/w:numbering>/i.test(xml))
+        return { xml: xml.replace(/<\/w:numbering>/i, `${built}${nums}</w:numbering>`), relationship, override: !existing };
+    return {
+        xml: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${built}${nums}</w:numbering>`,
+        relationship,
+        override: true,
+    };
+}
+/**
+ * Writes a style the story uses that the original styles.xml does not define,
+ * so a style applied inside the editor keeps its formatting on the way back out.
+ */
+function stylesPart(document, relationships) {
+    const used = styleIds(document);
+    if (!used.size)
+        return { override: false };
+    const existing = document.source?.get(STYLES);
+    const xml = existing ? (0, fflate_1.strFromU8)(existing) : "";
+    const present = new Set([...xml.matchAll(/<w:style\b[^>]*w:styleId="([^"]*)"/gi)].map((match) => match[1]));
+    const missing = [...used].filter((id) => !present.has(id) && document.styles?.[id]);
+    if (!missing.length)
+        return { override: false };
+    const built = missing.map((id) => styleXml(id, document.styles?.[id])).join("");
+    const linked = relationships.some((item) => item.type === STYLES_REL);
+    const relationship = linked ? undefined : { id: freshId(relationships), type: STYLES_REL, target: "styles.xml", external: false };
+    if (/<\/w:styles>/i.test(xml))
+        return { xml: xml.replace(/<\/w:styles>/i, `${built}</w:styles>`), relationship, override: !existing };
+    return {
+        xml: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${built}</w:styles>`,
+        relationship,
+        override: true,
+    };
+}
+function styleIds(document) {
+    const ids = new Set();
+    for (const section of document.sections) {
+        for (const block of section.blocks) {
+            if (!(0, document_core_1.isDocTable)(block) && !(0, document_core_1.isDocRaw)(block) && block.style)
+                ids.add(block.style);
+        }
+    }
+    return ids;
+}
+function styleXml(id, style) {
+    if (!style)
+        return "";
+    const based = style.basedOn ? `<w:basedOn w:val="${escapeAttr(style.basedOn)}"/>` : "";
+    const align = style.align && style.align !== "left" ? `<w:pPr><w:jc w:val="${style.align}"/></w:pPr>` : "";
+    const run = [];
+    if (style.bold)
+        run.push("<w:b/>");
+    if (style.italic)
+        run.push("<w:i/>");
+    if (style.font)
+        run.push(`<w:rFonts w:ascii="${escapeAttr(style.font)}" w:hAnsi="${escapeAttr(style.font)}"/>`);
+    if (style.fontSize)
+        run.push(`<w:sz w:val="${Math.round(style.fontSize * 2)}"/>`);
+    if (style.color)
+        run.push(`<w:color w:val="${escapeAttr(style.color.replace(/^#/, ""))}"/>`);
+    const runProps = run.length ? `<w:rPr>${run.join("")}</w:rPr>` : "";
+    return `<w:style w:type="paragraph" w:styleId="${escapeAttr(id)}"><w:name w:val="${escapeAttr(id)}"/>${based}${align}${runProps}</w:style>`;
+}
+function numberingIds(document) {
+    const ids = new Set();
+    for (const section of document.sections) {
+        for (const block of section.blocks) {
+            if (!(0, document_core_1.isDocTable)(block) && !(0, document_core_1.isDocRaw)(block) && block.numbering)
+                ids.add(block.numbering.id);
+        }
+    }
+    return ids;
+}
+function abstractXml(id, levels) {
+    const defined = levels.length ? levels : [{ text: "%1." }];
+    const body = defined
+        .map((level, index) => {
+        const text = level?.text || "%1.";
+        const format = level?.format || (level?.bullet || !text.includes("%") ? "bullet" : "decimal");
+        const start = level?.start && level.start !== 1 ? level.start : 1;
+        return `<w:lvl w:ilvl="${index}"><w:start w:val="${start}"/><w:numFmt w:val="${escapeAttr(format)}"/><w:lvlText w:val="${escapeAttr(text)}"/></w:lvl>`;
+    })
+        .join("");
+    return `<w:abstractNum w:abstractNumId="${id}">${body}</w:abstractNum>`;
+}
+const CUSTOM_XML_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml";
+/**
+ * Writes the bibliography and the mail-merge recipient list into custom XML parts when the
+ * document carries them and the package does not already.
+ */
+function referenceParts(document) {
+    const files = [];
+    const relationships = [];
+    let next = nextItem(document);
+    if (document.sources?.length && !hasCustom(document, "b:sources")) {
+        const path = `customXml/item${next}.xml`;
+        files.push([path, sourcesXml(document.sources)]);
+        relationships.push({ id: `rIdSrc${next}`, type: CUSTOM_XML_REL, target: `../${path}`, external: false });
+        next += 1;
+    }
+    if (document.recipients?.length && !hasCustom(document, "recipients")) {
+        const path = `customXml/item${next}.xml`;
+        files.push([path, recipientsXml(document.recipients)]);
+        relationships.push({ id: `rIdRecipients${next}`, type: CUSTOM_XML_REL, target: `../${path}`, external: false });
+    }
+    return { files, relationships, types: files.length ? ["customXml"] : [] };
+}
+function nextItem(document) {
+    const used = [...(document.source?.keys() ?? [])]
+        .map((path) => /^customXml\/item(\d+)\.xml$/i.exec(path)?.[1])
+        .filter((value) => !!value)
+        .map(Number);
+    return Math.max(0, ...used) + 1;
+}
+function hasCustom(document, rootName) {
+    for (const [path, bytes] of document.source ?? []) {
+        if (!/^customXml\/item\d+\.xml$/i.test(path))
+            continue;
+        if (new RegExp(`<(?:[\\w-]+:)?${rootName}\\b`).test((0, fflate_1.strFromU8)(bytes)))
+            return true;
+    }
+    return false;
+}
+function sourcesXml(sources) {
+    const body = sources
+        .map((item) => {
+        const names = item.authors
+            .split(/\s*,\s*/)
+            .map((person) => {
+            const parts = person.trim().split(/\s+/);
+            const last = parts.at(-1) ?? person;
+            const first = parts.slice(0, -1).join(" ");
+            return `<b:person><b:last>${escapeXml(last)}</b:last><b:first>${escapeXml(first)}</b:first></b:person>`;
+        })
+            .join("");
+        const publisher = item.publisher ? `<b:publisher>${escapeXml(item.publisher)}</b:publisher>` : "";
+        return `<b:source><b:tag>${escapeXml(item.tag)}</b:tag><b:sourceType>${escapeXml(item.type)}</b:sourceType><b:title>${escapeXml(item.title)}</b:title><b:year>${escapeXml(item.year)}</b:year>${publisher}<b:author><b:nameList>${names}</b:nameList></b:author></b:source>`;
+    })
+        .join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><b:sources xmlns:b="http://schemas.openxmlformats.org/officeDocument/2006/bibliography">${body}</b:sources>`;
+}
+function recipientsXml(recipients) {
+    const body = recipients
+        .map((recipient) => {
+        const columns = Object.entries(recipient.fields)
+            .map(([name, value]) => `<${safeName(name)}>${escapeXml(value)}</${safeName(name)}>`)
+            .join("");
+        return `<recipient>${columns}</recipient>`;
+    })
+        .join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><recipients>${body}</recipients>`;
+}
+const HEADER_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml";
+const FOOTER_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml";
+/** Writes each header and footer. An existing story goes back to its part; a new one uses the path the section reference was given. */
+function storyParts(document, created, used) {
+    const files = [];
+    const pending = [...created];
+    const take = (kind) => {
+        const index = pending.findIndex((path) => path.startsWith(`word/${kind}`));
+        if (index >= 0)
+            return pending.splice(index, 1)[0];
+        let next = 1;
+        while (used.has(`word/${kind}${next}.xml`))
+            next += 1;
+        const path = `word/${kind}${next}.xml`;
+        used.add(path);
+        return path;
+    };
+    const write = (paragraphs, part, root) => {
+        if (!paragraphs?.length)
+            return;
+        const path = part ?? take(root === "hdr" ? "header" : "footer");
+        if (path)
+            files.push([path, (0, body_1.storyPartXml)(root, paragraphs)]);
+    };
+    for (const section of document.sections) {
+        write(section.header, section.headerPart, "hdr");
+        write(section.firstHeader, section.firstHeaderPart, "hdr");
+        write(section.evenHeader, section.evenHeaderPart, "hdr");
+        write(section.footer, section.footerPart, "ftr");
+        write(section.firstFooter, section.firstFooterPart, "ftr");
+        write(section.evenFooter, section.evenFooterPart, "ftr");
+    }
+    return files;
+}
+const COMMENTS = "word/comments.xml";
+const COMMENT_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments";
+const COMMENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml";
+/** Writes word/comments.xml from the comments the model holds, and links it when the package has none. */
+function commentPart(document, relationships) {
+    const comments = document.comments ?? [];
+    if (!comments.length)
+        return { override: false };
+    const existing = document.source?.has(COMMENTS) ?? false;
+    const linked = relationships.some((item) => item.type === COMMENT_REL);
+    return {
+        xml: commentsXml(comments),
+        relationship: linked ? undefined : { id: freshId(relationships), type: COMMENT_REL, target: "comments.xml", external: false },
+        override: !existing,
+    };
+}
+function commentsXml(comments) {
+    const body = comments
+        .map((comment) => `<w:comment w:id="${escapeAttr(comment.id)}" w:author="${escapeAttr(comment.author)}"><w:p><w:r><w:t xml:space="preserve">${escapeXml(comment.text)}</w:t></w:r></w:p></w:comment>`)
+        .join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${body}</w:comments>`;
+}
+const FOOTNOTE_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes";
+const ENDNOTE_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes";
+const FOOTNOTE_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml";
+const ENDNOTE_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml";
+/** Writes footnote and endnote bodies back. A note added in the editor gets a new part; an edited one replaces the text inside the original. */
+function noteParts(document) {
+    const collected = collectNotes(document);
+    const files = [];
+    const relationships = [];
+    const types = [];
+    const write = (kind, path, type, rel) => {
+        const notes = collected.get(kind);
+        if (!notes?.size)
+            return;
+        const existing = document.source?.get(path);
+        if (existing) {
+            let xml = (0, fflate_1.strFromU8)(existing);
+            for (const [id, text] of notes)
+                xml = replaceNoteText(xml, kind, id, text);
+            files.push([path, xml]);
+            return;
+        }
+        files.push([path, notePartXml(kind, notes)]);
+        relationships.push({ id: freshId([]), type: rel, target: path.slice("word/".length), external: false });
+        types.push(kind);
+    };
+    write("footnote", "word/footnotes.xml", FOOTNOTE_TYPE, FOOTNOTE_REL);
+    write("endnote", "word/endnotes.xml", ENDNOTE_TYPE, ENDNOTE_REL);
+    return { files, relationships, types };
+}
+function collectNotes(document) {
+    const found = new Map();
+    for (const section of document.sections) {
+        for (const block of section.blocks) {
+            if (!(0, document_core_1.isDocParagraph)(block) || !block.note)
+                continue;
+            const bucket = found.get(block.note.kind) ?? new Map();
+            bucket.set(block.note.id, block.runs.filter((run) => !run.deleted).map((run) => run.text).join(""));
+            found.set(block.note.kind, bucket);
+        }
+    }
+    return found;
+}
+/** Replaces the text of one note, keeping its reference marker and the rest of the part. */
+function replaceNoteText(xml, kind, id, value) {
+    const pattern = new RegExp(`(<w:${kind}\\b[^>]*w:id="${id}"[^>]*>)([\\s\\S]*?)(</w:${kind}>)`, "i");
+    return xml.replace(pattern, (_match, open, body, close) => {
+        const marker = new RegExp(`<w:${kind}Ref\\b[^>]*/>`, "i").exec(body)?.[0] ?? "";
+        return `${open}<w:p>${marker}<w:r><w:t xml:space="preserve">${escapeXml(value)}</w:t></w:r></w:p>${close}`;
+    });
+}
+function notePartXml(kind, notes) {
+    const root = kind === "footnote" ? "footnotes" : "endnotes";
+    const body = [...notes.entries()]
+        .map(([id, value]) => `<w:${kind} w:id="${id}"><w:p><w:r><w:${kind}Ref/></w:r><w:r><w:t xml:space="preserve">${escapeXml(value)}</w:t></w:r></w:p></w:${kind}>`)
+        .join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:${root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${body}</w:${root}>`;
+}
+function safeName(name) {
+    const clean = name.replace(/[^A-Za-z0-9_]/g, "");
+    return /^[A-Za-z_]/.test(clean) ? clean : `f${clean}`;
+}
+function escapeXml(value) {
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function freshId(relationships) {
+    const used = new Set(relationships.map((item) => item.id));
+    let next = used.size + 1;
+    while (used.has(`rId${next}`))
+        next += 1;
+    return `rId${next}`;
+}
+/** Hyphenation lives in word/settings.xml. The part is created when the document did not have one. */
+function withHyphenation(document) {
+    const source = document.source;
+    if (!source)
+        return;
+    const settings = source.get("word/settings.xml");
+    if (!settings) {
+        if (document.hyphenation)
+            source.set("word/settings.xml", (0, fflate_1.strToU8)(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:autoHyphenation w:val="true"/></w:settings>`));
+        return;
+    }
+    const stripped = (0, fflate_1.strFromU8)(settings).replace(/<w:autoHyphenation\b[^>]*\/>/gi, "");
+    const next = document.hyphenation ? stripped.replace(/<\/w:settings>/i, `<w:autoHyphenation w:val="true"/></w:settings>`) : stripped;
+    source.set("word/settings.xml", (0, fflate_1.strToU8)(next));
+}
+/** Read only protection lives in word/settings.xml, next to hyphenation. */
+function withProtection(document) {
+    const source = document.source;
+    if (!source)
+        return;
+    const settings = source.get("word/settings.xml");
+    const text = settings ? (0, fflate_1.strFromU8)(settings) : `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"></w:settings>`;
+    const stripped = text.replace(/<w:documentProtection\b[^>]*\/>/gi, "");
+    const next = document.readOnly ? stripped.replace(/<\/w:settings>/i, `<w:documentProtection w:edit="readOnly"/></w:settings>`) : stripped;
+    if (next !== text || !settings)
+        source.set("word/settings.xml", (0, fflate_1.strToU8)(next));
 }
 /** Page color lives on w:background, one per document, not inside a section. */
 function withBackground(xml, document) {
@@ -129,7 +483,23 @@ function addContentTypes(xml, extensions) {
     if (!fresh.length)
         return xml;
     const rows = [...new Set(fresh)]
-        .map((extension) => `<Default Extension="${extension}" ContentType="${IMAGE_MIME[extension]}"/>`)
+        .map((extension) => extension === "numbering"
+        ? `<Override PartName="/word/numbering.xml" ContentType="${NUMBERING_TYPE}"/>`
+        : extension === "styles"
+            ? `<Override PartName="/word/styles.xml" ContentType="${STYLES_TYPE}"/>`
+            : extension === "customXml"
+                ? `<Default Extension="xml" ContentType="application/xml"/>`
+                : extension === "footnote"
+                    ? `<Override PartName="/word/footnotes.xml" ContentType="${FOOTNOTE_TYPE}"/>`
+                    : extension === "endnote"
+                        ? `<Override PartName="/word/endnotes.xml" ContentType="${ENDNOTE_TYPE}"/>`
+                        : extension.startsWith("word/header")
+                            ? `<Override PartName="/${extension}" ContentType="${HEADER_TYPE}"/>`
+                            : extension.startsWith("word/footer")
+                                ? `<Override PartName="/${extension}" ContentType="${FOOTER_TYPE}"/>`
+                                : extension === "comment"
+                                    ? `<Override PartName="/word/comments.xml" ContentType="${COMMENT_TYPE}"/>`
+                                    : `<Default Extension="${extension}" ContentType="${IMAGE_MIME[extension]}"/>`)
         .join("");
     if (/<\/Types>/i.test(xml))
         return xml.replace(/<\/Types>/i, `${rows}</Types>`);

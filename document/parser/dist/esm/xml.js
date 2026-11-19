@@ -8,8 +8,56 @@ const parser = new XMLParser({
     trimValues: false,
     preserveOrder: true,
 });
+/** Keeps namespace prefixes, used only when markup has to be written back unchanged. */
+const prefixed = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@_",
+    removeNSPrefix: false,
+    parseAttributeValue: false,
+    parseTagValue: false,
+    trimValues: false,
+    preserveOrder: true,
+});
 export function parseXml(input) {
     return nodeFrom(parser.parse(input));
+}
+/** Parses one element and returns its markup with the original prefixes, so it can be written back unchanged. */
+export function keepMarkup(input) {
+    const items = prefixed.parse(input);
+    const node = nodeFrom(items);
+    const first = ordered(node)[0];
+    return first ? serialize(first.name, first.node) : "";
+}
+/** The body of a document, parsed with prefixes kept, in document order. */
+export function keptBody(input) {
+    const parsed = nodeFrom(prefixed.parse(input));
+    const root = ordered(parsed).find((item) => item.name === "document" || item.name.endsWith(":document"))?.node;
+    const body = root ? ordered(root).find((item) => item.name === "body" || item.name.endsWith(":body"))?.node : undefined;
+    return body ? ordered(body) : [];
+}
+/**
+ * One element's markup with its original prefixes. `path` is the local name at each level,
+ * and `occurrence` counts how many earlier siblings share that name, so the prefixed tree
+ * lines up with the tree that had its prefixes removed.
+ */
+export function keptAt(items, index, path) {
+    let current = items[index];
+    for (const [local, signature, occurrence] of path) {
+        const same = current ? ordered(current.node).filter((item) => localName(item.name) === local && attrSignature(item.node) === signature) : [];
+        current = same[occurrence];
+    }
+    return current ? serialize(current.name, current.node) : "";
+}
+function attrSignature(node) {
+    return Object.entries(node)
+        .filter(([key]) => key.startsWith("@_"))
+        .map(([key, value]) => `${localName(key.slice(2))}=${String(value)}`)
+        .sort()
+        .join(",");
+}
+function localName(name) {
+    const colon = name.indexOf(":");
+    return colon < 0 ? name : name.slice(colon + 1);
 }
 /** Children in the order they appear in the file. */
 export function ordered(node) {
@@ -39,6 +87,22 @@ export function text(node) {
     if (typeof value === "number")
         return String(value);
     return "";
+}
+/** The markup of one node, with its attributes and children, so a part the model does not edit can be written back as it was. */
+export function serialize(name, node) {
+    const attrs = Object.entries(node)
+        .filter(([key]) => key.startsWith("@_"))
+        .map(([key, value]) => ` ${key.slice(2)}="${escapeXml(String(value))}"`)
+        .join("");
+    const body = ordered(node)
+        .map((item) => serialize(item.name, item.node))
+        .join("");
+    const own = typeof node["#text"] === "string" || typeof node["#text"] === "number" ? escapeXml(String(node["#text"])) : "";
+    const inner = `${own}${body}`;
+    return inner ? `<${name}${attrs}>${inner}</${name}>` : `<${name}${attrs}/>`;
+}
+function escapeXml(value) {
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function nodeFrom(items) {
     const node = {};

@@ -66,3 +66,34 @@ test("writes a relationship and a content type for a picture added after opening
   assert.match(strFromU8(out["[Content_Types].xml"]!), /Extension="png" ContentType="image\/png"/);
   assert.deepEqual(out["word/media/rIdImg1.png"], png);
 });
+
+test("writes a numbering part for a list started inside the editor", () => {
+  const story = `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>One</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="12240" w:h="15840"/></w:sectPr></w:body></w:document>`;
+  const source = new Map<string, Uint8Array>([
+    ["word/document.xml", strToU8(story)],
+    ["[Content_Types].xml", strToU8(`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`)],
+  ]);
+  const out = unzipSync(writeDocx({
+    edited: true,
+    source,
+    numbering: { "1": [{ text: "%1." }] },
+    sections: [{ page: PAGE, header: [], footer: [], blocks: [{ runs: [{ text: "One" }], numbering: { id: "1", level: 0 } }] }],
+  }));
+  const numbering = strFromU8(out["word/numbering.xml"]!);
+  assert.match(numbering, /<w:num w:numId="1"><w:abstractNumId w:val="1"\/><\/w:num>/);
+  assert.match(numbering, /<w:lvlText w:val="%1\."\/>/);
+  assert.match(strFromU8(out["word/_rels/document.xml.rels"]!), /Target="numbering\.xml"/);
+  assert.match(strFromU8(out["[Content_Types].xml"]!), /PartName="\/word\/numbering\.xml"/);
+  assert.match(strFromU8(out["word/document.xml"]!), /<w:numId w:val="1"\/>/);
+});
+
+test("writes the picture extent it was given", () => {
+  const story = `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:p><w:r><w:t>Body</w:t></w:r></w:p><w:sectPr/></w:body></w:document>`;
+  const source = new Map<string, Uint8Array>([["word/document.xml", strToU8(story)]]);
+  const out = unzipSync(writeDocx({
+    edited: true,
+    source,
+    sections: [{ page: PAGE, header: [], footer: [], blocks: [{ runs: [{ text: "", image: "rPic", imageWidth: 914400, imageHeight: 457200 }] }] }],
+  }));
+  assert.match(strFromU8(out["word/document.xml"]!), /<wp:extent cx="914400" cy="457200"\/>/);
+});

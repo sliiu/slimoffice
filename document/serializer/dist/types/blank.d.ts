@@ -4,3 +4,4 @@ export declare function blankDocument(blocks?: DocBlock[]): {
     bytes: Uint8Array;
     document: Document;
 };
+//# sourceMappingURL=blank.d.ts.map
