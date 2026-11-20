@@ -31,7 +31,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      # 定时任务只在默认分支 main 上触发，而 main 没有 package.json。
+      # 定时发布改从 nightly 检出；手动触发和 tag 仍用触发时的提交。
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'nightly' || github.sha }}
 
       - uses: pnpm/action-setup@v4
 
@@ -144,13 +148,14 @@ jobs:
           if [ -f "$npmrc" ]; then
             sed -i '/_authToken/d' "$npmrc"
           fi
-          order="present/animation present/core present/parser present/plugin-sdk present/three-bake present/renderer present/transition-fx present/player present/themes present/ui present/editor present/serializer present/ai document/core document/renderer document/editor document/parser document/serializer sheet/core sheet/parser sheet/renderer sheet/serializer"
+          order="present/animation present/core present/parser present/plugin-sdk present/three-bake present/renderer present/transition-fx present/player present/themes present/ui present/editor present/serializer present/ai document/core document/renderer document/editor document/parser document/serializer sheet/core sheet/formula sheet/parser sheet/renderer sheet/serializer"
           tag=latest
           if [ "${{ steps.ver.outputs.channel }}" != "stable" ]; then tag=nightly; fi
           failed=
           for name in $order; do
             log=$(mktemp)
-            if npm publish "$name" --access public --tag "$tag" >"$log" 2>&1; then
+            # A one-slash path is a GitHub user/repo shorthand. The leading ./ keeps it a local directory.
+            if npm publish "./$name" --access public --tag "$tag" >"$log" 2>&1; then
               cat "$log"
             elif grep -q "previously published" "$log"; then
               echo "skip $name (already published)"
