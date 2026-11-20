@@ -144,7 +144,7 @@ jobs:
           if [ -f "$npmrc" ]; then
             sed -i '/_authToken/d' "$npmrc"
           fi
-          order="present/animation present/core present/parser present/plugin-sdk present/three-bake present/renderer present/transition-fx present/player present/themes present/ui present/editor present/serializer present/ai document/core document/renderer document/editor document/parser document/serializer sheet/core sheet/parser sheet/renderer sheet/serializer"
+          order="present/animation present/core present/parser present/plugin-sdk present/three-bake present/renderer present/transition-fx present/player present/themes present/ui present/editor present/serializer present/ai document/core document/renderer document/editor document/parser document/serializer sheet/core sheet/formula sheet/parser sheet/renderer sheet/serializer"
           tag=latest
           if [ "${{ steps.ver.outputs.channel }}" != "stable" ]; then tag=nightly; fi
           failed=
