@@ -150,46 +150,29 @@ function attachNotes(sections, notes) {
         section.blocks = blocks;
     }
 }
-/** The text inside a block, joined across its nested elements. */
-/** A formula laid out as pieces: a fraction stacks, a script shifts, a radical roots, and the rest stays text. */
+/** A formula laid out as pieces. Each text node stays its own piece, so an edit writes back into that node. */
 function formulaOf(node) {
     const pieces = [];
-    let words = "";
-    const flush = () => {
-        if (words)
-            pieces.push({ text: words });
-        words = "";
-    };
     for (const item of ordered(node)) {
         const name = item.name.includes(":") ? item.name.slice(item.name.indexOf(":") + 1) : item.name;
         if (name === "f") {
-            flush();
             pieces.push({ kind: "frac", top: formulaOf(child(item.node, "num") ?? {}), bottom: formulaOf(child(item.node, "den") ?? {}) });
         }
         else if (name === "sSup" || name === "sSub") {
-            flush();
             pieces.push({ kind: name === "sSup" ? "sup" : "sub", base: formulaOf(child(item.node, "e") ?? {}), script: formulaOf(child(item.node, name === "sSup" ? "sup" : "sub") ?? {}) });
         }
         else if (name === "rad") {
-            flush();
             pieces.push({ kind: "root", body: formulaOf(child(item.node, "e") ?? {}), degree: formulaOf(child(item.node, "deg") ?? {}) });
         }
         else if (name === "t") {
-            words += text(item.node);
+            const value = text(item.node);
+            if (value)
+                pieces.push({ text: value });
         }
         else {
-            const inner = formulaOf(item.node);
-            for (const piece of inner) {
-                if ("text" in piece)
-                    words += piece.text;
-                else {
-                    flush();
-                    pieces.push(piece);
-                }
-            }
+            pieces.push(...formulaOf(item.node));
         }
     }
-    flush();
     return pieces;
 }
 function visibleText(node) {

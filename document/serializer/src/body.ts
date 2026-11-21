@@ -82,10 +82,27 @@ function linkIds(relationships: Relationship[]): LinkIds {
 
 /** A kept block with its text put back into the markup, so an edit to a content control or a formula is not lost. */
 function rawXml(block: DocRawBlock): string {
+  if (block.formula?.length) return formulaXml(block.raw, formulaTexts(block.formula));
   if (block.text === undefined) return block.raw;
   const original = block.raw.replace(/<[^>]+>/g, "").trim();
   if (!original || original === block.text) return block.raw;
   return block.raw.replace(original, text(block.text));
+}
+
+/** The words of a formula, in the order its text nodes were read. */
+function formulaTexts(pieces: NonNullable<DocRawBlock["formula"]>): string[] {
+  return pieces.flatMap((piece) => ("text" in piece ? [piece.text] : formulaTexts("top" in piece ? [...piece.top, ...piece.bottom] : "degree" in piece ? [...piece.body, ...piece.degree] : [...piece.base, ...piece.script])));
+}
+
+/** Puts each edited word back into its own text node, leaving the formula's structure alone. */
+function formulaXml(raw: string, words: string[]): string {
+  let index = 0;
+  return raw.replace(/>([^<]*)</g, (match, value: string) => {
+    if (!value.trim() || index >= words.length) return match;
+    const word = words[index];
+    index += 1;
+    return word === undefined || word === value ? match : `>${text(word)}<`;
+  });
 }
 
 function sectionsXml(sections: DocSection[], originals: string[], links: LinkIds, added: Relationship[], parts: string[]): string {

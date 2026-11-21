@@ -538,7 +538,10 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
   function rawBlock(block: DocRawBlock): HTMLElement {
     const node = el("div", "doc-raw");
     if (block.formula?.length) {
-      node.append(formulaNode(block.formula));
+      node.append(formulaNode(block.formula, () => {
+        block.text = formulaPlain(block.formula);
+        touch();
+      }));
       return node;
     }
     node.contentEditable = "true";
@@ -558,25 +561,45 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     return node;
   }
 
-  /** A formula laid out: a fraction stacks over a bar, a script shifts, a radical roots. */
-  function formulaNode(pieces: DocFormula[]): HTMLElement {
+  /** The words of a formula, in the order its text nodes were read. */
+  function formulaPlain(pieces: DocFormula[] | undefined): string {
+    return (pieces ?? []).map((piece) => ("text" in piece ? piece.text : formulaPlain("top" in piece ? [...piece.top, ...piece.bottom] : "degree" in piece ? [...piece.body, ...piece.degree] : [...piece.base, ...piece.script]))).join("");
+  }
+
+  /** A formula laid out: a fraction stacks over a bar, a script shifts, a radical roots. Its words can be edited; the structure stays. */
+  function formulaNode(pieces: DocFormula[], edited: () => void): HTMLElement {
     const node = el("span", "doc-formula");
     for (const piece of pieces) {
       if ("text" in piece) {
-        node.append(document.createTextNode(piece.text));
+        const word = document.createElement("span");
+        word.textContent = piece.text;
+        if (!doc.readOnly) word.contentEditable = "true";
+        word.addEventListener("focus", () => {
+          arm();
+          options.onSelection?.();
+        });
+        word.addEventListener("input", () => {
+          if (doc.readOnly) {
+            word.textContent = piece.text;
+            return;
+          }
+          piece.text = word.textContent ?? "";
+          edited();
+        });
+        node.append(word);
         continue;
       }
       if (piece.kind === "frac") {
         const frac = el("span", "doc-frac");
-        frac.append(formulaNode(piece.top), formulaNode(piece.bottom));
+        frac.append(formulaNode(piece.top, edited), formulaNode(piece.bottom, edited));
         node.append(frac);
       } else if (piece.kind === "root") {
         const root = el("span", "doc-root");
-        root.append(document.createTextNode("√"), formulaNode(piece.body));
+        root.append(document.createTextNode("√"), formulaNode(piece.body, edited));
         node.append(root);
       } else {
         const script = el("span", piece.kind === "sup" ? "doc-sup" : "doc-sub");
-        script.append(formulaNode(piece.base), formulaNode(piece.script));
+        script.append(formulaNode(piece.base, edited), formulaNode(piece.script, edited));
         node.append(script);
       }
     }
