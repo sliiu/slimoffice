@@ -100,6 +100,45 @@ export function styleBook(stylesXml: string | undefined, sheets: Worksheet[]): S
   return { xml, indexFor };
 }
 
+export function sheetFrameXml(sheet: Worksheet): string {
+  const cols = colXml(sheet);
+  const merges = mergeXml(sheet);
+  const view = sheetViewXml(sheet);
+  return `${view}${cols}${merges}`;
+}
+
+function colXml(sheet: Worksheet): string {
+  const widths = sheet.colWidths ?? [];
+  const hidden = new Set(sheet.hiddenCols ?? []);
+  const indexes = new Set<number>([...widths.keys(), ...hidden]);
+  const cols = [...indexes]
+    .filter((column) => widths[column] != null || hidden.has(column))
+    .sort((a, b) => a - b)
+    .map((column) => {
+      const width = widths[column];
+      const sized = width != null ? ` width="${width}" customWidth="1"` : "";
+      const gone = hidden.has(column) ? ' hidden="1"' : "";
+      return `<col min="${column + 1}" max="${column + 1}"${sized}${gone}/>`;
+    });
+  return cols.length ? `<cols>${cols.join("")}</cols>` : "";
+}
+
+function mergeXml(sheet: Worksheet): string {
+  const merges = sheet.merges ?? [];
+  if (!merges.length) return "";
+  const cells = merges.map((merge) => `<mergeCell ref="${colName(merge.c1)}${merge.r1 + 1}:${colName(merge.c2)}${merge.r2 + 1}"/>`);
+  return `<mergeCells count="${cells.length}">${cells.join("")}</mergeCells>`;
+}
+
+function sheetViewXml(sheet: Worksheet): string {
+  if (!sheet.freeze) return "";
+  const row = sheet.freeze.row > 0 ? ` ySplit="${sheet.freeze.row}"` : "";
+  const col = sheet.freeze.col > 0 ? ` xSplit="${sheet.freeze.col}"` : "";
+  const state = row || col ? ' state="frozen"' : "";
+  const topLeft = `${colName(sheet.freeze.col)}${sheet.freeze.row + 1}`;
+  return `<sheetViews><sheetView workbookViewId="0"><pane${col}${row}${state} topLeftCell="${topLeft}"/></sheetView></sheetViews>`;
+}
+
 export function autoFilterXml(sheet: Worksheet): string {
   if (!sheet.filter) return "";
   const { r1, c1, r2, c2 } = sheet.filter;

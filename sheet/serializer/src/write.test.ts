@@ -54,6 +54,26 @@ test("writes autoFilter and conditional formatting", () => {
   assert.match(xml, /operator="greaterThan"/);
 });
 
+test("writes merges, column widths, row height, and freeze", () => {
+  const made = blankWorkbook("销售", [[{ value: "标题" }], [{ value: "1" }]]);
+  const sheet = made.workbook.sheets[0]!;
+  sheet.merges = [{ r1: 0, c1: 0, r2: 0, c2: 1 }];
+  sheet.colWidths = [];
+  sheet.colWidths[1] = 18;
+  sheet.hiddenCols = [2];
+  sheet.rowHeights = [24];
+  sheet.hiddenRows = [1];
+  sheet.freeze = { row: 1, col: 1 };
+  made.workbook.edited = true;
+  const xml = new TextDecoder().decode(unzipSync(writeXlsx(made.workbook))["xl/worksheets/sheet1.xml"]);
+  assert.match(xml, /<mergeCell ref="A1:B1"\/>/);
+  assert.match(xml, /<col min="2" max="2" width="18" customWidth="1"\/>/);
+  assert.match(xml, /<col min="3" max="3" hidden="1"\/>/);
+  assert.match(xml, /<row r="1" ht="24" customHeight="1">/);
+  assert.match(xml, /<row r="2" hidden="1">/);
+  assert.match(xml, /<pane xSplit="1" ySplit="1" state="frozen" topLeftCell="B2"\/>/);
+});
+
 test("writes table drawing and validation parts", () => {
   const made = blankWorkbook("销售", [[{ value: "a" }, { value: "1" }], [{ value: "b" }, { value: "2" }]]);
   const sheet = made.workbook.sheets[0]!;

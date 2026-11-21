@@ -1,6 +1,6 @@
 import type { SheetCell, Workbook, Worksheet } from "@sliiu/sheet-core";
 import { drawingFragments } from "./drawing";
-import { autoFilterXml, conditionalFormattingXml, pageSetupXml, styleBook, type StyleBook } from "./styles";
+import { autoFilterXml, conditionalFormattingXml, pageSetupXml, sheetFrameXml, styleBook, type StyleBook } from "./styles";
 
 /**
  * Puts edited cells back into one worksheet.
@@ -30,9 +30,13 @@ export function applySheetEdits(
       written.push(existing);
       continue;
     }
-    written.push(rowXml(row, existing, next ?? [], table, styles));
+    written.push(rowXml(row, existing, next ?? [], sheet, table, styles));
   }
   let xml = sheetXml.slice(0, data.start) + written.join("") + sheetXml.slice(data.end);
+  const frame = sheetFrameXml(sheet);
+  xml = upsertBeforeSheetData(xml, "sheetViews", frame.match(/<sheetViews\b[\s\S]*?<\/sheetViews>/i)?.[0] ?? "");
+  xml = upsertBeforeSheetData(xml, "cols", frame.match(/<cols\b[\s\S]*?<\/cols>/i)?.[0] ?? "");
+  xml = upsertAfterSheetData(xml, "mergeCells", frame.match(/<mergeCells\b[\s\S]*?<\/mergeCells>/i)?.[0] ?? "");
   xml = upsertAfterSheetData(xml, "autoFilter", autoFilterXml(sheet));
   xml = upsertBeforeClose(xml, conditionalFormattingXml(sheet));
   xml = upsertBeforeClose(xml, pageSetupXml(sheet));
@@ -168,7 +172,7 @@ function sheetDataRange(xml: string): { start: number; body: string; end: number
   return { start, body: xml.slice(start, close), end: close };
 }
 
-function rowXml(row: number, existing: string | undefined, cells: SheetCell[], shared: SharedStrings, styles: StyleBook): string {
+function rowXml(row: number, existing: string | undefined, cells: SheetCell[], sheet: Worksheet, shared: SharedStrings, styles: StyleBook): string {
   const kept = new Map<number, string>();
   for (const cellXml of existing?.match(/<c\b[\s\S]*?<\/c>/gi) ?? []) {
     const column = columnIndex(/\br="([A-Z]+)\d+"/i.exec(cellXml)?.[1] ?? "");
@@ -185,7 +189,10 @@ function rowXml(row: number, existing: string | undefined, cells: SheetCell[], s
     }
     written.push(cellXml(columnName(column) + row, cell, prior, shared, styles));
   }
-  return `<row r="${row}">${written.join("")}</row>`;
+  const height = sheet.rowHeights?.[row - 1];
+  const sized = height != null ? ` ht="${height}" customHeight="1"` : "";
+  const hidden = sheet.hiddenRows?.includes(row - 1) ? ' hidden="1"' : "";
+  return `<row r="${row}"${sized}${hidden}>${written.join("")}</row>`;
 }
 
 function cellXml(ref: string, cell: SheetCell, prior: string | undefined, shared: SharedStrings, styles: StyleBook): string {
@@ -283,6 +290,14 @@ function escapeXml(value: string): string {
 
 function unescapeXml(value: string): string {
   return value.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+
+function upsertBeforeSheetData(xml: string, tag: string, fragment: string): string {
+  const cleaned = xml.replace(new RegExp(`<${tag}\\b[^>]*/>|<${tag}\\b[\\s\\S]*?</${tag}>`, "gi"), "");
+  if (!fragment) return cleaned;
+  const open = /<sheetData\b/i.exec(cleaned);
+  if (!open) return fragment + cleaned;
+  return cleaned.slice(0, open.index) + fragment + cleaned.slice(open.index);
 }
 
 function upsertAfterSheetData(xml: string, tag: string, fragment: string): string {

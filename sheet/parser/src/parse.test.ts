@@ -60,6 +60,63 @@ test("rejects a binary .xls", async () => {
   await assert.rejects(parseXlsx(bytes), (err: unknown) => err instanceof XlsxOpenError && err.code === "LEGACY_XLS");
 });
 
+test("reads styles, merges, sizes, freeze, filter, and page setup", async () => {
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet>
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="0.00"/></numFmts>
+  <fonts count="2"><font/><font><b/><i/><sz val="14"/><color rgb="FFFF0000"/><name val="Arial"/></font></fonts>
+  <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF00FF00"/></patternFill></fill></fills>
+  <borders count="2"><border/><border><left style="thin"><color rgb="FF000000"/></left><right style="dashed"/></border></borders>
+  <cellXfs count="2">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+    <xf numFmtId="164" fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1" indent="2"/></xf>
+  </cellXfs>
+</styleSheet>`;
+  const body = `<sheetViews><sheetView workbookViewId="0"><pane xSplit="1" ySplit="1" state="frozen" topLeftCell="B2"/></sheetView></sheetViews>` +
+    `<cols><col min="2" max="2" width="18" customWidth="1"/><col min="3" max="3" hidden="1"/></cols>` +
+    `<sheetData><row r="1" ht="24" customHeight="1"><c r="A1" s="1" t="s"><v>0</v></c></row><row r="2" hidden="1"><c r="A2"><v>1</v></c></row></sheetData>` +
+    `<autoFilter ref="A1:B2"/><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>` +
+    `<pageMargins left="0.5" right="0.5" top="0.75" bottom="0.75"/>` +
+    `<pageSetup orientation="landscape" paperSize="9" fitToWidth="1" scale="80"/>` +
+    `<printOptions gridLines="1" headings="0"/>`;
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/styles.xml": styles,
+    "xl/sharedStrings.xml": `<sst><si><t>标题</t></si></sst>`,
+    "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet>${body}</worksheet>`,
+  });
+  const sheet = (await parseXlsx(bytes)).sheets[0];
+  assert.deepEqual(sheet?.cells[0]?.[0], {
+    value: "标题",
+    bold: true,
+    italic: true,
+    fontSize: 14,
+    color: "#ff0000",
+    font: "Arial",
+    fill: "#00ff00",
+    numFmt: "0.00",
+    align: "center",
+    valign: "middle",
+    wrap: true,
+    indent: 2,
+    border: { left: { style: "thin", color: "#000000" }, right: { style: "dashed" } },
+  });
+  assert.deepEqual(sheet?.merges, [{ r1: 0, c1: 0, r2: 0, c2: 1 }]);
+  assert.equal(sheet?.colWidths?.[1], 18);
+  assert.deepEqual(sheet?.hiddenCols, [2]);
+  assert.equal(sheet?.rowHeights?.[0], 24);
+  assert.deepEqual(sheet?.hiddenRows, [1]);
+  assert.deepEqual(sheet?.freeze, { row: 1, col: 1 });
+  assert.deepEqual(sheet?.filter, { r1: 0, c1: 0, r2: 1, c2: 1 });
+  assert.equal(sheet?.pageSetup?.orientation, "landscape");
+  assert.equal(sheet?.pageSetup?.paperSize, "A4");
+  assert.equal(sheet?.pageSetup?.fitToWidth, 1);
+  assert.equal(sheet?.pageSetup?.scale, 80);
+  assert.equal(sheet?.pageSetup?.margins?.top, 0.75);
+  assert.equal(sheet?.pageSetup?.gridlines, true);
+  assert.equal(sheet?.pageSetup?.headings, false);
+});
+
 test("reads a formula cell with its cache", async () => {
   const bytes = book({
     "xl/workbook.xml": WORKBOOK,
