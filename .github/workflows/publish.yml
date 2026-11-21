@@ -38,9 +38,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'schedule' && 'nightly' || github.sha }}
 
+      # 版本只留在检出分支的 package.json 里。这里再写 version 会和
+      # packageManager 冲突，pnpm/action-setup 直接报 Multiple versions of pnpm。
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
