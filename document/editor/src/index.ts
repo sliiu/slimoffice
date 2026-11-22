@@ -160,6 +160,51 @@ export interface DocumentView {
   charSpacing(twips: number): void;
   /** Raises or lowers the run, in half-points. Positive raises. */
   position(halfPoints: number): void;
+  /** Shows the run in capitals without changing the stored letters. */
+  caps(): void;
+  capsOn(): boolean;
+  /** Shows the run in small capitals. */
+  smallCaps(): void;
+  smallCapsOn(): boolean;
+  /** Draws a double line through the run. */
+  doubleStrike(): void;
+  doubleStrikeOn(): boolean;
+  /** Hides the run. */
+  hidden(): void;
+  hiddenOn(): boolean;
+  /** Puts a dot emphasis mark on the run. Pressing again clears it. */
+  emphasis(): void;
+  emphasisOn(): boolean;
+  /** Rewrites the current text: upper, lower, sentence, title, or toggle. */
+  changeCase(mode: "upper" | "lower" | "sentence" | "title" | "toggle"): void;
+  /** Sets the run's language. An empty value clears it. */
+  lang(value: string): void;
+  /** Sets the point size below which the run is not kerned. Zero clears it. */
+  kern(points: number): void;
+  /** Names the character style the run uses. An empty name clears it. */
+  runStyle(name: string): void;
+  /** Turns one run switch on or off: shadow, outline, emboss, imprint, or effect. */
+  runSwitch(name: string, on: boolean): void;
+  /** Whether the shadow switch is on for the current run. */
+  shadowOn(): boolean;
+  /** Keeps this paragraph on the same page as the next one. */
+  keepWithNext(): void;
+  keepWithNextOn(): boolean;
+  /** Keeps the paragraph's lines on one page. */
+  keepLines(): void;
+  keepLinesOn(): boolean;
+  /** Keeps the paragraph's first and last lines with the paragraph. */
+  widowControl(): void;
+  widowControlOn(): boolean;
+  /** Sets the outline level, from 0. A negative value clears it. */
+  outline(level: number): void;
+  outlineOn(): number | undefined;
+  /** Turns one paragraph switch on or off, such as word wrap or bidirectional text. */
+  paragraphSwitch(name: string, on: boolean): void;
+  /** Whether the word wrap switch is on for the current paragraph. */
+  wordWrapOn(): boolean;
+  /** Whether the paragraph runs right to left. */
+  bidiOn(): boolean;
   /** Adds a tab stop to the current paragraph, in twips from the left margin. */
   tabStop(pos: number, align?: "left" | "center" | "right" | "decimal"): void;
   /** Inserts a cover page and makes the first page show its own header. */
@@ -277,6 +322,26 @@ interface Snapshot {
 
 const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72];
 const INDENT_STEP = 720;
+const RUN_SWITCHES = ["bCs", "iCs", "outline", "shadow", "emboss", "imprint", "effect"];
+const PARAGRAPH_SWITCHES = ["suppressLineNumbers", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
+
+/** Changes the letters without touching anything that is not a letter. */
+function cased(text: string, mode: "upper" | "lower" | "sentence" | "title" | "toggle"): string {
+  if (mode === "upper") return text.toUpperCase();
+  if (mode === "lower") return text.toLowerCase();
+  if (mode === "toggle") return [...text].map((char) => (char === char.toUpperCase() ? char.toLowerCase() : char.toUpperCase())).join("");
+  if (mode === "title") return text.replace(/\S+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  let sentence = true;
+  return [...text].map((char) => {
+    if (!/\p{L}/u.test(char)) {
+      if (/[.!?]/.test(char)) sentence = true;
+      return char;
+    }
+    const next = sentence ? char.toUpperCase() : char.toLowerCase();
+    sentence = false;
+    return next;
+  }).join("");
+}
 
 /** Pages you can edit. Headers and footers stay as opened; the story is what gets written back. */
 export function mountDocument(host: HTMLElement, doc: Document, options: DocumentEditOptions = {}): DocumentView {
@@ -387,6 +452,33 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     scale: (percent) => setRun("scale", percent),
     charSpacing: (value) => setRun("spacing", value),
     position: (value) => setRun("position", value),
+    caps: () => toggleFlag("caps"),
+    capsOn: () => flagOn("caps"),
+    smallCaps: () => toggleFlag("smallCaps"),
+    smallCapsOn: () => flagOn("smallCaps"),
+    doubleStrike: () => toggleFlag("doubleStrike"),
+    doubleStrikeOn: () => flagOn("doubleStrike"),
+    hidden: () => toggleFlag("hidden"),
+    hiddenOn: () => flagOn("hidden"),
+    emphasis: () => toggleFlag("emphasis"),
+    emphasisOn: () => flagOn("emphasis"),
+    changeCase,
+    lang,
+    kern,
+    runStyle,
+    runSwitch,
+    shadowOn: () => switchOn("shadow"),
+    keepWithNext: () => toggleParagraph("keepNext"),
+    keepWithNextOn: () => paragraphOn("keepNext"),
+    keepLines: () => toggleParagraph("keepLines"),
+    keepLinesOn: () => paragraphOn("keepLines"),
+    widowControl: () => toggleParagraph("widowControl"),
+    widowControlOn: () => paragraphOn("widowControl"),
+    outline,
+    outlineOn: () => current()?.outline,
+    paragraphSwitch,
+    wordWrapOn: () => paragraphSwitchOn("wordWrap"),
+    bidiOn: () => paragraphSwitchOn("bidi"),
     tabStop,
     cover,
     shape,
@@ -486,7 +578,7 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     const section = doc.sections[sectionIndex];
     const origin = isDocTable(block) ? block.source : undefined;
     const blockIndex = section ? section.blocks.indexOf(origin?.table ?? block) : -1;
-    if (isDocRaw(block)) return rawBlock(block);
+    if (isDocRaw(block)) return rawBlock(block, { section: sectionIndex, block: blockIndex });
     if (isDocParagraph(block)) return paragraph(block, { section: sectionIndex, block: blockIndex }, true);
     const table = el("table", "doc-table");
     if (block.widths?.length) table.style.tableLayout = "fixed";
@@ -535,21 +627,24 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
   }
 
   /** A block kept as markup. Its text can be edited; the markup around it stays. */
-  function rawBlock(block: DocRawBlock): HTMLElement {
+  function rawBlock(block: DocRawBlock, spot: Spot): HTMLElement {
     const node = el("div", "doc-raw");
+    stamp(node, spot);
+    const place = () => {
+      selected = spot;
+      arm();
+      options.onSelection?.();
+    };
     if (block.formula?.length) {
       node.append(formulaNode(block.formula, () => {
         block.text = formulaPlain(block.formula);
         touch();
-      }));
+      }, place));
       return node;
     }
     node.contentEditable = "true";
     node.textContent = block.text ?? block.raw.replace(/<[^>]+>/g, "").trim();
-    node.addEventListener("focus", () => {
-      arm();
-      options.onSelection?.();
-    });
+    node.addEventListener("focus", place);
     node.addEventListener("input", () => {
       if (doc.readOnly) {
         node.textContent = block.text ?? "";
@@ -567,17 +662,14 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
   }
 
   /** A formula laid out: a fraction stacks over a bar, a script shifts, a radical roots. Its words can be edited; the structure stays. */
-  function formulaNode(pieces: DocFormula[], edited: () => void): HTMLElement {
+  function formulaNode(pieces: DocFormula[], edited: () => void, place: () => void): HTMLElement {
     const node = el("span", "doc-formula");
     for (const piece of pieces) {
       if ("text" in piece) {
         const word = document.createElement("span");
         word.textContent = piece.text;
         if (!doc.readOnly) word.contentEditable = "true";
-        word.addEventListener("focus", () => {
-          arm();
-          options.onSelection?.();
-        });
+        word.addEventListener("focus", place);
         word.addEventListener("input", () => {
           if (doc.readOnly) {
             word.textContent = piece.text;
@@ -591,15 +683,15 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
       }
       if (piece.kind === "frac") {
         const frac = el("span", "doc-frac");
-        frac.append(formulaNode(piece.top, edited), formulaNode(piece.bottom, edited));
+        frac.append(formulaNode(piece.top, edited, place), formulaNode(piece.bottom, edited, place));
         node.append(frac);
       } else if (piece.kind === "root") {
         const root = el("span", "doc-root");
-        root.append(document.createTextNode("√"), formulaNode(piece.body, edited));
+        root.append(document.createTextNode("√"), formulaNode(piece.body, edited, place));
         node.append(root);
       } else {
         const script = el("span", piece.kind === "sup" ? "doc-sup" : "doc-sub");
-        script.append(formulaNode(piece.base, edited), formulaNode(piece.script, edited));
+        script.append(formulaNode(piece.base, edited, place), formulaNode(piece.script, edited, place));
         node.append(script);
       }
     }
@@ -754,6 +846,112 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
   function markOn(mark: RunMark): boolean {
     const runs = targetRuns();
     return runs.length > 0 && runs.every((run) => run[mark]);
+  }
+
+  type RunFlag = "caps" | "smallCaps" | "doubleStrike" | "hidden" | "emphasis";
+
+  /** Switches a run flag on the selection, the same way bold does. */
+  function toggleFlag(flag: RunFlag): void {
+    const on = flagOn(flag);
+    applyToRuns((run) => {
+      if (on) delete run[flag];
+      else if (flag === "emphasis") run.emphasis = "dot";
+      else run[flag] = true;
+    });
+  }
+
+  function flagOn(flag: RunFlag): boolean {
+    const runs = targetRuns();
+    return runs.length > 0 && runs.every((run) => run[flag]);
+  }
+
+  /** Rewrites the letters. Caps stays off, since the letters themselves change. */
+  function changeCase(mode: "upper" | "lower" | "sentence" | "title" | "toggle"): void {
+    applyToRuns((run) => {
+      run.text = cased(run.text, mode);
+      delete run.caps;
+    });
+  }
+
+  function lang(value: string): void {
+    applyToRuns((run) => {
+      if (value) run.lang = value;
+      else delete run.lang;
+    });
+  }
+
+  function kern(points: number): void {
+    if (!Number.isFinite(points) || points < 0) return;
+    applyToRuns((run) => {
+      if (points) run.kern = points;
+      else delete run.kern;
+    });
+  }
+
+  function runStyle(name: string): void {
+    applyToRuns((run) => {
+      if (name) run.runStyle = name;
+      else delete run.runStyle;
+    });
+  }
+
+  /** Adds or removes one switch from the run's list, leaving the others where they were. */
+  function switchOn(name: string): boolean {
+    const runs = targetRuns();
+    return runs.length > 0 && runs.every((run) => run.marks?.includes(name));
+  }
+
+  function runSwitch(name: string, on: boolean): void {
+    if (!RUN_SWITCHES.includes(name)) return;
+    const runs = targetRuns();
+    if (!runs.length) return;
+    if (!remember()) return;
+    for (const run of runs) {
+      const marks = (run.marks ?? []).filter((mark) => mark !== name);
+      if (on) marks.push(name);
+      if (marks.length) run.marks = marks;
+      else delete run.marks;
+    }
+    finish();
+  }
+
+  type ParagraphFlag = "keepNext" | "keepLines" | "widowControl";
+
+  function toggleParagraph(flag: ParagraphFlag): void {
+    const item = current();
+    if (!item) return;
+    if (!remember()) return;
+    if (item[flag]) delete item[flag];
+    else item[flag] = true;
+    finish();
+  }
+
+  function paragraphOn(flag: ParagraphFlag): boolean {
+    return current()?.[flag] === true;
+  }
+
+  function outline(level: number): void {
+    const item = current();
+    if (!item || !Number.isFinite(level)) return;
+    if (!remember()) return;
+    if (level < 0) delete item.outline;
+    else item.outline = Math.floor(level);
+    finish();
+  }
+
+  function paragraphSwitchOn(name: string): boolean {
+    return current()?.marks?.includes(name) === true;
+  }
+
+  function paragraphSwitch(name: string, on: boolean): void {
+    const item = current();
+    if (!item || !PARAGRAPH_SWITCHES.includes(name)) return;
+    if (!remember()) return;
+    const marks = (item.marks ?? []).filter((mark) => mark !== name);
+    if (on) marks.push(name);
+    if (marks.length) item.marks = marks;
+    else delete item.marks;
+    finish();
   }
 
   function underline(style: DocUnderline = "single"): void {

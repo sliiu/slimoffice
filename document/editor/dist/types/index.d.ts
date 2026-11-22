@@ -126,6 +126,51 @@ export interface DocumentView {
     charSpacing(twips: number): void;
     /** Raises or lowers the run, in half-points. Positive raises. */
     position(halfPoints: number): void;
+    /** Shows the run in capitals without changing the stored letters. */
+    caps(): void;
+    capsOn(): boolean;
+    /** Shows the run in small capitals. */
+    smallCaps(): void;
+    smallCapsOn(): boolean;
+    /** Draws a double line through the run. */
+    doubleStrike(): void;
+    doubleStrikeOn(): boolean;
+    /** Hides the run. */
+    hidden(): void;
+    hiddenOn(): boolean;
+    /** Puts a dot emphasis mark on the run. Pressing again clears it. */
+    emphasis(): void;
+    emphasisOn(): boolean;
+    /** Rewrites the current text: upper, lower, sentence, title, or toggle. */
+    changeCase(mode: "upper" | "lower" | "sentence" | "title" | "toggle"): void;
+    /** Sets the run's language. An empty value clears it. */
+    lang(value: string): void;
+    /** Sets the point size below which the run is not kerned. Zero clears it. */
+    kern(points: number): void;
+    /** Names the character style the run uses. An empty name clears it. */
+    runStyle(name: string): void;
+    /** Turns one run switch on or off: shadow, outline, emboss, imprint, or effect. */
+    runSwitch(name: string, on: boolean): void;
+    /** Whether the shadow switch is on for the current run. */
+    shadowOn(): boolean;
+    /** Keeps this paragraph on the same page as the next one. */
+    keepWithNext(): void;
+    keepWithNextOn(): boolean;
+    /** Keeps the paragraph's lines on one page. */
+    keepLines(): void;
+    keepLinesOn(): boolean;
+    /** Keeps the paragraph's first and last lines with the paragraph. */
+    widowControl(): void;
+    widowControlOn(): boolean;
+    /** Sets the outline level, from 0. A negative value clears it. */
+    outline(level: number): void;
+    outlineOn(): number | undefined;
+    /** Turns one paragraph switch on or off, such as word wrap or bidirectional text. */
+    paragraphSwitch(name: string, on: boolean): void;
+    /** Whether the word wrap switch is on for the current paragraph. */
+    wordWrapOn(): boolean;
+    /** Whether the paragraph runs right to left. */
+    bidiOn(): boolean;
     /** Adds a tab stop to the current paragraph, in twips from the left margin. */
     tabStop(pos: number, align?: "left" | "center" | "right" | "decimal"): void;
     /** Inserts a cover page and makes the first page show its own header. */
