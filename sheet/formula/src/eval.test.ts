@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Workbook } from "@sliiu/sheet-core";
-import { evaluate, formatResult, recalculate } from "./index";
+import { consolidateRanges, evaluate, formatResult, recalculate } from "./index";
 
 function book(cells: { value: string; formula?: string }[][]): Workbook {
   return { sheets: [{ name: "Sheet1", cells }] };
@@ -144,4 +144,43 @@ test("wildcard lookups, date units, hidden rows, and finance", () => {
   assert.equal(evaluate("=BIN2DEC(\"1010\")", ctx(workbook)), 10);
   assert.equal(evaluate("=CONVERT(1,\"m\",\"cm\")", ctx(workbook)), 100);
   assert.equal(evaluate("=CONVERT(0,\"C\",\"F\")", ctx(workbook)), 32);
+});
+
+test("consolidates ranges by position, by label, and with links", () => {
+  const workbook: Workbook = {
+    sheets: [
+      { name: "一月", cells: [[{ value: "甲" }, { value: "10" }], [{ value: "乙" }, { value: "4" }]] },
+      { name: "二月", cells: [[{ value: "乙" }, { value: "6" }], [{ value: "甲" }, { value: "3" }]] },
+      { name: "汇总", cells: [] },
+    ],
+  };
+  const byPosition = consolidateRanges(workbook, {
+    sources: ["一月!A1:B2", "二月!A1:B2"],
+    dest: "汇总!A1",
+  });
+  assert.equal(workbook.sheets[2]?.cells[0]?.[1]?.value, "16");
+  assert.equal(workbook.sheets[2]?.cells[1]?.[1]?.value, "7");
+  assert.deepEqual(byPosition.sources, ["一月!A1:B2", "二月!A1:B2"]);
+  workbook.sheets[2]!.cells = [];
+  consolidateRanges(workbook, {
+    func: "sum",
+    sources: ["一月!A1:B2", "二月!A1:B2"],
+    dest: "汇总!A1",
+    leftCol: true,
+    links: true,
+  });
+  assert.equal(workbook.sheets[2]?.cells[0]?.[0]?.value, "甲");
+  assert.equal(workbook.sheets[2]?.cells[0]?.[1]?.value, "13");
+  assert.equal(workbook.sheets[2]?.cells[0]?.[1]?.formula, "SUM('一月'!B1,'二月'!B2)");
+  assert.equal(workbook.sheets[2]?.cells[1]?.[0]?.value, "乙");
+  assert.equal(workbook.sheets[2]?.cells[1]?.[1]?.value, "10");
+  assert.equal(workbook.sheets[2]?.consolidation?.func, "sum");
+  assert.equal(evaluate("='一月'!A1", ctx(workbook)), "甲");
+  const averaged = consolidateRanges(workbook, {
+    func: "average",
+    sources: ["一月!B1:B2", "二月!B1:B2"],
+    dest: "汇总!D1",
+  });
+  assert.equal(workbook.sheets[2]?.cells[0]?.[3]?.value, "8");
+  assert.equal(averaged.rows, 2);
 });

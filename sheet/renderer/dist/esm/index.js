@@ -1,4 +1,4 @@
-import { formatNumber, recalculate } from "@sliiu/sheet-formula";
+import { consolidateRanges, formatNumber, recalculate } from "@sliiu/sheet-formula";
 import { renderCharts } from "./charts.js";
 import { cfLook } from "./cf.js";
 const FROZEN_HEADER = 24;
@@ -85,6 +85,11 @@ export function mountWorkbook(host, workbook, options = {}) {
         hyperlink: (url) => setStyle({ hyperlink: url }),
         comment: (text) => setStyle({ comment: text }),
         addSheet,
+        symbol,
+        applyStyle,
+        formatCell,
+        printArea,
+        fitTo,
         recalculate: () => {
             remember();
             recalculate(workbook);
@@ -229,7 +234,16 @@ export function mountWorkbook(host, workbook, options = {}) {
         const sheet = currentSheet();
         frame.replaceChildren(grid(sheet), renderCharts(sheet));
         frame.style.zoom = String(zoomFactor);
+        frame.dataset.zoom = String(zoomFactor);
         frame.classList.toggle("is-print-preview", !!sheet.pageSetup?.orientation);
+        frame.style.fontFamily = workbook.theme?.fonts?.minor ?? "";
+        const accent = workbook.theme?.colors?.[4];
+        if (accent)
+            frame.style.setProperty("--sheet-accent", accent);
+        else
+            frame.style.removeProperty("--sheet-accent");
+        const scale = sheet.pageSetup?.scale ?? (sheet.pageSetup?.fitToWidth || sheet.pageSetup?.fitToHeight ? 100 : undefined);
+        frame.dataset.scale = scale != null ? String(scale) : "";
         syncBar();
     }
     function syncBar() {
@@ -302,6 +316,19 @@ export function mountWorkbook(host, workbook, options = {}) {
             td.dataset.validation = rule.type;
         if (item?.formula)
             td.classList.add("is-formula");
+        if (item?.array)
+            td.dataset.array = "1";
+        const tableRange = tableRangeAt(sheet, row, column);
+        if (tableRange) {
+            td.dataset.table = tableRange.name;
+            if (tableRange.headerRow && row === tableRange.r1)
+                td.classList.add("is-table-header");
+        }
+        if (inPrintArea(sheet, row, column))
+            td.dataset.printArea = "1";
+        const consolidation = sheet.consolidation;
+        if (consolidation && inConsolidation(consolidation, row, column))
+            td.dataset.consolidation = consolidation.func;
         if (sheet.outline?.rows?.includes(row))
             td.dataset.outline = "row";
         if (sheet.outline?.cols?.includes(column))
@@ -329,7 +356,7 @@ export function mountWorkbook(host, workbook, options = {}) {
         }
         if (selected.row === row && selected.col === column)
             td.classList.add("is-selected");
-        td.contentEditable = sheet.protected ? "false" : "true";
+        td.contentEditable = sheet.protected && !editRangeAt(sheet, row, column) ? "false" : "true";
         td.addEventListener("focus", () => {
             selected = { row, col: column };
             arm();
@@ -354,6 +381,30 @@ export function mountWorkbook(host, workbook, options = {}) {
             touch();
         });
         return td;
+    }
+    function tableRangeAt(sheet, row, column) {
+        return sheet.tables?.find((item) => row >= item.r1 && row <= item.r2 && column >= item.c1 && column <= item.c2);
+    }
+    function editRangeAt(sheet, row, column) {
+        return (sheet.allowEditRanges ?? []).some((item) => {
+            const range = rangeOf(item.range);
+            return !!range && row >= range.r1 && row <= range.r2 && column >= range.c1 && column <= range.c2;
+        });
+    }
+    function inConsolidation(consolidation, row, column) {
+        const dest = rangeOf(consolidation.dest.split("!").pop() ?? "");
+        if (!dest)
+            return false;
+        const rows = consolidation.rows ?? 1;
+        const cols = consolidation.cols ?? 1;
+        return row >= dest.r1 && row < dest.r1 + rows && column >= dest.c1 && column < dest.c1 + cols;
+    }
+    function inPrintArea(sheet, row, column) {
+        const area = sheet.pageSetup?.printArea;
+        if (!area)
+            return false;
+        const range = rangeOf(area.split("!").pop() ?? "");
+        return !!range && row >= range.r1 && row <= range.r2 && column >= range.c1 && column <= range.c2;
     }
     function dataTableAt(sheet, row, column) {
         return sheet.dataTables?.find((item) => {
@@ -661,9 +712,67 @@ export function mountWorkbook(host, workbook, options = {}) {
         remember();
         const label = name ?? `Sheet${workbook.sheets.length + 1}`;
         workbook.sheets.push({ name: label, cells: [] });
+        const source = workbook.source;
+        if (source) {
+            const index = workbook.sheets.length;
+            const bytes = source.get("xl/worksheets/sheet1.xml");
+            if (bytes)
+                source.set(`xl/worksheets/sheet${index}.xml`, bytes.slice());
+            const rels = textOfSource(source, "xl/_rels/workbook.xml.rels");
+            if (rels && !rels.includes(`sheet${index}.xml`)) {
+                source.set("xl/_rels/workbook.xml.rels", bytesOf(rels.replace("</Relationships>", `<Relationship Id="rId${index}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index}.xml"/></Relationships>`)));
+            }
+        }
         rebuildTabs();
         show(workbook.sheets.length - 1);
         touch();
+    }
+    function symbol(text) {
+        remember();
+        const cell = ensure(selected.row, selected.col);
+        delete cell.formula;
+        cell.value = (cell.value ?? "") + text;
+        finish();
+    }
+    function applyStyle(name) {
+        remember();
+        const cell = ensure(selected.row, selected.col);
+        cell.styleName = name;
+        finish();
+    }
+    function formatCell(patch) {
+        remember();
+        const cell = ensure(selected.row, selected.col);
+        if (patch.numFmt != null)
+            cell.numFmt = patch.numFmt;
+        if (patch.font != null)
+            cell.font = patch.font;
+        if (patch.fontSize != null)
+            cell.fontSize = patch.fontSize;
+        if (patch.color != null)
+            cell.color = patch.color;
+        if (patch.fill != null)
+            cell.fill = patch.fill;
+        if (patch.align != null)
+            cell.align = patch.align;
+        if (patch.bold != null)
+            cell.bold = patch.bold;
+        finish();
+    }
+    function printArea() {
+        remember();
+        const sheet = currentSheet();
+        const setup = sheet.pageSetup ?? {};
+        setup.printArea = `'${sheet.name}'!${inferRange(sheet)}`;
+        sheet.pageSetup = setup;
+        finish();
+        options.onStatus?.(zh ? `打印区域 ${setup.printArea}` : `Print area ${setup.printArea}`);
+    }
+    function fitTo(width, height) {
+        remember();
+        const sheet = currentSheet();
+        sheet.pageSetup = { ...(sheet.pageSetup ?? {}), fitToWidth: width, ...(height != null ? { fitToHeight: height } : {}) };
+        finish();
     }
     function removeDuplicates() {
         remember();
@@ -1289,23 +1398,20 @@ export function mountWorkbook(host, workbook, options = {}) {
         finish();
         options.onStatus?.(zh ? `假设值 ${target}` : `What-if ${target}`);
     }
-    function consolidate() {
+    function consolidate(spec = {}) {
         remember();
-        let total = 0;
-        for (const sheet of workbook.sheets) {
-            for (const row of sheet.cells) {
-                for (const item of row ?? []) {
-                    if (!item || item.formula)
-                        continue;
-                    if (/^-?\d+(?:\.\d+)?$/.test(item.value))
-                        total += Number(item.value);
-                }
-            }
+        const sheet = currentSheet();
+        const sources = spec.sources ?? workbook.sheets
+            .filter((item) => item !== sheet)
+            .map((item) => `'${item.name.replace(/'/g, "''")}'!${inferRange(item, true)}`);
+        if (!sources.length) {
+            options.onStatus?.(zh ? "没有可合并的区域" : "No ranges to consolidate");
+            return;
         }
-        const cell = ensure(selected.row, selected.col);
-        cell.value = String(total);
+        const dest = spec.dest ?? `'${sheet.name.replace(/'/g, "''")}'!${columnName(selected.col)}${selected.row + 1}`;
+        const result = consolidateRanges(workbook, { func: spec.func ?? "sum", sources, dest, topRow: spec.topRow, leftCol: spec.leftCol, links: spec.links });
         finish();
-        options.onStatus?.(zh ? `合并计算 ${total}` : `Consolidate ${total}`);
+        options.onStatus?.(zh ? `合并计算 ${result.rows ?? 0} 行` : `Consolidated ${result.rows ?? 0} rows`);
     }
     function forecast() {
         const sheet = currentSheet();
@@ -1327,10 +1433,10 @@ export function mountWorkbook(host, workbook, options = {}) {
         finish();
         options.onStatus?.(zh ? `预测 ${cell.value}` : `Forecast ${cell.value}`);
     }
-    function inferRange(sheet) {
+    function inferRange(sheet, whole = false) {
         const rows = Math.max(1, sheet.cells.length);
         const cols = Math.max(1, sheet.cells.reduce((w, row) => Math.max(w, row?.length ?? 0), 1));
-        if (selected.row > 0) {
+        if (!whole && selected.row > 0) {
             const start = Math.max(0, selected.row - Math.min(selected.row, 9));
             return `${columnName(selected.col)}${start + 1}:${columnName(selected.col)}${selected.row + 1}`;
         }
@@ -1367,6 +1473,8 @@ export function mountWorkbook(host, workbook, options = {}) {
     function restore(json) {
         const parsed = JSON.parse(json);
         workbook.sheets[parsed.index] = parsed.sheet;
+        if (parsed.names && parsed.names.length < workbook.sheets.length)
+            workbook.sheets.splice(parsed.names.length);
         active = parsed.index;
         rebuildTabs();
         touch();
@@ -1409,13 +1517,20 @@ export function mountWorkbook(host, workbook, options = {}) {
         redoStack.length = 0;
     }
     function snapshot() {
-        return JSON.stringify({ index: active, sheet: currentSheet() });
+        return JSON.stringify({ index: active, sheet: currentSheet(), names: workbook.sheets.map((sheet) => sheet.name) });
     }
     function markSelected() {
         for (const node of frame.querySelectorAll("td")) {
             node.classList.toggle("is-selected", node.dataset.row === String(selected.row) && node.dataset.col === String(selected.col));
         }
     }
+}
+function textOfSource(source, path) {
+    const bytes = source.get(path);
+    return bytes ? new TextDecoder().decode(bytes) : undefined;
+}
+function bytesOf(text) {
+    return new TextEncoder().encode(text);
 }
 function columnName(index) {
     let name = "";

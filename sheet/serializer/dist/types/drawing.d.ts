@@ -5,4 +5,6 @@ export declare function drawingFragments(sheet: Worksheet, sheetIndex: number): 
     parts: Map<string, string>;
     contentTypes: string[];
     rels: string[];
+    workbookRels: string[];
+    pivotCacheRefs: string[];
 };

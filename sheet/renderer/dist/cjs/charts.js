@@ -29,6 +29,12 @@ function renderCharts(sheet) {
     }
     for (const pivot of sheet.pivots ?? [])
         host.append(pivotNode(pivot));
+    for (const map of sheet.xmlMaps ?? []) {
+        const node = document.createElement("div");
+        node.className = "sheet-xml-map";
+        node.textContent = map.root ? `${map.name}: ${map.root}` : map.name;
+        host.append(node);
+    }
     return host;
 }
 /** Reduces the first value field by row field, and by column field when one is set. */

@@ -185,6 +185,18 @@ export interface SheetXmlMap {
     name: string;
     root?: string;
 }
+export type ConsolidateFunc = "sum" | "count" | "average" | "max" | "min" | "product" | "countNums" | "stdev" | "stdevp" | "var" | "varp";
+/** One Data › Consolidate pass: how several ranges were combined, and where the result starts. */
+export interface SheetConsolidation {
+    func: ConsolidateFunc;
+    sources: string[];
+    dest: string;
+    topRow?: boolean;
+    leftCol?: boolean;
+    links?: boolean;
+    rows?: number;
+    cols?: number;
+}
 export interface Worksheet {
     name: string;
     /** Row, then column. Only cells that hold something need be present. */
@@ -235,6 +247,7 @@ export interface Worksheet {
         colInput?: string;
     }[];
     xmlMaps?: SheetXmlMap[];
+    consolidation?: SheetConsolidation;
 }
 export interface WorkbookName {
     name: string;

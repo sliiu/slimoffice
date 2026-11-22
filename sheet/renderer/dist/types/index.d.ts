@@ -1,4 +1,4 @@
-import type { SheetAlign, SheetCfRule, SheetChartKind, SheetFormControl, SheetPageSetup, SheetShapeKind, SheetSparklineKind, SheetTheme, SheetVAlign, SheetValidation, Workbook } from "@sliiu/sheet-core";
+import type { SheetAlign, ConsolidateFunc, SheetCell, SheetCfRule, SheetChartKind, SheetFormControl, SheetPageSetup, SheetShapeKind, SheetSparklineKind, SheetTheme, SheetVAlign, SheetValidation, Workbook } from "@sliiu/sheet-core";
 export interface SheetEditOptions {
     locale?: "zh-CN" | "en";
     onChange?: () => void;
@@ -48,6 +48,19 @@ export interface SheetGrid {
     hyperlink(url: string): void;
     comment(text: string): void;
     addSheet(name?: string): void;
+    symbol(text: string): void;
+    applyStyle(name: string): void;
+    formatCell(patch: {
+        numFmt?: string;
+        font?: string;
+        fontSize?: number;
+        color?: string;
+        fill?: string;
+        align?: SheetCell["align"];
+        bold?: boolean;
+    }): void;
+    printArea(): void;
+    fitTo(width: number, height?: number): void;
     recalculate(): void;
     zoom(factor: number): void;
     zoomOn(): number;
@@ -112,7 +125,14 @@ export interface SheetGrid {
     allowEditRange(name?: string, range?: string): void;
     setArrayFormula(formula?: string): void;
     whatIf(target?: number): void;
-    consolidate(): void;
+    consolidate(spec?: {
+        func?: ConsolidateFunc;
+        sources?: string[];
+        dest?: string;
+        topRow?: boolean;
+        leftCol?: boolean;
+        links?: boolean;
+    }): void;
     forecast(): void;
     reload(): void;
     selected(): {

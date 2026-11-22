@@ -101,20 +101,23 @@ export function sheetFrameXml(sheet) {
     const cols = colXml(sheet);
     const merges = mergeXml(sheet);
     const view = sheetViewXml(sheet);
-    return `${view}${cols}${merges}`;
+    const outline = sheet.outline ? `<sheetPr><outlinePr summaryBelow="${sheet.outline.summaryBelow === false ? 0 : 1}"/></sheetPr>` : "";
+    return `${outline}${view}${cols}${merges}`;
 }
 function colXml(sheet) {
     const widths = sheet.colWidths ?? [];
     const hidden = new Set(sheet.hiddenCols ?? []);
-    const indexes = new Set([...widths.keys(), ...hidden]);
+    const grouped = new Set(sheet.outline?.cols ?? []);
+    const indexes = new Set([...widths.keys(), ...hidden, ...grouped]);
     const cols = [...indexes]
-        .filter((column) => widths[column] != null || hidden.has(column))
+        .filter((column) => widths[column] != null || hidden.has(column) || grouped.has(column))
         .sort((a, b) => a - b)
         .map((column) => {
         const width = widths[column];
         const sized = width != null ? ` width="${width}" customWidth="1"` : "";
         const gone = hidden.has(column) ? ' hidden="1"' : "";
-        return `<col min="${column + 1}" max="${column + 1}"${sized}${gone}/>`;
+        const level = grouped.has(column) ? ' outlineLevel="1"' : "";
+        return `<col min="${column + 1}" max="${column + 1}"${sized}${gone}${level}/>`;
     });
     return cols.length ? `<cols>${cols.join("")}</cols>` : "";
 }
@@ -155,7 +158,10 @@ export function pageSetupXml(sheet) {
         ? `<pageMargins left="${setup.margins.left}" right="${setup.margins.right}" top="${setup.margins.top}" bottom="${setup.margins.bottom}" header="0.3" footer="0.3"/>`
         : "";
     const print = `<printOptions headings="${setup.headings ? 1 : 0}" gridLines="${setup.gridlines ? 1 : 0}"/>`;
-    return `${margins}<pageSetup${parts}/>${print}`;
+    const heads = setup.header || setup.footer
+        ? `<headerFooter>${setup.header ? `<oddHeader>${escapeXml(setup.header)}</oddHeader>` : ""}${setup.footer ? `<oddFooter>${escapeXml(setup.footer)}</oddFooter>` : ""}</headerFooter>`
+        : "";
+    return `${margins}<pageSetup${parts}/>${print}${heads}`;
 }
 export function conditionalFormattingXml(sheet) {
     return (sheet.conditionalFormats ?? [])

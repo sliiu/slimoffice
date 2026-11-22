@@ -34,6 +34,7 @@ export function applySheetEdits(
   }
   let xml = sheetXml.slice(0, data.start) + written.join("") + sheetXml.slice(data.end);
   const frame = sheetFrameXml(sheet);
+  xml = replaceBlock(xml, "sheetPr", frame.match(/<sheetPr\b[\s\S]*?<\/sheetPr>/i)?.[0] ?? "");
   xml = upsertBeforeSheetData(xml, "sheetViews", frame.match(/<sheetViews\b[\s\S]*?<\/sheetViews>/i)?.[0] ?? "");
   xml = upsertBeforeSheetData(xml, "cols", frame.match(/<cols\b[\s\S]*?<\/cols>/i)?.[0] ?? "");
   xml = upsertAfterSheetData(xml, "mergeCells", frame.match(/<mergeCells\b[\s\S]*?<\/mergeCells>/i)?.[0] ?? "");
@@ -41,6 +42,9 @@ export function applySheetEdits(
   xml = upsertAfterSheetData(xml, "hyperlinks", hyperlinksXml(sheet));
   xml = writeDataTables(xml, sheet);
   xml = upsertBeforeClose(xml, conditionalFormattingXml(sheet));
+  xml = replaceBlock(xml, "headerFooter", "");
+  xml = replaceBlock(xml, "protectedRanges", protectedRangesXml(sheet));
+  xml = replaceBlock(xml, "sheetProtection", sheet.protected ? '<sheetProtection sheet="1"/>' : "");
   xml = upsertBeforeClose(xml, pageSetupXml(sheet));
   return { xml, shared: table };
 }
@@ -89,6 +93,7 @@ export function applyWorkbookEdits(
   const workbookXml = textOf(parts, "xl/workbook.xml", decode);
   if (!workbookXml) return;
   const paths = sheetPaths(workbookXml, [...parts.keys()]);
+  while (paths.length < workbook.sheets.length) paths.push(`xl/worksheets/sheet${paths.length + 1}.xml`);
   let shared = readSharedStrings(textOf(parts, "xl/sharedStrings.xml", decode));
   let changed = false;
   const styles = styleBook(textOf(parts, "xl/styles.xml", decode), workbook.sheets);
@@ -96,7 +101,17 @@ export function applyWorkbookEdits(
   paths.forEach((path, index) => {
     const sheet = workbook.sheets[index];
     const xml = textOf(parts, path, decode);
-    if (!sheet || !xml) return;
+    if (!sheet) return;
+    if (!xml) {
+      if (!workbook.sheets[0]) return;
+      const template = textOf(parts, paths[0]!, decode);
+      if (!template) return;
+      const fresh = applySheetEdits(emptySheet(template), sheet, shared, styles);
+      shared = fresh.shared;
+      parts.set(path, encode(fresh.xml));
+      changed = true;
+      return;
+    }
     const next = applySheetEdits(xml, sheet, shared, styles);
     shared = next.shared;
     const drawing = drawingFragments(sheet, index);
@@ -121,8 +136,25 @@ export function applyWorkbookEdits(
       );
       parts.set(relPath, encode(merged));
     }
+    if (drawing.workbookRels.length) {
+      const relPath = "xl/_rels/workbook.xml.rels";
+      const existing = textOf(parts, relPath, decode) ?? `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+      parts.set(relPath, encode(existing.replace("</Relationships>", `${drawing.workbookRels.join("")}</Relationships>`)));
+      const caches = `<pivotCaches>${drawing.pivotCacheRefs.join("")}</pivotCaches>`;
+      const listed = workbookXml.includes("<pivotCaches") ? workbookXml : workbookXml.replace("</workbook>", `${caches}</workbook>`);
+      if (listed !== workbookXml) parts.set("xl/workbook.xml", encode(listed));
+    }
   });
   const names = definedNamesXml(workbook);
+  const sheetsXml = workbookSheetsXml(workbook);
+  if (sheetsXml && !workbookXml.includes(sheetsXml)) {
+    const next = upsertBlock(workbookXml, "sheets", sheetsXml);
+    if (next !== workbookXml) {
+      parts.set("xl/workbook.xml", encode(next));
+      changed = true;
+    }
+  }
   if (names) {
     const next = upsertBlock(workbookXml, "definedNames", names);
     if (next !== workbookXml) {
@@ -147,6 +179,21 @@ export function applyWorkbookEdits(
       if (unique.length) parts.set("[Content_Types].xml", encode(types.replace("</Types>", `${unique.join("")}</Types>`)));
     }
   }
+}
+
+function workbookSheetsXml(workbook: Workbook): string {
+  if (!workbook.sheets.length) return "";
+  const body = workbook.sheets
+    .map((sheet, index) => `<sheet name="${escapeTheme(sheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`)
+    .join("");
+  return `<sheets>${body}</sheets>`;
+}
+
+function emptySheet(template: string): string {
+  const open = /<sheetData\b[^>]*>/i.exec(template);
+  const close = open ? template.indexOf("</sheetData>", open.index) : -1;
+  if (!open || close < 0) return template;
+  return template.slice(0, open.index + open[0].length) + template.slice(close);
 }
 
 function definedNamesXml(workbook: Workbook): string {
@@ -205,6 +252,7 @@ function sheetDataRange(xml: string): { start: number; body: string; end: number
 }
 
 function rowXml(row: number, existing: string | undefined, cells: SheetCell[], sheet: Worksheet, shared: SharedStrings, styles: StyleBook): string {
+  const grouped = sheet.outline?.rows?.includes(row - 1) ? ' outlineLevel="1"' : "";
   const kept = new Map<number, string>();
   for (const cellXml of existing?.match(/<c\b[\s\S]*?<\/c>/gi) ?? []) {
     const column = columnIndex(/\br="([A-Z]+)\d+"/i.exec(cellXml)?.[1] ?? "");
@@ -224,7 +272,7 @@ function rowXml(row: number, existing: string | undefined, cells: SheetCell[], s
   const height = sheet.rowHeights?.[row - 1];
   const sized = height != null ? ` ht="${height}" customHeight="1"` : "";
   const hidden = sheet.hiddenRows?.includes(row - 1) ? ' hidden="1"' : "";
-  return `<row r="${row}"${sized}${hidden}>${written.join("")}</row>`;
+  return `<row r="${row}"${grouped}${sized}${hidden}>${written.join("")}</row>`;
 }
 
 function cellXml(ref: string, cell: SheetCell, prior: string | undefined, shared: SharedStrings, styles: StyleBook): string {
@@ -294,6 +342,15 @@ function a1(ref: string): { row: number; col: number } | undefined {
   let col = 0;
   for (const letter of (match[1] ?? "").toUpperCase()) col = col * 26 + letter.charCodeAt(0) - 64;
   return { row: Number(match[2]) - 1, col: col - 1 };
+}
+
+function protectedRangesXml(sheet: Worksheet): string {
+  const ranges = sheet.allowEditRanges ?? [];
+  if (!ranges.length) return "";
+  const body = ranges
+    .map((item, index) => `<protectedRange name="${escapeXml(item.name)}" sqref="${escapeXml(item.range)}" sheetId="${index + 1}"/>`)
+    .join("");
+  return `<protectedRanges>${body}</protectedRanges>`;
 }
 
 function hyperlinksXml(sheet: Worksheet): string {
@@ -394,6 +451,11 @@ function upsertAfterSheetData(xml: string, tag: string, fragment: string): strin
   if (close < 0) return cleaned + fragment;
   const at = close + "</sheetData>".length;
   return cleaned.slice(0, at) + fragment + cleaned.slice(at);
+}
+
+function replaceBlock(xml: string, tag: string, fragment: string): string {
+  const cleaned = xml.replace(new RegExp(`<${tag}\\b[^>]*/>|<${tag}\\b[\\s\\S]*?</${tag}>`, "gi"), "");
+  return fragment ? upsertBeforeClose(cleaned, fragment) : cleaned;
 }
 
 function upsertBeforeClose(xml: string, fragment: string): string {

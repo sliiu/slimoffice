@@ -260,3 +260,67 @@ test("reads page breaks, slicers, and what-if data tables", async () => {
   assert.deepEqual(opened?.dataTables, [{ ref: "B2:C3", rowInput: "A1", colInput: "A2" }]);
   assert.equal(opened?.cells[1]?.[1]?.array, true);
 });
+
+test("reads shapes, a text box, the header, and sheet protection", async () => {
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/worksheets/sheet1.xml": '<worksheet><sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>' +
+      '<sheetProtection sheet="1"/>' +
+      '<headerFooter><oddHeader>机密</oddHeader><oddFooter>第 1 页</oddFooter></headerFooter>' +
+      '<drawing r:id="rIdDrawing1"/></worksheet>',
+    "xl/worksheets/_rels/sheet1.xml.rels": '<Relationships><Relationship Id="rIdDrawing1" Type="drawing" Target="../drawings/drawing1.xml"/></Relationships>',
+    "xl/drawings/drawing1.xml": '<xdr:wsDr>' +
+      '<xdr:oneCellAnchor><xdr:from><xdr:col>1</xdr:col><xdr:colOff>9525</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>19050</xdr:rowOff></xdr:from><xdr:ext cx="952500" cy="190500"/>' +
+      '<xdr:sp><xdr:nvSpPr><xdr:cNvPr id="2" name="文本框 1"/><xdr:cNvSpPr txBox="1"/></xdr:nvSpPr>' +
+      '<xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr><xdr:txBody><a:p><a:r><a:t>备注</a:t></a:r></a:p></xdr:txBody></xdr:sp></xdr:oneCellAnchor>' +
+      '<xdr:twoCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>2</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>2</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>' +
+      '<xdr:sp><xdr:nvSpPr><xdr:cNvPr id="3" name="椭圆 1"/><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr><a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom></xdr:spPr></xdr:sp></xdr:twoCellAnchor>' +
+      '</xdr:wsDr>',
+  });
+  const opened = (await parseXlsx(bytes)).sheets[0];
+  assert.equal(opened?.protected, true);
+  assert.equal(opened?.pageSetup?.header, "机密");
+  assert.equal(opened?.pageSetup?.footer, "第 1 页");
+  assert.deepEqual(opened?.shapes?.map((shape) => [shape.kind, shape.text ?? ""]), [["ellipse", ""], ["textBox", "备注"]]);
+  assert.equal(opened?.shapes?.[1]?.x, 1);
+  assert.equal(opened?.shapes?.[1]?.y, 2);
+  assert.equal(opened?.shapes?.[1]?.w, 100);
+  assert.equal(opened?.shapes?.[1]?.h, 20);
+  assert.equal(opened?.shapes?.[0]?.w, 128);
+  assert.equal(opened?.shapes?.[0]?.h, 40);
+});
+
+test("reads form controls, an xml map, and allowed edit ranges", async () => {
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/worksheets/sheet1.xml": '<worksheet><sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>' +
+      '<protectedRanges><protectedRange name="可改" sqref="A1:B2"/></protectedRanges></worksheet>',
+    "xl/worksheets/_rels/sheet1.xml.rels": '<Relationships>' +
+      '<Relationship Id="rIdCtrl1" Type="ctrlProp" Target="../ctrlProps/ctrlProp1.xml"/>' +
+      '<Relationship Id="rIdMap1" Type="xmlMap" Target="../xmlMaps/xmlMap1.xml"/>' +
+      '</Relationships>',
+    "xl/ctrlProps/ctrlProp1.xml": '<formControlPr><control id="fc1" objectType="button" name="提交" fmlaLink="A1"/></formControlPr>',
+    "xl/xmlMaps/xmlMap1.xml": '<MapInfo><Map ID="map1" Name="订单" RootElement="order"/></MapInfo>',
+  });
+  const opened = (await parseXlsx(bytes)).sheets[0];
+  assert.deepEqual(opened?.allowEditRanges, [{ name: "可改", range: "A1:B2" }]);
+  assert.deepEqual(opened?.formControls, [{ id: "fc1", kind: "button", label: "提交", linked: "A1" }]);
+  assert.deepEqual(opened?.xmlMaps, [{ id: "map1", name: "订单", root: "order" }]);
+});
+
+test("reads a consolidation definition", async () => {
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/worksheets/sheet1.xml": rowsOf('<row r="1"><c r="A1"><v>16</v></c></row>'),
+    "xl/worksheets/_rels/sheet1.xml.rels": '<Relationships><Relationship Id="rIdConsolidation1" Type="consolidation" Target="../consolidation/consolidation1.xml"/></Relationships>',
+    "xl/consolidation/consolidation1.xml": '<consolidation func="sum" dest="汇总!A1" leftCol="1" links="1"><source ref="一月!A1:B2"/><source ref="二月!A1:B2"/></consolidation>',
+  });
+  const opened = (await parseXlsx(bytes)).sheets[0];
+  assert.deepEqual(opened?.consolidation, {
+    func: "sum",
+    sources: ["一月!A1:B2", "二月!A1:B2"],
+    dest: "汇总!A1",
+    leftCol: true,
+    links: true,
+  });
+});

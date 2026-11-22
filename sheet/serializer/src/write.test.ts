@@ -147,3 +147,79 @@ test("writes slicers and what-if data tables back", () => {
   const sheetXml = new TextDecoder().decode(out["xl/worksheets/sheet1.xml"] ?? new Uint8Array());
   assert.match(sheetXml, /<f t="dataTable" ref="A2:A2" dt2D="1" dtr="1" r1="B1" r2="B2"><\/f>/);
 });
+
+test("writes the pivot cache, sheet protection, and the header", () => {
+  const made = blankWorkbook("销售", [[{ value: "甲" }, { value: "10" }]]);
+  const sheet = made.workbook.sheets[0]!;
+  sheet.protected = true;
+  sheet.pageSetup = { header: "机密", footer: "第 1 页" };
+  sheet.pivots = [{
+    id: "pivot1",
+    name: "销量透视",
+    source: "A1:B2",
+    rows: ["品类"],
+    values: ["数量"],
+    fields: ["品类", "数量"],
+    cache: [["甲", "10"], ["乙", "5"]],
+  }];
+  made.workbook.edited = true;
+  const out = unzipSync(writeXlsx(made.workbook));
+  const sheetXml = new TextDecoder().decode(out["xl/worksheets/sheet1.xml"] ?? new Uint8Array());
+  assert.match(sheetXml, /<sheetProtection sheet="1"\/>/);
+  assert.match(sheetXml, /<oddHeader>机密<\/oddHeader>/);
+  assert.match(sheetXml, /<oddFooter>第 1 页<\/oddFooter>/);
+  const table = new TextDecoder().decode(out["xl/pivotTables/pivotTable1.xml"] ?? new Uint8Array());
+  assert.match(table, /name="销量透视"/);
+  assert.match(table, /cacheId="1"/);
+  assert.match(table, /<rowFields count="1"><field x="0"\/><\/rowFields>/);
+  const cache = new TextDecoder().decode(out["xl/pivotCache/pivotCacheDefinition1.xml"] ?? new Uint8Array());
+  assert.match(cache, /<worksheetSource ref="A1:B2"\/>/);
+  const records = new TextDecoder().decode(out["xl/pivotCache/pivotCacheRecords1.xml"] ?? new Uint8Array());
+  assert.match(records, /<s v="甲"\/><n v="10"\/>/);
+  const workbook = new TextDecoder().decode(out["xl/workbook.xml"] ?? new Uint8Array());
+  assert.match(workbook, /<pivotCache cacheId="1" r:id="rIdPivotCache1"\/>/);
+  const workbookRels = new TextDecoder().decode(out["xl/_rels/workbook.xml.rels"] ?? new Uint8Array());
+  assert.match(workbookRels, /Target="pivotCache\/pivotCacheDefinition1.xml"/);
+});
+
+test("writes a new sheet, outline levels, and an allowed edit range", () => {
+  const made = blankWorkbook("销售", [[{ value: "甲" }]]);
+  made.workbook.sheets.push({ name: "库存", cells: [[{ value: "3" }]] });
+  made.workbook.sheets[0]!.outline = { rows: [0], cols: [0], summaryBelow: false };
+  made.workbook.sheets[0]!.allowEditRanges = [{ name: "可改", range: "A1:A1" }];
+  made.workbook.sheets[0]!.formControls = [{ id: "fc1", kind: "button", label: "提交" }];
+  made.workbook.sheets[0]!.xmlMaps = [{ id: "map1", name: "订单", root: "order" }];
+  made.workbook.edited = true;
+  const out = unzipSync(writeXlsx(made.workbook));
+  const workbook = new TextDecoder().decode(out["xl/workbook.xml"] ?? new Uint8Array());
+  assert.match(workbook, /<sheet name="库存" sheetId="2" r:id="rId2"\/>/);
+  const sheet = new TextDecoder().decode(out["xl/worksheets/sheet1.xml"] ?? new Uint8Array());
+  assert.match(sheet, /<row r="1" outlineLevel="1"/);
+  assert.match(sheet, /<col min="1" max="1" outlineLevel="1"\/>/);
+  assert.match(sheet, /<outlinePr summaryBelow="0"\/>/);
+  assert.match(sheet, /<protectedRange name="可改" sqref="A1:A1"/);
+  const added = new TextDecoder().decode(out["xl/worksheets/sheet2.xml"] ?? new Uint8Array());
+  assert.match(added, /<c r="A1"><v>3<\/v><\/c>/);
+  const controls = new TextDecoder().decode(out["xl/ctrlProps/ctrlProp1.xml"] ?? new Uint8Array());
+  assert.match(controls, /objectType="button" name="提交"/);
+  const maps = new TextDecoder().decode(out["xl/xmlMaps/xmlMap1.xml"] ?? new Uint8Array());
+  assert.match(maps, /Name="订单" RootElement="order"/);
+});
+
+test("writes a consolidation definition", () => {
+  const made = blankWorkbook("汇总", [[{ value: "16" }]]);
+  made.workbook.sheets[0]!.consolidation = {
+    func: "sum",
+    sources: ["一月!A1:B2", "二月!A1:B2"],
+    dest: "汇总!A1",
+    leftCol: true,
+    links: true,
+  };
+  made.workbook.edited = true;
+  const out = unzipSync(writeXlsx(made.workbook));
+  const xml = new TextDecoder().decode(out["xl/consolidation/consolidation1.xml"] ?? new Uint8Array());
+  assert.match(xml, /<consolidation func="sum" dest="汇总!A1" leftCol="1" links="1">/);
+  assert.match(xml, /<source ref="一月!A1:B2"\/><source ref="二月!A1:B2"\/>/);
+  const rels = new TextDecoder().decode(out["xl/worksheets/_rels/sheet1.xml.rels"] ?? new Uint8Array());
+  assert.match(rels, /Target="..\/consolidation\/consolidation1.xml"/);
+});

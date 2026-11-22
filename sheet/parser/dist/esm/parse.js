@@ -159,6 +159,14 @@ function sheetShape(root, archive, path) {
     const page = pageSetup(root);
     if (page)
         shape.pageSetup = page;
+    const heads = headerFooterOf(root);
+    if (heads.header || heads.footer)
+        shape.pageSetup = { ...shape.pageSetup, ...heads };
+    if (child(root, "sheetProtection"))
+        shape.protected = true;
+    const drawn = shapeList(archive, path);
+    if (drawn.length)
+        shape.shapes = drawn;
     const formats = conditionalFormats(root);
     if (formats.length)
         shape.conditionalFormats = formats;
@@ -186,6 +194,18 @@ function sheetShape(root, archive, path) {
     const slicers = slicerList(archive, path);
     if (slicers.length)
         shape.slicers = slicers;
+    const controls = formControlsOf(archive, path);
+    if (controls.length)
+        shape.formControls = controls;
+    const maps = xmlMapsOf(archive, path);
+    if (maps.length)
+        shape.xmlMaps = maps;
+    const consolidation = consolidationOf(archive, path);
+    if (consolidation)
+        shape.consolidation = consolidation;
+    const editable = allowEditRangesOf(root);
+    if (editable.length)
+        shape.allowEditRanges = editable;
     const area = printAreaOf(archive, path);
     if (area) {
         shape.pageSetup = { ...shape.pageSetup, printArea: area.area, ...(area.titles ? { printTitles: area.titles } : {}) };
@@ -548,6 +568,116 @@ function normalizeRel(dir, target) {
             out.push(part);
     }
     return out.join("/");
+}
+function formControlsOf(archive, path) {
+    const kinds = new Set(["button", "checkbox", "list", "spin"]);
+    return [...relTargets(archive, path).values()]
+        .filter((target) => /ctrlProp\d*\.xml$/i.test(target))
+        .flatMap((target) => children(child(parseXml(archive.getText(target) ?? ""), "formControlPr"), "control"))
+        .flatMap((item, index) => {
+        const kind = attr(item, "objectType") ?? "";
+        if (!kinds.has(kind))
+            return [];
+        return [{
+                id: attr(item, "id") ?? `fc${index + 1}`,
+                kind: kind,
+                ...(attr(item, "name") ? { label: attr(item, "name") } : {}),
+                ...(attr(item, "fmlaLink") ? { linked: attr(item, "fmlaLink") } : {}),
+                ...(attr(item, "checked") === "1" ? { checked: true } : {}),
+            }];
+    });
+}
+function consolidationOf(archive, path) {
+    const funcs = new Set(["sum", "count", "average", "max", "min", "product", "countNums", "stdev", "stdevp", "var", "varp"]);
+    const target = [...relTargets(archive, path).values()].find((item) => /consolidation\d*\.xml$/i.test(item));
+    if (!target)
+        return undefined;
+    const node = child(parseXml(archive.getText(target) ?? ""), "consolidation");
+    const func = attr(node, "func") ?? "";
+    const dest = attr(node, "dest");
+    if (!funcs.has(func) || !dest)
+        return undefined;
+    const sources = children(node, "source").flatMap((item) => {
+        const ref = attr(item, "ref");
+        return ref ? [ref] : [];
+    });
+    return {
+        func: func,
+        sources,
+        dest,
+        ...(attr(node, "topRow") === "1" ? { topRow: true } : {}),
+        ...(attr(node, "leftCol") === "1" ? { leftCol: true } : {}),
+        ...(attr(node, "links") === "1" ? { links: true } : {}),
+    };
+}
+function xmlMapsOf(archive, path) {
+    return [...relTargets(archive, path).values()]
+        .filter((target) => /xmlMap\d*\.xml$/i.test(target))
+        .flatMap((target) => children(child(parseXml(archive.getText(target) ?? ""), "MapInfo"), "Map"))
+        .map((item, index) => ({
+        id: attr(item, "ID") ?? `map${index + 1}`,
+        name: attr(item, "Name") ?? `Map${index + 1}`,
+        ...(attr(item, "RootElement") ? { root: attr(item, "RootElement") } : {}),
+    }));
+}
+function allowEditRangesOf(root) {
+    return children(child(root, "protectedRanges"), "protectedRange").flatMap((item) => {
+        const range = attr(item, "sqref");
+        if (!range)
+            return [];
+        return [{ name: attr(item, "name") ?? "Range", range }];
+    });
+}
+function headerFooterOf(root) {
+    const node = child(root, "headerFooter");
+    const header = child(node, "oddHeader")?.text.trim();
+    const footer = child(node, "oddFooter")?.text.trim();
+    return { ...(header ? { header } : {}), ...(footer ? { footer } : {}) };
+}
+function shapeList(archive, path) {
+    const presets = {
+        rect: "rect",
+        roundRect: "rect",
+        ellipse: "ellipse",
+        line: "line",
+        straightConnector1: "line",
+        rightArrow: "arrow",
+        leftArrow: "arrow",
+    };
+    return [...relTargets(archive, path).values()]
+        .filter((target) => /\/drawings\/drawing\d+\.xml$/i.test(target))
+        .flatMap((target) => {
+        const drawing = child(parseXml(archive.getText(target) ?? ""), "wsDr");
+        return children(drawing, "twoCellAnchor").concat(children(drawing, "oneCellAnchor"));
+    })
+        .flatMap((anchor, index) => {
+        const body = child(anchor, "sp") ?? child(anchor, "pic");
+        if (!body)
+            return [];
+        const preset = attr(child(child(body, "spPr"), "prstGeom"), "prst") ?? "rect";
+        const textBox = attr(child(child(body, "nvSpPr"), "cNvSpPr"), "txBox") === "1";
+        const from = child(anchor, "from");
+        const to = child(anchor, "to");
+        const ext = child(anchor, "ext");
+        const across = (node, name) => Number(child(node, name)?.text ?? 0);
+        const width = Number(attr(ext, "cx") ?? 0) / 9525 || Math.max(8, (across(to, "col") - across(from, "col")) * 64);
+        const height = Number(attr(ext, "cy") ?? 0) / 9525 || Math.max(8, (across(to, "row") - across(from, "row")) * 20);
+        const text = shapeText(child(body, "txBody"));
+        return [{
+                id: attr(child(child(body, "nvSpPr"), "cNvPr"), "name") ?? `shape${index + 1}`,
+                kind: body.name === "pic" ? "image" : textBox ? "textBox" : presets[preset] ?? "rect",
+                ...(text ? { text } : {}),
+                x: across(from, "colOff") / 9525,
+                y: across(from, "rowOff") / 9525,
+                w: width,
+                h: height,
+            }];
+    });
+}
+function shapeText(node) {
+    if (!node)
+        return "";
+    return (node.name === "t" ? node.text : "") + node.children.map((item) => shapeText(item)).join("");
 }
 function pageSetup(root) {
     const setup = child(root, "pageSetup");

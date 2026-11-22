@@ -21,6 +21,12 @@ export function renderCharts(sheet: Worksheet): HTMLElement {
     host.append(node);
   }
   for (const pivot of sheet.pivots ?? []) host.append(pivotNode(pivot));
+  for (const map of sheet.xmlMaps ?? []) {
+    const node = document.createElement("div");
+    node.className = "sheet-xml-map";
+    node.textContent = map.root ? `${map.name}: ${map.root}` : map.name;
+    host.append(node);
+  }
   return host;
 }
 

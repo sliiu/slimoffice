@@ -113,3 +113,46 @@ test("marks a filter header, a hyperlink, and frozen cells", () => {
   assert.equal(cells[2]?.classList.contains("is-frozen"), true);
   assert.equal(cells[3]?.classList.contains("is-frozen"), false);
 });
+
+test("marks a table header, an array formula, the print area, and the theme", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    theme: { name: "Office", colors: ["", "", "", "", "#4472c4"], fonts: { minor: "Calibri" } },
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "30", array: true, formula: "SUM(B2:B3)" }], [{ value: "甲" }, { value: "10" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true }],
+      pageSetup: { printArea: "A1:B1", scale: 80 },
+    }],
+  });
+  const cells = host.querySelectorAll("td");
+  assert.equal(cells[0]?.classList.contains("is-table-header"), true);
+  assert.equal(cells[0]?.dataset.table, "Table1");
+  assert.equal(cells[1]?.dataset.array, "1");
+  assert.equal(cells[0]?.dataset.printArea, "1");
+  assert.equal(cells[2]?.dataset.printArea, undefined);
+  const frame = host.querySelector(".sheet-frame") as HTMLElement;
+  assert.equal(frame.style.fontFamily, "Calibri");
+  assert.equal(frame.dataset.scale, "80");
+});
+
+test("marks the cells a consolidation wrote", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "汇总",
+      cells: [[{ value: "甲" }, { value: "13" }], [{ value: "乙" }, { value: "10" }]],
+      consolidation: { func: "sum", sources: ["一月!A1:B2"], dest: "汇总!A1", rows: 2, cols: 2 },
+    }],
+  });
+  const cells = host.querySelectorAll("td");
+  assert.equal(cells[0]?.dataset.consolidation, "sum");
+  assert.equal(cells[1]?.dataset.consolidation, "sum");
+  assert.equal(cells[2]?.dataset.consolidation, "sum");
+});

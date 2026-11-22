@@ -6,6 +6,8 @@ function drawingFragments(sheet, sheetIndex) {
     const parts = new Map();
     const contentTypes = [];
     const rels = [];
+    const workbookRels = [];
+    const pivotCacheRefs = [];
     const extras = [];
     const drawings = [];
     (sheet.tables ?? []).forEach((table, index) => {
@@ -44,6 +46,38 @@ function drawingFragments(sheet, sheetIndex) {
         extras.push(dataValidationsXml(sheet));
     if (sheet.pageBreaks?.rows?.length || sheet.pageBreaks?.cols?.length)
         extras.push(pageBreaksXml(sheet));
+    (sheet.pivots ?? []).forEach((pivot, index) => {
+        const id = sheetIndex * 100 + index + 1;
+        const tablePath = `xl/pivotTables/pivotTable${id}.xml`;
+        const cachePath = `xl/pivotCache/pivotCacheDefinition${id}.xml`;
+        const recordsPath = `xl/pivotCache/pivotCacheRecords${id}.xml`;
+        parts.set(tablePath, pivotTableXml(pivot, id));
+        parts.set(cachePath, pivotCacheXml(pivot));
+        parts.set(recordsPath, pivotRecordsXml(pivot));
+        parts.set(`xl/pivotCache/_rels/pivotCacheDefinition${id}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdRecords" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords" Target="pivotCacheRecords${id}.xml"/></Relationships>`);
+        contentTypes.push(`<Override PartName="/${tablePath}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml"/>`);
+        contentTypes.push(`<Override PartName="/${cachePath}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml"/>`);
+        contentTypes.push(`<Override PartName="/${recordsPath}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml"/>`);
+        rels.push(`<Relationship Id="rIdPivot${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable" Target="../pivotTables/pivotTable${id}.xml"/>`);
+        workbookRels.push(`<Relationship Id="rIdPivotCache${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition" Target="pivotCache/pivotCacheDefinition${id}.xml"/>`);
+        pivotCacheRefs.push(`<pivotCache cacheId="${id}" r:id="rIdPivotCache${id}"/>`);
+    });
+    if (sheet.formControls?.length) {
+        const path = `xl/ctrlProps/ctrlProp${sheetIndex + 1}.xml`;
+        parts.set(path, formControlsXml(sheet));
+        contentTypes.push(`<Override PartName="/${path}" ContentType="application/vnd.ms-excel.controlproperties+xml"/>`);
+    }
+    if (sheet.consolidation) {
+        const path = `xl/consolidation/consolidation${sheetIndex + 1}.xml`;
+        parts.set(path, consolidationXml(sheet.consolidation));
+        contentTypes.push(`<Override PartName="/${path}" ContentType="application/xml"/>`);
+        rels.push(`<Relationship Id="rIdConsolidation1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/consolidation" Target="../consolidation/consolidation${sheetIndex + 1}.xml"/>`);
+    }
+    if (sheet.xmlMaps?.length) {
+        const path = `xl/xmlMaps/xmlMap${sheetIndex + 1}.xml`;
+        parts.set(path, xmlMapsXml(sheet));
+        contentTypes.push(`<Override PartName="/${path}" ContentType="application/xml"/>`);
+    }
     if (sheet.slicers?.length) {
         const slicerPath = `xl/slicers/slicer${sheetIndex + 1}.xml`;
         parts.set(slicerPath, slicersXml(sheet));
@@ -56,7 +90,7 @@ function drawingFragments(sheet, sheetIndex) {
         });
         rels.push(`<Relationship Id="rIdSlicer1" Type="http://schemas.microsoft.com/office/2007/relationships/slicer" Target="../slicers/slicer${sheetIndex + 1}.xml"/>`);
     }
-    return { sheetExtras: extras.join(""), parts, contentTypes, rels };
+    return { sheetExtras: extras.join(""), parts, contentTypes, rels, workbookRels, pivotCacheRefs };
 }
 function tableXml(table) {
     const ref = `${colName(table.c1)}${table.r1 + 1}:${colName(table.c2)}${table.r2 + 1}`;
@@ -106,6 +140,27 @@ function commentsXml(notes) {
         .join("");
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><authors><author/></authors><commentList>${body}</commentList></comments>`;
 }
+function consolidationXml(consolidation) {
+    const sources = consolidation.sources.map((source) => `<source ref="${escapeXml(source)}"/>`).join("");
+    const flags = [
+        consolidation.topRow ? ' topRow="1"' : "",
+        consolidation.leftCol ? ' leftCol="1"' : "",
+        consolidation.links ? ' links="1"' : "",
+    ].join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<consolidation func="${consolidation.func}" dest="${escapeXml(consolidation.dest)}"${flags}>${sources}</consolidation>`;
+}
+function formControlsXml(sheet) {
+    const body = (sheet.formControls ?? [])
+        .map((control) => `<control id="${escapeXml(control.id)}" objectType="${control.kind}"${control.label ? ` name="${escapeXml(control.label)}"` : ""}${control.linked ? ` fmlaLink="${escapeXml(control.linked)}"` : ""}${control.checked ? ' checked="1"' : ""}/>`)
+        .join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<formControlPr xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">${body}</formControlPr>`;
+}
+function xmlMapsXml(sheet) {
+    const body = (sheet.xmlMaps ?? [])
+        .map((map) => `<Map ID="${escapeXml(map.id)}" Name="${escapeXml(map.name)}"${map.root ? ` RootElement="${escapeXml(map.root)}"` : ""}/>`)
+        .join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<MapInfo xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${body}</MapInfo>`;
+}
 function slicersXml(sheet) {
     const body = (sheet.slicers ?? [])
         .map((slicer, index) => `<slicer name="${escapeXml(slicer.name)}" cache="SlicerCache${index + 1}" caption="${escapeXml(slicer.field)}"/>`)
@@ -114,6 +169,24 @@ function slicersXml(sheet) {
 }
 function slicerCacheXml(slicer, index) {
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<slicerCacheDefinition xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" name="SlicerCache${index + 1}" sourceName="${escapeXml(slicer.source)}"><data name="${escapeXml(slicer.field)}"/></slicerCacheDefinition>`;
+}
+function pivotTableXml(pivot, cacheId) {
+    const fields = pivot.fields ?? [...new Set([...(pivot.rows ?? []), ...(pivot.columns ?? []), ...(pivot.values ?? [])])];
+    const fieldIndex = (name) => Math.max(0, fields.indexOf(name));
+    const list = (names) => (names ?? []).map((name) => `<field x="${fieldIndex(name)}"/>`).join("");
+    const rows = list(pivot.rows);
+    const cols = list(pivot.columns);
+    const values = list(pivot.values);
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotTableDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="${escapeXml(pivot.name)}" cacheId="${cacheId}"><pivotFields count="${fields.length}">${fields.map(() => "<pivotField/>").join("")}</pivotFields>${rows ? `<rowFields count="${pivot.rows.length}">${rows}</rowFields>` : ""}${cols ? `<colFields count="${pivot.columns.length}">${cols}</colFields>` : ""}${values ? `<dataFields count="${pivot.values.length}">${values}</dataFields>` : ""}</pivotTableDefinition>`;
+}
+function pivotCacheXml(pivot) {
+    const fields = pivot.fields ?? [];
+    const body = fields.map((field) => `<cacheField name="${escapeXml(field)}"/>`).join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotCacheDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cacheSource type="worksheet"><worksheetSource ref="${escapeXml(pivot.source)}"/></cacheSource><cacheFields count="${fields.length}">${body}</cacheFields></pivotCacheDefinition>`;
+}
+function pivotRecordsXml(pivot) {
+    const rows = (pivot.cache ?? []).map((row) => `<r>${row.map((value) => (/^-?\d+(?:\.\d+)?$/.test(value) ? `<n v="${value}"/>` : `<s v="${escapeXml(value)}"/>`)).join("")}</r>`).join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotCacheRecords xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${pivot.cache?.length ?? 0}">${rows}</pivotCacheRecords>`;
 }
 function pageBreaksXml(sheet) {
     const rows = (sheet.pageBreaks?.rows ?? []).map((row) => `<brk id="${row}" max="16383" man="1"/>`).join("");

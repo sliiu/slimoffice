@@ -1,4 +1,4 @@
-import type { SheetCell, Workbook, Worksheet } from "@sliiu/sheet-core";
+import type { ConsolidateFunc, SheetCell, SheetConsolidation, Workbook, Worksheet } from "@sliiu/sheet-core";
 import { formatNumber } from "./format";
 
 export type FormulaPrimitive = number | string | boolean;
@@ -59,6 +59,205 @@ export function evaluate(input: string, ctx: EvalContext): FormulaValue {
   }
 }
 
+export interface ConsolidateSpec {
+  func?: ConsolidateFunc;
+  sources: string[];
+  dest: string;
+  topRow?: boolean;
+  leftCol?: boolean;
+  links?: boolean;
+}
+
+/** Combine the source ranges into the destination sheet. Stores the definition so it reads back. */
+export function consolidateRanges(workbook: Workbook, spec: ConsolidateSpec): SheetConsolidation {
+  const dest = parseSource(spec.dest);
+  const sheet = dest ? workbook.sheets[findSheet(workbook, dest.sheet)] : undefined;
+  const func = spec.func ?? "sum";
+  const consolidation: SheetConsolidation = {
+    func,
+    sources: spec.sources,
+    dest: spec.dest,
+    ...(spec.topRow ? { topRow: true } : {}),
+    ...(spec.leftCol ? { leftCol: true } : {}),
+    ...(spec.links ? { links: true } : {}),
+  };
+  if (!dest || !sheet) return consolidation;
+  const grids = spec.sources.map((source) => readSource(workbook, source));
+  const top = spec.topRow ? 1 : 0;
+  const left = spec.leftCol ? 1 : 0;
+  const rows = grids.reduce((widest, grid) => Math.max(widest, grid.rows - top), 0);
+  const cols = grids.reduce((widest, grid) => Math.max(widest, grid.cols - left), 0);
+  const labels = spec.topRow || spec.leftCol ? labelKeys(grids, top, left) : undefined;
+  const rowLabels = labels?.rowLabels ?? [];
+  const colLabels = labels?.colLabels ?? [];
+  const keys = labels?.keys ?? [...Array(rows)].map((_, row) => [...Array(cols)].map((__, col) => grids.map(() => ({ row, col }))));
+  const rowOffset = colLabels.length ? 1 : 0;
+  const colOffset = rowLabels.length ? 1 : 0;
+  rowLabels.forEach((label, row) => {
+    const cell = ensureCell(sheet, dest.row + rowOffset + row, dest.col);
+    delete cell.formula;
+    cell.value = label;
+  });
+  colLabels.forEach((label, col) => {
+    const cell = ensureCell(sheet, dest.row, dest.col + colOffset + col);
+    delete cell.formula;
+    cell.value = label;
+  });
+  keys.forEach((line, row) => {
+    line.forEach((spots, col) => {
+      const picks = spots.flatMap((key, source) => valueAt(grids[source]!, key.row + top, key.col + left));
+      const cell = ensureCell(sheet, dest.row + rowOffset + row, dest.col + colOffset + col);
+      const result = reduceNumbers(picks, func);
+      if (spec.links && picks.length) {
+        cell.formula = linkFormula(grids, spots, top, left, func);
+        cell.value = typeof result === "number" ? formatResult(result) : "";
+      } else {
+        delete cell.formula;
+        cell.value = typeof result === "number" ? formatResult(result) : "";
+      }
+    });
+  });
+  consolidation.rows = rowOffset + keys.length;
+  consolidation.cols = colOffset + (keys[0]?.length ?? 0);
+  sheet.consolidation = consolidation;
+  return consolidation;
+}
+
+interface SourceGrid {
+  sheet: string;
+  row: number;
+  col: number;
+  rows: number;
+  cols: number;
+  values: (number | undefined)[][];
+  text: string[][];
+}
+
+function readSource(workbook: Workbook, source: string): SourceGrid {
+  const parsed = parseSource(source);
+  const empty: SourceGrid = { sheet: "", row: 0, col: 0, rows: 0, cols: 0, values: [], text: [] };
+  if (!parsed) return empty;
+  const sheet = workbook.sheets[findSheet(workbook, parsed.sheet)];
+  if (!sheet) return { ...empty, sheet: parsed.sheet };
+  const values: (number | undefined)[][] = [];
+  const text: string[][] = [];
+  for (let row = 0; row < parsed.rows; row += 1) {
+    const line: (number | undefined)[] = [];
+    const labels: string[] = [];
+    for (let col = 0; col < parsed.cols; col += 1) {
+      const raw = sheet.cells[parsed.row + row]?.[parsed.col + col]?.value ?? "";
+      line.push(/^-?\d+(?:\.\d+)?$/.test(raw) ? Number(raw) : undefined);
+      labels.push(raw);
+    }
+    values.push(line);
+    text.push(labels);
+  }
+  return { sheet: sheet.name, row: parsed.row, col: parsed.col, rows: parsed.rows, cols: parsed.cols, values, text };
+}
+
+function parseSource(source: string): { sheet: string; row: number; col: number; rows: number; cols: number } | undefined {
+  const match = /^([^!]+)!(.+)$/.exec(source.trim());
+  if (!match) return undefined;
+  const sheet = (match[1] ?? "").replace(/^'|'$/g, "").replace(/''/g, "'").toUpperCase();
+  const parts = (match[2] ?? "").split(":");
+  const start = parseA1(parts[0] ?? "");
+  const end = parseA1(parts[1] ?? parts[0] ?? "");
+  if (!start || !end) return undefined;
+  const row = Math.min(start.row, end.row);
+  const col = Math.min(start.col, end.col);
+  return { sheet, row, col, rows: Math.abs(end.row - start.row) + 1, cols: Math.abs(end.col - start.col) + 1 };
+}
+
+function labelKeys(
+  grids: SourceGrid[],
+  top: number,
+  left: number,
+): { rowLabels: string[]; colLabels: string[]; keys: { row: number; col: number }[][][] } {
+  const rowLabels: string[] = [];
+  const colLabels: string[] = [];
+  for (const grid of grids) {
+    for (let row = top; row < grid.rows; row += 1) {
+      const label = left ? grid.text[row]?.[0] ?? "" : String(row - top + 1);
+      if (label && !rowLabels.includes(label)) rowLabels.push(label);
+    }
+    for (let col = left; col < grid.cols; col += 1) {
+      const label = top ? grid.text[0]?.[col] ?? "" : String(col - left + 1);
+      if (label && !colLabels.includes(label)) colLabels.push(label);
+    }
+  }
+  const keys = rowLabels.map((rowLabel) =>
+    colLabels.map((colLabel) =>
+      grids.map((grid) => {
+        const rowAt = left ? grid.text.findIndex((line, index) => index >= top && line[0] === rowLabel) : top + rowLabels.indexOf(rowLabel);
+        const colAt = top ? (grid.text[0] ?? []).findIndex((label, index) => index >= left && label === colLabel) : left + colLabels.indexOf(colLabel);
+        return { row: rowAt - top, col: colAt - left };
+      }),
+    ),
+  );
+  return { rowLabels: left ? rowLabels : [], colLabels: top ? colLabels : [], keys };
+}
+
+function valueAt(grid: SourceGrid, row: number, col: number): number[] {
+  const value = grid.values[row]?.[col];
+  return value == null ? [] : [value];
+}
+
+function reduceNumbers(values: number[], func: ConsolidateFunc): number | undefined {
+  if (!values.length && func !== "count" && func !== "countNums") return undefined;
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const count = func === "count" || func === "countNums" ? values.length : values.length;
+  if (func === "count" || func === "countNums") return count;
+  if (func === "average") return count ? total / count : undefined;
+  if (func === "max") return Math.max(...values);
+  if (func === "min") return Math.min(...values);
+  if (func === "product") return values.reduce((product, value) => product * value, 1);
+  if (func === "stdev" || func === "stdevp") {
+    const divisor = func === "stdev" ? count - 1 : count;
+    if (divisor <= 0) return undefined;
+    const mean = total / count;
+    return Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / divisor);
+  }
+  if (func === "var" || func === "varp") {
+    const divisor = func === "var" ? count - 1 : count;
+    if (divisor <= 0) return undefined;
+    const mean = total / count;
+    return values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / divisor;
+  }
+  return total;
+}
+
+function linkFormula(grids: SourceGrid[], spots: { row: number; col: number }[], top: number, left: number, func: ConsolidateFunc): string {
+  const refs = grids.flatMap((grid, index) => {
+    const spot = spots[index];
+    if (!spot) return [];
+    const row = spot.row + top;
+    const col = spot.col + left;
+    if (grid.values[row]?.[col] == null) return [];
+    return [`'${grid.sheet.replace(/'/g, "''")}'!${columnLetters(grid.col + col)}${grid.row + row + 1}`];
+  });
+  const name = func === "countNums" ? "COUNT" : func === "stdev" ? "STDEV" : func === "var" ? "VAR" : func.toUpperCase();
+  return refs.length === 1 && func === "sum" ? refs[0]! : `${name}(${refs.join(",")})`;
+}
+
+function columnLetters(index: number): string {
+  let name = "";
+  let next = index + 1;
+  while (next > 0) {
+    next -= 1;
+    name = String.fromCharCode(65 + (next % 26)) + name;
+    next = Math.floor(next / 26);
+  }
+  return name;
+}
+
+function ensureCell(sheet: Worksheet, row: number, col: number): SheetCell {
+  const line = sheet.cells[row] ?? [];
+  sheet.cells[row] = line;
+  const cell = line[col] ?? { value: "" };
+  line[col] = cell;
+  return cell;
+}
+
 export function formatResult(value: FormulaValue): string {
   if (value instanceof FormulaError) return value.code;
   if (Array.isArray(value)) return value.map((item) => formatResult(item)).join(",");
@@ -90,6 +289,25 @@ function tokenize(text: string): Token[] {
     const ch = text[i]!;
     if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
       i += 1;
+      continue;
+    }
+    if (ch === "'") {
+      let j = i + 1;
+      let value = "";
+      while (j < text.length) {
+        const c = text[j]!;
+        if (c === "'" && text[j + 1] === "'") {
+          value += "'";
+          j += 2;
+          continue;
+        }
+        if (c === "'") break;
+        value += c;
+        j += 1;
+      }
+      if (text[j] !== "'") throw E.VALUE();
+      out.push({ kind: "id", value: value.toUpperCase() });
+      i = j + 1;
       continue;
     }
     if (ch === "\"") {
