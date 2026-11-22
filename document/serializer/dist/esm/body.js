@@ -140,7 +140,7 @@ function sectionXml(page) {
 }
 function pageXml(page) {
     const orient = page.landscape ? ` w:orient="landscape"` : "";
-    const columns = page.columns && page.columns > 1 ? `<w:cols w:num="${page.columns}"/>` : "";
+    const columns = page.columns && page.columns > 1 ? `<w:cols w:num="${page.columns}"${page.columnSpace ? ` w:space="${Math.round(page.columnSpace)}"` : ""}${page.columnSeparator ? ` w:sep="1"` : ""}/>` : "";
     const gutter = page.gutter ? ` w:gutter="${Math.round(page.gutter)}"` : "";
     const header = page.headerDistance !== undefined ? ` w:header="${Math.round(page.headerDistance)}"` : "";
     const footer = page.footerDistance !== undefined ? ` w:footer="${Math.round(page.footerDistance)}"` : "";

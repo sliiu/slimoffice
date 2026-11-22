@@ -22,6 +22,10 @@ export interface DocPage {
   /** Page background, #rrggbb, when the document sets one. */
   background?: string;
   columns: number;
+  /** Space between columns, in pixels, when the page has more than one. */
+  columnSpace?: number;
+  /** A line between columns. */
+  columnSeparator?: boolean;
   landscape: boolean;
   header: DocParagraph[];
   footer: DocParagraph[];
@@ -83,13 +87,16 @@ export function paginate(document: Document): DocPage[] {
 
 function pagesFor(section: DocSection): DocPage[] {
   const content = contentHeight(section.page);
+  const columns = section.page.columns && section.page.columns > 1 ? section.page.columns : 1;
   const pages: DocPage[] = [];
   let blocks: DocBlock[] = [];
   let used = 0;
+  let column = 0;
   const flush = () => {
     pages.push(pageFrom(section, blocks, pages.length));
     blocks = [];
     used = 0;
+    column = 0;
   };
   for (const block of section.blocks) {
     if (isDocRaw(block)) {
@@ -99,6 +106,12 @@ function pagesFor(section: DocSection): DocPage[] {
     }
     if (isDocParagraph(block) && (block.pageBreakBefore || block.runs.some((run) => run.breakBefore === "page"))) {
       if (blocks.length) flush();
+    } else if (isDocParagraph(block) && block.runs.some((run) => run.breakBefore === "column")) {
+      if (blocks.length) {
+        column += 1;
+        used = 0;
+        if (column >= columns) flush();
+      }
     }
     if (isDocTable(block) && rowHeights(block.rows).reduce((sum, height) => sum + height, 0) > content - used) {
       for (const slice of splitTable(block, content, used)) {
@@ -127,6 +140,8 @@ function pageFrom(section: DocSection, blocks: DocBlock[], pageIndex: number): D
     margin: section.page.margin,
     ...(section.page.background ? { background: section.page.background } : {}),
     columns: section.page.columns && section.page.columns > 1 ? section.page.columns : 1,
+    ...(section.page.columns && section.page.columns > 1 && section.page.columnSpace ? { columnSpace: section.page.columnSpace * TWIP } : {}),
+    ...(section.page.columns && section.page.columns > 1 && section.page.columnSeparator ? { columnSeparator: true } : {}),
     landscape: section.page.landscape === true,
     header: stories.header,
     footer: stories.footer,

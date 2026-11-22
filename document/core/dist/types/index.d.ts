@@ -225,6 +225,10 @@ export interface DocPageSetup {
     };
     /** Column count. 1 means a single column. */
     columns?: number;
+    /** Space between columns, in twips. */
+    columnSpace?: number;
+    /** A line between columns. */
+    columnSeparator?: boolean;
     /** Page background from settings or the background element, #rrggbb. */
     background?: string;
     /** Gutter, in twips. */

@@ -2,6 +2,8 @@ import { DEFAULT_PAGE, bibliographyLines, citationText, headingLevel, formulaRes
 import { paginate } from "@sliiu/document-renderer";
 const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72];
 const INDENT_STEP = 720;
+const INDENT_EDGES = ["left", "right", "firstLine", "hanging"];
+const SECTION_STARTS = ["nextPage", "continuous", "evenPage", "oddPage", "nextColumn"];
 const RUN_SWITCHES = ["bCs", "iCs", "outline", "shadow", "emboss", "imprint", "effect"];
 const PARAGRAPH_SWITCHES = ["suppressLineNumbers", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
 /** Changes the letters without touching anything that is not a letter. */
@@ -74,6 +76,7 @@ export function mountDocument(host, doc, options = {}) {
         align,
         alignOn,
         indent,
+        indentEdge,
         bullet,
         number,
         insertParagraph,
@@ -89,12 +92,16 @@ export function mountDocument(host, doc, options = {}) {
         linkOn: () => textRuns(current()).find((run) => run.link)?.link,
         bookmark,
         pageBreak,
+        columnBreak,
         pageSize,
         landscape,
         landscapeOn: () => currentSection().page.landscape === true,
         margins,
         columns,
         columnsOn: () => currentSection().page.columns ?? 1,
+        columnSpace,
+        columnSeparator,
+        columnSeparatorOn: () => currentSection().page.columnSeparator === true,
         pageColor,
         pageColorOn: () => currentSection().page.background,
         find,
@@ -187,6 +194,7 @@ export function mountDocument(host, doc, options = {}) {
         direction,
         watermark,
         sectionBreak,
+        sectionStart,
         columnWidth,
         headerRow,
         cellBorder,
@@ -218,6 +226,8 @@ export function mountDocument(host, doc, options = {}) {
         const numbers = pageNumbers(laid);
         resolvePageFields(doc, numbers);
         root = el("div", "doc-view");
+        if (doc.hyphenation)
+            root.dataset.hyphenate = "on";
         laid.forEach((page, pageIndex) => {
             const paper = el("section", "doc-page");
             paper.style.width = `${page.width}px`;
@@ -234,9 +244,12 @@ export function mountDocument(host, doc, options = {}) {
             if (page.header.length)
                 paper.append(story("header", page.header, page.headerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length));
             const body = el("div", "doc-body");
+            body.style.position = "relative";
             if (page.columns > 1) {
                 body.style.columnCount = String(page.columns);
-                body.style.columnGap = "24px";
+                body.style.columnGap = page.columnSpace ? `${page.columnSpace}px` : "24px";
+                if (page.columnSeparator)
+                    body.style.columnRule = "1px solid currentColor";
             }
             const sectionIndex = sectionIndexFor(page.blocks);
             const notes = [];
@@ -795,6 +808,30 @@ export function mountDocument(host, doc, options = {}) {
         }
         finish();
     }
+    /** Sets one edge of the current paragraph's indent. A first line and a hanging indent cannot both stand. */
+    function indentEdge(edge, twips) {
+        if (!INDENT_EDGES.includes(edge) || !Number.isFinite(twips) || twips < 0)
+            return;
+        const item = current();
+        if (!item)
+            return;
+        if (!remember())
+            return;
+        const kept = { ...item.indent };
+        if (edge === "firstLine")
+            delete kept.hanging;
+        if (edge === "hanging")
+            delete kept.firstLine;
+        if (twips)
+            kept[edge] = Math.floor(twips);
+        else
+            delete kept[edge];
+        if (kept.left !== undefined || kept.right !== undefined || kept.firstLine !== undefined || kept.hanging !== undefined)
+            item.indent = kept;
+        else
+            delete item.indent;
+        finish();
+    }
     function bullet() {
         toggleList([
             { text: "•", bullet: "•" },
@@ -1008,12 +1045,43 @@ export function mountDocument(host, doc, options = {}) {
     }
     function columns(count) {
         const section = currentSection();
+        if (!Number.isFinite(count))
+            return;
         if (!remember())
             return;
         if (count > 1)
-            section.page.columns = count;
-        else
+            section.page.columns = Math.floor(count);
+        else {
             delete section.page.columns;
+            delete section.page.columnSpace;
+            delete section.page.columnSeparator;
+        }
+        finish();
+    }
+    /** Sets the gap between the current section's columns. A single column has no gap. */
+    function columnSpace(twips) {
+        const section = currentSection();
+        if (!Number.isFinite(twips) || twips < 0 || (section.page.columns ?? 1) <= 1)
+            return;
+        if (!remember())
+            return;
+        if (twips)
+            section.page.columnSpace = Math.floor(twips);
+        else
+            delete section.page.columnSpace;
+        finish();
+    }
+    /** Draws a line between the current section's columns. A single column has none. */
+    function columnSeparator(on) {
+        const section = currentSection();
+        if ((section.page.columns ?? 1) <= 1)
+            return;
+        if (!remember())
+            return;
+        if (on)
+            section.page.columnSeparator = true;
+        else
+            delete section.page.columnSeparator;
         finish();
     }
     function pageColor(color) {
@@ -1027,11 +1095,21 @@ export function mountDocument(host, doc, options = {}) {
         finish();
     }
     function pageBreak() {
+        breakHere("page");
+    }
+    function columnBreak() {
+        breakHere("column");
+    }
+    /** A page break starts a new page. A column break starts the next column, and a new page in a single column. */
+    function breakHere(kind) {
         const section = currentSection();
         if (!remember())
             return;
         const at = bodyAt(section);
-        section.blocks.splice(at + 1, 0, { runs: [{ text: "" }], pageBreakBefore: true });
+        const next = kind === "page" || (section.page.columns ?? 1) <= 1
+            ? { runs: [{ text: "" }], pageBreakBefore: true }
+            : { runs: [{ text: "", breakBefore: "column" }] };
+        section.blocks.splice(at + 1, 0, next);
         selected = { section: selected.section, block: at + 1 };
         finish();
     }
@@ -1726,14 +1804,26 @@ export function mountDocument(host, doc, options = {}) {
         writeText(item, lines.length > 1 ? ordered.join("\n") : ordered.join(" "));
         finish();
     }
-    /** Sets the line spacing of the current paragraph. */
+    /** Sets the line spacing of the current paragraph. Zero clears it and leaves the space before and after. */
     function lineSpacing(line, rule = "auto") {
         const item = current();
-        if (!item || !Number.isFinite(line) || line <= 0)
+        if (!item || !Number.isFinite(line) || line < 0 || (rule !== "auto" && rule !== "exact" && rule !== "atLeast"))
             return;
         if (!remember())
             return;
-        item.spacing = { ...item.spacing, line, lineRule: rule };
+        const spacing = { ...item.spacing };
+        if (line) {
+            spacing.line = line;
+            spacing.lineRule = rule;
+        }
+        else {
+            delete spacing.line;
+            delete spacing.lineRule;
+        }
+        if (spacing.before !== undefined || spacing.after !== undefined || spacing.line !== undefined)
+            item.spacing = spacing;
+        else
+            delete item.spacing;
         finish();
     }
     /** Sets the space before and after the current paragraph. */
@@ -1863,15 +1953,35 @@ export function mountDocument(host, doc, options = {}) {
         finish();
     }
     /** Starts a new section at the caret, copying the current page setup. */
-    function sectionBreak() {
+    function sectionBreak(kind = "nextPage") {
+        if (!SECTION_STARTS.includes(kind))
+            return;
         const section = currentSection();
         if (!remember())
             return;
         const at = bodyAt(section);
         const moved = section.blocks.splice(at + 1);
-        const next = { page: { ...section.page, margin: { ...section.page.margin } }, header: [], footer: [], blocks: moved.length ? moved : [{ runs: [{ text: "" }] }] };
+        const page = { ...section.page, margin: { ...section.page.margin } };
+        if (kind === "nextPage")
+            delete page.break;
+        else
+            page.break = kind;
+        const next = { page, header: [], footer: [], blocks: moved.length ? moved : [{ runs: [{ text: "" }] }] };
         doc.sections.splice(selected.section + 1, 0, next);
         selected = { section: selected.section + 1, block: 0 };
+        finish();
+    }
+    /** Changes how the current section starts. The first section always starts the document. */
+    function sectionStart(kind) {
+        if (!SECTION_STARTS.includes(kind) || selected.section === 0)
+            return;
+        const section = currentSection();
+        if (!remember())
+            return;
+        if (kind === "nextPage")
+            delete section.page.break;
+        else
+            section.page.break = kind;
         finish();
     }
     /** Sets every column of the current table to one width. */
@@ -2185,6 +2295,27 @@ function copyStyle(from, to) {
 function escapeXml(value) {
     return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+/** A floating picture sits beside the text, or behind and in front of it. An inline one stays in the line. */
+function placePicture(node, run) {
+    if (run.wrap)
+        node.dataset.wrap = run.wrap;
+    if (run.wrap === "behind" || run.wrap === "front") {
+        node.style.position = "absolute";
+        node.style.zIndex = run.wrap === "behind" ? "0" : "2";
+    }
+    else if (run.wrap === "square" || run.wrap === "tight") {
+        node.style.float = run.align === "right" ? "right" : "left";
+        node.style.margin = run.align === "right" ? "0 0 8px 12px" : "0 12px 8px 0";
+    }
+    if (run.align === "center" && run.wrap !== "square" && run.wrap !== "tight") {
+        node.style.display = "block";
+        node.style.margin = "0 auto";
+    }
+    if (run.rotation)
+        node.style.transform = `rotate(${run.rotation}deg)`;
+    if (run.grouped?.length)
+        node.dataset.grouped = String(run.grouped.length);
+}
 function runNode(run) {
     if (run.image) {
         if (run.imageBytes) {
@@ -2199,15 +2330,23 @@ function runNode(run) {
             const crop = cropClip(run.crop);
             if (crop)
                 img.style.clipPath = crop;
+            placePicture(img, run);
             return img;
         }
         const mark = el("span", "doc-image");
         mark.textContent = "[图]";
+        placePicture(mark, run);
         return mark;
     }
     const span = document.createElement("span");
     if (run.breakBefore === "line")
         span.append(document.createElement("br"));
+    if (run.breakBefore === "page" || run.breakBefore === "column") {
+        const mark = document.createElement("span");
+        mark.className = run.breakBefore === "page" ? "doc-page-break" : "doc-column-break";
+        mark.contentEditable = "false";
+        span.append(mark);
+    }
     if (run.tabBefore)
         span.append(document.createTextNode(" "));
     span.append(document.createTextNode(run.caps ? run.text.toUpperCase() : run.text));
@@ -2252,20 +2391,16 @@ function runNode(run) {
         span.style.top = `${-run.position / 2}px`;
     if (run.comment)
         span.dataset.comment = run.comment;
-    if (run.wrap)
-        span.dataset.wrap = run.wrap;
-    if (run.align)
-        span.style.float = run.align === "center" ? "none" : run.align;
-    if (run.align === "center")
-        span.style.display = "block";
-    if (run.align === "center")
-        span.style.margin = "0 auto";
-    if (run.rotation)
-        span.style.transform = `rotate(${run.rotation}deg)`;
     if (run.grouped?.length)
         span.dataset.grouped = String(run.grouped.length);
     if (run.watermark) {
         span.style.opacity = "0.25";
+        span.style.position = "absolute";
+        span.style.left = "50%";
+        span.style.top = "40%";
+        span.style.transform = "translate(-50%, -50%) rotate(-45deg)";
+        span.style.pointerEvents = "none";
+        span.style.whiteSpace = "nowrap";
         span.dataset.watermark = "on";
     }
     if (run.deleted) {

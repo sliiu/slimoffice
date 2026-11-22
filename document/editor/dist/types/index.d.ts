@@ -37,6 +37,8 @@ export interface DocumentView {
     align(value: DocAlign): void;
     alignOn(value: DocAlign): boolean;
     indent(direction: 1 | -1): void;
+    /** Sets one indent edge, in twips. Zero clears it. A first line and a hanging indent replace each other. */
+    indentEdge(edge: "left" | "right" | "firstLine" | "hanging", twips: number): void;
     bullet(): void;
     number(): void;
     insertParagraph(): void;
@@ -52,12 +54,20 @@ export interface DocumentView {
     linkOn(): string | undefined;
     bookmark(name: string): void;
     pageBreak(): void;
+    /** Starts a new column at the caret. In a single column it starts a new page. */
+    columnBreak(): void;
     pageSize(width: number, height: number): void;
     landscape(): void;
     landscapeOn(): boolean;
     margins(narrow: boolean, edge?: number): void;
     columns(count: number): void;
     columnsOn(): number;
+    /** Sets the space between columns, in twips. Zero clears it. */
+    columnSpace(twips: number): void;
+    /** Draws a line between columns, or removes it. */
+    columnSeparator(on: boolean): void;
+    /** Whether the current section draws a line between columns. */
+    columnSeparatorOn(): boolean;
     pageColor(color: string): void;
     pageColorOn(): string | undefined;
     find(query: string): number;
@@ -223,8 +233,10 @@ export interface DocumentView {
     direction(flow: "lr" | "tb" | "rl"): void;
     /** Puts a watermark in the header. An empty text clears it. */
     watermark(text: string): void;
-    /** Splits the story into a new section at the caret. */
-    sectionBreak(): void;
+    /** Splits the story into a new section at the caret. The new section starts on the next page unless a start is given. */
+    sectionBreak(kind?: "nextPage" | "continuous" | "evenPage" | "oddPage" | "nextColumn"): void;
+    /** Sets how the current section starts. `nextPage` is the ordinary page break. */
+    sectionStart(kind: "nextPage" | "continuous" | "evenPage" | "oddPage" | "nextColumn"): void;
     /** Sets the width of the current table's columns, in twips. */
     columnWidth(twips: number): void;
     /** Marks the current row as a header row, or clears it. */

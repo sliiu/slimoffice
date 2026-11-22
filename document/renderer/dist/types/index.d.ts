@@ -6,6 +6,10 @@ export interface DocPage {
     /** Page background, #rrggbb, when the document sets one. */
     background?: string;
     columns: number;
+    /** Space between columns, in pixels, when the page has more than one. */
+    columnSpace?: number;
+    /** A line between columns. */
+    columnSeparator?: boolean;
     landscape: boolean;
     header: DocParagraph[];
     footer: DocParagraph[];

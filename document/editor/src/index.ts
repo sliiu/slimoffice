@@ -18,6 +18,7 @@ import {
   type DocAlign,
   type DocBlock,
   type DocCell,
+  type DocIndent,
   type DocNumberingLevel,
   type DocParagraph,
   type DocRawBlock,
@@ -71,6 +72,8 @@ export interface DocumentView {
   align(value: DocAlign): void;
   alignOn(value: DocAlign): boolean;
   indent(direction: 1 | -1): void;
+  /** Sets one indent edge, in twips. Zero clears it. A first line and a hanging indent replace each other. */
+  indentEdge(edge: "left" | "right" | "firstLine" | "hanging", twips: number): void;
   bullet(): void;
   number(): void;
   insertParagraph(): void;
@@ -86,12 +89,20 @@ export interface DocumentView {
   linkOn(): string | undefined;
   bookmark(name: string): void;
   pageBreak(): void;
+  /** Starts a new column at the caret. In a single column it starts a new page. */
+  columnBreak(): void;
   pageSize(width: number, height: number): void;
   landscape(): void;
   landscapeOn(): boolean;
   margins(narrow: boolean, edge?: number): void;
   columns(count: number): void;
   columnsOn(): number;
+  /** Sets the space between columns, in twips. Zero clears it. */
+  columnSpace(twips: number): void;
+  /** Draws a line between columns, or removes it. */
+  columnSeparator(on: boolean): void;
+  /** Whether the current section draws a line between columns. */
+  columnSeparatorOn(): boolean;
   pageColor(color: string): void;
   pageColorOn(): string | undefined;
   find(query: string): number;
@@ -253,8 +264,10 @@ export interface DocumentView {
   direction(flow: "lr" | "tb" | "rl"): void;
   /** Puts a watermark in the header. An empty text clears it. */
   watermark(text: string): void;
-  /** Splits the story into a new section at the caret. */
-  sectionBreak(): void;
+  /** Splits the story into a new section at the caret. The new section starts on the next page unless a start is given. */
+  sectionBreak(kind?: "nextPage" | "continuous" | "evenPage" | "oddPage" | "nextColumn"): void;
+  /** Sets how the current section starts. `nextPage` is the ordinary page break. */
+  sectionStart(kind: "nextPage" | "continuous" | "evenPage" | "oddPage" | "nextColumn"): void;
   /** Sets the width of the current table's columns, in twips. */
   columnWidth(twips: number): void;
   /** Marks the current row as a header row, or clears it. */
@@ -322,6 +335,8 @@ interface Snapshot {
 
 const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72];
 const INDENT_STEP = 720;
+const INDENT_EDGES = ["left", "right", "firstLine", "hanging"] as const;
+const SECTION_STARTS = ["nextPage", "continuous", "evenPage", "oddPage", "nextColumn"] as const;
 const RUN_SWITCHES = ["bCs", "iCs", "outline", "shadow", "emboss", "imprint", "effect"];
 const PARAGRAPH_SWITCHES = ["suppressLineNumbers", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
 
@@ -391,6 +406,7 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     align,
     alignOn,
     indent,
+    indentEdge,
     bullet,
     number,
     insertParagraph,
@@ -406,12 +422,16 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     linkOn: () => textRuns(current()).find((run) => run.link)?.link,
     bookmark,
     pageBreak,
+    columnBreak,
     pageSize,
     landscape,
     landscapeOn: () => currentSection().page.landscape === true,
     margins,
     columns,
     columnsOn: () => currentSection().page.columns ?? 1,
+    columnSpace,
+    columnSeparator,
+    columnSeparatorOn: () => currentSection().page.columnSeparator === true,
     pageColor,
     pageColorOn: () => currentSection().page.background,
     find,
@@ -504,6 +524,7 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     direction,
     watermark,
     sectionBreak,
+    sectionStart,
     columnWidth,
     headerRow,
     cellBorder,
@@ -536,6 +557,7 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     const numbers = pageNumbers(laid);
     resolvePageFields(doc, numbers);
     root = el("div", "doc-view");
+    if (doc.hyphenation) root.dataset.hyphenate = "on";
     laid.forEach((page, pageIndex) => {
       const paper = el("section", "doc-page");
       paper.style.width = `${page.width}px`;
@@ -547,9 +569,11 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
       if (page.lineNumbers) paper.dataset.lineNumbers = "on";
       if (page.header.length) paper.append(story("header", page.header, page.headerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length));
       const body = el("div", "doc-body");
+      body.style.position = "relative";
       if (page.columns > 1) {
         body.style.columnCount = String(page.columns);
-        body.style.columnGap = "24px";
+        body.style.columnGap = page.columnSpace ? `${page.columnSpace}px` : "24px";
+        if (page.columnSeparator) body.style.columnRule = "1px solid currentColor";
       }
       const sectionIndex = sectionIndexFor(page.blocks);
       const notes: DocParagraph[] = [];
@@ -1057,6 +1081,22 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     finish();
   }
 
+  /** Sets one edge of the current paragraph's indent. A first line and a hanging indent cannot both stand. */
+  function indentEdge(edge: (typeof INDENT_EDGES)[number], twips: number): void {
+    if (!INDENT_EDGES.includes(edge) || !Number.isFinite(twips) || twips < 0) return;
+    const item = current();
+    if (!item) return;
+    if (!remember()) return;
+    const kept: DocIndent = { ...item.indent };
+    if (edge === "firstLine") delete kept.hanging;
+    if (edge === "hanging") delete kept.firstLine;
+    if (twips) kept[edge] = Math.floor(twips);
+    else delete kept[edge];
+    if (kept.left !== undefined || kept.right !== undefined || kept.firstLine !== undefined || kept.hanging !== undefined) item.indent = kept;
+    else delete item.indent;
+    finish();
+  }
+
   function bullet(): void {
     toggleList([
       { text: "•", bullet: "•" },
@@ -1256,9 +1296,34 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
 
   function columns(count: number): void {
     const section = currentSection();
+    if (!Number.isFinite(count)) return;
     if (!remember()) return;
-    if (count > 1) section.page.columns = count;
-    else delete section.page.columns;
+    if (count > 1) section.page.columns = Math.floor(count);
+    else {
+      delete section.page.columns;
+      delete section.page.columnSpace;
+      delete section.page.columnSeparator;
+    }
+    finish();
+  }
+
+  /** Sets the gap between the current section's columns. A single column has no gap. */
+  function columnSpace(twips: number): void {
+    const section = currentSection();
+    if (!Number.isFinite(twips) || twips < 0 || (section.page.columns ?? 1) <= 1) return;
+    if (!remember()) return;
+    if (twips) section.page.columnSpace = Math.floor(twips);
+    else delete section.page.columnSpace;
+    finish();
+  }
+
+  /** Draws a line between the current section's columns. A single column has none. */
+  function columnSeparator(on: boolean): void {
+    const section = currentSection();
+    if ((section.page.columns ?? 1) <= 1) return;
+    if (!remember()) return;
+    if (on) section.page.columnSeparator = true;
+    else delete section.page.columnSeparator;
     finish();
   }
 
@@ -1271,10 +1336,22 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
   }
 
   function pageBreak(): void {
+    breakHere("page");
+  }
+
+  function columnBreak(): void {
+    breakHere("column");
+  }
+
+  /** A page break starts a new page. A column break starts the next column, and a new page in a single column. */
+  function breakHere(kind: "page" | "column"): void {
     const section = currentSection();
     if (!remember()) return;
     const at = bodyAt(section);
-    section.blocks.splice(at + 1, 0, { runs: [{ text: "" }], pageBreakBefore: true });
+    const next = kind === "page" || (section.page.columns ?? 1) <= 1
+      ? { runs: [{ text: "" }], pageBreakBefore: true }
+      : { runs: [{ text: "", breakBefore: "column" as const }] };
+    section.blocks.splice(at + 1, 0, next);
     selected = { section: selected.section, block: at + 1 };
     finish();
   }
@@ -1932,12 +2009,21 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     finish();
   }
 
-  /** Sets the line spacing of the current paragraph. */
+  /** Sets the line spacing of the current paragraph. Zero clears it and leaves the space before and after. */
   function lineSpacing(line: number, rule: "auto" | "exact" | "atLeast" = "auto"): void {
     const item = current();
-    if (!item || !Number.isFinite(line) || line <= 0) return;
+    if (!item || !Number.isFinite(line) || line < 0 || (rule !== "auto" && rule !== "exact" && rule !== "atLeast")) return;
     if (!remember()) return;
-    item.spacing = { ...item.spacing, line, lineRule: rule };
+    const spacing = { ...item.spacing };
+    if (line) {
+      spacing.line = line;
+      spacing.lineRule = rule;
+    } else {
+      delete spacing.line;
+      delete spacing.lineRule;
+    }
+    if (spacing.before !== undefined || spacing.after !== undefined || spacing.line !== undefined) item.spacing = spacing;
+    else delete item.spacing;
     finish();
   }
 
@@ -2051,14 +2137,28 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
   }
 
   /** Starts a new section at the caret, copying the current page setup. */
-  function sectionBreak(): void {
+  function sectionBreak(kind: (typeof SECTION_STARTS)[number] = "nextPage"): void {
+    if (!SECTION_STARTS.includes(kind)) return;
     const section = currentSection();
     if (!remember()) return;
     const at = bodyAt(section);
     const moved = section.blocks.splice(at + 1);
-    const next: DocSection = { page: { ...section.page, margin: { ...section.page.margin } }, header: [], footer: [], blocks: moved.length ? moved : [{ runs: [{ text: "" }] }] };
+    const page = { ...section.page, margin: { ...section.page.margin } };
+    if (kind === "nextPage") delete page.break;
+    else page.break = kind;
+    const next: DocSection = { page, header: [], footer: [], blocks: moved.length ? moved : [{ runs: [{ text: "" }] }] };
     doc.sections.splice(selected.section + 1, 0, next);
     selected = { section: selected.section + 1, block: 0 };
+    finish();
+  }
+
+  /** Changes how the current section starts. The first section always starts the document. */
+  function sectionStart(kind: (typeof SECTION_STARTS)[number]): void {
+    if (!SECTION_STARTS.includes(kind) || selected.section === 0) return;
+    const section = currentSection();
+    if (!remember()) return;
+    if (kind === "nextPage") delete section.page.break;
+    else section.page.break = kind;
     finish();
   }
 
@@ -2331,6 +2431,24 @@ function escapeXml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** A floating picture sits beside the text, or behind and in front of it. An inline one stays in the line. */
+function placePicture(node: HTMLElement, run: DocRun): void {
+  if (run.wrap) node.dataset.wrap = run.wrap;
+  if (run.wrap === "behind" || run.wrap === "front") {
+    node.style.position = "absolute";
+    node.style.zIndex = run.wrap === "behind" ? "0" : "2";
+  } else if (run.wrap === "square" || run.wrap === "tight") {
+    node.style.float = run.align === "right" ? "right" : "left";
+    node.style.margin = run.align === "right" ? "0 0 8px 12px" : "0 12px 8px 0";
+  }
+  if (run.align === "center" && run.wrap !== "square" && run.wrap !== "tight") {
+    node.style.display = "block";
+    node.style.margin = "0 auto";
+  }
+  if (run.rotation) node.style.transform = `rotate(${run.rotation}deg)`;
+  if (run.grouped?.length) node.dataset.grouped = String(run.grouped.length);
+}
+
 function runNode(run: DocRun): HTMLElement {
   if (run.image) {
     if (run.imageBytes) {
@@ -2342,14 +2460,22 @@ function runNode(run: DocRun): HTMLElement {
       if (run.imageHeight) img.style.height = emus(run.imageHeight);
       const crop = cropClip(run.crop);
       if (crop) img.style.clipPath = crop;
+      placePicture(img, run);
       return img;
     }
     const mark = el("span", "doc-image");
     mark.textContent = "[图]";
+    placePicture(mark, run);
     return mark;
   }
   const span = document.createElement("span");
   if (run.breakBefore === "line") span.append(document.createElement("br"));
+  if (run.breakBefore === "page" || run.breakBefore === "column") {
+    const mark = document.createElement("span");
+    mark.className = run.breakBefore === "page" ? "doc-page-break" : "doc-column-break";
+    mark.contentEditable = "false";
+    span.append(mark);
+  }
   if (run.tabBefore) span.append(document.createTextNode(" "));
   span.append(document.createTextNode(run.caps ? run.text.toUpperCase() : run.text));
   if (run.bold) span.style.fontWeight = "700";
@@ -2373,14 +2499,15 @@ function runNode(run: DocRun): HTMLElement {
   if (run.position) span.style.position = "relative";
   if (run.position) span.style.top = `${-run.position / 2}px`;
   if (run.comment) span.dataset.comment = run.comment;
-  if (run.wrap) span.dataset.wrap = run.wrap;
-  if (run.align) span.style.float = run.align === "center" ? "none" : run.align;
-  if (run.align === "center") span.style.display = "block";
-  if (run.align === "center") span.style.margin = "0 auto";
-  if (run.rotation) span.style.transform = `rotate(${run.rotation}deg)`;
   if (run.grouped?.length) span.dataset.grouped = String(run.grouped.length);
   if (run.watermark) {
     span.style.opacity = "0.25";
+    span.style.position = "absolute";
+    span.style.left = "50%";
+    span.style.top = "40%";
+    span.style.transform = "translate(-50%, -50%) rotate(-45deg)";
+    span.style.pointerEvents = "none";
+    span.style.whiteSpace = "nowrap";
     span.dataset.watermark = "on";
   }
   if (run.deleted) {

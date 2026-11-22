@@ -115,12 +115,14 @@ test("reads merged cells, columns, and landscape", async () => {
   const parsed = await parseDocx(docx({
     "word/document.xml": `<w:document><w:body>
       <w:tbl><w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:vMerge w:val="restart"/><w:shd w:fill="EEEEEE"/></w:tcPr><w:p><w:r><w:t>Wide</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
-      <w:sectPr><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:cols w:num="2"/></w:sectPr>
+      <w:sectPr><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:cols w:num="2" w:space="708" w:sep="1"/></w:sectPr>
     </w:body></w:document>`,
   }));
   const section = parsed.sections[0]!;
   assert.equal(section.page.landscape, true);
   assert.equal(section.page.columns, 2);
+  assert.equal(section.page.columnSpace, 708);
+  assert.equal(section.page.columnSeparator, true);
   const table = section.blocks[0]!;
   assert.equal(isDocTable(table), true);
   if (isDocTable(table)) {

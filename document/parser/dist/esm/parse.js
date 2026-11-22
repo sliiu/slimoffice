@@ -351,6 +351,8 @@ function pageFrom(node) {
     const height = number(size ? attr(size, "h") : undefined, DEFAULT_PAGE.height);
     const orient = size ? attr(size, "orient") : undefined;
     const count = Number(columns ? attr(columns, "num") : undefined);
+    const columnSpace = positive(columns ? attr(columns, "space") : undefined);
+    const separator = columns ? attr(columns, "sep") : undefined;
     return {
         width,
         height,
@@ -362,6 +364,8 @@ function pageFrom(node) {
             right: number(margin ? attr(margin, "right") : undefined, DEFAULT_PAGE.margin.right),
         },
         ...(Number.isFinite(count) && count > 1 ? { columns: count } : {}),
+        ...(Number.isFinite(count) && count > 1 && columnSpace ? { columnSpace } : {}),
+        ...(Number.isFinite(count) && count > 1 && (separator === "1" || separator === "true") ? { columnSeparator: true } : {}),
         ...readPageExtras(node, margin),
     };
 }
