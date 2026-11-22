@@ -91,3 +91,25 @@ test("marks page breaks and what-if data tables", () => {
   assert.equal(cells[1]?.dataset.pageBreak, "row");
   assert.equal(cells[1]?.dataset.dataTable, "B1");
 });
+
+test("marks a filter header, a hyperlink, and frozen cells", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量", hyperlink: "Sheet2!A1" }], [{ value: "甲" }, { value: "10" }]],
+      filter: { r1: 0, c1: 0, r2: 1, c2: 1 },
+      freeze: { row: 1, col: 1 },
+    }],
+  });
+  const cells = host.querySelectorAll("td");
+  assert.equal(cells[0]?.classList.contains("is-filter-header"), true);
+  assert.equal(cells[1]?.classList.contains("is-link"), true);
+  assert.equal(cells[1]?.title, "Sheet2!A1");
+  assert.equal(cells[0]?.classList.contains("is-frozen"), true);
+  assert.equal(cells[2]?.classList.contains("is-frozen"), true);
+  assert.equal(cells[3]?.classList.contains("is-frozen"), false);
+});

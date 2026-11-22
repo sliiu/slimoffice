@@ -34,6 +34,7 @@ export function applySheetEdits(sheetXml, sheet, shared, styles) {
     xml = upsertAfterSheetData(xml, "mergeCells", frame.match(/<mergeCells\b[\s\S]*?<\/mergeCells>/i)?.[0] ?? "");
     xml = upsertAfterSheetData(xml, "autoFilter", autoFilterXml(sheet));
     xml = upsertAfterSheetData(xml, "hyperlinks", hyperlinksXml(sheet));
+    xml = writeDataTables(xml, sheet);
     xml = upsertBeforeClose(xml, conditionalFormattingXml(sheet));
     xml = upsertBeforeClose(xml, pageSetupXml(sheet));
     return { xml, shared: table };
@@ -231,6 +232,55 @@ function cellXml(ref, cell, prior, shared, styles) {
         return `<c r="${ref}"${styleAttr} t="b"><v>${cell.value === "TRUE" ? "1" : "0"}</v></c>`;
     }
     return `<c r="${ref}"${styleAttr} t="s"><v>${shared.indexOf(cell.value)}</v></c>`;
+}
+/** Marks the first cell of each what-if data table so the result block reads back. */
+function writeDataTables(xml, sheet) {
+    let out = xml;
+    for (const table of sheet.dataTables ?? []) {
+        const range = rangeOf(table.ref);
+        if (!range)
+            continue;
+        const ref = `${columnName(range.c1)}${range.r1 + 1}`;
+        const attrs = [`t="dataTable"`, `ref="${escapeXml(table.ref)}"`];
+        if (table.rowInput && table.colInput)
+            attrs.push("dt2D=\"1\"", "dtr=\"1\"", `r1="${escapeXml(table.rowInput)}"`, `r2="${escapeXml(table.colInput)}"`);
+        else if (table.rowInput)
+            attrs.push("dtr=\"1\"", `r1="${escapeXml(table.rowInput)}"`);
+        else if (table.colInput)
+            attrs.push(`r1="${escapeXml(table.colInput)}"`);
+        const formula = `<f ${attrs.join(" ")}></f>`;
+        const marker = `r="${ref}"`;
+        const at = out.indexOf(marker);
+        if (at < 0)
+            continue;
+        const open = out.lastIndexOf("<c", at);
+        const close = out.indexOf("</c>", at);
+        if (open < 0 || close < 0)
+            continue;
+        const cell = out.slice(open, close + 4);
+        const formulaAt = cell.indexOf("<f");
+        const formulaEnd = cell.indexOf("</f>");
+        const next = formulaAt >= 0 && formulaEnd > formulaAt ? cell.slice(0, formulaAt) + formula + cell.slice(formulaEnd + 4) : cell.replace(">", `>${formula}`);
+        out = out.slice(0, open) + next + out.slice(close + 4);
+    }
+    return out;
+}
+function rangeOf(ref) {
+    const parts = ref.split(":");
+    const start = a1(parts[0] ?? "");
+    const end = a1(parts[1] ?? parts[0] ?? "");
+    if (!start || !end)
+        return undefined;
+    return { r1: Math.min(start.row, end.row), c1: Math.min(start.col, end.col), r2: Math.max(start.row, end.row), c2: Math.max(start.col, end.col) };
+}
+function a1(ref) {
+    const match = /^\$?([A-Z]+)\$?(\d+)$/i.exec(ref.trim());
+    if (!match)
+        return undefined;
+    let col = 0;
+    for (const letter of (match[1] ?? "").toUpperCase())
+        col = col * 26 + letter.charCodeAt(0) - 64;
+    return { row: Number(match[2]) - 1, col: col - 1 };
 }
 function hyperlinksXml(sheet) {
     const links = [];

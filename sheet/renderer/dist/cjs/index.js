@@ -4,6 +4,10 @@ exports.mountWorkbook = mountWorkbook;
 const sheet_formula_1 = require("@sliiu/sheet-formula");
 const charts_1 = require("./charts");
 const cf_1 = require("./cf");
+const FROZEN_HEADER = 24;
+const FROZEN_GUTTER = 36;
+const FROZEN_ROW = 22;
+const FROZEN_COLUMN = 88;
 /** Editable grid with Home-tab commands and formula recalculation. */
 function mountWorkbook(host, workbook, options = {}) {
     const locale = options.locale ?? "en";
@@ -314,6 +318,17 @@ function mountWorkbook(host, workbook, options = {}) {
             td.dataset.dataTable = [table.rowInput, table.colInput].filter((part) => part).join(" ");
         if (sheet.filter && row === sheet.filter.r1 && column >= sheet.filter.c1 && column <= sheet.filter.c2) {
             td.classList.add("is-filter-header");
+        }
+        if (item?.hyperlink) {
+            td.classList.add("is-link");
+            td.title = [td.title, item.hyperlink].filter((text) => text).join("\n");
+        }
+        if (sheet.freeze && (row < sheet.freeze.row || column < sheet.freeze.col)) {
+            td.classList.add("is-frozen");
+            if (row < sheet.freeze.row)
+                td.style.top = `${FROZEN_HEADER + row * FROZEN_ROW}px`;
+            if (column < sheet.freeze.col)
+                td.style.left = `${FROZEN_GUTTER + column * FROZEN_COLUMN}px`;
         }
         if (selected.row === row && selected.col === column)
             td.classList.add("is-selected");

@@ -129,3 +129,21 @@ test("writes table drawing and validation parts", () => {
   assert.ok(out["xl/drawings/drawing1.xml"]);
   assert.ok(out["xl/theme/theme1.xml"]);
 });
+
+test("writes slicers and what-if data tables back", () => {
+  const made = blankWorkbook("销售", [[{ value: "1" }], [{ value: "2" }]]);
+  const sheet = made.workbook.sheets[0]!;
+  sheet.slicers = [{ id: "品类切片", name: "品类切片", source: "Table1", field: "品类" }];
+  sheet.dataTables = [{ ref: "A2:A2", rowInput: "B1", colInput: "B2" }];
+  made.workbook.edited = true;
+  const out = unzipSync(writeXlsx(made.workbook));
+  const slicer = new TextDecoder().decode(out["xl/slicers/slicer1.xml"] ?? new Uint8Array());
+  assert.match(slicer, /<slicer name="品类切片" cache="SlicerCache1" caption="品类"\/>/);
+  const cache = new TextDecoder().decode(out["xl/slicerCaches/slicerCache1_1.xml"] ?? new Uint8Array());
+  assert.match(cache, /sourceName="Table1"/);
+  assert.match(cache, /<data name="品类"\/>/);
+  const rels = new TextDecoder().decode(out["xl/worksheets/_rels/sheet1.xml.rels"] ?? new Uint8Array());
+  assert.match(rels, /Target="..\/slicers\/slicer1.xml"/);
+  const sheetXml = new TextDecoder().decode(out["xl/worksheets/sheet1.xml"] ?? new Uint8Array());
+  assert.match(sheetXml, /<f t="dataTable" ref="A2:A2" dt2D="1" dtr="1" r1="B1" r2="B2"><\/f>/);
+});

@@ -41,6 +41,18 @@ export function drawingFragments(sheet, sheetIndex) {
         extras.push(dataValidationsXml(sheet));
     if (sheet.pageBreaks?.rows?.length || sheet.pageBreaks?.cols?.length)
         extras.push(pageBreaksXml(sheet));
+    if (sheet.slicers?.length) {
+        const slicerPath = `xl/slicers/slicer${sheetIndex + 1}.xml`;
+        parts.set(slicerPath, slicersXml(sheet));
+        parts.set(`xl/slicers/_rels/slicer${sheetIndex + 1}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheet.slicers.map((_item, at) => `<Relationship Id="rIdCache${at + 1}" Type="http://schemas.microsoft.com/office/2007/relationships/slicerCache" Target="../slicerCaches/slicerCache${sheetIndex + 1}_${at + 1}.xml"/>`).join("")}</Relationships>`);
+        contentTypes.push(`<Override PartName="/${slicerPath}" ContentType="application/vnd.ms-excel.slicer+xml"/>`);
+        sheet.slicers.forEach((slicer, index) => {
+            const cachePath = `xl/slicerCaches/slicerCache${sheetIndex + 1}_${index + 1}.xml`;
+            parts.set(cachePath, slicerCacheXml(slicer, index));
+            contentTypes.push(`<Override PartName="/${cachePath}" ContentType="application/vnd.ms-excel.slicerCache+xml"/>`);
+        });
+        rels.push(`<Relationship Id="rIdSlicer1" Type="http://schemas.microsoft.com/office/2007/relationships/slicer" Target="../slicers/slicer${sheetIndex + 1}.xml"/>`);
+    }
     return { sheetExtras: extras.join(""), parts, contentTypes, rels };
 }
 function tableXml(table) {
@@ -90,6 +102,15 @@ function commentsXml(notes) {
         .map((note) => `<comment ref="${note.ref}" authorId="0"><text><r><t>${escapeXml(note.text)}</t></r></text></comment>`)
         .join("");
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><authors><author/></authors><commentList>${body}</commentList></comments>`;
+}
+function slicersXml(sheet) {
+    const body = (sheet.slicers ?? [])
+        .map((slicer, index) => `<slicer name="${escapeXml(slicer.name)}" cache="SlicerCache${index + 1}" caption="${escapeXml(slicer.field)}"/>`)
+        .join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<slicers xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">${body}</slicers>`;
+}
+function slicerCacheXml(slicer, index) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<slicerCacheDefinition xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" name="SlicerCache${index + 1}" sourceName="${escapeXml(slicer.source)}"><data name="${escapeXml(slicer.field)}"/></slicerCacheDefinition>`;
 }
 function pageBreaksXml(sheet) {
     const rows = (sheet.pageBreaks?.rows ?? []).map((row) => `<brk id="${row}" max="16383" man="1"/>`).join("");

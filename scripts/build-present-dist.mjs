@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -169,6 +169,8 @@ export function buildPresentDist(dir) {
     const next = rewritePackageSpecifiers(text);
     if (next !== text) writeFileSync(file, next);
   }
+  const stylesheet = join(dir, "src/view.css");
+  if (existsSync(stylesheet)) copyFileSync(stylesheet, join(dir, "dist/view.css"));
   buildPlayerIife(dir);
 }
 
