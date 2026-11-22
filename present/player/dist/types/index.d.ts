@@ -2,7 +2,7 @@ export { mount } from "./player.js";
 export type { MountOptions, PlayerHandle, Backend } from "./player.js";
 export { createBake3DRuntime, type Bake3DRuntime } from "./bake-3d.js";
 export { runTransition as runStageTransition } from "./transition.js";
-export { buildHtml, buildHtmlBundle, bundleToZip } from "./export.js";
+export { buildHtml, buildHtmlBundle, bundleToZip, inlineMediaInPresentation } from "./export.js";
 export type { ExportHtmlOptions, BuildHtmlBundleOptions, HtmlBundle, BundleFile, FontEmbed, } from "./export.js";
 export { registerEmbeddedFonts, loadEmbeddedFonts } from "./fonts.js";
 export { snapshotSlide, snapshotAll, snapshotsToZip, snapshotsToPdf, snapshotAllForPdf, exportPresentationPdf, snapshotPixelRatio, PDF_EXPORT_DPI, PDF_EXPORT_DPI_HIGH, SCREEN_DPI, } from "./snapshot.js";

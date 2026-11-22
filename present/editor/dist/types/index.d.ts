@@ -23,6 +23,7 @@ export type { BaseOpts, CreateShapeOptions, CreateTextBoxOptions, CreateLineOpti
 export * from "./animation/index.js";
 export { setLocale, getLocale, registerMessages, t } from "./i18n/index.js";
 export type { Locale, MessageKey } from "./i18n/index.js";
+export { ensureUiStyles } from "./ui-style.js";
 export { DEFAULT_LUCIDE_ICON, normalizeLucideIconName, lucideSvg, fillLucideIcon, svgIcon, appendLucideIcon, appendLabelWithIcon, mkLucideIconButton, mkLucideButton, setButtonLucideIcon, } from "./icons.js";
 export type { IconName } from "./icons.js";
 export { WORDART_PRESETS, defaultWordArtState } from "./dialog.js";

@@ -5,7 +5,7 @@ export { mount } from "./player.js";
 export { createBake3DRuntime } from "./bake-3d.js";
 // 编辑器「预览切换」与放映共用同一套舞台裁切 + ghost 回收，避免两边效果不一致。
 export { runTransition as runStageTransition } from "./transition.js";
-export { buildHtml, buildHtmlBundle, bundleToZip } from "./export.js";
+export { buildHtml, buildHtmlBundle, bundleToZip, inlineMediaInPresentation } from "./export.js";
 export { registerEmbeddedFonts, loadEmbeddedFonts } from "./fonts.js";
 export { snapshotSlide, snapshotAll, snapshotsToZip, snapshotsToPdf, snapshotAllForPdf, exportPresentationPdf, snapshotPixelRatio, PDF_EXPORT_DPI, PDF_EXPORT_DPI_HIGH, SCREEN_DPI, } from "./snapshot.js";
 export { slideSizeToPdfPoints, dataUrlsToPdf } from "./pdf.js";
