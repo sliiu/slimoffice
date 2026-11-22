@@ -74,6 +74,45 @@ test("writes merges, column widths, row height, and freeze", () => {
   assert.match(xml, /<pane xSplit="1" ySplit="1" state="frozen" topLeftCell="B2"\/>/);
 });
 
+test("writes a cell hyperlink back", () => {
+  const made = blankWorkbook("销售", [[{ value: "明细" }]]);
+  const cell = made.workbook.sheets[0]?.cells[0]?.[0];
+  if (cell) cell.hyperlink = "Sheet2!A1";
+  made.workbook.edited = true;
+  const xml = new TextDecoder().decode(unzipSync(writeXlsx(made.workbook))["xl/worksheets/sheet1.xml"]);
+  assert.match(xml, /<hyperlink ref="A1" location="Sheet2!A1"\/>/);
+});
+
+test("writes defined names, the print area, and an array formula", () => {
+  const made = blankWorkbook("销售", [[{ value: "30" }]]);
+  const cell = made.workbook.sheets[0]?.cells[0]?.[0];
+  if (cell) {
+    cell.formula = "SUM(B1:B2)";
+    cell.array = true;
+  }
+  made.workbook.names = [{ name: "税率", refersTo: "Sheet1!$B$1" }];
+  made.workbook.sheets[0]!.pageSetup = { printArea: "Sheet1!$A$1:$B$2" };
+  made.workbook.edited = true;
+  const out = unzipSync(writeXlsx(made.workbook));
+  const workbook = new TextDecoder().decode(out["xl/workbook.xml"] ?? new Uint8Array());
+  assert.match(workbook, /<definedName name="税率">Sheet1!\$B\$1<\/definedName>/);
+  assert.match(workbook, /<definedName name="_xlnm.Print_Area" localSheetId="0">Sheet1!\$A\$1:\$B\$2<\/definedName>/);
+  const sheet = new TextDecoder().decode(out["xl/worksheets/sheet1.xml"] ?? new Uint8Array());
+  assert.match(sheet, /<f t="array">SUM\(B1:B2\)<\/f>/);
+});
+
+test("writes a cell comment back", () => {
+  const made = blankWorkbook("销售", [[{ value: "甲" }]]);
+  const cell = made.workbook.sheets[0]?.cells[0]?.[0];
+  if (cell) cell.comment = "核对";
+  made.workbook.edited = true;
+  const out = unzipSync(writeXlsx(made.workbook));
+  const comments = new TextDecoder().decode(out["xl/comments1.xml"] ?? new Uint8Array());
+  assert.match(comments, /<comment ref="A1" authorId="0"><text><r><t>核对<\/t><\/r><\/text><\/comment>/);
+  const rels = new TextDecoder().decode(out["xl/worksheets/_rels/sheet1.xml.rels"] ?? new Uint8Array());
+  assert.match(rels, /Target="..\/comments1.xml"/);
+});
+
 test("writes table drawing and validation parts", () => {
   const made = blankWorkbook("销售", [[{ value: "a" }, { value: "1" }], [{ value: "b" }, { value: "2" }]]);
   const sheet = made.workbook.sheets[0]!;

@@ -1,5 +1,5 @@
 import { drawingFragments } from "./drawing.js";
-import { autoFilterXml, conditionalFormattingXml, pageSetupXml, styleBook } from "./styles.js";
+import { autoFilterXml, conditionalFormattingXml, pageSetupXml, sheetFrameXml, styleBook } from "./styles.js";
 /**
  * Puts edited cells back into one worksheet.
  * A formula cell is left untouched until its shown value changes. New text goes to the shared-string table.
@@ -25,10 +25,15 @@ export function applySheetEdits(sheetXml, sheet, shared, styles) {
             written.push(existing);
             continue;
         }
-        written.push(rowXml(row, existing, next ?? [], table, styles));
+        written.push(rowXml(row, existing, next ?? [], sheet, table, styles));
     }
     let xml = sheetXml.slice(0, data.start) + written.join("") + sheetXml.slice(data.end);
+    const frame = sheetFrameXml(sheet);
+    xml = upsertBeforeSheetData(xml, "sheetViews", frame.match(/<sheetViews\b[\s\S]*?<\/sheetViews>/i)?.[0] ?? "");
+    xml = upsertBeforeSheetData(xml, "cols", frame.match(/<cols\b[\s\S]*?<\/cols>/i)?.[0] ?? "");
+    xml = upsertAfterSheetData(xml, "mergeCells", frame.match(/<mergeCells\b[\s\S]*?<\/mergeCells>/i)?.[0] ?? "");
     xml = upsertAfterSheetData(xml, "autoFilter", autoFilterXml(sheet));
+    xml = upsertAfterSheetData(xml, "hyperlinks", hyperlinksXml(sheet));
     xml = upsertBeforeClose(xml, conditionalFormattingXml(sheet));
     xml = upsertBeforeClose(xml, pageSetupXml(sheet));
     return { xml, shared: table };
@@ -95,6 +100,14 @@ export function applyWorkbookEdits(parts, workbook, decode, encode) {
             parts.set(relPath, encode(merged));
         }
     });
+    const names = definedNamesXml(workbook);
+    if (names) {
+        const next = upsertBlock(workbookXml, "definedNames", names);
+        if (next !== workbookXml) {
+            parts.set("xl/workbook.xml", encode(next));
+            changed = true;
+        }
+    }
     if (workbook.theme) {
         parts.set("xl/theme/theme1.xml", encode(themeXml(workbook.theme)));
         contentExtras.push('<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>');
@@ -110,6 +123,30 @@ export function applyWorkbookEdits(parts, workbook, decode, encode) {
                 parts.set("[Content_Types].xml", encode(types.replace("</Types>", `${unique.join("")}</Types>`)));
         }
     }
+}
+function definedNamesXml(workbook) {
+    const names = [...(workbook.names ?? [])];
+    workbook.sheets.forEach((sheet, index) => {
+        const area = sheet.pageSetup?.printArea;
+        if (area)
+            names.push({ name: "_xlnm.Print_Area", refersTo: area, localSheet: index });
+        const titles = sheet.pageSetup?.printTitles;
+        if (titles)
+            names.push({ name: "_xlnm.Print_Titles", refersTo: titles, localSheet: index });
+    });
+    if (!names.length)
+        return "";
+    const body = names
+        .map((item) => `<definedName name="${escapeTheme(item.name)}"${item.localSheet != null ? ` localSheetId="${item.localSheet}"` : ""}>${escapeTheme(item.refersTo)}</definedName>`)
+        .join("");
+    return `<definedNames>${body}</definedNames>`;
+}
+function upsertBlock(xml, tag, fragment) {
+    const cleaned = xml.replace(new RegExp(`<${tag}\\b[^>]*/>|<${tag}\\b[\\s\\S]*?</${tag}>`, "gi"), "");
+    const close = cleaned.lastIndexOf("</workbook>");
+    if (close < 0)
+        return cleaned + fragment;
+    return cleaned.slice(0, close) + fragment + cleaned.slice(close);
 }
 function themeXml(theme) {
     const colors = theme.colors ?? ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"];
@@ -141,7 +178,7 @@ function sheetDataRange(xml) {
     const start = open.index + open[0].length;
     return { start, body: xml.slice(start, close), end: close };
 }
-function rowXml(row, existing, cells, shared, styles) {
+function rowXml(row, existing, cells, sheet, shared, styles) {
     const kept = new Map();
     for (const cellXml of existing?.match(/<c\b[\s\S]*?<\/c>/gi) ?? []) {
         const column = columnIndex(/\br="([A-Z]+)\d+"/i.exec(cellXml)?.[1] ?? "");
@@ -160,7 +197,10 @@ function rowXml(row, existing, cells, shared, styles) {
         }
         written.push(cellXml(columnName(column) + row, cell, prior, shared, styles));
     }
-    return `<row r="${row}">${written.join("")}</row>`;
+    const height = sheet.rowHeights?.[row - 1];
+    const sized = height != null ? ` ht="${height}" customHeight="1"` : "";
+    const hidden = sheet.hiddenRows?.includes(row - 1) ? ' hidden="1"' : "";
+    return `<row r="${row}"${sized}${hidden}>${written.join("")}</row>`;
 }
 function cellXml(ref, cell, prior, shared, styles) {
     if (prior && isFormula(prior) && !cell.formula && (shownValue(prior) === cell.value || formulaText(prior) === cell.value || `=${formulaText(prior)}` === cell.value)) {
@@ -172,15 +212,16 @@ function cellXml(ref, cell, prior, shared, styles) {
     const styleAttr = style ? ` s="${style}"` : "";
     if (cell.formula) {
         const body = escapeXml(cell.formula.replace(/^\=/, ""));
+        const array = cell.array ? ' t="array"' : "";
         const cached = cell.value && cell.value !== `=${cell.formula}` && cell.value.toUpperCase() !== cell.formula.toUpperCase() ? cell.value : "";
         if (cached === "TRUE" || cached === "FALSE") {
-            return `<c r="${ref}"${styleAttr} t="b"><f>${body}</f><v>${cached === "TRUE" ? "1" : "0"}</v></c>`;
+            return `<c r="${ref}"${styleAttr} t="b"><f${array}>${body}</f><v>${cached === "TRUE" ? "1" : "0"}</v></c>`;
         }
         if (cached && isNumber(cached))
-            return `<c r="${ref}"${styleAttr}><f>${body}</f><v>${cached}</v></c>`;
+            return `<c r="${ref}"${styleAttr}><f${array}>${body}</f><v>${cached}</v></c>`;
         if (cached)
-            return `<c r="${ref}"${styleAttr} t="str"><f>${body}</f><v>${escapeXml(cached)}</v></c>`;
-        return `<c r="${ref}"${styleAttr}><f>${body}</f></c>`;
+            return `<c r="${ref}"${styleAttr} t="str"><f${array}>${body}</f><v>${escapeXml(cached)}</v></c>`;
+        return `<c r="${ref}"${styleAttr}><f${array}>${body}</f></c>`;
     }
     if (cell.value === "")
         return `<c r="${ref}"${styleAttr}/>`;
@@ -190,6 +231,17 @@ function cellXml(ref, cell, prior, shared, styles) {
         return `<c r="${ref}"${styleAttr} t="b"><v>${cell.value === "TRUE" ? "1" : "0"}</v></c>`;
     }
     return `<c r="${ref}"${styleAttr} t="s"><v>${shared.indexOf(cell.value)}</v></c>`;
+}
+function hyperlinksXml(sheet) {
+    const links = [];
+    sheet.cells.forEach((row, rowIndex) => {
+        row?.forEach((cell, column) => {
+            if (!cell?.hyperlink)
+                return;
+            links.push(`<hyperlink ref="${columnName(column)}${rowIndex + 1}" location="${escapeXml(cell.hyperlink)}"/>`);
+        });
+    });
+    return links.length ? `<hyperlinks>${links.join("")}</hyperlinks>` : "";
 }
 function isFormula(cellXml) {
     return /<f\b/i.test(cellXml);
@@ -254,6 +306,15 @@ function escapeXml(value) {
 }
 function unescapeXml(value) {
     return value.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+function upsertBeforeSheetData(xml, tag, fragment) {
+    const cleaned = xml.replace(new RegExp(`<${tag}\\b[^>]*/>|<${tag}\\b[\\s\\S]*?</${tag}>`, "gi"), "");
+    if (!fragment)
+        return cleaned;
+    const open = /<sheetData\b/i.exec(cleaned);
+    if (!open)
+        return fragment + cleaned;
+    return cleaned.slice(0, open.index) + fragment + cleaned.slice(open.index);
 }
 function upsertAfterSheetData(xml, tag, fragment) {
     const cleaned = xml.replace(new RegExp(`<${tag}\\b[^>]*/>|<${tag}\\b[\\s\\S]*?</${tag}>`, "gi"), "");

@@ -16,4 +16,5 @@ export interface EvalContext {
 export declare function recalculate(workbook: Workbook): void;
 export declare function evaluate(input: string, ctx: EvalContext): FormulaValue;
 export declare function formatResult(value: FormulaValue): string;
+export { formatNumber } from "./format.js";
 export declare function setFormula(cell: SheetCell, formula: string): void;

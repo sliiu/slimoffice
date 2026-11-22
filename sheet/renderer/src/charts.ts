@@ -1,4 +1,4 @@
-import type { SheetChart, SheetShape, SheetSparkline, Worksheet } from "@sliiu/sheet-core";
+import type { SheetChart, SheetPivot, SheetShape, SheetSparkline, Worksheet } from "@sliiu/sheet-core";
 
 export function renderCharts(sheet: Worksheet): HTMLElement {
   const host = document.createElement("div");
@@ -20,7 +20,83 @@ export function renderCharts(sheet: Worksheet): HTMLElement {
     node.textContent = `${slicer.name}: ${slicer.field}`;
     host.append(node);
   }
+  for (const pivot of sheet.pivots ?? []) host.append(pivotNode(pivot));
   return host;
+}
+
+export interface PivotSummary {
+  /** Column-field values. Empty when the pivot has no column field. */
+  columns: string[];
+  rows: { label: string; values: number[] }[];
+}
+
+/** Reduces the first value field by row field, and by column field when one is set. */
+export function summarizePivot(pivot: SheetPivot): PivotSummary {
+  const fields = pivot.fields ?? [];
+  const rowAt = fields.indexOf(pivot.rows?.[0] ?? "");
+  const colAt = fields.indexOf(pivot.columns?.[0] ?? "");
+  const valueAt = fields.indexOf(pivot.values?.[0] ?? "");
+  const agg = pivot.agg ?? "sum";
+  if (rowAt < 0 || valueAt < 0) return { columns: [], rows: [] };
+  const columns: string[] = [];
+  const buckets = new Map<string, Map<string, number[]>>();
+  for (const row of pivot.cache ?? []) {
+    const label = row[rowAt] ?? "";
+    const column = colAt < 0 ? "" : (row[colAt] ?? "");
+    if (colAt >= 0 && !columns.includes(column)) columns.push(column);
+    const cells = buckets.get(label) ?? new Map<string, number[]>();
+    const list = cells.get(column) ?? [];
+    const value = Number(row[valueAt]);
+    if (agg === "count" || Number.isFinite(value)) list.push(agg === "count" ? 1 : value);
+    cells.set(column, list);
+    buckets.set(label, cells);
+  }
+  const heads = colAt < 0 ? [""] : columns;
+  return {
+    columns: colAt < 0 ? [] : columns,
+    rows: [...buckets].map(([label, cells]) => ({
+      label,
+      values: heads.map((column) => reducePivot(cells.get(column) ?? [], agg)),
+    })),
+  };
+}
+
+function reducePivot(values: number[], agg: NonNullable<SheetPivot["agg"]>): number {
+  if (!values.length) return 0;
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return agg === "average" ? total / values.length : total;
+}
+
+function pivotNode(pivot: SheetPivot): HTMLElement {
+  const summary = summarizePivot(pivot);
+  const node = document.createElement("table");
+  node.className = "sheet-pivot";
+  const caption = document.createElement("caption");
+  caption.textContent = pivot.name;
+  node.append(caption);
+  if (summary.columns.length) {
+    const head = document.createElement("tr");
+    head.append(document.createElement("td"));
+    for (const column of summary.columns) {
+      const cell = document.createElement("td");
+      cell.textContent = column;
+      head.append(cell);
+    }
+    node.append(head);
+  }
+  for (const item of summary.rows) {
+    const line = document.createElement("tr");
+    const label = document.createElement("td");
+    label.textContent = item.label;
+    line.append(label);
+    for (const value of item.values) {
+      const total = document.createElement("td");
+      total.textContent = String(value);
+      line.append(total);
+    }
+    node.append(line);
+  }
+  return node;
 }
 
 function chartNode(sheet: Worksheet, chart: SheetChart): HTMLElement {

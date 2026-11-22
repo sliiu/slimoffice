@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.XlsxOpenError = void 0;
 exports.parseXlsx = parseXlsx;
+const styles_1 = require("./styles");
 const zip_1 = require("./zip");
 const xml_1 = require("./xml");
 class XlsxOpenError extends Error {
@@ -69,23 +70,32 @@ async function parseXlsx(input, options = {}) {
     }
     const archive = (0, zip_1.loadArchive)(bytes);
     const shared = sharedStrings(archive);
-    const bold = boldStyles(archive);
-    return { sheets: sheetsFrom(archive, shared, bold), source: archive.files };
+    const theme = readTheme(archive.getText("xl/theme/theme1.xml"));
+    const styleBook = (0, styles_1.readCellStyles)(archive.getText("xl/styles.xml"), theme.colors);
+    const styles = styleBook.looks;
+    const names = definedNames(archive);
+    return {
+        sheets: sheetsFrom(archive, shared, styles, styleBook.names),
+        ...(names.length ? { names } : {}),
+        ...(theme.present ? { theme: { ...(theme.name ? { name: theme.name } : {}), colors: (theme.colors ?? []).filter((color) => color !== ""), fonts: theme.fonts } } : {}),
+        source: archive.files,
+    };
 }
 function isOle(bytes) {
     return bytes.length >= OLE_MAGIC.length && OLE_MAGIC.every((byte, index) => bytes[index] === byte);
 }
-function sheetsFrom(archive, shared, bold) {
+function sheetsFrom(archive, shared, styles, styleNames) {
     const workbook = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText("xl/workbook.xml") ?? ""), "workbook");
     const named = (0, xml_1.children)((0, xml_1.child)(workbook, "sheets"), "sheet").map((sheet) => (0, xml_1.attr)(sheet, "name") ?? "");
     const paths = [...archive.files.keys()]
         .filter((path) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(path))
         .sort((a, b) => sheetNumber(a) - sheetNumber(b));
-    return paths.map((path, index) => sheetFrom(archive, path, named[index] || `Sheet${index + 1}`, shared, bold));
+    return paths.map((path, index) => sheetFrom(archive, path, named[index] || `Sheet${index + 1}`, shared, styles, styleNames));
 }
-function sheetFrom(archive, path, name, shared, bold) {
-    const root = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(path) ?? ""), "worksheet");
+function sheetFrom(archive, path, name, shared, styles, styleNames) {
+    const root = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(path) ?? ""), "worksheet") ?? { name: "worksheet", attrs: {}, children: [], text: "" };
     const cells = [];
+    const dataTables = [];
     for (const row of (0, xml_1.children)((0, xml_1.child)(root, "sheetData"), "row")) {
         for (const cell of (0, xml_1.children)(row, "c")) {
             const ref = (0, xml_1.attr)(cell, "r") ?? "";
@@ -94,24 +104,536 @@ function sheetFrom(archive, path, name, shared, bold) {
                 continue;
             const formulaNode = (0, xml_1.child)(cell, "f");
             const formulaText = formulaNode?.text?.trim() ?? "";
+            const array = (0, xml_1.attr)(formulaNode, "t") === "array" || (0, xml_1.attr)(formulaNode, "t") === "dataTable";
+            rememberDataTable(formulaNode, dataTables);
             const cached = cellValue(cell, (0, xml_1.attr)(cell, "t") ?? "", shared);
-            if (!formulaText && !cached)
+            const styleIndex = Number((0, xml_1.attr)(cell, "s"));
+            const look = styles[styleIndex];
+            const styleName = styleNames[styleIndex];
+            const link = hyperlinkOf(root, ref);
+            const note = commentOf(archive, path, ref);
+            if (!formulaText && !cached && !(0, styles_1.hasLook)(look) && !link && !note)
                 continue;
-            const style = Number((0, xml_1.attr)(cell, "s"));
             const item = {
                 // Formula cells keep the expression for the formula bar; the grid shows the cache until recalculate.
                 value: formulaText ? cached || `=${formulaText}` : cached,
+                ...look,
             };
             if (formulaText)
                 item.formula = formulaText.replace(/^\=/, "");
-            if (Number.isInteger(style) && bold.has(style))
-                item.bold = true;
+            if (array)
+                item.array = true;
+            if (link)
+                item.hyperlink = link;
+            if (note)
+                item.comment = note;
+            if (styleName)
+                item.styleName = styleName;
             const line = cells[where.row] ?? [];
             line[where.column] = item;
             cells[where.row] = line;
         }
     }
-    return { name, cells };
+    const sheet = { name, cells, ...sheetShape(root, archive, path) };
+    if (dataTables.length)
+        sheet.dataTables = dataTables;
+    return sheet;
+}
+function sheetShape(root, archive, path) {
+    const shape = {};
+    const merges = (0, xml_1.children)((0, xml_1.child)(root, "mergeCells"), "mergeCell")
+        .map((item) => rangeOf((0, xml_1.attr)(item, "ref") ?? ""))
+        .filter((item) => !!item);
+    if (merges.length)
+        shape.merges = merges;
+    const widths = new Map();
+    const hiddenCols = [];
+    for (const col of (0, xml_1.children)((0, xml_1.child)(root, "cols"), "col")) {
+        const from = Number((0, xml_1.attr)(col, "min")) - 1;
+        const to = Number((0, xml_1.attr)(col, "max")) - 1;
+        if (from < 0 || to < from || to - from > 256)
+            continue;
+        const width = Number((0, xml_1.attr)(col, "width"));
+        const hidden = (0, xml_1.attr)(col, "hidden") === "1" || (0, xml_1.attr)(col, "hidden") === "true";
+        for (let column = from; column <= to; column += 1) {
+            if (width > 0)
+                widths.set(column, width);
+            if (hidden)
+                hiddenCols.push(column);
+        }
+    }
+    if (widths.size) {
+        const list = [];
+        for (const [column, width] of widths)
+            list[column] = width;
+        shape.colWidths = list;
+    }
+    if (hiddenCols.length)
+        shape.hiddenCols = hiddenCols;
+    const heights = [];
+    const hiddenRows = [];
+    for (const row of (0, xml_1.children)((0, xml_1.child)(root, "sheetData"), "row")) {
+        const index = Number((0, xml_1.attr)(row, "r")) - 1;
+        if (index < 0)
+            continue;
+        const height = Number((0, xml_1.attr)(row, "ht"));
+        if (height > 0)
+            heights[index] = height;
+        if ((0, xml_1.attr)(row, "hidden") === "1" || (0, xml_1.attr)(row, "hidden") === "true")
+            hiddenRows.push(index);
+    }
+    if (heights.some((height) => height != null))
+        shape.rowHeights = heights;
+    if (hiddenRows.length)
+        shape.hiddenRows = hiddenRows;
+    const pane = (0, xml_1.children)((0, xml_1.child)(root, "sheetViews"), "sheetView").flatMap((view) => (0, xml_1.children)((0, xml_1.child)(view, "pane"), "pane").concat((0, xml_1.child)(view, "pane") ?? []))[0];
+    const frozenRow = Number((0, xml_1.attr)(pane, "ySplit"));
+    const frozenCol = Number((0, xml_1.attr)(pane, "xSplit"));
+    if (frozenRow > 0 || frozenCol > 0)
+        shape.freeze = { row: frozenRow > 0 ? frozenRow : 0, col: frozenCol > 0 ? frozenCol : 0 };
+    const filter = rangeOf((0, xml_1.attr)((0, xml_1.child)(root, "autoFilter"), "ref") ?? "");
+    if (filter)
+        shape.filter = { r1: filter.r1, c1: filter.c1, r2: filter.r2, c2: filter.c2 };
+    const page = pageSetup(root);
+    if (page)
+        shape.pageSetup = page;
+    const formats = conditionalFormats(root);
+    if (formats.length)
+        shape.conditionalFormats = formats;
+    const checks = validations(root);
+    if (checks.length)
+        shape.validations = checks;
+    const lists = tables(root, archive, path);
+    if (lists.length)
+        shape.tables = lists;
+    const charts = chartList(archive, path);
+    if (charts.length)
+        shape.charts = charts;
+    const sparklines = sparklineList(root);
+    if (sparklines.length)
+        shape.sparklines = sparklines;
+    const pivots = pivotList(archive, path);
+    if (pivots.length)
+        shape.pivots = pivots;
+    const outline = outlineOf(root);
+    if (outline)
+        shape.outline = outline;
+    const breaks = pageBreaksOf(root);
+    if (breaks)
+        shape.pageBreaks = breaks;
+    const slicers = slicerList(archive, path);
+    if (slicers.length)
+        shape.slicers = slicers;
+    const area = printAreaOf(archive, path);
+    if (area) {
+        shape.pageSetup = { ...shape.pageSetup, printArea: area.area, ...(area.titles ? { printTitles: area.titles } : {}) };
+    }
+    return shape;
+}
+function rememberDataTable(formula, tables) {
+    if ((0, xml_1.attr)(formula, "t") !== "dataTable")
+        return;
+    const ref = (0, xml_1.attr)(formula, "ref");
+    if (!ref || tables.some((item) => item.ref === ref))
+        return;
+    const rowInput = (0, xml_1.attr)(formula, "r1");
+    const colInput = (0, xml_1.attr)(formula, "r2") ?? ((0, xml_1.attr)(formula, "dt2D") !== "1" ? (0, xml_1.attr)(formula, "r1") : undefined);
+    tables.push({
+        ref,
+        ...((0, xml_1.attr)(formula, "dtr") === "1" && rowInput ? { rowInput } : {}),
+        ...((0, xml_1.attr)(formula, "dt2D") === "1" || (0, xml_1.attr)(formula, "dtr") !== "1" ? (colInput ? { colInput } : {}) : {}),
+    });
+}
+function pageBreaksOf(root) {
+    const rows = (0, xml_1.children)((0, xml_1.child)(root, "rowBreaks"), "brk").map((item) => Number((0, xml_1.attr)(item, "id"))).filter((id) => id > 0);
+    const cols = (0, xml_1.children)((0, xml_1.child)(root, "colBreaks"), "brk").map((item) => Number((0, xml_1.attr)(item, "id"))).filter((id) => id > 0);
+    if (!rows.length && !cols.length)
+        return undefined;
+    return { ...(rows.length ? { rows } : {}), ...(cols.length ? { cols } : {}) };
+}
+function slicerList(archive, path) {
+    const targets = [...relTargets(archive, path).values()].filter((target) => /\/slicers?\d*\.xml$/i.test(target));
+    return targets.flatMap((target) => {
+        const list = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(target) ?? ""), "slicers");
+        const cache = slicerCache(archive, target);
+        return (0, xml_1.children)(list, "slicer").map((item, index) => {
+            const name = (0, xml_1.attr)(item, "name") ?? `Slicer${index + 1}`;
+            const cached = cache.get((0, xml_1.attr)(item, "cache") ?? "");
+            return {
+                id: name,
+                name,
+                source: cached?.source ?? "",
+                field: cached?.field ?? (0, xml_1.attr)(item, "caption") ?? "",
+            };
+        });
+    });
+}
+function slicerCache(archive, slicerPath) {
+    const caches = new Map();
+    for (const target of relTargets(archive, slicerPath).values()) {
+        if (!/slicerCache/i.test(target))
+            continue;
+        const def = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(target) ?? ""), "slicerCacheDefinition");
+        const name = (0, xml_1.attr)(def, "name");
+        if (!name)
+            continue;
+        caches.set(name, { source: (0, xml_1.attr)(def, "sourceName") ?? "", field: (0, xml_1.attr)((0, xml_1.child)(def, "data"), "name") ?? "" });
+    }
+    return caches;
+}
+function outlineOf(root) {
+    const rows = [];
+    const cols = [];
+    for (const row of (0, xml_1.children)((0, xml_1.child)(root, "sheetData"), "row")) {
+        const level = Number((0, xml_1.attr)(row, "outlineLevel"));
+        const index = Number((0, xml_1.attr)(row, "r")) - 1;
+        if (level > 0 && index >= 0)
+            rows.push(index);
+    }
+    for (const col of (0, xml_1.children)((0, xml_1.child)(root, "cols"), "col")) {
+        if (Number((0, xml_1.attr)(col, "outlineLevel")) <= 0)
+            continue;
+        const from = Number((0, xml_1.attr)(col, "min")) - 1;
+        const to = Number((0, xml_1.attr)(col, "max")) - 1;
+        for (let column = from; column <= to && column - from < 256; column += 1)
+            cols.push(column);
+    }
+    if (!rows.length && !cols.length)
+        return undefined;
+    const sheetPr = (0, xml_1.child)(root, "sheetPr");
+    const summary = (0, xml_1.attr)((0, xml_1.child)(sheetPr, "outlinePr"), "summaryBelow");
+    return {
+        ...(rows.length ? { rows } : {}),
+        ...(cols.length ? { cols } : {}),
+        summaryBelow: summary !== "0",
+    };
+}
+function printAreaOf(archive, path) {
+    const index = sheetNumber(path) - 1;
+    const names = definedNames(archive).filter((item) => item.localSheet === index);
+    const area = names.find((item) => item.name === "_xlnm.Print_Area")?.refersTo;
+    const titles = names.find((item) => item.name === "_xlnm.Print_Titles")?.refersTo;
+    if (!area && !titles)
+        return undefined;
+    return { area: area ?? "", ...(titles ? { titles } : {}) };
+}
+function readTheme(xml) {
+    const theme = (0, xml_1.child)((0, xml_1.parseXml)(xml ?? ""), "theme");
+    const scheme = (0, xml_1.child)((0, xml_1.child)(theme, "themeElements"), "clrScheme");
+    const order = ["lt1", "dk1", "lt2", "dk2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "hlink", "folHlink"];
+    const colors = order.map((name) => {
+        const slot = (0, xml_1.child)(scheme, name);
+        const raw = (0, xml_1.attr)((0, xml_1.child)(slot, "srgbClr"), "val") ?? (0, xml_1.attr)((0, xml_1.child)(slot, "sysClr"), "lastClr");
+        return raw ? `#${raw.toLowerCase()}` : "";
+    });
+    const fonts = (0, xml_1.child)((0, xml_1.child)(theme, "themeElements"), "fontScheme");
+    const major = (0, xml_1.attr)((0, xml_1.child)((0, xml_1.child)(fonts, "majorFont"), "latin"), "typeface");
+    const minor = (0, xml_1.attr)((0, xml_1.child)((0, xml_1.child)(fonts, "minorFont"), "latin"), "typeface");
+    const name = (0, xml_1.attr)(theme, "name");
+    return {
+        present: colors.some((color) => color !== "") || !!major || !!minor,
+        ...(name ? { name } : {}),
+        colors,
+        fonts: { ...(major ? { major } : {}), ...(minor ? { minor } : {}) },
+    };
+}
+function commentOf(archive, path, ref) {
+    const target = [...relTargets(archive, path).values()].find((item) => /\/comments\d*\.xml$/i.test(item));
+    if (!target)
+        return undefined;
+    const list = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(target) ?? ""), "comments");
+    for (const item of (0, xml_1.children)((0, xml_1.child)(list, "commentList"), "comment")) {
+        if ((0, xml_1.attr)(item, "ref") !== ref)
+            continue;
+        const text = (0, xml_1.children)((0, xml_1.child)(item, "text"), "r").map((run) => (0, xml_1.child)(run, "t")?.text ?? "").join("").trim();
+        if (text)
+            return text;
+    }
+    return undefined;
+}
+function pivotList(archive, path) {
+    return [...relTargets(archive, path).values()]
+        .filter((target) => /\/pivotTables\/pivotTable\d+\.xml$/i.test(target))
+        .flatMap((target, index) => {
+        const table = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(target) ?? ""), "pivotTableDefinition");
+        if (!table)
+            return [];
+        const cache = pivotCache(archive, (0, xml_1.attr)(table, "cacheId"));
+        const fields = (0, xml_1.children)((0, xml_1.child)(table, "pivotFields"), "pivotField");
+        const names = cache.fields.length ? cache.fields : fields.map((_, at) => `F${at + 1}`);
+        const picked = (tag) => (0, xml_1.children)((0, xml_1.child)(table, tag), "field").flatMap((field) => {
+            const name = names[Number((0, xml_1.attr)(field, "x"))];
+            return name ? [name] : [];
+        });
+        return [{
+                id: (0, xml_1.attr)(table, "name") ?? `pivot${index + 1}`,
+                name: (0, xml_1.attr)(table, "name") ?? `Pivot${index + 1}`,
+                source: cache.source,
+                rows: picked("rowFields"),
+                columns: picked("colFields"),
+                values: picked("dataFields"),
+                fields: cache.fields,
+                cache: cache.rows,
+            }];
+    });
+}
+function pivotCache(archive, cacheId) {
+    const empty = { source: "", fields: [], rows: [] };
+    const workbookRels = relTargets(archive, "xl/workbook.xml");
+    const defTarget = [...workbookRels.entries()]
+        .filter(([, target]) => /pivotCache\/pivotCacheDefinition\d+\.xml$/i.test(target))
+        .find(([, target]) => !cacheId || target.includes(`pivotCacheDefinition${cacheId}.xml`))?.[1];
+    if (!defTarget)
+        return empty;
+    const def = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(defTarget) ?? ""), "pivotCacheDefinition");
+    const source = (0, xml_1.attr)((0, xml_1.child)((0, xml_1.child)(def, "cacheSource"), "worksheetSource"), "ref") ?? "";
+    const fields = (0, xml_1.children)((0, xml_1.child)(def, "cacheFields"), "cacheField").map((field) => (0, xml_1.attr)(field, "name") ?? "");
+    const recordsTarget = [...relTargets(archive, defTarget).values()].find((target) => /pivotCacheRecords\d+\.xml$/i.test(target));
+    const records = (0, xml_1.child)((0, xml_1.parseXml)(recordsTarget ? archive.getText(recordsTarget) ?? "" : ""), "pivotCacheRecords");
+    const rows = (0, xml_1.children)(records, "r").map((row) => row.children.map((item) => (0, xml_1.attr)(item, "v") ?? item.text));
+    return { source, fields, rows };
+}
+function hyperlinkOf(root, ref) {
+    for (const link of (0, xml_1.children)((0, xml_1.child)(root, "hyperlinks"), "hyperlink")) {
+        if ((0, xml_1.attr)(link, "ref") !== ref)
+            continue;
+        const target = (0, xml_1.attr)(link, "location") ?? (0, xml_1.attr)(link, "display");
+        if (target)
+            return target;
+    }
+    return undefined;
+}
+function conditionalFormats(root) {
+    const out = [];
+    for (const block of (0, xml_1.children)(root, "conditionalFormatting")) {
+        const range = rangeOf((0, xml_1.attr)(block, "sqref")?.split(/\s+/)[0] ?? "");
+        if (!range)
+            continue;
+        (0, xml_1.children)(block, "cfRule").forEach((rule, index) => {
+            const parsed = cfRule(rule);
+            if (parsed)
+                out.push({ id: `cf${out.length + index + 1}`, ...range, rule: parsed });
+        });
+    }
+    return out;
+}
+function cfRule(rule) {
+    const type = (0, xml_1.attr)(rule, "type");
+    const formulas = (0, xml_1.children)(rule, "formula").map((item) => item.text.trim());
+    if (type === "cellIs") {
+        const op = cellOp((0, xml_1.attr)(rule, "operator") ?? "");
+        if (!op || !formulas[0])
+            return undefined;
+        return { type: "cellValue", op, formula1: formulas[0], ...(formulas[1] ? { formula2: formulas[1] } : {}) };
+    }
+    if (type === "expression" && formulas[0])
+        return { type: "expression", formula: formulas[0] };
+    if (type === "colorScale") {
+        const colors = (0, xml_1.children)((0, xml_1.child)(rule, "colorScale"), "color").map(colorOf).filter((item) => !!item);
+        const [first, second, third] = colors;
+        if (first && second && third)
+            return { type: "colorScale", colors: [first, second, third] };
+        if (first && second)
+            return { type: "colorScale", colors: [first, second] };
+    }
+    if (type === "dataBar") {
+        const color = colorOf((0, xml_1.children)((0, xml_1.child)(rule, "dataBar"), "color")[0]);
+        return { type: "dataBar", color: color ?? "#638ec6" };
+    }
+    if (type === "iconSet") {
+        const set = (0, xml_1.attr)((0, xml_1.child)(rule, "iconSet"), "iconSet");
+        if (set === "3TrafficLights" || set === "3Arrows" || set === "3Symbols")
+            return { type: "iconSet", set };
+    }
+    return undefined;
+}
+function cellOp(name) {
+    if (name === "greaterThan")
+        return "gt";
+    if (name === "greaterThanOrEqual")
+        return "gte";
+    if (name === "lessThan")
+        return "lt";
+    if (name === "lessThanOrEqual")
+        return "lte";
+    if (name === "equal")
+        return "eq";
+    if (name === "notEqual")
+        return "neq";
+    if (name === "between")
+        return "between";
+    return undefined;
+}
+function colorOf(node) {
+    const rgb = (0, xml_1.attr)(node, "rgb");
+    if (!rgb || !/^[0-9a-fA-F]{6,8}$/.test(rgb))
+        return undefined;
+    return `#${rgb.slice(-6).toLowerCase()}`;
+}
+function validations(root) {
+    const types = ["list", "whole", "decimal", "textLength", "custom"];
+    return (0, xml_1.children)((0, xml_1.child)(root, "dataValidations"), "dataValidation").flatMap((item, index) => {
+        const range = rangeOf((0, xml_1.attr)(item, "sqref")?.split(/\s+/)[0] ?? "");
+        const type = types.find((name) => name === (0, xml_1.attr)(item, "type"));
+        if (!range || !type)
+            return [];
+        const formula1 = (0, xml_1.child)(item, "formula1")?.text.trim();
+        const formula2 = (0, xml_1.child)(item, "formula2")?.text.trim();
+        return [{
+                id: `dv${index + 1}`,
+                ...range,
+                type,
+                ...(formula1 ? { formula1 } : {}),
+                ...(formula2 ? { formula2 } : {}),
+                allowBlank: (0, xml_1.attr)(item, "allowBlank") !== "0",
+            }];
+    });
+}
+function tables(root, archive, path) {
+    const rels = relTargets(archive, path);
+    return (0, xml_1.children)((0, xml_1.child)(root, "tableParts"), "tablePart").flatMap((part, index) => {
+        const target = rels.get((0, xml_1.attr)(part, "id") ?? "");
+        const xml = target ? archive.getText(target) : undefined;
+        if (!xml)
+            return [];
+        const table = (0, xml_1.child)((0, xml_1.parseXml)(xml), "table");
+        const range = rangeOf((0, xml_1.attr)(table, "ref") ?? "");
+        if (!table || !range)
+            return [];
+        return [{
+                id: (0, xml_1.attr)(table, "id") ?? `table${index + 1}`,
+                name: (0, xml_1.attr)(table, "displayName") ?? (0, xml_1.attr)(table, "name") ?? `Table${index + 1}`,
+                ...range,
+                headerRow: (0, xml_1.attr)(table, "headerRowCount") !== "0",
+            }];
+    });
+}
+function chartList(archive, path) {
+    const kinds = { barChart: "column", lineChart: "line", pieChart: "pie", areaChart: "area", scatterChart: "scatter" };
+    return [...relTargets(archive, path).values()]
+        .filter((target) => /\/drawings\/drawing\d+\.xml$/i.test(target))
+        .flatMap((target) => [...relTargets(archive, target).values()])
+        .filter((target) => /\/charts\/chart\d+\.xml$/i.test(target))
+        .flatMap((target, index) => {
+        const chart = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(target) ?? ""), "chartSpace");
+        const plot = (0, xml_1.child)((0, xml_1.child)(chart, "chart"), "plotArea");
+        const node = plot?.children.find((item) => item.name in kinds);
+        if (!node)
+            return [];
+        const range = chartRange(node) ?? "";
+        return [{ id: `chart${index + 1}`, kind: kinds[node.name] ?? "column", range }];
+    });
+}
+function chartRange(node) {
+    const ref = findNamed(node, "f");
+    return ref?.text.trim().replace(/^[^!]*!/, "");
+}
+function findNamed(node, name) {
+    if (node.name === name)
+        return node;
+    for (const item of node.children) {
+        const found = findNamed(item, name);
+        if (found)
+            return found;
+    }
+    return undefined;
+}
+function sparklineList(root) {
+    const kinds = { line: "line", column: "column", stacked: "winLoss" };
+    return (0, xml_1.children)(root, "extLst").flatMap((list) => (0, xml_1.children)(list, "ext")).flatMap((ext) => ext.children
+        .filter((item) => item.name === "sparklineGroups")
+        .flatMap((groups) => (0, xml_1.children)(groups, "sparklineGroup"))
+        .flatMap((group, index) => {
+        const spark = (0, xml_1.child)((0, xml_1.child)(group, "sparklines"), "sparkline");
+        const data = (0, xml_1.child)(spark, "f")?.text.trim();
+        const location = (0, xml_1.child)(spark, "sqref")?.text.trim();
+        if (!data || !location)
+            return [];
+        return [{ id: `spark${index + 1}`, kind: kinds[(0, xml_1.attr)(group, "type") ?? "line"] ?? "line", data, location }];
+    }));
+}
+function definedNames(archive) {
+    const workbook = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText("xl/workbook.xml") ?? ""), "workbook");
+    return (0, xml_1.children)((0, xml_1.child)(workbook, "definedNames"), "definedName").flatMap((item) => {
+        const name = (0, xml_1.attr)(item, "name");
+        if (!name || !item.text.trim())
+            return [];
+        const local = Number((0, xml_1.attr)(item, "localSheetId"));
+        return [{ name, refersTo: item.text.trim(), ...(Number.isInteger(local) && local >= 0 ? { localSheet: local } : {}) }];
+    });
+}
+function relTargets(archive, part) {
+    const dir = part.slice(0, part.lastIndexOf("/"));
+    const file = part.slice(part.lastIndexOf("/") + 1);
+    const rels = (0, xml_1.parseXml)(archive.getText(`${dir}/_rels/${file}.rels`) ?? "");
+    const targets = new Map();
+    for (const rel of (0, xml_1.children)((0, xml_1.child)(rels, "Relationships"), "Relationship")) {
+        const id = (0, xml_1.attr)(rel, "Id");
+        const target = (0, xml_1.attr)(rel, "Target");
+        if (!id || !target)
+            continue;
+        targets.set(id, target.startsWith("/") ? target.slice(1) : normalizeRel(dir, target));
+    }
+    return targets;
+}
+function normalizeRel(dir, target) {
+    const parts = `${dir}/${target}`.split("/");
+    const out = [];
+    for (const part of parts) {
+        if (part === "..")
+            out.pop();
+        else if (part !== ".")
+            out.push(part);
+    }
+    return out.join("/");
+}
+function pageSetup(root) {
+    const setup = (0, xml_1.child)(root, "pageSetup");
+    const margins = (0, xml_1.child)(root, "pageMargins");
+    const options = (0, xml_1.child)(root, "printOptions");
+    if (!setup && !margins && !options)
+        return undefined;
+    const page = {};
+    const orientation = (0, xml_1.attr)(setup, "orientation");
+    if (orientation === "portrait" || orientation === "landscape")
+        page.orientation = orientation;
+    const paper = (0, xml_1.attr)(setup, "paperSize");
+    if (paper === "1")
+        page.paperSize = "Letter";
+    else if (paper === "5")
+        page.paperSize = "Legal";
+    else if (paper === "9")
+        page.paperSize = "A4";
+    const width = Number((0, xml_1.attr)(setup, "fitToWidth"));
+    const height = Number((0, xml_1.attr)(setup, "fitToHeight"));
+    const scale = Number((0, xml_1.attr)(setup, "scale"));
+    if (Number.isFinite(width) && (0, xml_1.attr)(setup, "fitToWidth"))
+        page.fitToWidth = width;
+    if (Number.isFinite(height) && (0, xml_1.attr)(setup, "fitToHeight"))
+        page.fitToHeight = height;
+    if (scale > 0)
+        page.scale = scale;
+    if (margins) {
+        page.margins = {
+            left: Number((0, xml_1.attr)(margins, "left")) || 0,
+            right: Number((0, xml_1.attr)(margins, "right")) || 0,
+            top: Number((0, xml_1.attr)(margins, "top")) || 0,
+            bottom: Number((0, xml_1.attr)(margins, "bottom")) || 0,
+        };
+    }
+    if (options) {
+        page.gridlines = (0, xml_1.attr)(options, "gridLines") === "1";
+        page.headings = (0, xml_1.attr)(options, "headings") === "1";
+    }
+    return page;
+}
+function rangeOf(ref) {
+    const parts = ref.split(":");
+    const start = cellRef(parts[0] ?? "");
+    const end = cellRef(parts[1] ?? parts[0] ?? "");
+    if (!start || !end)
+        return undefined;
+    return { r1: start.row, c1: start.column, r2: end.row, c2: end.column };
 }
 function cellValue(cell, type, shared) {
     if (type === "inlineStr")
@@ -134,17 +656,6 @@ function textOf(node) {
     if (direct)
         return direct;
     return node.children.filter((item) => item.name === "r").map((run) => (0, xml_1.child)(run, "t")?.text ?? "").join("");
-}
-function boldStyles(archive) {
-    const root = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText("xl/styles.xml") ?? ""), "styleSheet");
-    const fonts = (0, xml_1.children)((0, xml_1.child)(root, "fonts"), "font").map((font) => font.children.some((item) => item.name === "b"));
-    const bold = new Set();
-    (0, xml_1.children)((0, xml_1.child)(root, "cellXfs"), "xf").forEach((item, index) => {
-        const font = Number((0, xml_1.attr)(item, "fontId"));
-        if (Number.isInteger(font) && fonts[font])
-            bold.add(index);
-    });
-    return bold;
 }
 function cellRef(ref) {
     const match = /^([A-Z]+)(\d+)$/.exec(ref);

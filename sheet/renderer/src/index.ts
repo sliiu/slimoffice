@@ -13,7 +13,7 @@ import type {
   Workbook,
   Worksheet,
 } from "@sliiu/sheet-core";
-import { recalculate } from "@sliiu/sheet-formula";
+import { formatNumber, recalculate } from "@sliiu/sheet-formula";
 import { renderCharts } from "./charts";
 import { cfLook } from "./cf";
 
@@ -410,7 +410,7 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
   function dataCell(sheet: Worksheet, row: number, column: number): HTMLTableCellElement {
     const item = sheet.cells[row]?.[column];
     const td = document.createElement("td");
-    td.textContent = item?.value ?? "";
+    td.textContent = shown(item);
     td.dataset.row = String(row);
     td.dataset.col = String(column);
     applyLook(td, item, row, column);
@@ -422,7 +422,17 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
       td.colSpan = span.c2 - span.c1 + 1;
       td.rowSpan = span.r2 - span.r1 + 1;
     }
+    const note = [item?.comment, validationHint(sheet, row, column)].filter((text) => text).join("\n");
+    if (note) td.title = note;
+    const rule = validationAt(sheet, row, column);
+    if (rule) td.dataset.validation = rule.type;
     if (item?.formula) td.classList.add("is-formula");
+    if (sheet.outline?.rows?.includes(row)) td.dataset.outline = "row";
+    if (sheet.outline?.cols?.includes(column)) td.dataset.outline = "col";
+    if (sheet.pageBreaks?.rows?.includes(row + 1)) td.dataset.pageBreak = "row";
+    if (sheet.pageBreaks?.cols?.includes(column + 1)) td.dataset.pageBreak = "col";
+    const table = dataTableAt(sheet, row, column);
+    if (table) td.dataset.dataTable = [table.rowInput, table.colInput].filter((part) => part).join(" ");
     if (sheet.filter && row === sheet.filter.r1 && column >= sheet.filter.c1 && column <= sheet.filter.c2) {
       td.classList.add("is-filter-header");
     }
@@ -451,6 +461,46 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
       touch();
     });
     return td;
+  }
+
+  function dataTableAt(sheet: Worksheet, row: number, column: number): NonNullable<Worksheet["dataTables"]>[number] | undefined {
+    return sheet.dataTables?.find((item) => {
+      const range = rangeOf(item.ref);
+      return !!range && row >= range.r1 && row <= range.r2 && column >= range.c1 && column <= range.c2;
+    });
+  }
+
+  function rangeOf(ref: string): { r1: number; c1: number; r2: number; c2: number } | undefined {
+    const parts = ref.split(":");
+    const start = parseA1(parts[0] ?? "");
+    const end = parseA1(parts[1] ?? parts[0] ?? "");
+    if (!start || !end) return undefined;
+    return { r1: Math.min(start.row, end.row), c1: Math.min(start.col, end.col), r2: Math.max(start.row, end.row), c2: Math.max(start.col, end.col) };
+  }
+
+  function parseA1(ref: string): { row: number; col: number } | undefined {
+    const match = /^\$?([A-Z]+)\$?(\d+)$/i.exec(ref.trim());
+    if (!match) return undefined;
+    let col = 0;
+    for (const letter of (match[1] ?? "").toUpperCase()) col = col * 26 + letter.charCodeAt(0) - 64;
+    return { row: Number(match[2]) - 1, col: col - 1 };
+  }
+
+  function validationAt(sheet: Worksheet, row: number, column: number): SheetValidation | undefined {
+    return sheet.validations?.find((item) => row >= item.r1 && row <= item.r2 && column >= item.c1 && column <= item.c2);
+  }
+
+  function validationHint(sheet: Worksheet, row: number, column: number): string {
+    const rule = validationAt(sheet, row, column);
+    if (!rule) return "";
+    if (rule.type === "list") return rule.formula1 ?? "";
+    return [rule.type, rule.formula1, rule.formula2].filter((part) => part).join(" ");
+  }
+
+  function shown(item: SheetCell | undefined): string {
+    const value = item?.value ?? "";
+    if (!item?.numFmt || item.numFmt === "@" || !/^-?\d+(?:\.\d+)?$/.test(value)) return value;
+    return formatNumber(Number(value), item.numFmt);
   }
 
   function applyLook(td: HTMLTableCellElement, item: SheetCell | undefined, row = selected.row, column = selected.col): void {
@@ -843,6 +893,7 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
       rows: cache.headers.slice(0, 1),
       columns: [],
       values: cache.headers.slice(1, 2),
+      fields: cache.headers,
       cache: cache.rows,
     });
     sheet.pivots = pivots;

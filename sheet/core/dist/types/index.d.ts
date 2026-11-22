@@ -57,6 +57,8 @@ export interface SheetCell {
     };
     hyperlink?: string;
     comment?: string;
+    /** Named cell style from `cellStyles`, when the cell uses one. */
+    styleName?: string;
 }
 export interface SheetMerge {
     r1: number;
@@ -95,6 +97,10 @@ export interface SheetPivot {
     rows?: string[];
     columns?: string[];
     values?: string[];
+    /** How the value field is reduced. Defaults to a sum. */
+    agg?: "sum" | "count" | "average";
+    /** Cache field names, in the same order as each cache row. */
+    fields?: string[];
     /** Flattened cache rows used for a minimal pivot preview. */
     cache?: string[][];
 }
@@ -222,11 +228,19 @@ export interface Worksheet {
         rows?: number[];
         cols?: number[];
     };
+    /** What-if data tables. `ref` is the result block; the inputs are the cells Excel substitutes. */
+    dataTables?: {
+        ref: string;
+        rowInput?: string;
+        colInput?: string;
+    }[];
     xmlMaps?: SheetXmlMap[];
 }
 export interface WorkbookName {
     name: string;
     refersTo: string;
+    /** Sheet index for a sheet-scoped name such as a print area. */
+    localSheet?: number;
 }
 export interface Workbook {
     sheets: Worksheet[];

@@ -41,6 +41,14 @@ export function drawingFragments(sheet: Worksheet, sheetIndex: number): {
     extras.push(`<drawing r:id="${rid}"/>`);
   }
 
+  const notes = commentList(sheet);
+  if (notes.length) {
+    const path = `xl/comments${sheetIndex + 1}.xml`;
+    parts.set(path, commentsXml(notes));
+    contentTypes.push(`<Override PartName="/${path}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/>`);
+    rels.push(`<Relationship Id="rIdComment1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments${sheetIndex + 1}.xml"/>`);
+  }
+
   if (sheet.validations?.length) extras.push(dataValidationsXml(sheet));
   if (sheet.pageBreaks?.rows?.length || sheet.pageBreaks?.cols?.length) extras.push(pageBreaksXml(sheet));
 
@@ -82,6 +90,23 @@ function dataValidationsXml(sheet: Worksheet): string {
     })
     .join("");
   return `<dataValidations count="${items.length}">${body}</dataValidations>`;
+}
+
+function commentList(sheet: Worksheet): { ref: string; text: string }[] {
+  const notes: { ref: string; text: string }[] = [];
+  sheet.cells.forEach((row, rowIndex) => {
+    row?.forEach((cell, column) => {
+      if (cell?.comment) notes.push({ ref: `${colName(column)}${rowIndex + 1}`, text: cell.comment });
+    });
+  });
+  return notes;
+}
+
+function commentsXml(notes: { ref: string; text: string }[]): string {
+  const body = notes
+    .map((note) => `<comment ref="${note.ref}" authorId="0"><text><r><t>${escapeXml(note.text)}</t></r></text></comment>`)
+    .join("");
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><authors><author/></authors><commentList>${body}</commentList></comments>`;
 }
 
 function pageBreaksXml(sheet: Worksheet): string {

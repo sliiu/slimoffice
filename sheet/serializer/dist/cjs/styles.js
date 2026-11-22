@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.styleBook = styleBook;
+exports.sheetFrameXml = sheetFrameXml;
 exports.autoFilterXml = autoFilterXml;
 exports.pageSetupXml = pageSetupXml;
 exports.conditionalFormattingXml = conditionalFormattingXml;
@@ -102,6 +103,43 @@ function styleBook(stylesXml, sheets) {
     const numFmtBlock = numFmts.length ? `<numFmts count="${numFmts.length}">${numFmts.join("")}</numFmts>` : "";
     const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${numFmtBlock}<fonts count="${fonts.length}">${fonts.join("")}</fonts><fills count="${fills.length}">${fills.join("")}</fills><borders count="${borders.length}">${borders.join("")}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${cellXfs.length}">${cellXfs.join("")}</cellXfs><dxfs count="${dxfs.length}">${dxfs.join("")}</dxfs></styleSheet>`;
     return { xml, indexFor };
+}
+function sheetFrameXml(sheet) {
+    const cols = colXml(sheet);
+    const merges = mergeXml(sheet);
+    const view = sheetViewXml(sheet);
+    return `${view}${cols}${merges}`;
+}
+function colXml(sheet) {
+    const widths = sheet.colWidths ?? [];
+    const hidden = new Set(sheet.hiddenCols ?? []);
+    const indexes = new Set([...widths.keys(), ...hidden]);
+    const cols = [...indexes]
+        .filter((column) => widths[column] != null || hidden.has(column))
+        .sort((a, b) => a - b)
+        .map((column) => {
+        const width = widths[column];
+        const sized = width != null ? ` width="${width}" customWidth="1"` : "";
+        const gone = hidden.has(column) ? ' hidden="1"' : "";
+        return `<col min="${column + 1}" max="${column + 1}"${sized}${gone}/>`;
+    });
+    return cols.length ? `<cols>${cols.join("")}</cols>` : "";
+}
+function mergeXml(sheet) {
+    const merges = sheet.merges ?? [];
+    if (!merges.length)
+        return "";
+    const cells = merges.map((merge) => `<mergeCell ref="${colName(merge.c1)}${merge.r1 + 1}:${colName(merge.c2)}${merge.r2 + 1}"/>`);
+    return `<mergeCells count="${cells.length}">${cells.join("")}</mergeCells>`;
+}
+function sheetViewXml(sheet) {
+    if (!sheet.freeze)
+        return "";
+    const row = sheet.freeze.row > 0 ? ` ySplit="${sheet.freeze.row}"` : "";
+    const col = sheet.freeze.col > 0 ? ` xSplit="${sheet.freeze.col}"` : "";
+    const state = row || col ? ' state="frozen"' : "";
+    const topLeft = `${colName(sheet.freeze.col)}${sheet.freeze.row + 1}`;
+    return `<sheetViews><sheetView workbookViewId="0"><pane${col}${row}${state} topLeftCell="${topLeft}"/></sheetView></sheetViews>`;
 }
 function autoFilterXml(sheet) {
     if (!sheet.filter)

@@ -38,9 +38,15 @@ const BUILTIN_FMT: Record<number, string> = {
 const ALIGN: Record<string, SheetAlign> = { left: "left", center: "center", right: "right", justify: "justify" };
 const VALIGN: Record<string, SheetVAlign> = { top: "top", center: "middle", bottom: "bottom" };
 
-/** One look per `cellXfs` entry. Index 0 is the sheet default and is usually empty. */
-export function readCellStyles(stylesXml: string | undefined): CellLook[] {
-  if (!stylesXml) return [];
+export interface StyleBook {
+  looks: CellLook[];
+  /** Named style per `cellXfs` index, when the cell uses one. */
+  names: (string | undefined)[];
+}
+
+/** One look per `cellXfs` entry. Index 0 is the sheet default and is usually empty. Theme colors resolve against the workbook palette. */
+export function readCellStyles(stylesXml: string | undefined, themeColors: string[] = []): StyleBook {
+  if (!stylesXml) return { looks: [], names: [] };
   const root = child(parseXml(stylesXml), "styleSheet");
   const formats = new Map<number, string>(Object.entries(BUILTIN_FMT).map(([id, code]) => [Number(id), code]));
   for (const fmt of children(child(root, "numFmts"), "numFmt")) {
@@ -48,10 +54,17 @@ export function readCellStyles(stylesXml: string | undefined): CellLook[] {
     const code = attr(fmt, "formatCode");
     if (Number.isInteger(id) && code && code.toLowerCase() !== "general") formats.set(id, code);
   }
-  const fonts = children(child(root, "fonts"), "font").map(readFont);
-  const fills = children(child(root, "fills"), "fill").map(readFill);
-  const borders = children(child(root, "borders"), "border").map(readBorder);
-  return children(child(root, "cellXfs"), "xf").map((xf) => {
+  const fonts = children(child(root, "fonts"), "font").map((font) => readFont(font, themeColors));
+  const fills = children(child(root, "fills"), "fill").map((fill) => readFill(fill, themeColors));
+  const borders = children(child(root, "borders"), "border").map((border) => readBorder(border, themeColors));
+  const styleNames = new Map<number, string>();
+  for (const item of children(child(root, "cellStyles"), "cellStyle")) {
+    const name = attr(item, "name");
+    const xfId = Number(attr(item, "xfId"));
+    if (name && Number.isInteger(xfId)) styleNames.set(xfId, name);
+  }
+  const xfs = children(child(root, "cellXfs"), "xf");
+  const looks = xfs.map((xf) => {
     const look: CellLook = {};
     const fontId = Number(attr(xf, "fontId"));
     const fillId = Number(attr(xf, "fillId"));
@@ -65,6 +78,11 @@ export function readCellStyles(stylesXml: string | undefined): CellLook[] {
     Object.assign(look, taken(xf, "applyAlignment", readAlignment(child(xf, "alignment"))));
     return look;
   });
+  const names = xfs.map((xf) => {
+    const xfId = Number(attr(xf, "xfId"));
+    return Number.isInteger(xfId) ? styleNames.get(xfId) : undefined;
+  });
+  return { looks, names };
 }
 
 export function hasLook(look: CellLook | undefined): boolean {
@@ -78,7 +96,7 @@ function taken(xf: XmlNode, flag: string, look: CellLook | undefined): CellLook 
   return look;
 }
 
-function readFont(font: XmlNode): CellLook {
+function readFont(font: XmlNode, themeColors: string[]): CellLook {
   const look: CellLook = {};
   if (on(child(font, "b"))) look.bold = true;
   if (on(child(font, "i"))) look.italic = true;
@@ -86,34 +104,34 @@ function readFont(font: XmlNode): CellLook {
   if (on(child(font, "strike"))) look.strike = true;
   const size = Number(attr(child(font, "sz"), "val"));
   if (size > 0) look.fontSize = size;
-  const color = rgbOf(child(font, "color"));
+  const color = colorOf(child(font, "color"), themeColors);
   if (color) look.color = color;
   const name = attr(child(font, "name"), "val");
   if (name) look.font = name;
   return look;
 }
 
-function readFill(fill: XmlNode): CellLook {
+function readFill(fill: XmlNode, themeColors: string[]): CellLook {
   const pattern = child(fill, "patternFill");
   if (attr(pattern, "patternType") !== "solid") return {};
-  const color = rgbOf(child(pattern, "fgColor")) ?? rgbOf(child(pattern, "bgColor"));
+  const color = colorOf(child(pattern, "fgColor"), themeColors) ?? colorOf(child(pattern, "bgColor"), themeColors);
   return color ? { fill: color } : {};
 }
 
-function readBorder(border: XmlNode): CellLook {
+function readBorder(border: XmlNode, themeColors: string[]): CellLook {
   const edges: NonNullable<SheetCell["border"]> = {};
   for (const side of ["left", "right", "top", "bottom"] as const) {
-    const edge = readEdge(child(border, side));
+    const edge = readEdge(child(border, side), themeColors);
     if (edge) edges[side] = edge;
   }
   return Object.keys(edges).length ? { border: edges } : {};
 }
 
-function readEdge(node: XmlNode | undefined): SheetBorder | undefined {
+function readEdge(node: XmlNode | undefined, themeColors: string[]): SheetBorder | undefined {
   const style = attr(node, "style");
   if (!node || !style || style === "none") return undefined;
   const known = style === "thin" || style === "medium" || style === "thick" || style === "dashed" || style === "dotted" ? style : "thin";
-  const color = rgbOf(child(node, "color"));
+  const color = colorOf(child(node, "color"), themeColors);
   return color ? { style: known, color } : { style: known };
 }
 
@@ -136,8 +154,29 @@ function on(node: XmlNode | undefined): boolean {
   return raw !== "0" && raw !== "false" && raw !== "none";
 }
 
-function rgbOf(node: XmlNode | undefined): string | undefined {
-  const raw = attr(node, "rgb")?.replace(/^#/, "");
-  if (!raw || !/^[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(raw)) return undefined;
-  return `#${(raw.length === 8 ? raw.slice(2) : raw).toLowerCase()}`;
+function colorOf(node: XmlNode | undefined, themeColors: string[]): string | undefined {
+  const direct = rgbOf(attr(node, "rgb"));
+  if (direct) return direct;
+  const theme = Number(attr(node, "theme"));
+  const base = themeColors[theme];
+  if (!base) return undefined;
+  const tint = Number(attr(node, "tint"));
+  return Number.isFinite(tint) && tint !== 0 ? applyTint(base, tint) : base;
+}
+
+function rgbOf(raw: string | undefined): string | undefined {
+  const text = raw?.replace(/^#/, "");
+  if (!text || !/^[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(text)) return undefined;
+  return `#${(text.length === 8 ? text.slice(2) : text).toLowerCase()}`;
+}
+
+/** Excel tint: positive lightens toward white, negative darkens toward black. */
+function applyTint(hex: string, tint: number): string {
+  const clamped = Math.max(-1, Math.min(1, tint));
+  const channels = [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16));
+  const mixed = channels.map((channel) => {
+    const next = clamped < 0 ? channel * (1 + clamped) : channel + (255 - channel) * clamped;
+    return Math.round(Math.max(0, Math.min(255, next))).toString(16).padStart(2, "0");
+  });
+  return `#${mixed.join("")}`;
 }
