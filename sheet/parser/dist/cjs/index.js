@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.XlsxPasswordError = exports.parseXls = exports.writeCsv = exports.parseCsv = exports.XlsxOpenError = exports.parseXlsx = void 0;
+exports.XlsxPasswordError = exports.vbaModuleNames = exports.readCompoundStream = exports.parseXls = exports.writeCsv = exports.parseCsv = exports.XlsxOpenError = exports.parseXlsx = void 0;
 var parse_1 = require("./parse");
 Object.defineProperty(exports, "parseXlsx", { enumerable: true, get: function () { return parse_1.parseXlsx; } });
 Object.defineProperty(exports, "XlsxOpenError", { enumerable: true, get: function () { return parse_1.XlsxOpenError; } });
@@ -9,5 +9,8 @@ Object.defineProperty(exports, "parseCsv", { enumerable: true, get: function () 
 Object.defineProperty(exports, "writeCsv", { enumerable: true, get: function () { return csv_1.writeCsv; } });
 var xls_1 = require("./xls");
 Object.defineProperty(exports, "parseXls", { enumerable: true, get: function () { return xls_1.parseXls; } });
+Object.defineProperty(exports, "readCompoundStream", { enumerable: true, get: function () { return xls_1.readCompoundStream; } });
+var vba_1 = require("./vba");
+Object.defineProperty(exports, "vbaModuleNames", { enumerable: true, get: function () { return vba_1.vbaModuleNames; } });
 var crypto_1 = require("./crypto");
 Object.defineProperty(exports, "XlsxPasswordError", { enumerable: true, get: function () { return crypto_1.XlsxPasswordError; } });

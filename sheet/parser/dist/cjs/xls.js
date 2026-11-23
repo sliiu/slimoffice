@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseXls = parseXls;
+exports.readCompoundStream = readCompoundStream;
 const OLE_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
 /** Minimal BIFF8 reader: values, shared strings, booleans, formula cached values. */
 function parseXls(input) {
@@ -13,37 +14,80 @@ function parseXls(input) {
     return parseBiff8(stream);
 }
 function readWorkbookStream(bytes) {
+    const found = readCompoundStream(bytes, "workbook") ?? readCompoundStream(bytes, "book");
+    return found?.bytes;
+}
+/** Reads a named stream out of an OLE compound file. Names match by their lower-cased tail. */
+function readCompoundStream(bytes, wanted) {
+    if (bytes.length < 512 || !OLE_MAGIC.every((byte, index) => bytes[index] === byte))
+        return undefined;
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const sectorShift = view.getUint16(30, true);
-    const sectorSize = 1 << sectorShift;
-    const fatCount = view.getUint32(44, true);
+    const sectorSize = 1 << view.getUint16(30, true);
+    const miniSize = 1 << view.getUint16(32, true);
     const dirFirst = view.getUint32(48, true);
-    const fat = [];
-    // First 109 FAT sector IDs live at offset 76.
-    for (let i = 0; i < Math.min(fatCount, 109); i += 1)
-        fat.push(view.getUint32(76 + i * 4, true));
+    const miniCutoff = view.getUint32(56, true);
+    const miniFatFirst = view.getUint32(60, true);
+    const fat = fatSectors(view, bytes, sectorSize);
     const fatBytes = readSectors(bytes, sectorSize, fat);
     const fatView = new DataView(fatBytes.buffer, fatBytes.byteOffset, fatBytes.byteLength);
     const dir = readChain(bytes, sectorSize, fatView, dirFirst);
     const entries = Math.floor(dir.length / 128);
-    let workbookSid = -1;
-    let workbookSize = 0;
+    let rootStart = -1;
+    let rootSize = 0;
+    let match;
     for (let i = 0; i < entries; i += 1) {
         const off = i * 128;
-        const nameChars = dir[off + 64] / 2 - 1;
+        const nameChars = Math.max(0, dir[off + 64] / 2 - 1);
         let name = "";
-        for (let c = 0; c < Math.max(0, nameChars); c += 1)
+        for (let c = 0; c < nameChars; c += 1)
             name += String.fromCharCode(dir[off + c * 2] | (dir[off + c * 2 + 1] << 8));
-        if (name.toLowerCase() === "workbook" || name.toLowerCase() === "book") {
-            workbookSid = new DataView(dir.buffer, dir.byteOffset + off, 128).getInt32(116, true);
-            workbookSize = new DataView(dir.buffer, dir.byteOffset + off, 128).getUint32(120, true);
-            break;
+        const entry = new DataView(dir.buffer, dir.byteOffset + off, 128);
+        const start = entry.getInt32(116, true);
+        const size = entry.getUint32(120, true);
+        if (i === 0) {
+            rootStart = start;
+            rootSize = size;
         }
+        if (!match && name.toLowerCase().endsWith(wanted.toLowerCase()))
+            match = { name, start, size };
     }
-    if (workbookSid < 0)
+    if (!match || match.start < 0)
         return undefined;
-    const data = readChain(bytes, sectorSize, fatView, workbookSid);
-    return data.subarray(0, workbookSize || data.length);
+    const data = match.size < miniCutoff && rootStart >= 0
+        ? readMini(bytes, sectorSize, miniSize, fatView, miniFatFirst, rootStart, rootSize, match.start)
+        : readChain(bytes, sectorSize, fatView, match.start);
+    return { name: match.name, bytes: data.subarray(0, match.size || data.length) };
+}
+function fatSectors(view, bytes, sectorSize) {
+    const count = view.getUint32(44, true);
+    const ids = [];
+    for (let i = 0; i < Math.min(count, 109); i += 1)
+        ids.push(view.getUint32(76 + i * 4, true));
+    let difat = view.getUint32(68, true);
+    const difatCount = view.getUint32(72, true);
+    for (let n = 0; n < difatCount && difat >= 0 && difat < 0xfffffffe; n += 1) {
+        const start = (difat + 1) * sectorSize;
+        const sector = new DataView(bytes.buffer, bytes.byteOffset + start, sectorSize);
+        for (let i = 0; i < sectorSize / 4 - 1 && ids.length < count; i += 1)
+            ids.push(sector.getUint32(i * 4, true));
+        difat = sector.getUint32(sectorSize - 4, true);
+    }
+    return ids;
+}
+function readMini(bytes, sectorSize, miniSize, fatView, miniFatFirst, rootStart, rootSize, start) {
+    const miniFatBytes = readChain(bytes, sectorSize, fatView, miniFatFirst);
+    const miniFat = new DataView(miniFatBytes.buffer, miniFatBytes.byteOffset, miniFatBytes.byteLength);
+    const mini = readChain(bytes, sectorSize, fatView, rootStart).subarray(0, rootSize);
+    const ids = [];
+    let sid = start;
+    const guard = Math.floor(mini.length / miniSize) + 8;
+    for (let n = 0; n < guard && sid >= 0 && sid < 0xfffffffe; n += 1) {
+        ids.push(sid);
+        sid = sid * 4 + 4 <= miniFat.byteLength ? miniFat.getInt32(sid * 4, true) : -1;
+    }
+    const out = new Uint8Array(ids.length * miniSize);
+    ids.forEach((id, index) => out.set(mini.subarray(id * miniSize, (id + 1) * miniSize), index * miniSize));
+    return out;
 }
 function readSectors(bytes, sectorSize, ids) {
     const out = new Uint8Array(ids.length * sectorSize);

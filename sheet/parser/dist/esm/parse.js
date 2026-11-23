@@ -1,4 +1,5 @@
 import { hasLook, readCellStyles } from "./styles.js";
+import { vbaModuleNames } from "./vba.js";
 import { loadArchive } from "./zip.js";
 import { attr, child, children, parseXml } from "./xml.js";
 export class XlsxOpenError extends Error {
@@ -36,9 +37,11 @@ export async function parseXlsx(input, options = {}) {
     const styleBook = readCellStyles(archive.getText("xl/styles.xml"), theme.colors);
     const styles = styleBook.looks;
     const names = definedNames(archive);
+    const vbaModules = vbaModuleNames(archive.files.get("xl/vbaProject.bin") ?? archive.files.get("xl/vbaproject.bin"));
     return {
         sheets: sheetsFrom(archive, shared, styles, styleBook.names),
         ...(names.length ? { names } : {}),
+        ...(vbaModules.length ? { vbaModules } : {}),
         ...(theme.present ? { theme: { ...(theme.name ? { name: theme.name } : {}), colors: (theme.colors ?? []).filter((color) => color !== ""), fonts: theme.fonts } } : {}),
         source: archive.files,
     };

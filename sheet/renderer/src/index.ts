@@ -913,30 +913,10 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     finish();
   }
 
-  /** Read-only preview of VBA / macro part names from the original package. */
+  /** Read-only preview of the VBA module names. The module code is never run. */
   function listMacros(): string[] {
-    const parts = workbook.source;
-    if (!parts) {
-      options.onStatus?.(zh ? "当前簿没有宏部件" : "No macro parts on this workbook");
-      return [];
-    }
-    const names: string[] = [];
-    for (const path of parts.keys()) {
-      if (/vba|macro/i.test(path)) names.push(path);
-    }
-    const bin = parts.get("xl/vbaProject.bin") ?? parts.get("xl/vbaproject.bin");
-    if (bin) {
-      const text = Array.from(bin)
-        .map((b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : "\0"))
-        .join("");
-      for (const match of text.matchAll(/([A-Za-z_][A-Za-z0-9_]{2,31})/g)) {
-        const name = match[1]!;
-        if (/^(Module|Sheet|ThisWorkbook|Class)/i.test(name) || /mod/i.test(name)) {
-          if (!names.includes(name)) names.push(name);
-        }
-      }
-    }
-    options.onStatus?.(names.length ? (zh ? `宏部件 ${names.length}` : `${names.length} macro parts`) : zh ? "未找到宏" : "No macros found");
+    const names = workbook.vbaModules ?? [];
+    options.onStatus?.(names.length ? (zh ? `宏 ${names.join("、")}` : `Macros: ${names.join(", ")}`) : zh ? "未找到宏" : "No macros found");
     return names;
   }
 

@@ -261,6 +261,8 @@ export interface Workbook {
     theme?: SheetTheme;
     /** Original package parts, keyed by path. Writing puts these back unchanged when possible. */
     source?: Map<string, Uint8Array>;
+    /** Module names from the VBA project, when the workbook has one. The code is never run. */
+    vbaModules?: string[];
     /** Set when a cell or structure changed. Until then, writing puts the original bytes back. */
     edited?: boolean;
     calcMode?: "auto" | "manual";

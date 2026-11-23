@@ -156,3 +156,13 @@ test("marks the cells a consolidation wrote", () => {
   assert.equal(cells[1]?.dataset.consolidation, "sum");
   assert.equal(cells[2]?.dataset.consolidation, "sum");
 });
+
+test("lists the VBA module names without running them", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const seen: string[] = [];
+  const grid = mountWorkbook(host, { sheets: [{ name: "销售", cells: [] }], vbaModules: ["模块一", "ThisWorkbook"] }, { locale: "zh-CN", onStatus: (text) => seen.push(text) });
+  assert.deepEqual(grid.listMacros(), ["模块一", "ThisWorkbook"]);
+  assert.deepEqual(seen, ["宏 模块一、ThisWorkbook"]);
+});
