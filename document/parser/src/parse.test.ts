@@ -132,3 +132,62 @@ test("reads merged cells, columns, and landscape", async () => {
     assert.equal(cell?.shading, "#eeeeee");
   }
 });
+
+test("reads the mail merge settings and the paragraphs inside a content control", async () => {
+  const parsed = await parseDocx(docx({
+    "word/settings.xml": `<w:settings><w:mailMerge><w:mainDocumentType w:val="formLetters"/><w:dataType w:val="textFile"/><w:query w:val="recipients.csv"/><w:linkToQuery w:val="file"/></w:mailMerge></w:settings>`,
+    "word/document.xml": `<w:document><w:body>
+      <w:sdt><w:sdtPr><w:alias w:val="Name"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>Ada</w:t></w:r></w:p></w:sdtContent></w:sdt>
+    </w:body></w:document>`,
+  }));
+  assert.equal(parsed.mailMerge?.document, "formLetters");
+  assert.equal(parsed.mailMerge?.data, "textFile");
+  assert.equal(parsed.mailMerge?.source, "recipients.csv");
+  assert.equal(parsed.mailMerge?.link, "file");
+  const block = parsed.sections[0]!.blocks[0]!;
+  assert.equal("content" in block ? block.content?.[0]?.runs[0]?.text : "", "Ada");
+  assert.equal("control" in block ? block.control?.includes("alias") : false, true);
+});
+
+test("reads the theme's colors and fonts, and resolves a theme font and a theme color", async () => {
+  const parsed = await parseDocx(docx({
+    "word/theme/theme1.xml": `<a:theme><a:themeElements>
+      <a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="111111"/></a:dk1><a:accent1><a:srgbClr val="5B9BD5"/></a:accent1></a:clrScheme>
+      <a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface="DengXian"/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/></a:minorFont></a:fontScheme>
+    </a:themeElements></a:theme>`,
+    "word/document.xml": `<w:document><w:body>
+      <w:p><w:r><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:eastAsiaTheme="majorEastAsia"/><w:color w:val="5B9BD5" w:themeColor="accent1"/></w:rPr><w:t>Themed</w:t></w:r></w:p>
+    </w:body></w:document>`,
+  }));
+  assert.equal(parsed.theme?.colors.dk1, "#111111");
+  assert.equal(parsed.theme?.colors.accent1, "#5b9bd5");
+  assert.equal(parsed.theme?.fonts.latin, "Calibri Light");
+  assert.equal(parsed.theme?.fonts.eastAsia, "DengXian");
+  const block = parsed.sections[0]!.blocks[0]!;
+  if (isDocParagraph(block)) {
+    assert.equal(block.runs[0]?.font, "theme:latin");
+    assert.equal(block.runs[0]?.fontEastAsia, "theme:eastAsia");
+    assert.equal(block.runs[0]?.color, undefined);
+  }
+});
+
+test("reads the view, the zoom, and whether a macro project is present", async () => {
+  const parsed = await parseDocx(docx({
+    "word/settings.xml": `<w:settings><w:view w:val="outline"/><w:zoom w:percent="150"/></w:settings>`,
+    "word/document.xml": `<w:document><w:body><w:p><w:r><w:t>A</w:t></w:r></w:p></w:body></w:document>`,
+    "word/vbaProject.bin": "macro bytes",
+  }));
+  assert.equal(parsed.view, "outline");
+  assert.equal(parsed.zoom, 150);
+  assert.equal(parsed.macros, true);
+});
+
+test("a view Word does not use here falls back to print, and no macro project means none", async () => {
+  const parsed = await parseDocx(docx({
+    "word/settings.xml": `<w:settings><w:view w:val="masterPages"/><w:zoom w:percent="100"/></w:settings>`,
+    "word/document.xml": `<w:document><w:body><w:p><w:r><w:t>A</w:t></w:r></w:p></w:body></w:document>`,
+  }));
+  assert.equal(parsed.view, undefined);
+  assert.equal(parsed.zoom, 100);
+  assert.equal(parsed.macros, undefined);
+});

@@ -125,6 +125,10 @@ export interface DocRawBlock {
     text?: string;
     /** Set for a formula, so the page can lay it out instead of showing its text flat. */
     formula?: DocFormula[];
+    /** Set for a content control: the paragraphs inside it, edited like any other paragraph. */
+    content?: DocParagraph[];
+    /** The control's own properties, kept so writing puts them back around the edited paragraphs. */
+    control?: string;
 }
 export declare function isDocRaw(block: DocBlock): block is DocRawBlock;
 export interface DocNumbering {
@@ -297,6 +301,29 @@ export interface DocSource {
     /** Where it was published: a journal, a publisher, a place. */
     publisher?: string;
 }
+/** The theme's color scheme. Names are the scheme's own: dk1, lt1, accent1, and so on. Values are #rrggbb. */
+export type DocThemeColors = Record<string, string>;
+/** The theme's font scheme: one face for latin text, one for east-asian text. */
+export interface DocThemeFonts {
+    latin?: string;
+    eastAsia?: string;
+}
+/** word/theme/theme1.xml, read so a run that names a theme color or a theme font can resolve it. */
+export interface DocTheme {
+    colors: DocThemeColors;
+    fonts: DocThemeFonts;
+}
+/** The mail merge Word stored in settings.xml: what kind of document this is, and where the data comes from. */
+export interface DocMailMerge {
+    /** mainDocumentType: formLetters, mailingLabels, envelopes, catalog, or email. */
+    document?: string;
+    /** dataType: textFile, database, spreadsheet, native, or odso. */
+    data?: string;
+    /** The data source the merge reads from. */
+    source?: string;
+    /** How the source connects: file, or a connection string. */
+    link?: string;
+}
 /** One person a mail merge writes a copy for. */
 export interface DocRecipient {
     /** Column name to value, matching the fields in the story ("FirstName", "Address"). */
@@ -308,16 +335,26 @@ export interface Document {
     numbering?: DocNumberingTable;
     /** styles.xml, so a paragraph style can paint what the runs do not say themselves. */
     styles?: DocStyleTable;
+    /** The theme, so a theme color or a theme font resolves to a real one. */
+    theme?: DocTheme;
     /** The bibliography a citation draws from. */
     sources?: DocSource[];
     /** The people a mail merge writes one copy each for. */
     recipients?: DocRecipient[];
+    /** The mail merge Word stored in settings.xml. */
+    mailMerge?: DocMailMerge;
     /** When set, typing records each change as a tracked insertion or deletion. */
     tracking?: boolean;
     /** Comments anchored in the story. */
     comments?: DocComment[];
     /** The document hyphenates words at line ends. */
     hyphenation?: boolean;
+    /** How the document is shown: print, web (reading), outline, or normal (draft). Print is the default. */
+    view?: "print" | "web" | "outline" | "normal";
+    /** Zoom in percent. 100 is the default. */
+    zoom?: number;
+    /** The file contains a macro project. It is never run. */
+    macros?: boolean;
     /** Editing is turned off, so the story can be read but not changed. */
     readOnly?: boolean;
     /** Every file under word/media/, keyed by its package path, whether or not the story shows it. */

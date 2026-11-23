@@ -48,7 +48,9 @@ function linkIds(relationships) {
     return { byTarget, used };
 }
 /** A kept block with its text put back into the markup, so an edit to a content control or a formula is not lost. */
-function rawXml(block) {
+function rawXml(block, links, added) {
+    if (block.content)
+        return controlXml(block, links, added);
     if (block.formula?.length)
         return formulaXml(block.raw, formulaTexts(block.formula));
     if (block.text === undefined)
@@ -57,6 +59,12 @@ function rawXml(block) {
     if (!original || original === block.text)
         return block.raw;
     return block.raw.replace(original, text(block.text));
+}
+/** A content control rebuilt around its edited paragraphs, keeping the properties it was read with. */
+function controlXml(block, links, added) {
+    const body = (block.content ?? []).map((item) => paragraphXml(item, undefined, links, added)).join("");
+    const props = block.control ? withPrefix(block.control) : "";
+    return `<w:sdt>${props}<w:sdtContent>${body}</w:sdtContent></w:sdt>`;
 }
 /** The words of a formula, in the order its text nodes were read. */
 function formulaTexts(pieces) {
@@ -77,7 +85,7 @@ function sectionsXml(sections, originals, links, added, parts) {
     return sections
         .map((section, index) => {
         const blocks = section.blocks
-            .map((block) => ((0, document_core_1.isDocRaw)(block) ? rawXml(block) : (0, document_core_1.isDocTable)(block) ? tableXml(block, links, added) : (0, document_core_1.isDocParagraph)(block) && !block.note ? paragraphXml(block, undefined, links, added) : ""))
+            .map((block) => ((0, document_core_1.isDocRaw)(block) ? rawXml(block, links, added) : (0, document_core_1.isDocTable)(block) ? tableXml(block, links, added) : (0, document_core_1.isDocParagraph)(block) && !block.note ? paragraphXml(block, undefined, links, added) : ""))
             .join("");
         const original = originals[index];
         const properties = storyReferences(original ? mergeSection(original, section.page) : sectionXml(section.page), section, added, parts);

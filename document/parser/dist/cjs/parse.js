@@ -68,20 +68,30 @@ async function parseDocx(input) {
     }
     const sources = bibliography(archive);
     const recipients = mailRecipients(archive);
+    const mailMerge = mailMergeOf(archive);
     const comments = commentsFrom(archive);
     const notes = notesFrom(archive, context);
     attachNotes(sections, notes);
     const hyphenation = hyphenates(archive);
+    const view = viewOf(archive);
+    const zoom = zoomOf(archive);
+    const macros = hasMacros(archive);
     const readOnly = locked(archive);
     const media = mediaFiles(archive);
+    const theme = themeOf(archive);
     return {
         sections,
         ...(Object.keys(context.numbering).length ? { numbering: context.numbering } : {}),
         ...(Object.keys(context.styles).length ? { styles: context.styles } : {}),
+        ...(theme ? { theme } : {}),
         ...(sources.length ? { sources } : {}),
         ...(recipients.length ? { recipients } : {}),
+        ...(mailMerge ? { mailMerge } : {}),
         ...(comments.length ? { comments } : {}),
         ...(hyphenation ? { hyphenation: true } : {}),
+        ...(view ? { view } : {}),
+        ...(zoom ? { zoom } : {}),
+        ...(macros ? { macros: true } : {}),
         ...(readOnly ? { readOnly: true } : {}),
         ...(media.size ? { media } : {}),
         source: archive.files,
@@ -95,6 +105,54 @@ function mediaFiles(archive) {
             media.set(path, bytes);
     }
     return media;
+}
+/** The mail merge settings.xml stores: the document type, the data type, the source, and how it connects. */
+function mailMergeOf(archive) {
+    const xml = archive.getText("word/settings.xml");
+    if (!xml)
+        return undefined;
+    const settings = (0, xml_1.child)((0, xml_1.parseXml)(xml), "settings");
+    const merge = settings ? (0, xml_1.child)(settings, "mailMerge") : undefined;
+    if (!merge)
+        return undefined;
+    const value = (name) => {
+        const node = (0, xml_1.child)(merge, name);
+        return node ? (0, xml_1.attr)(node, "val") : undefined;
+    };
+    const found = {
+        ...(value("mainDocumentType") ? { document: value("mainDocumentType") } : {}),
+        ...(value("dataType") ? { data: value("dataType") } : {}),
+        ...(value("query") ? { source: value("query") } : {}),
+        ...(value("linkToQuery") ? { link: value("linkToQuery") } : {}),
+    };
+    return Object.keys(found).length ? found : undefined;
+}
+const VIEWS = ["print", "web", "outline", "normal"];
+/** The view settings.xml stored. Anything else, including master pages, falls back to print. */
+function viewOf(archive) {
+    const xml = archive.getText("word/settings.xml");
+    if (!xml)
+        return undefined;
+    const match = /<(?:w:)?view\s[^>]*val="([^"]*)"/i.exec(xml);
+    const value = match?.[1];
+    return VIEWS.find((item) => item === value);
+}
+/** The zoom settings.xml stored, in percent. */
+function zoomOf(archive) {
+    const xml = archive.getText("word/settings.xml");
+    if (!xml)
+        return undefined;
+    const match = /<(?:w:)?zoom\s[^>]*percent="(\d+)"/i.exec(xml);
+    const percent = Number(match?.[1]);
+    return Number.isFinite(percent) && percent > 0 ? percent : undefined;
+}
+/** A macro project is present. Its bytes are kept and it is never run. */
+function hasMacros(archive) {
+    for (const path of archive.files.keys()) {
+        if (/^word\/vbaProject\.bin$/i.test(path))
+            return true;
+    }
+    return false;
 }
 /** settings.xml marks the document read only. */
 function locked(archive) {
@@ -154,6 +212,19 @@ function attachNotes(sections, notes) {
         }
         section.blocks = blocks;
     }
+}
+/** The paragraphs inside a content control, so each one can be edited like any other paragraph. */
+function controlContent(node, context) {
+    const body = (0, xml_1.child)(node, "sdtContent");
+    if (!body)
+        return undefined;
+    const paragraphs = (0, xml_1.children)(body, "p").map((item) => paragraphFrom(item, context));
+    return paragraphs.length ? paragraphs : undefined;
+}
+/** The control's own properties, kept so writing wraps the edited paragraphs in the same control. */
+function controlProps(node) {
+    const props = (0, xml_1.child)(node, "sdtPr");
+    return props ? (0, xml_1.serialize)("sdtPr", props) : undefined;
 }
 /** A formula laid out as pieces. Each text node stays its own piece, so an edit writes back into that node. */
 function formulaOf(node) {
@@ -308,7 +379,9 @@ function sectionsFrom(body, context, source = "") {
             const raw = original ? (0, xml_1.serialize)(original.name, original.node) : (0, xml_1.serialize)(item.name, item.node);
             const visible = visibleText(item.node).trim();
             const formula = item.name === "oMath" || item.name === "oMathPara" ? formulaOf(item.node) : undefined;
-            blocks.push({ raw, ...(visible ? { text: visible } : {}), ...(formula?.length ? { formula } : {}) });
+            const content = item.name === "sdt" ? controlContent(item.node, context) : undefined;
+            const control = content ? controlProps(item.node) : undefined;
+            blocks.push({ raw, ...(visible ? { text: visible } : {}), ...(formula?.length ? { formula } : {}), ...(content ? { content, ...(control ? { control } : {}) } : {}) });
         }
         else if (item.name === "sectPr") {
             sections.push(sectionFrom(item.node, blocks, context));
@@ -472,6 +545,53 @@ function relationships(archive) {
             map.set(id, target);
     }
     return map;
+}
+/** The theme's color scheme and font scheme, so a run that names one resolves to a real color or face. */
+function themeOf(archive) {
+    const xml = archive.getText("word/theme/theme1.xml");
+    if (!xml)
+        return undefined;
+    const root = (0, xml_1.child)((0, xml_1.parseXml)(xml), "theme");
+    const elements = root ? (0, xml_1.child)(root, "themeElements") : undefined;
+    if (!elements)
+        return undefined;
+    const colors = {};
+    const scheme = (0, xml_1.child)(elements, "clrScheme");
+    for (const item of (0, xml_1.ordered)(scheme ?? {})) {
+        const hex = srgb(item.node);
+        if (hex)
+            colors[item.name] = hex;
+    }
+    const fonts = {};
+    const schemeFonts = (0, xml_1.child)(elements, "fontScheme");
+    for (const script of ["majorFont", "minorFont"]) {
+        const group = schemeFonts ? (0, xml_1.child)(schemeFonts, script) : undefined;
+        if (!group)
+            continue;
+        const latin = (0, xml_1.child)(group, "latin");
+        const latinFace = latin ? (0, xml_1.attr)(latin, "typeface") : undefined;
+        if (latinFace && !fonts.latin)
+            fonts.latin = latinFace;
+        const eastAsia = (0, xml_1.child)(group, "ea");
+        const eastAsiaFace = eastAsia ? (0, xml_1.attr)(eastAsia, "typeface") : undefined;
+        if (eastAsiaFace && !fonts.eastAsia)
+            fonts.eastAsia = eastAsiaFace;
+    }
+    if (!Object.keys(colors).length && !fonts.latin && !fonts.eastAsia)
+        return undefined;
+    return { colors, fonts };
+}
+/** The srgb color a theme color carries, as #rrggbb. A sysClr falls back to its lastClr. */
+function srgb(node) {
+    const direct = (0, xml_1.child)(node, "srgbClr");
+    const value = direct ? (0, xml_1.attr)(direct, "val") : undefined;
+    if (value && /^[0-9a-fA-F]{6}$/.test(value))
+        return `#${value.toLowerCase()}`;
+    const system = (0, xml_1.child)(node, "sysClr");
+    const fallback = system ? (0, xml_1.attr)(system, "lastClr") : undefined;
+    if (fallback && /^[0-9a-fA-F]{6}$/.test(fallback))
+        return `#${fallback.toLowerCase()}`;
+    return undefined;
 }
 /** Named paragraph styles, with the formatting they add on top of the one they are based on. */
 function styleTable(archive) {
@@ -955,11 +1075,14 @@ function runProps(props) {
         shared.fontSize = halfPoints / 2;
     const fonts = (0, xml_1.child)(props, "rFonts");
     const font = fonts ? (0, xml_1.attr)(fonts, "ascii") ?? (0, xml_1.attr)(fonts, "hAnsi") : undefined;
-    if (font)
-        shared.font = font;
+    const themeFont = fonts ? themeFace((0, xml_1.attr)(fonts, "asciiTheme") ?? (0, xml_1.attr)(fonts, "hAnsiTheme"), "latin") : undefined;
+    if (font || themeFont)
+        shared.font = font || themeFont;
     const eastAsia = fonts ? (0, xml_1.attr)(fonts, "eastAsia") : undefined;
-    if (eastAsia && eastAsia !== font)
-        shared.fontEastAsia = eastAsia;
+    const themeEastAsia = fonts ? themeFace((0, xml_1.attr)(fonts, "eastAsiaTheme"), "eastAsia") : undefined;
+    const resolvedEastAsia = eastAsia || themeEastAsia;
+    if (resolvedEastAsia && resolvedEastAsia !== (font || themeFont))
+        shared.fontEastAsia = resolvedEastAsia;
     const color = colorOf((0, xml_1.child)(props, "color"));
     if (color)
         shared.color = color;
@@ -1001,7 +1124,18 @@ function colorOf(node) {
     const hex = (0, xml_1.attr)(node, "color") ?? (0, xml_1.attr)(node, "val") ?? (0, xml_1.attr)(node, "fill");
     if (!hex || hex === "auto" || !/^[0-9a-fA-F]{6}$/.test(hex))
         return undefined;
+    const theme = (0, xml_1.attr)(node, "themeColor");
+    if (theme)
+        return undefined;
     return `#${hex.toLowerCase()}`;
+}
+/** A theme font slot, mapped onto the face this model stores. Only the two faces the theme reader fills are named. */
+function themeFace(slot, face) {
+    if (slot === "majorAscii" || slot === "majorHAnsi" || slot === "majorEastAsia")
+        return face === "eastAsia" ? "theme:eastAsia" : "theme:latin";
+    if (slot === "minorAscii" || slot === "minorHAnsi" || slot === "minorEastAsia")
+        return face === "eastAsia" ? "theme:eastAsia" : "theme:latin";
+    return undefined;
 }
 function positive(value) {
     const parsed = Number(value);

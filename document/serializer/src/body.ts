@@ -81,12 +81,20 @@ function linkIds(relationships: Relationship[]): LinkIds {
 }
 
 /** A kept block with its text put back into the markup, so an edit to a content control or a formula is not lost. */
-function rawXml(block: DocRawBlock): string {
+function rawXml(block: DocRawBlock, links: LinkIds, added: Relationship[]): string {
+  if (block.content) return controlXml(block, links, added);
   if (block.formula?.length) return formulaXml(block.raw, formulaTexts(block.formula));
   if (block.text === undefined) return block.raw;
   const original = block.raw.replace(/<[^>]+>/g, "").trim();
   if (!original || original === block.text) return block.raw;
   return block.raw.replace(original, text(block.text));
+}
+
+/** A content control rebuilt around its edited paragraphs, keeping the properties it was read with. */
+function controlXml(block: DocRawBlock, links: LinkIds, added: Relationship[]): string {
+  const body = (block.content ?? []).map((item) => paragraphXml(item, undefined, links, added)).join("");
+  const props = block.control ? withPrefix(block.control) : "";
+  return `<w:sdt>${props}<w:sdtContent>${body}</w:sdtContent></w:sdt>`;
 }
 
 /** The words of a formula, in the order its text nodes were read. */
@@ -109,7 +117,7 @@ function sectionsXml(sections: DocSection[], originals: string[], links: LinkIds
   return sections
     .map((section, index) => {
       const blocks = section.blocks
-        .map((block) => (isDocRaw(block) ? rawXml(block) : isDocTable(block) ? tableXml(block, links, added) : isDocParagraph(block) && !block.note ? paragraphXml(block, undefined, links, added) : ""))
+        .map((block) => (isDocRaw(block) ? rawXml(block, links, added) : isDocTable(block) ? tableXml(block, links, added) : isDocParagraph(block) && !block.note ? paragraphXml(block, undefined, links, added) : ""))
         .join("");
       const original = originals[index];
       const properties = storyReferences(original ? mergeSection(original, section.page) : sectionXml(section.page), section, added, parts);

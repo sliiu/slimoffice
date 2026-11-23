@@ -104,6 +104,17 @@ export interface DocumentView {
     recipientFields(): string[];
     /** Inserts a merge field, filled from one column of each recipient. */
     mergeField(name: string): void;
+    /** The mail merge Word stored: the document type, the data type, the source, and how it connects. */
+    mailMerge(): {
+        document?: string;
+        data?: string;
+        source?: string;
+        link?: string;
+    } | undefined;
+    /** Sets the mail merge. A blank document type clears it. */
+    setMailMerge(document: string, data?: string, source?: string, link?: string): void;
+    /** Inserts a plain-text content control after the caret. */
+    contentControl(text: string): void;
     /** One copy of the story per recipient, with the merge fields filled in. */
     merge(): string[];
     /** Lays the current paragraph out as an envelope: the recipient's address, then the return address. */
@@ -118,6 +129,35 @@ export interface DocumentView {
     pageNumber(): void;
     /** Inserts a `=SUM(LEFT)` formula in the current cell. */
     formula(): void;
+    /** Inserts a formula after the caret: a fraction, a superscript, a subscript, or a root. Each word stays its own text node. */
+    equation(kind: "frac" | "sup" | "sub" | "root", words: string[]): void;
+    /** The theme's color scheme, so the page can paint a theme color. */
+    themeColors(): Record<string, string>;
+    /** The theme's latin face, or nothing when the document has no theme. */
+    themeFont(): string | undefined;
+    /** How the document is shown: print, web, outline, or normal. */
+    view(): "print" | "web" | "outline" | "normal";
+    setView(mode: "print" | "web" | "outline" | "normal"): void;
+    /** Zoom in percent. */
+    zoom(): number;
+    setZoom(percent: number): void;
+    /** Whether the ruler is drawn. */
+    ruler(): boolean;
+    toggleRuler(): void;
+    /** Whether the heading navigation is drawn. */
+    navigation(): boolean;
+    toggleNavigation(): void;
+    /** The headings the navigation lists, with the block each one points at. */
+    headings(): Array<{
+        level: number;
+        text: string;
+        section: number;
+        block: number;
+    }>;
+    /** Moves the caret to a heading. */
+    goToHeading(section: number, block: number): void;
+    /** Whether the file holds a macro project. It is never run. */
+    macros(): boolean;
     /** Applies a named style to the current paragraph. */
     style(name: string): void;
     /** The named styles the document defines. */

@@ -1,4 +1,4 @@
-import { isDocParagraph, isDocRaw, isDocTable, type DocComment, type DocNumberingLevel, type DocParagraph, type DocRecipient, type DocSource, type DocStyle, type Document } from "@sliiu/document-core";
+import { isDocParagraph, isDocRaw, isDocTable, type DocComment, type DocMailMerge, type DocNumberingLevel, type DocParagraph, type DocRecipient, type DocSource, type DocStyle, type Document } from "@sliiu/document-core";
 import { strFromU8, strToU8, zipSync } from "fflate";
 import { applyDocumentEdits, storyPartXml, type Relationship } from "./body";
 
@@ -38,6 +38,8 @@ export function writeDocx(document: Document): Uint8Array {
   if (document.edited) {
     withHyphenation(document);
     withProtection(document);
+    withMailMerge(document);
+    withView(document);
   }
   for (const [path, bytes] of document.source) files[path] = bytes;
   const story = document.source.get("word/document.xml");
@@ -411,6 +413,47 @@ function withHyphenation(document: Document): void {
   const stripped = strFromU8(settings).replace(/<w:autoHyphenation\b[^>]*\/>/gi, "");
   const next = document.hyphenation ? stripped.replace(/<\/w:settings>/i, `<w:autoHyphenation w:val="true"/></w:settings>`) : stripped;
   source.set("word/settings.xml", strToU8(next));
+}
+
+const MERGE_KINDS = ["formLetters", "mailingLabels", "envelopes", "catalog", "email"];
+const MERGE_DATA = ["textFile", "database", "spreadsheet", "native", "odso"];
+
+const VIEWS = ["print", "web", "outline", "normal"];
+
+/** The view and the zoom live in word/settings.xml. Each replaces the one already stored. */
+function withView(document: Document): void {
+  const source = document.source;
+  if (!source) return;
+  const settings = source.get("word/settings.xml");
+  const text = settings ? strFromU8(settings) : `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"></w:settings>`;
+  let next = text.replace(/<w:view(?:\s[^>]*)?\/>/gi, "").replace(/<w:view(?:\s[^>]*)?>[\s\S]*?<\/w:view>/gi, "").replace(/<w:zoom(?:\s[^>]*)?\/>/gi, "").replace(/<w:zoom(?:\s[^>]*)?>[\s\S]*?<\/w:zoom>/gi, "");
+  const view = document.view && VIEWS.includes(document.view) ? document.view : "";
+  if (view && view !== "print") next = next.replace(/<\/w:settings>/i, `<w:view w:val="${view}"/></w:settings>`);
+  const zoom = document.zoom;
+  if (typeof zoom === "number" && Number.isFinite(zoom) && zoom !== 100) next = next.replace(/<\/w:settings>/i, `<w:zoom w:percent="${Math.round(zoom)}"/></w:settings>`);
+  if (next === text) return;
+  source.set("word/settings.xml", strToU8(next));
+}
+
+/** The mail merge lives in word/settings.xml. The stored one is replaced whole; everything else in the part stays. */
+function withMailMerge(document: Document): void {
+  const source = document.source;
+  const merge = document.mailMerge;
+  if (!source || !merge) return;
+  const settings = source.get("word/settings.xml");
+  const text = settings ? strFromU8(settings) : `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"></w:settings>`;
+  const stripped = text.replace(/<w:mailMerge\b[^>]*\/>/gi, "").replace(/<w:mailMerge\b[\s\S]*?<\/w:mailMerge>/gi, "");
+  const next = stripped.replace(/<\/w:settings>/i, `${mailMergeXml(merge)}</w:settings>`);
+  if (next !== text || !settings) source.set("word/settings.xml", strToU8(next));
+}
+
+function mailMergeXml(merge: DocMailMerge): string {
+  const parts: string[] = [];
+  if (merge.document && MERGE_KINDS.includes(merge.document)) parts.push(`<w:mainDocumentType w:val="${merge.document}"/>`);
+  if (merge.data && MERGE_DATA.includes(merge.data)) parts.push(`<w:dataType w:val="${merge.data}"/>`);
+  if (merge.source) parts.push(`<w:query w:val="${escapeAttr(merge.source)}"/>`);
+  if (merge.link) parts.push(`<w:linkToQuery w:val="${escapeAttr(merge.link)}"/>`);
+  return `<w:mailMerge>${parts.join("")}</w:mailMerge>`;
 }
 
 /** Read only protection lives in word/settings.xml, next to hyphenation. */

@@ -43,6 +43,9 @@ export function mountDocument(host, doc, options = {}) {
     let hitIndex = 0;
     /** Formatting the painter copied, waiting for the next call to apply it. */
     let painted;
+    /** The ruler and the heading navigation are drawn beside the pages. Both start hidden. */
+    let rulerOn = false;
+    let navigationOn = false;
     /** The current paragraph's runs, kept so a cut and paste carries the formatting with the text. */
     let clipped = [];
     const view = {
@@ -123,6 +126,9 @@ export function mountDocument(host, doc, options = {}) {
         addRecipient,
         recipientFields,
         mergeField,
+        mailMerge: () => (doc.mailMerge ? { ...doc.mailMerge } : undefined),
+        setMailMerge,
+        contentControl,
         merge,
         envelope,
         labels,
@@ -130,6 +136,20 @@ export function mountDocument(host, doc, options = {}) {
         endnote: (value) => addNote("endnote", value),
         pageNumber: insertPageNumber,
         formula: insertFormula,
+        equation,
+        themeColors: () => ({ ...(doc.theme?.colors ?? {}) }),
+        themeFont: () => doc.theme?.fonts.latin,
+        view: () => doc.view ?? "print",
+        setView,
+        zoom: () => doc.zoom ?? 100,
+        setZoom,
+        ruler: () => rulerOn,
+        toggleRuler,
+        navigation: () => navigationOn,
+        toggleNavigation,
+        headings,
+        goToHeading,
+        macros: () => doc.macros === true,
         style: applyStyle,
         styles: () => Object.keys(doc.styles ?? {}),
         track: (on) => {
@@ -222,17 +242,28 @@ export function mountDocument(host, doc, options = {}) {
     render();
     return view;
     function render() {
+        applyTheme();
         const laid = paginate(doc);
         const numbers = pageNumbers(laid);
         resolvePageFields(doc, numbers);
         root = el("div", "doc-view");
         if (doc.hyphenation)
             root.dataset.hyphenate = "on";
-        laid.forEach((page, pageIndex) => {
+        const mode = doc.view ?? "print";
+        if (mode !== "print")
+            root.dataset.view = mode;
+        if (doc.zoom && doc.zoom !== 100)
+            root.style.zoom = String(doc.zoom / 100);
+        if (rulerOn)
+            root.append(rulerNode());
+        if (navigationOn)
+            root.append(navigationNode());
+        const shown = mode === "outline" ? laid.map((page) => ({ ...page, blocks: page.blocks.filter(outlined) })) : laid;
+        shown.forEach((page, pageIndex) => {
             const paper = el("section", "doc-page");
-            paper.style.width = `${page.width}px`;
-            paper.style.minHeight = `${page.height}px`;
-            paper.style.padding = sides(page.margin);
+            paper.style.width = mode === "print" ? `${page.width}px` : "auto";
+            paper.style.minHeight = mode === "print" ? `${page.height}px` : "0";
+            paper.style.padding = mode === "print" ? sides(page.margin) : "12px";
             if (page.background)
                 paper.style.background = page.background;
             if (page.border)
@@ -241,7 +272,7 @@ export function mountDocument(host, doc, options = {}) {
                 paper.style.writingMode = "vertical-rl";
             if (page.lineNumbers)
                 paper.dataset.lineNumbers = "on";
-            if (page.header.length)
+            if (mode === "print" && page.header.length)
                 paper.append(story("header", page.header, page.headerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length));
             const body = el("div", "doc-body");
             body.style.position = "relative";
@@ -262,7 +293,7 @@ export function mountDocument(host, doc, options = {}) {
             paper.append(body);
             if (notes.length)
                 paper.append(noteList(notes, sectionIndex));
-            if (page.footer.length)
+            if (mode === "print" && page.footer.length)
                 paper.append(story("footer", page.footer, page.footerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length));
             paper.dataset.page = String(pageIndex);
             root.append(paper);
@@ -343,6 +374,11 @@ export function mountDocument(host, doc, options = {}) {
     function rawBlock(block, spot) {
         const node = el("div", "doc-raw");
         stamp(node, spot);
+        if (block.content) {
+            node.dataset.control = "on";
+            block.content.forEach((item, index) => node.append(paragraph(item, { section: spot.section, block: spot.block, control: index }, true)));
+            return node;
+        }
         const place = () => {
             selected = spot;
             arm();
@@ -367,6 +403,110 @@ export function mountDocument(host, doc, options = {}) {
             touch();
         });
         return node;
+    }
+    /** Switches how the document is shown. An unknown mode is ignored. */
+    function setView(mode) {
+        if (!VIEW_MODES.includes(mode))
+            return;
+        if (!remember())
+            return;
+        if (mode === "print")
+            delete doc.view;
+        else
+            doc.view = mode;
+        finish();
+    }
+    /** Sets the zoom, in percent. 100 clears it. */
+    function setZoom(percent) {
+        if (!Number.isFinite(percent) || percent < 10 || percent > 500)
+            return;
+        if (!remember())
+            return;
+        if (Math.round(percent) === 100)
+            delete doc.zoom;
+        else
+            doc.zoom = Math.round(percent);
+        finish();
+    }
+    function toggleRuler() {
+        rulerOn = !rulerOn;
+        render();
+    }
+    function toggleNavigation() {
+        navigationOn = !navigationOn;
+        render();
+    }
+    /** A block an outline keeps: a heading, or a paragraph with an outline level. */
+    function outlined(block) {
+        if (!isDocParagraph(block))
+            return false;
+        return headingLevel(block) > 0 || (block.outline !== undefined && block.outline > 0);
+    }
+    function headings() {
+        const found = [];
+        doc.sections.forEach((section, sectionIndex) => {
+            section.blocks.forEach((block, blockIndex) => {
+                if (!isDocParagraph(block))
+                    return;
+                const level = headingLevel(block) || block.outline || 0;
+                if (level > 0)
+                    found.push({ level, text: block.runs.map((run) => run.text).join(""), section: sectionIndex, block: blockIndex });
+            });
+        });
+        return found;
+    }
+    function goToHeading(section, block) {
+        const item = doc.sections[section]?.blocks[block];
+        if (!item || !isDocParagraph(item))
+            return;
+        selected = { section, block };
+        render();
+    }
+    /** A ruler marked in centimetres, from the page's left edge to its right. */
+    function rulerNode() {
+        const node = el("div", "doc-ruler");
+        const page = doc.sections[selected.section]?.page ?? doc.sections[0]?.page;
+        const width = page?.width ?? 12240;
+        const marks = Math.floor((width / 1440) * 2.54);
+        for (let mark = 0; mark <= marks; mark += 1)
+            node.append(document.createTextNode(mark === 0 ? "" : `${mark} `));
+        return node;
+    }
+    /** The headings, as buttons that move the caret. */
+    function navigationNode() {
+        const node = el("nav", "doc-navigation");
+        for (const heading of headings()) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = heading.text;
+            button.dataset.level = String(heading.level);
+            button.addEventListener("click", () => goToHeading(heading.section, heading.block));
+            node.append(button);
+        }
+        return node;
+    }
+    /** Fills in the theme where a run left a slot open: a theme font becomes the theme's face, and a run with no color takes the theme's text color. */
+    function applyTheme() {
+        const theme = doc.theme;
+        if (!theme)
+            return;
+        const face = theme.fonts.latin;
+        const eastAsia = theme.fonts.eastAsia;
+        const ink = theme.colors.dk1;
+        for (const section of doc.sections) {
+            for (const block of section.blocks) {
+                if (!isDocParagraph(block))
+                    continue;
+                for (const run of block.runs) {
+                    if (face && run.font === "theme:latin")
+                        run.font = face;
+                    if (eastAsia && run.fontEastAsia === "theme:eastAsia")
+                        run.fontEastAsia = eastAsia;
+                    if (ink && !run.color)
+                        run.color = ink;
+                }
+            }
+        }
     }
     /** The words of a formula, in the order its text nodes were read. */
     function formulaPlain(pieces) {
@@ -555,6 +695,9 @@ export function mountDocument(host, doc, options = {}) {
         doc.recipients = JSON.parse(saved.recipients);
         doc.tracking = saved.tracking;
         doc.hyphenation = saved.hyphenation;
+        doc.view = JSON.parse(saved.view);
+        doc.zoom = JSON.parse(saved.zoom);
+        doc.mailMerge = JSON.parse(saved.mailMerge);
         doc.comments = JSON.parse(saved.comments);
         touch();
         render();
@@ -1327,8 +1470,10 @@ export function mountDocument(host, doc, options = {}) {
             return stories[spot.storyKind ?? "default"]?.[spot.block];
         }
         const block = section?.blocks[spot.block];
-        if (!block || isDocRaw(block))
+        if (!block)
             return undefined;
+        if (isDocRaw(block))
+            return spot.control === undefined ? undefined : block.content?.[spot.control];
         if (isDocParagraph(block))
             return block;
         if (spot.row === undefined || spot.col === undefined || spot.para === undefined)
@@ -1400,6 +1545,9 @@ export function mountDocument(host, doc, options = {}) {
             recipients: JSON.stringify(doc.recipients ?? []),
             tracking: doc.tracking === true,
             hyphenation: doc.hyphenation === true,
+            view: JSON.stringify(doc.view ?? null),
+            zoom: JSON.stringify(doc.zoom ?? null),
+            mailMerge: JSON.stringify(doc.mailMerge ?? null),
             comments: JSON.stringify(doc.comments ?? []),
         };
     }
@@ -1595,6 +1743,45 @@ export function mountDocument(host, doc, options = {}) {
         }
         return [...names];
     }
+    /** Records the mail merge. Only the document types and data types Word stores are kept. */
+    function setMailMerge(kind, data, source, link) {
+        const document = kind.trim();
+        if (document && !MERGE_KINDS.includes(document))
+            return;
+        const stored = data?.trim();
+        if (stored && !MERGE_DATA.includes(stored))
+            return;
+        if (!remember())
+            return;
+        if (!document) {
+            delete doc.mailMerge;
+        }
+        else {
+            doc.mailMerge = {
+                document,
+                ...(stored ? { data: stored } : {}),
+                ...(source?.trim() ? { source: source.trim() } : {}),
+                ...(link?.trim() ? { link: link.trim() } : {}),
+            };
+        }
+        finish();
+    }
+    /** A plain-text content control, so its paragraph can be edited and the control written back around it. */
+    function contentControl(text) {
+        const value = text.trim();
+        if (!value)
+            return;
+        const section = currentSection();
+        if (!remember())
+            return;
+        section.blocks.splice(bodyAt(section) + 1, 0, {
+            raw: "",
+            text: value,
+            content: [{ runs: [{ text: value }] }],
+            control: `<sdtPr><text/></sdtPr>`,
+        });
+        finish();
+    }
     function mergeField(name) {
         const item = current();
         const column = name.trim();
@@ -1668,6 +1855,18 @@ export function mountDocument(host, doc, options = {}) {
         if (!remember())
             return;
         item.runs.push({ text: "", field: "PAGE" });
+        finish();
+    }
+    /** A formula built from the words the user typed. Each word is its own text node, so editing one writes back into that node. */
+    function equation(kind, words) {
+        const parts = words.map((word) => word.trim()).filter(Boolean);
+        if (!parts.length)
+            return;
+        const section = currentSection();
+        if (!remember())
+            return;
+        const built = formulaMarkup(kind, parts);
+        section.blocks.splice(bodyAt(section) + 1, 0, { raw: built.raw, text: parts.join(""), formula: built.pieces });
         finish();
     }
     /** Puts a `=SUM(LEFT)` formula in the current cell. Rendering fills in the total. */
@@ -2245,6 +2444,36 @@ function paragraphsOf(blocks) {
     }
     return found;
 }
+const MATH = "xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\"";
+/** The markup and the pieces of a new formula. The pieces follow the text nodes, which is the order writing them back reads. */
+function formulaMarkup(kind, parts) {
+    const word = (value) => `<m:r><m:t>${escapeXml(value)}</m:t></m:r>`;
+    const piece = (value) => ({ text: value });
+    const first = parts[0] ?? "";
+    const second = parts[1] ?? first;
+    const rest = parts.slice(2);
+    if (kind === "frac") {
+        return {
+            raw: `<m:oMath ${MATH}><m:f><m:num>${word(first)}</m:num><m:den>${word(second)}</m:den></m:f>${rest.map(word).join("")}</m:oMath>`,
+            pieces: [{ kind: "frac", top: [piece(first)], bottom: [piece(second)] }, ...rest.map(piece)],
+        };
+    }
+    if (kind === "root") {
+        return {
+            raw: `<m:oMath ${MATH}><m:rad><m:deg>${word(second)}</m:deg><m:e>${word(first)}</m:e></m:rad>${rest.map(word).join("")}</m:oMath>`,
+            pieces: [{ kind: "root", body: [piece(first)], degree: [piece(second)] }, ...rest.map(piece)],
+        };
+    }
+    const tag = kind === "sup" ? "sSup" : "sSub";
+    const script = kind === "sup" ? "sup" : "sub";
+    return {
+        raw: `<m:oMath ${MATH}><m:${tag}><m:e>${word(first)}</m:e><m:${script}>${word(second)}</m:${script}></m:${tag}>${rest.map(word).join("")}</m:oMath>`,
+        pieces: [{ kind, base: [piece(first)], script: [piece(second)] }, ...rest.map(piece)],
+    };
+}
+const MERGE_KINDS = ["formLetters", "mailingLabels", "envelopes", "catalog", "email"];
+const MERGE_DATA = ["textFile", "database", "spreadsheet", "native", "odso"];
+const VIEW_MODES = ["print", "web", "outline", "normal"];
 function continuedRows(rows, row, col) {
     let count = 1;
     for (let next = row + 1; next < rows.length; next += 1) {
@@ -2526,6 +2755,8 @@ function spotFrom(node) {
         spot.col = Number(node.dataset.col);
     if (node.dataset.para !== undefined)
         spot.para = Number(node.dataset.para);
+    if (node.dataset.control !== undefined)
+        spot.control = Number(node.dataset.control);
     if (node.dataset.story === "header" || node.dataset.story === "footer")
         spot.story = node.dataset.story;
     if (node.dataset.storyKind === "first" || node.dataset.storyKind === "even" || node.dataset.storyKind === "default")
@@ -2541,13 +2772,15 @@ function stamp(node, spot) {
         node.dataset.col = String(spot.col);
     if (spot.para !== undefined)
         node.dataset.para = String(spot.para);
+    if (spot.control !== undefined)
+        node.dataset.control = String(spot.control);
     if (spot.story)
         node.dataset.story = spot.story;
     if (spot.storyKind)
         node.dataset.storyKind = spot.storyKind;
 }
 function sameSpot(a, b) {
-    return a.section === b.section && a.block === b.block && a.row === b.row && a.col === b.col && a.para === b.para && a.story === b.story && a.storyKind === b.storyKind;
+    return a.section === b.section && a.block === b.block && a.row === b.row && a.col === b.col && a.para === b.para && a.story === b.story && a.storyKind === b.storyKind && a.control === b.control;
 }
 /** Where a selection boundary falls inside an element's text, ignoring the marker spans. */
 function offsetWithin(root, container, offset) {

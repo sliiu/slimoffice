@@ -22,6 +22,8 @@ import {
   type DocSource,
   type DocRecipient,
   type DocFormula,
+  type DocMailMerge,
+  type DocTheme,
 } from "@sliiu/document-core";
 import { loadArchive, type OfficeArchive } from "./zip";
 import { attr, child, children, keptAt, keptBody, ordered, parseXml, serialize, text, type XmlNode } from "./xml";
@@ -104,20 +106,30 @@ export async function parseDocx(input: ArrayBuffer | Uint8Array | Blob): Promise
   }
   const sources = bibliography(archive);
   const recipients = mailRecipients(archive);
+  const mailMerge = mailMergeOf(archive);
   const comments = commentsFrom(archive);
   const notes = notesFrom(archive, context);
   attachNotes(sections, notes);
   const hyphenation = hyphenates(archive);
+  const view = viewOf(archive);
+  const zoom = zoomOf(archive);
+  const macros = hasMacros(archive);
   const readOnly = locked(archive);
   const media = mediaFiles(archive);
+  const theme = themeOf(archive);
   return {
     sections,
     ...(Object.keys(context.numbering).length ? { numbering: context.numbering } : {}),
     ...(Object.keys(context.styles).length ? { styles: context.styles } : {}),
+    ...(theme ? { theme } : {}),
     ...(sources.length ? { sources } : {}),
     ...(recipients.length ? { recipients } : {}),
+    ...(mailMerge ? { mailMerge } : {}),
     ...(comments.length ? { comments } : {}),
     ...(hyphenation ? { hyphenation: true } : {}),
+    ...(view ? { view } : {}),
+    ...(zoom ? { zoom } : {}),
+    ...(macros ? { macros: true } : {}),
     ...(readOnly ? { readOnly: true } : {}),
     ...(media.size ? { media } : {}),
     source: archive.files,
@@ -131,6 +143,54 @@ function mediaFiles(archive: OfficeArchive): Map<string, Uint8Array> {
     if (path.startsWith("word/media/")) media.set(path, bytes);
   }
   return media;
+}
+
+/** The mail merge settings.xml stores: the document type, the data type, the source, and how it connects. */
+function mailMergeOf(archive: OfficeArchive): DocMailMerge | undefined {
+  const xml = archive.getText("word/settings.xml");
+  if (!xml) return undefined;
+  const settings = child(parseXml(xml), "settings");
+  const merge = settings ? child(settings, "mailMerge") : undefined;
+  if (!merge) return undefined;
+  const value = (name: string): string | undefined => {
+    const node = child(merge, name);
+    return node ? attr(node, "val") : undefined;
+  };
+  const found: DocMailMerge = {
+    ...(value("mainDocumentType") ? { document: value("mainDocumentType") } : {}),
+    ...(value("dataType") ? { data: value("dataType") } : {}),
+    ...(value("query") ? { source: value("query") } : {}),
+    ...(value("linkToQuery") ? { link: value("linkToQuery") } : {}),
+  };
+  return Object.keys(found).length ? found : undefined;
+}
+
+const VIEWS = ["print", "web", "outline", "normal"] as const;
+
+/** The view settings.xml stored. Anything else, including master pages, falls back to print. */
+function viewOf(archive: OfficeArchive): (typeof VIEWS)[number] | undefined {
+  const xml = archive.getText("word/settings.xml");
+  if (!xml) return undefined;
+  const match = /<(?:w:)?view\s[^>]*val="([^"]*)"/i.exec(xml);
+  const value = match?.[1];
+  return VIEWS.find((item) => item === value);
+}
+
+/** The zoom settings.xml stored, in percent. */
+function zoomOf(archive: OfficeArchive): number | undefined {
+  const xml = archive.getText("word/settings.xml");
+  if (!xml) return undefined;
+  const match = /<(?:w:)?zoom\s[^>]*percent="(\d+)"/i.exec(xml);
+  const percent = Number(match?.[1]);
+  return Number.isFinite(percent) && percent > 0 ? percent : undefined;
+}
+
+/** A macro project is present. Its bytes are kept and it is never run. */
+function hasMacros(archive: OfficeArchive): boolean {
+  for (const path of archive.files.keys()) {
+    if (/^word\/vbaProject\.bin$/i.test(path)) return true;
+  }
+  return false;
 }
 
 /** settings.xml marks the document read only. */
@@ -186,6 +246,20 @@ function attachNotes(sections: DocSection[], notes: Map<string, DocParagraph>): 
     }
     section.blocks = blocks;
   }
+}
+
+/** The paragraphs inside a content control, so each one can be edited like any other paragraph. */
+function controlContent(node: XmlNode, context: Context): DocParagraph[] | undefined {
+  const body = child(node, "sdtContent");
+  if (!body) return undefined;
+  const paragraphs = children(body, "p").map((item) => paragraphFrom(item, context));
+  return paragraphs.length ? paragraphs : undefined;
+}
+
+/** The control's own properties, kept so writing wraps the edited paragraphs in the same control. */
+function controlProps(node: XmlNode): string | undefined {
+  const props = child(node, "sdtPr");
+  return props ? serialize("sdtPr", props) : undefined;
 }
 
 /** A formula laid out as pieces. Each text node stays its own piece, so an edit writes back into that node. */
@@ -326,7 +400,9 @@ function sectionsFrom(body: XmlNode, context: Context, source = ""): DocSection[
       const raw = original ? serialize(original.name, original.node) : serialize(item.name, item.node);
       const visible = visibleText(item.node).trim();
       const formula = item.name === "oMath" || item.name === "oMathPara" ? formulaOf(item.node) : undefined;
-      blocks.push({ raw, ...(visible ? { text: visible } : {}), ...(formula?.length ? { formula } : {}) });
+      const content = item.name === "sdt" ? controlContent(item.node, context) : undefined;
+      const control = content ? controlProps(item.node) : undefined;
+      blocks.push({ raw, ...(visible ? { text: visible } : {}), ...(formula?.length ? { formula } : {}), ...(content ? { content, ...(control ? { control } : {}) } : {}) });
     } else if (item.name === "sectPr") {
       sections.push(sectionFrom(item.node, blocks, context));
       blocks = [];
@@ -476,6 +552,46 @@ function relationships(archive: OfficeArchive): Map<string, string> {
     if (id && target) map.set(id, target);
   }
   return map;
+}
+
+/** The theme's color scheme and font scheme, so a run that names one resolves to a real color or face. */
+function themeOf(archive: OfficeArchive): DocTheme | undefined {
+  const xml = archive.getText("word/theme/theme1.xml");
+  if (!xml) return undefined;
+  const root = child(parseXml(xml), "theme");
+  const elements = root ? child(root, "themeElements") : undefined;
+  if (!elements) return undefined;
+  const colors: Record<string, string> = {};
+  const scheme = child(elements, "clrScheme");
+  for (const item of ordered(scheme ?? {})) {
+    const hex = srgb(item.node);
+    if (hex) colors[item.name] = hex;
+  }
+  const fonts: DocTheme["fonts"] = {};
+  const schemeFonts = child(elements, "fontScheme");
+  for (const script of ["majorFont", "minorFont"]) {
+    const group = schemeFonts ? child(schemeFonts, script) : undefined;
+    if (!group) continue;
+    const latin = child(group, "latin");
+    const latinFace = latin ? attr(latin, "typeface") : undefined;
+    if (latinFace && !fonts.latin) fonts.latin = latinFace;
+    const eastAsia = child(group, "ea");
+    const eastAsiaFace = eastAsia ? attr(eastAsia, "typeface") : undefined;
+    if (eastAsiaFace && !fonts.eastAsia) fonts.eastAsia = eastAsiaFace;
+  }
+  if (!Object.keys(colors).length && !fonts.latin && !fonts.eastAsia) return undefined;
+  return { colors, fonts };
+}
+
+/** The srgb color a theme color carries, as #rrggbb. A sysClr falls back to its lastClr. */
+function srgb(node: XmlNode): string | undefined {
+  const direct = child(node, "srgbClr");
+  const value = direct ? attr(direct, "val") : undefined;
+  if (value && /^[0-9a-fA-F]{6}$/.test(value)) return `#${value.toLowerCase()}`;
+  const system = child(node, "sysClr");
+  const fallback = system ? attr(system, "lastClr") : undefined;
+  if (fallback && /^[0-9a-fA-F]{6}$/.test(fallback)) return `#${fallback.toLowerCase()}`;
+  return undefined;
 }
 
 /** Named paragraph styles, with the formatting they add on top of the one they are based on. */
@@ -891,9 +1007,12 @@ function runProps(props: XmlNode | undefined): Omit<DocRun, "text"> {
   if (Number.isFinite(halfPoints) && halfPoints > 0) shared.fontSize = halfPoints / 2;
   const fonts = child(props, "rFonts");
   const font = fonts ? attr(fonts, "ascii") ?? attr(fonts, "hAnsi") : undefined;
-  if (font) shared.font = font;
+  const themeFont = fonts ? themeFace(attr(fonts, "asciiTheme") ?? attr(fonts, "hAnsiTheme"), "latin") : undefined;
+  if (font || themeFont) shared.font = font || themeFont;
   const eastAsia = fonts ? attr(fonts, "eastAsia") : undefined;
-  if (eastAsia && eastAsia !== font) shared.fontEastAsia = eastAsia;
+  const themeEastAsia = fonts ? themeFace(attr(fonts, "eastAsiaTheme"), "eastAsia") : undefined;
+  const resolvedEastAsia = eastAsia || themeEastAsia;
+  if (resolvedEastAsia && resolvedEastAsia !== (font || themeFont)) shared.fontEastAsia = resolvedEastAsia;
   const color = colorOf(child(props, "color"));
   if (color) shared.color = color;
   const scale = Number(child(props, "w") ? attr(child(props, "w")!, "val") : undefined);
@@ -927,7 +1046,16 @@ function colorOf(node: XmlNode | undefined): string | undefined {
   if (!node) return undefined;
   const hex = attr(node, "color") ?? attr(node, "val") ?? attr(node, "fill");
   if (!hex || hex === "auto" || !/^[0-9a-fA-F]{6}$/.test(hex)) return undefined;
+  const theme = attr(node, "themeColor");
+  if (theme) return undefined;
   return `#${hex.toLowerCase()}`;
+}
+
+/** A theme font slot, mapped onto the face this model stores. Only the two faces the theme reader fills are named. */
+function themeFace(slot: string | undefined, face: "latin" | "eastAsia"): string | undefined {
+  if (slot === "majorAscii" || slot === "majorHAnsi" || slot === "majorEastAsia") return face === "eastAsia" ? "theme:eastAsia" : "theme:latin";
+  if (slot === "minorAscii" || slot === "minorHAnsi" || slot === "minorEastAsia") return face === "eastAsia" ? "theme:eastAsia" : "theme:latin";
+  return undefined;
 }
 
 function positive(value: string | undefined): number | undefined {
