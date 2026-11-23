@@ -53,7 +53,7 @@ function evaluate(input, ctx) {
         const value = parser.parseExpression();
         if (parser.notDone())
             return E.VALUE();
-        return value;
+        return Array.isArray(value) && value.length === 1 ? value[0] ?? "" : value;
     }
     catch (err) {
         if (err instanceof FormulaError)
@@ -243,6 +243,8 @@ function ensureCell(sheet, row, col) {
     return cell;
 }
 function formatResult(value) {
+    if (Array.isArray(value) && value.length === 1)
+        return formatResult(value[0] ?? "");
     if (value instanceof FormulaError)
         return value.code;
     if (Array.isArray(value))
@@ -552,7 +554,7 @@ class Parser {
             return E.REF();
         const values = readRange(this.ctx.workbook, sheetIndex, start, end);
         if (start.row === end.row && start.col === end.col)
-            return values[0] ?? "";
+            return values;
         return values;
     }
 }
@@ -588,7 +590,7 @@ function readRange(workbook, sheetIndex, start, end) {
             subtotals.push(/^SUBTOTAL\s*\(/i.test(sheet.cells[r]?.[c]?.formula ?? ""));
         }
     }
-    return tagRange(out, c2 - c1 + 1, hidden, subtotals);
+    return tagRange(out, c2 - c1 + 1, hidden, subtotals, { sheetIndex, r1, c1, r2, c2 });
 }
 function cellPrimitive(sheet, row, col, workbook, sheetIndex) {
     const cell = sheet.cells[row]?.[col];
@@ -619,15 +621,20 @@ function coerceCellText(text) {
         return Number(text);
     return text;
 }
+/** A one-cell range carries its position, but everywhere else it behaves as its single value. */
+function collapse(value) {
+    return Array.isArray(value) && value.length === 1 ? value[0] ?? "" : value;
+}
 function flatten(args) {
     const out = [];
     for (const arg of args) {
-        if (arg instanceof FormulaError)
+        const value = collapse(arg);
+        if (value instanceof FormulaError)
             continue;
-        if (Array.isArray(arg))
-            out.push(...arg);
+        if (Array.isArray(value))
+            out.push(...value);
         else
-            out.push(arg);
+            out.push(value);
     }
     return out;
 }
@@ -637,6 +644,8 @@ function numbers(args) {
         .filter((item) => Number.isFinite(item));
 }
 function asNumber(value) {
+    if (Array.isArray(value) && value.length === 1)
+        return asNumber(value[0] ?? "");
     if (value instanceof FormulaError)
         return value;
     if (Array.isArray(value))
@@ -651,6 +660,8 @@ function asNumber(value) {
     return Number.isFinite(num) ? num : E.VALUE();
 }
 function asText(value) {
+    if (Array.isArray(value) && value.length === 1)
+        return asText(value[0] ?? "");
     if (value instanceof FormulaError)
         return value.code;
     if (Array.isArray(value))
@@ -660,6 +671,8 @@ function asText(value) {
     return String(value);
 }
 function asBool(value) {
+    if (Array.isArray(value) && value.length === 1)
+        return asBool(value[0] ?? false);
     if (value instanceof FormulaError)
         return value;
     if (Array.isArray(value))
@@ -688,8 +701,11 @@ function compare(left, right, op) {
         return left;
     if (right instanceof FormulaError)
         return right;
-    const l = Array.isArray(left) ? left[0] ?? "" : left;
-    const r = Array.isArray(right) ? right[0] ?? "" : right;
+    const flat = (value) => (Array.isArray(value) && value.length === 1 ? value[0] ?? "" : value);
+    const l = flat(left);
+    const r = flat(right);
+    if (Array.isArray(l) || Array.isArray(r))
+        return E.VALUE();
     const ln = typeof l === "number" || (typeof l === "string" && /^-?\d+(?:\.\d+)?$/.test(l)) ? Number(l) : null;
     const rn = typeof r === "number" || (typeof r === "string" && /^-?\d+(?:\.\d+)?$/.test(r)) ? Number(r) : null;
     let cmp;
@@ -852,13 +868,54 @@ function callFunction(name, args, ctx) {
             return primary ?? "";
         }
         case "ROW":
-            return (args[0] === undefined ? ctx.row : parseA1(asText(args[0]))?.row ?? ctx.row) + 1;
+            return rowOf(args[0], ctx) + 1;
         case "COLUMN":
-            return (args[0] === undefined ? ctx.col : parseA1(asText(args[0]))?.col ?? ctx.col) + 1;
+            return columnOf(args[0], ctx) + 1;
         case "ROWS":
-            return Array.isArray(args[0]) ? Math.ceil(args[0].length / rangeWidth(args[0])) : 1;
+            return rowsOf(args[0]);
         case "COLUMNS":
-            return Array.isArray(args[0]) ? rangeWidth(args[0]) : 1;
+            return columnsOf(args[0]);
+        case "ADDRESS": {
+            const row = asNumber(args[0] ?? 1);
+            const col = asNumber(args[1] ?? 1);
+            if (row instanceof FormulaError)
+                return row;
+            if (col instanceof FormulaError)
+                return col;
+            if (row < 1 || col < 1)
+                return E.VALUE();
+            const abs = asNumber(args[2] ?? 1);
+            if (abs instanceof FormulaError)
+                return abs;
+            const lockRow = abs === 1 || abs === 2;
+            const lockCol = abs === 1 || abs === 3;
+            const sheet = args[4] === undefined ? "" : `'${asText(args[4]).replace(/'/g, "''")}'!`;
+            return `${sheet}${lockCol ? "$" : ""}${columnName(Math.floor(col) - 1)}${lockRow ? "$" : ""}${Math.floor(row)}`;
+        }
+        case "CHOOSE": {
+            const index = asNumber(args[0] ?? 0);
+            if (index instanceof FormulaError)
+                return index;
+            const pick = args[Math.floor(index)];
+            return pick === undefined ? E.VALUE() : pick;
+        }
+        case "TRANSPOSE": {
+            const table = args[0];
+            if (!(table instanceof Array))
+                return table ?? E.VALUE();
+            const width = rangeWidth(table);
+            const height = Math.ceil(table.length / width);
+            const out = [];
+            for (let c = 0; c < width; c += 1) {
+                for (let r = 0; r < height; r += 1)
+                    out.push(table[r * width + c] ?? "");
+            }
+            return withWidth(out, height);
+        }
+        case "OFFSET":
+            return offsetRange(ctx, args);
+        case "INDIRECT":
+            return indirectRange(ctx, args);
         case "TODAY": {
             const d = new Date();
             return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
@@ -1550,10 +1607,12 @@ function wildcardPattern(text) {
     }
     return pattern;
 }
-function tagRange(values, width, hidden, subtotals) {
+function tagRange(values, width, hidden, subtotals, origin) {
     Object.defineProperty(values, "width", { value: Math.max(1, width), enumerable: false });
     Object.defineProperty(values, "hidden", { value: hidden, enumerable: false });
     Object.defineProperty(values, "subtotals", { value: subtotals, enumerable: false });
+    if (origin)
+        Object.defineProperty(values, "origin", { value: origin, enumerable: false });
     return values;
 }
 function withWidth(values, width) {
@@ -1573,7 +1632,94 @@ function visibleArgs(args, skipHidden) {
         return tagRange(kept, rangeWidth(arg), [], []);
     });
 }
+function rowOf(value, ctx) {
+    const origin = rangeOrigin(value);
+    if (origin)
+        return origin.r1;
+    const parsed = value === undefined ? undefined : parseA1(asText(value));
+    return parsed?.row ?? ctx.row;
+}
+function columnOf(value, ctx) {
+    const origin = rangeOrigin(value);
+    if (origin)
+        return origin.c1;
+    const parsed = value === undefined ? undefined : parseA1(asText(value));
+    return parsed?.col ?? ctx.col;
+}
+function rowsOf(value) {
+    const origin = rangeOrigin(value);
+    if (origin)
+        return origin.r2 - origin.r1 + 1;
+    return Array.isArray(value) ? Math.ceil(value.length / rangeWidth(value)) : 1;
+}
+function columnsOf(value) {
+    const origin = rangeOrigin(value);
+    if (origin)
+        return origin.c2 - origin.c1 + 1;
+    return Array.isArray(value) ? rangeWidth(value) : 1;
+}
+function rangeOrigin(value) {
+    if (!Array.isArray(value))
+        return undefined;
+    return value.origin;
+}
+/** A1 column letters for a zero-based column. */
+function columnName(col) {
+    let name = "";
+    let rest = col + 1;
+    while (rest > 0) {
+        rest -= 1;
+        name = String.fromCharCode(65 + (rest % 26)) + name;
+        rest = Math.floor(rest / 26);
+    }
+    return name;
+}
+/** OFFSET moves a range by rows and columns, and can resize it. */
+function offsetRange(ctx, args) {
+    const origin = rangeOrigin(args[0]);
+    if (!origin)
+        return E.VALUE();
+    const rows = asNumber(args[1] ?? 0);
+    const cols = asNumber(args[2] ?? 0);
+    const height = args[3] === undefined ? origin.r2 - origin.r1 + 1 : asNumber(args[3]);
+    const width = args[4] === undefined ? origin.c2 - origin.c1 + 1 : asNumber(args[4]);
+    if (rows instanceof FormulaError)
+        return rows;
+    if (cols instanceof FormulaError)
+        return cols;
+    if (height instanceof FormulaError)
+        return height;
+    if (width instanceof FormulaError)
+        return width;
+    if (height < 1 || width < 1)
+        return E.REF();
+    const r1 = origin.r1 + Math.trunc(rows);
+    const c1 = origin.c1 + Math.trunc(cols);
+    if (r1 < 0 || c1 < 0)
+        return E.REF();
+    const values = readRange(ctx.workbook, origin.sheetIndex, { row: r1, col: c1 }, { row: r1 + Math.trunc(height) - 1, col: c1 + Math.trunc(width) - 1 });
+    return values.length === 1 ? values[0] ?? "" : values;
+}
+/** INDIRECT reads whatever range the text names, on the current sheet unless the text names one. */
+function indirectRange(ctx, args) {
+    const text = asText(args[0] ?? "").trim();
+    const bang = text.lastIndexOf("!");
+    const sheetName = bang < 0 ? undefined : text.slice(0, bang).replace(/^'|'$/g, "").replace(/''/g, "'");
+    const body = bang < 0 ? text : text.slice(bang + 1);
+    const [startText, endText] = body.split(":");
+    const start = parseA1(startText ?? "");
+    const end = parseA1(endText ?? startText ?? "");
+    if (!start || !end)
+        return E.REF();
+    const sheetIndex = sheetName === undefined ? ctx.sheetIndex : findSheet(ctx.workbook, sheetName);
+    if (sheetIndex < 0)
+        return E.REF();
+    const values = readRange(ctx.workbook, sheetIndex, start, end);
+    return values.length === 1 ? values[0] ?? "" : values;
+}
 function scalar(value) {
+    if (Array.isArray(value) && value.length === 1)
+        return scalar(value[0] ?? "");
     if (value instanceof FormulaError)
         return value;
     if (Array.isArray(value))

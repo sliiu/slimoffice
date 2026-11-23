@@ -184,3 +184,25 @@ test("consolidates ranges by position, by label, and with links", () => {
   assert.equal(workbook.sheets[2]?.cells[0]?.[3]?.value, "8");
   assert.equal(averaged.rows, 2);
 });
+
+test("lookup references shift, resize, and read back", () => {
+  const workbook: Workbook = {
+    sheets: [
+      { name: "Sheet1", cells: [[{ value: "1" }, { value: "2" }], [{ value: "3" }, { value: "4" }]] },
+      { name: "二月", cells: [[{ value: "合计" }]] },
+    ],
+  };
+  assert.equal(evaluate("=OFFSET(A1,1,1)", ctx(workbook)), 4);
+  assert.equal(evaluate("=SUM(OFFSET(A1,0,0,2,1))", ctx(workbook)), 4);
+  assert.equal(evaluate("=OFFSET(A1,-1,0)", ctx(workbook)).toString(), "#REF!");
+  assert.equal(evaluate("=INDIRECT(\"B2\")", ctx(workbook)), 4);
+  assert.equal(evaluate("=INDIRECT(\"'二月'!A1\")", ctx(workbook)), "合计");
+  assert.equal(evaluate("=ADDRESS(2,2)", ctx(workbook)), "$B$2");
+  assert.equal(evaluate("=ADDRESS(2,2,4,1,\"二月\")", ctx(workbook)), "'二月'!B2");
+  assert.equal(evaluate("=CHOOSE(2,\"甲\",\"乙\",\"丙\")", ctx(workbook)), "乙");
+  assert.equal(formatResult(evaluate("=TRANSPOSE(A1:B2)", ctx(workbook))), "1,3,2,4");
+  assert.equal(evaluate("=ROWS(OFFSET(A1,0,0,2,2))", ctx(workbook)), 2);
+  assert.equal(evaluate("=COLUMNS(A1:B2)", ctx(workbook)), 2);
+  assert.equal(evaluate("=ROW(B2)", ctx(workbook, 4, 4)), 2);
+  assert.equal(evaluate("=COLUMN()", ctx(workbook, 4, 3)), 4);
+});
