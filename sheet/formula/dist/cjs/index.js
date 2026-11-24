@@ -53,6 +53,8 @@ function evaluate(input, ctx) {
         const value = parser.parseExpression();
         if (parser.notDone())
             return E.VALUE();
+        if (isPending(value))
+            return E.NAME();
         return Array.isArray(value) && value.length === 1 ? value[0] ?? "" : value;
     }
     catch (err) {
@@ -243,6 +245,10 @@ function ensureCell(sheet, row, col) {
     return cell;
 }
 function formatResult(value) {
+    if (isPending(value))
+        return E.NAME().code;
+    if (isLambda(value))
+        return E.VALUE().code;
     if (Array.isArray(value) && value.length === 1)
         return formatResult(value[0] ?? "");
     if (value instanceof FormulaError)
@@ -326,10 +332,12 @@ function tokenize(text) {
             while (j < text.length && /[A-Za-z0-9_$一-鿿.]/.test(text[j]))
                 j += 1;
             const raw = text.slice(i, j);
-            if (/^\$?[A-Za-z]+\$?\d+$/.test(raw))
-                out.push({ kind: "ref", value: raw.toUpperCase() });
+            const upper = raw.toUpperCase();
+            // A cell reference is one to three column letters and a row number. Anything longer is a name.
+            if (/^\$?[A-Z]{1,3}\$?\d+$/.test(upper))
+                out.push({ kind: "ref", value: upper });
             else
-                out.push({ kind: "id", value: raw.toUpperCase() });
+                out.push({ kind: "id", value: upper });
             i = j;
             continue;
         }
@@ -355,6 +363,21 @@ function tokenize(text) {
         }
         if (ch === "!") {
             out.push({ kind: "bang" });
+            i += 1;
+            continue;
+        }
+        if (ch === "{") {
+            out.push({ kind: "lb" });
+            i += 1;
+            continue;
+        }
+        if (ch === "}") {
+            out.push({ kind: "rb" });
+            i += 1;
+            continue;
+        }
+        if (ch === ";") {
+            out.push({ kind: "semi" });
             i += 1;
             continue;
         }
@@ -491,10 +514,137 @@ class Parser {
             this.take();
             return value;
         }
+        if (token.kind === "lb")
+            return this.parseArray();
+        if (token.kind === "id" && this.tokens[this.i + 1]?.kind === "lp")
+            return this.parseLambda();
         if (token.kind === "ref" || token.kind === "id") {
             return this.parseRefOrCall();
         }
         throw E.VALUE();
+    }
+    /** `{1,2;3,4}` is a constant array: commas run across a row, semicolons start the next. */
+    parseArray() {
+        this.take();
+        const rows = [];
+        let row = [];
+        const push = (value) => {
+            if (value instanceof FormulaError)
+                throw value;
+            row.push(scalarPrimitive(value));
+        };
+        if (this.peek()?.kind !== "rb") {
+            push(this.parseExpression());
+            while (this.peek()?.kind === "comma" || this.peek()?.kind === "semi") {
+                const break_ = this.take().kind === "semi";
+                if (break_) {
+                    rows.push(row);
+                    row = [];
+                }
+                push(this.parseExpression());
+            }
+        }
+        rows.push(row);
+        if (this.peek()?.kind !== "rb")
+            throw E.VALUE();
+        this.take();
+        const width = rows.reduce((widest, line) => Math.max(widest, line.length), 1);
+        const out = [];
+        for (const line of rows) {
+            for (let i = 0; i < width; i += 1)
+                out.push(line[i] ?? "");
+        }
+        return withWidth(out, width);
+    }
+    /**
+     * `LAMBDA(name, ..., body)(arg, ...)` defines its names for the body only.
+     * A call without the trailing arguments returns the definition, which LET and MAKEARRAY apply.
+     */
+    parseLambda() {
+        const name = this.take().value;
+        if (name !== "LAMBDA" && name !== "LET")
+            return this.parseCall(name);
+        this.take();
+        if (name === "LET")
+            return this.parseLet();
+        const params = [];
+        while (this.peek()?.kind === "id" && this.tokens[this.i + 1]?.kind === "comma") {
+            params.push(this.take().value);
+            this.take();
+        }
+        const bodyStart = this.i;
+        let depth = 1;
+        while (this.i < this.tokens.length && depth > 0) {
+            const kind = this.tokens[this.i]?.kind;
+            if (kind === "lp")
+                depth += 1;
+            else if (kind === "rp")
+                depth -= 1;
+            if (depth > 0)
+                this.i += 1;
+        }
+        if (this.peek()?.kind !== "rp")
+            throw E.VALUE();
+        const body = this.tokens.slice(bodyStart, this.i);
+        this.take();
+        const lambda = { params, body };
+        if (this.peek()?.kind !== "lp")
+            return lambda;
+        this.take();
+        const args = this.parseArgList();
+        if (this.peek()?.kind !== "rp")
+            throw E.VALUE();
+        this.take();
+        return applyLambda(lambda, args, this.ctx);
+    }
+    /**
+     * LET pairs each name with the following value, then evaluates the final expression under those names.
+     * The pairs are collected as tokens first, because a value can itself contain a name defined earlier.
+     */
+    parseLet() {
+        const pairs = [];
+        while (this.peek()?.kind === "id" && this.tokens[this.i + 1]?.kind === "comma") {
+            const id = this.take().value;
+            this.take();
+            const start = this.i;
+            this.parseExpression();
+            pairs.push({ name: id, tokens: this.tokens.slice(start, this.i) });
+            if (this.peek()?.kind !== "comma")
+                throw E.VALUE();
+            this.take();
+        }
+        if (!pairs.length)
+            throw E.VALUE();
+        const start = this.i;
+        this.parseExpression();
+        const body = this.tokens.slice(start, this.i);
+        if (this.peek()?.kind !== "rp")
+            throw E.VALUE();
+        this.take();
+        const names = new Map();
+        for (const pair of pairs) {
+            names.set(pair.name, new Parser(rewrite(pair.tokens, names), this.ctx).parseExpression());
+        }
+        return new Parser(rewrite(body, names), this.ctx).parseExpression();
+    }
+    parseCall(name) {
+        this.take();
+        const args = this.parseArgList();
+        if (this.peek()?.kind !== "rp")
+            throw E.VALUE();
+        this.take();
+        return callFunction(name, args, this.ctx);
+    }
+    parseArgList() {
+        const args = [];
+        if (this.peek()?.kind !== "rp") {
+            args.push(this.parseExpression());
+            while (this.peek()?.kind === "comma") {
+                this.take();
+                args.push(this.parseExpression());
+            }
+        }
+        return args;
     }
     parseRefOrCall() {
         const first = this.take();
@@ -509,21 +659,8 @@ class Parser {
                 throw E.REF();
             return this.parseRangeTail(sheetName, next.value);
         }
-        if (first.kind === "id" && this.peek()?.kind === "lp") {
-            this.take();
-            const args = [];
-            if (this.peek()?.kind !== "rp") {
-                args.push(this.parseExpression());
-                while (this.peek()?.kind === "comma") {
-                    this.take();
-                    args.push(this.parseExpression());
-                }
-            }
-            if (this.peek()?.kind !== "rp")
-                throw E.VALUE();
-            this.take();
-            return callFunction(first.value, args, this.ctx);
-        }
+        if (first.kind === "id" && this.peek()?.kind === "lp")
+            return this.parseCall(first.value);
         if (first.kind === "id" && (first.value === "TRUE" || first.value === "FALSE")) {
             return first.value === "TRUE";
         }
@@ -546,6 +683,7 @@ class Parser {
                 const named = this.ctx.workbook.names?.find((item) => item.name.toUpperCase() === startRef);
                 if (named)
                     return evaluate(named.refersTo.startsWith("=") ? named.refersTo : `=${named.refersTo}`, this.ctx);
+                return { name: startRef };
             }
             throw E.NAME();
         }
@@ -606,6 +744,8 @@ function cellPrimitive(sheet, row, col, workbook, sheetIndex) {
             return nested.code;
         if (Array.isArray(nested))
             return nested[0] ?? "";
+        if (isLambda(nested) || isPending(nested))
+            return "";
         return nested;
     }
     return coerceCellText(cell.value);
@@ -629,7 +769,7 @@ function flatten(args) {
     const out = [];
     for (const arg of args) {
         const value = collapse(arg);
-        if (value instanceof FormulaError)
+        if (isLambda(value) || isPending(value) || value instanceof FormulaError)
             continue;
         if (Array.isArray(value))
             out.push(...value);
@@ -638,12 +778,69 @@ function flatten(args) {
     }
     return out;
 }
+function isPending(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "name" in value && !("params" in value);
+}
+function isLambda(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "params" in value && "body" in value;
+}
+/** An array constant only holds scalars, so a nested range contributes its first value. */
+function scalarPrimitive(value) {
+    if (Array.isArray(value))
+        return scalarPrimitive(value[0] ?? "");
+    if (value instanceof FormulaError || isLambda(value) || isPending(value))
+        return "";
+    return value;
+}
+/** Runs a LAMBDA body with each parameter bound to the matching argument. */
+function applyLambda(lambda, args, ctx) {
+    if (args.length !== lambda.params.length)
+        return E.VALUE();
+    const bound = new Map(lambda.params.map((param, index) => [param, args[index] ?? ""]));
+    return new Parser(rewrite(lambda.body, bound), ctx).parseExpression();
+}
+/** Replaces each bound name in the tokens, including names nested inside a LAMBDA body. */
+function rewrite(tokens, names) {
+    return tokens.flatMap((token) => (token.kind === "id" && names.has(token.value) ? valueTokens(names.get(token.value)) : [token]));
+}
+/** Turns a computed value back into the tokens a LAMBDA body can carry. A range becomes an array constant. */
+function valueTokens(value) {
+    if (typeof value === "number")
+        return [{ kind: "num", value }];
+    if (typeof value === "boolean")
+        return [{ kind: "id", value: value ? "TRUE" : "FALSE" }];
+    if (typeof value === "string")
+        return [{ kind: "str", value }];
+    if (value instanceof FormulaError)
+        return [{ kind: "str", value: value.code }];
+    if (isLambda(value) || isPending(value))
+        return [];
+    const width = rangeWidth(value);
+    const rows = Math.max(1, Math.ceil(value.length / width));
+    const tokens = [{ kind: "lb" }];
+    for (let row = 0; row < rows; row += 1) {
+        if (row > 0)
+            tokens.push({ kind: "semi" });
+        for (let col = 0; col < width; col += 1) {
+            if (col > 0)
+                tokens.push({ kind: "comma" });
+            const cell = value[row * width + col];
+            tokens.push(typeof cell === "number" ? { kind: "num", value: cell } : { kind: "str", value: cell === undefined ? "" : String(cell) });
+        }
+    }
+    tokens.push({ kind: "rb" });
+    return tokens;
+}
 function numbers(args) {
     return flatten(args)
         .map((item) => (typeof item === "number" ? item : typeof item === "boolean" ? Number(item) : Number(item)))
         .filter((item) => Number.isFinite(item));
 }
 function asNumber(value) {
+    if (isPending(value))
+        return E.NAME();
+    if (isLambda(value))
+        return E.VALUE();
     if (Array.isArray(value) && value.length === 1)
         return asNumber(value[0] ?? "");
     if (value instanceof FormulaError)
@@ -660,6 +857,8 @@ function asNumber(value) {
     return Number.isFinite(num) ? num : E.VALUE();
 }
 function asText(value) {
+    if (isLambda(value))
+        return "";
     if (Array.isArray(value) && value.length === 1)
         return asText(value[0] ?? "");
     if (value instanceof FormulaError)
@@ -671,6 +870,10 @@ function asText(value) {
     return String(value);
 }
 function asBool(value) {
+    if (isPending(value))
+        return E.NAME();
+    if (isLambda(value))
+        return E.VALUE();
     if (Array.isArray(value) && value.length === 1)
         return asBool(value[0] ?? false);
     if (value instanceof FormulaError)
@@ -697,6 +900,10 @@ function binaryNum(left, right, op) {
     return op(a, b);
 }
 function compare(left, right, op) {
+    if (isPending(left) || isPending(right))
+        return E.NAME();
+    if (isLambda(left) || isLambda(right))
+        return E.VALUE();
     if (left instanceof FormulaError)
         return left;
     if (right instanceof FormulaError)
@@ -771,6 +978,21 @@ function callFunction(name, args, ctx) {
             }
             return false;
         }
+        case "XOR": {
+            let trues = 0;
+            let seen = false;
+            for (const arg of flatten(args)) {
+                if (arg === "")
+                    continue;
+                const flag = asBool(arg);
+                if (flag instanceof FormulaError)
+                    return flag;
+                seen = true;
+                if (flag)
+                    trues += 1;
+            }
+            return seen ? trues % 2 === 1 : E.VALUE();
+        }
         case "NOT": {
             const b = asBool(args[0] ?? false);
             return b instanceof FormulaError ? b : !b;
@@ -807,6 +1029,67 @@ function callFunction(name, args, ctx) {
             if (d === 0)
                 return E.DIV0();
             return n - d * Math.floor(n / d);
+        }
+        case "TRUNC": {
+            const n = asNumber(args[0] ?? 0);
+            const d = asNumber(args[1] ?? 0);
+            if (n instanceof FormulaError)
+                return n;
+            if (d instanceof FormulaError)
+                return d;
+            const factor = 10 ** Math.trunc(d);
+            return Math.trunc(n * factor) / factor;
+        }
+        case "MROUND": {
+            const n = asNumber(args[0] ?? 0);
+            const multiple = asNumber(args[1] ?? 0);
+            if (n instanceof FormulaError)
+                return n;
+            if (multiple instanceof FormulaError)
+                return multiple;
+            if (n === 0 || multiple === 0)
+                return 0;
+            if (n > 0 !== multiple > 0)
+                return E.NUM();
+            return Math.round(n / multiple) * multiple;
+        }
+        case "QUOTIENT": {
+            const n = asNumber(args[0] ?? 0);
+            const d = asNumber(args[1] ?? 0);
+            if (n instanceof FormulaError)
+                return n;
+            if (d instanceof FormulaError)
+                return d;
+            if (d === 0)
+                return E.DIV0();
+            return Math.trunc(n / d);
+        }
+        case "GCD":
+        case "LCM":
+            return gcdLcm(name, args);
+        case "SUMSQ":
+            return numbers(args).reduce((sum, item) => sum + item * item, 0);
+        case "EVEN":
+        case "ODD": {
+            const n = asNumber(args[0] ?? 0);
+            if (n instanceof FormulaError)
+                return n;
+            return evenOdd(n, name === "ODD");
+        }
+        case "RAND":
+            return Math.random();
+        case "RANDBETWEEN": {
+            const low = asNumber(args[0] ?? 0);
+            const high = asNumber(args[1] ?? 0);
+            if (low instanceof FormulaError)
+                return low;
+            if (high instanceof FormulaError)
+                return high;
+            const first = Math.ceil(Math.min(low, high));
+            const last = Math.floor(Math.max(low, high));
+            if (first > last)
+                return E.NUM();
+            return first + Math.floor(Math.random() * (last - first + 1));
         }
         case "POWER":
             return binaryNum(args[0] ?? 0, args[1] ?? 0, (a, b) => a ** b);
@@ -860,6 +1143,47 @@ function callFunction(name, args, ctx) {
         case "ISTEXT": {
             const v = Array.isArray(args[0]) ? args[0][0] : args[0];
             return typeof v === "string";
+        }
+        case "ISERROR":
+            return args[0] instanceof FormulaError;
+        case "ISERR":
+            return args[0] instanceof FormulaError && args[0].code !== "#N/A";
+        case "ISNA":
+            return args[0] instanceof FormulaError && args[0].code === "#N/A";
+        case "ISEVEN":
+        case "ISODD": {
+            const n = asNumber(args[0] ?? 0);
+            if (n instanceof FormulaError)
+                return n;
+            return Math.trunc(Math.abs(n)) % 2 === (name === "ISEVEN" ? 0 : 1);
+        }
+        case "N": {
+            const v = collapse(args[0] ?? 0);
+            if (v instanceof FormulaError)
+                return v;
+            if (typeof v === "number")
+                return v;
+            if (typeof v === "boolean")
+                return v ? 1 : 0;
+            return 0;
+        }
+        case "T": {
+            const v = collapse(args[0] ?? "");
+            if (v instanceof FormulaError)
+                return v;
+            return typeof v === "string" ? v : "";
+        }
+        case "TYPE": {
+            const v = collapse(args[0] ?? "");
+            if (Array.isArray(v))
+                return 64;
+            if (typeof v === "number")
+                return 1;
+            if (typeof v === "string")
+                return 2;
+            if (typeof v === "boolean")
+                return 4;
+            return 16;
         }
         case "IFERROR": {
             const primary = args[0];
@@ -999,7 +1323,8 @@ function callFunction(name, args, ctx) {
             const width = rangeWidth(table);
             return table[(Math.max(0, Math.floor(row) - 1)) * width + (Math.max(0, Math.floor(col) - 1))] ?? E.REF();
         }
-        case "MATCH": {
+        case "MATCH":
+        case "XMATCH": {
             const needle = scalar(args[0]);
             const table = args[1];
             const mode = asNumber(args[2] ?? 0);
@@ -1010,7 +1335,32 @@ function callFunction(name, args, ctx) {
             if (mode instanceof FormulaError)
                 return mode;
             const at = mode === 0 ? table.findIndex((item) => lookupEqual(item, needle)) : approxIndex(table, needle, mode > 0 ? -1 : 1);
-            return at < 0 ? E.NA() : at + 1;
+            if (at < 0)
+                return args[3] !== undefined ? scalar(args[3]) : E.NA();
+            return at + 1;
+        }
+        case "LOOKUP": {
+            const needle = scalar(args[0]);
+            const lookup = args[1];
+            if (needle instanceof FormulaError)
+                return needle;
+            if (!(lookup instanceof Array))
+                return E.NA();
+            const result = Array.isArray(args[2]) ? args[2] : lookup;
+            const width = rangeWidth(lookup);
+            const rows = Math.ceil(lookup.length / width);
+            const across = rows === 1;
+            const column = [];
+            for (let i = 0; i < (across ? width : rows); i += 1)
+                column.push(lookup[across ? i : i * width] ?? "");
+            const at = approxIndex(column, needle, -1);
+            if (at < 0)
+                return E.NA();
+            const resultWidth = rangeWidth(result);
+            const resultRows = Math.ceil(result.length / resultWidth);
+            if (across && resultRows === 1)
+                return result[at] ?? E.NA();
+            return result[at * resultWidth + resultWidth - 1] ?? E.NA();
         }
         case "TEXT": {
             const value = asNumber(args[0] ?? 0);
@@ -1085,6 +1435,9 @@ function callFunction(name, args, ctx) {
             return conditionals(name, args);
         case "COUNTIFS":
             return conditionals(name, args.length ? [args[0], ...args] : args);
+        case "MAXIFS":
+        case "MINIFS":
+            return extremeIf(name, args);
         case "COUNTBLANK":
             return flatten(args).filter((item) => item === "").length;
         case "IFS": {
@@ -1161,6 +1514,23 @@ function callFunction(name, args, ctx) {
         }
         case "EXACT":
             return asText(args[0] ?? "") === asText(args[1] ?? "");
+        case "TEXTSPLIT": {
+            const text = asText(args[0] ?? "");
+            const colDelim = asText(args[1] ?? "");
+            const rowDelim = args[2] === undefined ? "" : asText(args[2]);
+            if (!colDelim && !rowDelim)
+                return E.VALUE();
+            const lines = rowDelim ? text.split(rowDelim) : [text];
+            const rows = lines.map((line) => (colDelim ? line.split(colDelim) : [line]));
+            const width = rows.reduce((widest, line) => Math.max(widest, line.length), 1);
+            const pad = args[3] === undefined ? "" : asText(args[3]);
+            const out = [];
+            for (const line of rows) {
+                for (let i = 0; i < width; i += 1)
+                    out.push(line[i] ?? pad);
+            }
+            return withWidth(out, width);
+        }
         case "TEXTJOIN": {
             const sep = asText(args[0] ?? "");
             const skip = asBool(args[1] ?? false);
@@ -1292,6 +1662,21 @@ function callFunction(name, args, ctx) {
             if (unit === "YD")
                 return datedifDays(from, to, "YD");
             return E.NUM();
+        }
+        case "WEEKNUM": {
+            const serial = asNumber(args[0] ?? 0);
+            const system = asNumber(args[1] ?? 1);
+            if (serial instanceof FormulaError)
+                return serial;
+            if (system instanceof FormulaError)
+                return system;
+            return weekNumber(serial, system);
+        }
+        case "ISOWEEKNUM": {
+            const serial = asNumber(args[0] ?? 0);
+            if (serial instanceof FormulaError)
+                return serial;
+            return isoWeekNumber(serial);
         }
         case "WEEKDAY": {
             const serial = asNumber(args[0] ?? 0);
@@ -1507,9 +1892,298 @@ function callFunction(name, args, ctx) {
                 return value;
             return convertUnit(value, asText(args[1] ?? ""), asText(args[2] ?? ""));
         }
+        case "SORTBY":
+            return sortBy(args);
+        case "HSTACK":
+        case "VSTACK":
+            return stack(name, args);
+        case "DSUM":
+        case "DCOUNT":
+        case "DAVERAGE":
+        case "DMAX":
+        case "DMIN":
+            return database(name, args);
+        case "DAYS360": {
+            const start = asNumber(args[0] ?? 0);
+            const end = asNumber(args[1] ?? 0);
+            if (start instanceof FormulaError)
+                return start;
+            if (end instanceof FormulaError)
+                return end;
+            return days360(start, end);
+        }
+        case "MMULT":
+            return matrixProduct(args[0], args[1]);
+        case "FORECAST":
+        case "FORECAST.LINEAR":
+            return forecast(args);
+        case "XIRR":
+            return xirr(args);
+        case "MAKEARRAY":
+            return makeArray(args, ctx);
+        case "MAP":
+            return mapArray(args, ctx);
         default:
             return E.NAME();
     }
+}
+/** SORTBY orders the first range by the values in each following range, ascending unless the order is negative. */
+function sortBy(args) {
+    const table = args[0];
+    if (!Array.isArray(table))
+        return table ?? E.VALUE();
+    const width = rangeWidth(table);
+    const rows = Math.ceil(table.length / width);
+    const keys = [];
+    for (let i = 1; i < args.length; i += 2) {
+        const by = args[i];
+        if (!Array.isArray(by))
+            return E.VALUE();
+        const order = i + 1 < args.length ? asNumber(args[i + 1] ?? 1) : 1;
+        if (order instanceof FormulaError)
+            return order;
+        keys.push({ values: by, descending: order < 0 });
+    }
+    if (!keys.length)
+        return E.VALUE();
+    const order = [...Array(rows).keys()].sort((a, b) => {
+        for (const key of keys) {
+            const diff = sortCompare(key.values[a] ?? "", key.values[b] ?? "");
+            if (diff !== 0)
+                return key.descending ? -diff : diff;
+        }
+        return 0;
+    });
+    const out = [];
+    for (const row of order)
+        out.push(...table.slice(row * width, row * width + width));
+    return withWidth(out, width);
+}
+function sortCompare(left, right) {
+    const a = typeof left === "number" ? left : Number.NaN;
+    const b = typeof right === "number" ? right : Number.NaN;
+    if (Number.isFinite(a) && Number.isFinite(b))
+        return a - b;
+    return String(left).localeCompare(String(right), undefined, { numeric: true });
+}
+/** HSTACK places ranges side by side, VSTACK places them one under the other. Short rows and columns are padded. */
+function stack(name, args) {
+    const blocks = args.map((arg) => (Array.isArray(arg) ? arg : [scalarPrimitive(arg ?? "")]));
+    if (!blocks.length)
+        return E.VALUE();
+    if (name === "VSTACK") {
+        const width = blocks.reduce((widest, block) => Math.max(widest, rangeWidth(block)), 1);
+        const out = [];
+        for (const block of blocks) {
+            const blockWidth = rangeWidth(block);
+            const rows = Math.ceil(block.length / blockWidth);
+            for (let row = 0; row < rows; row += 1) {
+                for (let col = 0; col < width; col += 1)
+                    out.push(block[row * blockWidth + col] ?? "");
+            }
+        }
+        return withWidth(out, width);
+    }
+    const height = blocks.reduce((tallest, block) => Math.max(tallest, Math.ceil(block.length / rangeWidth(block))), 1);
+    const out = [];
+    for (let row = 0; row < height; row += 1) {
+        for (const block of blocks) {
+            const blockWidth = rangeWidth(block);
+            for (let col = 0; col < blockWidth; col += 1)
+                out.push(block[row * blockWidth + col] ?? "");
+        }
+    }
+    return withWidth(out, blocks.reduce((sum, block) => sum + rangeWidth(block), 0));
+}
+/**
+ * A database function reads the column named by the second argument from the table, keeping the rows
+ * whose cells match every condition in the criteria range. The criteria range starts with field names.
+ */
+function database(name, args) {
+    const table = args[0];
+    if (!Array.isArray(table))
+        return E.VALUE();
+    const width = rangeWidth(table);
+    const rows = Math.ceil(table.length / width);
+    if (rows < 2)
+        return E.VALUE();
+    const header = table.slice(0, width).map((cell) => String(cell).toUpperCase());
+    const field = args[1];
+    const column = typeof field === "number" ? Math.floor(field) - 1 : header.indexOf(asText(field ?? "").toUpperCase());
+    if (column < 0 || column >= width)
+        return E.VALUE();
+    const criteria = args[2];
+    if (!Array.isArray(criteria))
+        return E.VALUE();
+    const criteriaWidth = rangeWidth(criteria);
+    const criteriaRows = Math.ceil(criteria.length / criteriaWidth);
+    const criteriaCols = criteria.slice(0, criteriaWidth).map((cell) => header.indexOf(String(cell).toUpperCase()));
+    const matched = [];
+    for (let row = 1; row < rows; row += 1) {
+        let ok = criteriaRows < 2;
+        for (let line = 1; line < criteriaRows && !ok; line += 1) {
+            ok = criteriaCols.every((col, index) => {
+                if (col < 0)
+                    return true;
+                return matches(table[row * width + col] ?? "", criteria[line * criteriaWidth + index] ?? "");
+            });
+        }
+        if (ok)
+            matched.push(row);
+    }
+    const values = matched.map((row) => table[row * width + column] ?? "");
+    if (name === "DCOUNT")
+        return values.filter((item) => typeof item === "number").length;
+    const nums = values.map((item) => asNumber(item)).filter((item) => typeof item === "number");
+    if (!nums.length)
+        return 0;
+    if (name === "DSUM")
+        return nums.reduce((sum, item) => sum + item, 0);
+    if (name === "DAVERAGE")
+        return nums.reduce((sum, item) => sum + item, 0) / nums.length;
+    if (name === "DMAX")
+        return Math.max(...nums);
+    return Math.min(...nums);
+}
+/** DAYS360 counts each month as 30 days, using the US (NASD) convention. */
+function days360(start, end) {
+    const from = new Date(Math.round((start - 25569) * 86400000));
+    const to = new Date(Math.round((end - 25569) * 86400000));
+    const day = (date, cap) => {
+        const value = date.getUTCDate();
+        return cap && value === 31 ? 30 : value;
+    };
+    const startDay = day(from, true);
+    const endDay = day(to, startDay >= 30);
+    return (to.getUTCFullYear() - from.getUTCFullYear()) * 360 + (to.getUTCMonth() - from.getUTCMonth()) * 30 + endDay - startDay;
+}
+/** MMULT multiplies two matrices. The first range's width must equal the second range's height. */
+function matrixProduct(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right))
+        return E.VALUE();
+    const leftWidth = rangeWidth(left);
+    const rightWidth = rangeWidth(right);
+    const leftRows = Math.ceil(left.length / leftWidth);
+    const rightRows = Math.ceil(right.length / rightWidth);
+    if (leftWidth !== rightRows)
+        return E.VALUE();
+    const out = [];
+    for (let row = 0; row < leftRows; row += 1) {
+        for (let col = 0; col < rightWidth; col += 1) {
+            let sum = 0;
+            for (let k = 0; k < leftWidth; k += 1) {
+                const a = asNumber(left[row * leftWidth + k] ?? 0);
+                const b = asNumber(right[k * rightWidth + col] ?? 0);
+                if (a instanceof FormulaError)
+                    return a;
+                if (b instanceof FormulaError)
+                    return b;
+                sum += a * b;
+            }
+            out.push(sum);
+        }
+    }
+    return withWidth(out, rightWidth);
+}
+/** FORECAST fits a straight line through the known pairs and reads it at x. */
+function forecast(args) {
+    const x = asNumber(args[0] ?? 0);
+    if (x instanceof FormulaError)
+        return x;
+    const knownY = numbers(args.slice(1, 2));
+    const knownX = numbers(args.slice(2, 3));
+    const count = Math.min(knownY.length, knownX.length);
+    if (count < 2)
+        return E.VALUE();
+    const xs = knownX.slice(0, count);
+    const ys = knownY.slice(0, count);
+    const meanX = xs.reduce((sum, item) => sum + item, 0) / count;
+    const meanY = ys.reduce((sum, item) => sum + item, 0) / count;
+    let across = 0;
+    let square = 0;
+    for (let i = 0; i < count; i += 1) {
+        across += (xs[i] - meanX) * (ys[i] - meanY);
+        square += (xs[i] - meanX) ** 2;
+    }
+    if (square === 0)
+        return E.DIV0();
+    const slope = across / square;
+    return meanY + slope * (x - meanX);
+}
+/** XIRR finds the rate that makes the dated cash flows worth zero, counting the year as 365 days. */
+function xirr(args) {
+    const values = numbers(args.slice(0, 1));
+    const dates = numbers(args.slice(1, 2));
+    const guess = asNumber(args[2] ?? 0.1);
+    if (guess instanceof FormulaError)
+        return guess;
+    const count = Math.min(values.length, dates.length);
+    if (count < 2 || guess <= -1)
+        return E.NUM();
+    const flows = values.slice(0, count);
+    const days = dates.slice(0, count);
+    const first = days[0];
+    const worth = (rate) => flows.reduce((sum, value, index) => sum + value / (1 + rate) ** ((days[index] - first) / 365), 0);
+    let rate = guess;
+    for (let step = 0; step < 50; step += 1) {
+        const value = worth(rate);
+        const slope = (worth(rate + 1e-6) - value) / 1e-6;
+        if (!Number.isFinite(value))
+            return E.NUM();
+        if (Math.abs(value) < 1e-7)
+            return rate;
+        if (slope === 0)
+            break;
+        rate -= value / slope;
+        if (rate <= -1)
+            rate = -0.999999;
+    }
+    return Math.abs(worth(rate)) < 1e-4 ? rate : E.NUM();
+}
+/** MAKEARRAY builds a grid by calling the LAMBDA with each row and column number, both starting at 1. */
+function makeArray(args, ctx) {
+    const rows = asNumber(args[0] ?? 0);
+    const cols = asNumber(args[1] ?? 0);
+    const lambda = args[2];
+    if (rows instanceof FormulaError)
+        return rows;
+    if (cols instanceof FormulaError)
+        return cols;
+    if (!isLambda(lambda) || lambda.params.length !== 2)
+        return E.VALUE();
+    const height = Math.max(1, Math.floor(rows));
+    const width = Math.max(1, Math.floor(cols));
+    const out = [];
+    for (let row = 1; row <= height; row += 1) {
+        for (let col = 1; col <= width; col += 1) {
+            const value = applyLambda(lambda, [row, col], ctx);
+            if (value instanceof FormulaError)
+                return value;
+            out.push(scalarPrimitive(value));
+        }
+    }
+    return withWidth(out, width);
+}
+/** MAP calls the LAMBDA with the value at each position. Every range must have the same shape. */
+function mapArray(args, ctx) {
+    const lambda = args[args.length - 1];
+    const ranges = args.slice(0, -1);
+    if (!isLambda(lambda) || !ranges.length || lambda.params.length !== ranges.length)
+        return E.VALUE();
+    const first = ranges[0];
+    if (!Array.isArray(first))
+        return E.VALUE();
+    const width = rangeWidth(first);
+    if (ranges.some((range) => !Array.isArray(range) || range.length !== first.length))
+        return E.VALUE();
+    const out = [];
+    for (let i = 0; i < first.length; i += 1) {
+        const value = applyLambda(lambda, ranges.map((range) => range[i] ?? ""), ctx);
+        if (value instanceof FormulaError)
+            return value;
+        out.push(scalarPrimitive(value));
+    }
+    return withWidth(out, width);
 }
 const SUBTOTALS = {
     1: (args) => average(args),
@@ -1525,6 +2199,64 @@ const SUBTOTALS = {
     },
     9: (args) => numbers(args).reduce((a, b) => a + b, 0),
 };
+/** MAXIFS and MINIFS share SUMIFS' argument order: the values first, then range and criterion pairs. */
+function extremeIf(name, args) {
+    const values = Array.isArray(args[0]) ? args[0] : [args[0] ?? ""];
+    const rows = values.length;
+    const matched = [];
+    for (let row = 0; row < rows; row += 1) {
+        let ok = true;
+        for (let i = 1; i + 1 < args.length; i += 2) {
+            const range = args[i];
+            const cell = Array.isArray(range) ? range[row] ?? "" : range ?? "";
+            if (!matches(cell, args[i + 1])) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok)
+            matched.push(row);
+    }
+    const nums = matched.map((row) => asNumber(values[row] ?? "")).filter((item) => typeof item === "number");
+    if (!nums.length)
+        return 0;
+    return name === "MAXIFS" ? Math.max(...nums) : Math.min(...nums);
+}
+function gcdLcm(name, args) {
+    const nums = numbers(args).map((item) => Math.trunc(Math.abs(item)));
+    if (!nums.length)
+        return E.VALUE();
+    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+    const value = nums.reduce((acc, item) => gcd(acc, item));
+    if (name === "GCD")
+        return value;
+    return nums.reduce((acc, item) => (item === 0 ? 0 : acc / gcd(acc, item) * item), 1);
+}
+/** EVEN and ODD round away from zero to the next even or odd integer. */
+function evenOdd(value, odd) {
+    const sign = value < 0 ? -1 : 1;
+    const magnitude = Math.ceil(Math.abs(value));
+    const wanted = odd ? 1 : 0;
+    return sign * (magnitude + (magnitude % 2 === wanted ? 0 : 1));
+}
+/** Week of the year. System 1 starts weeks on Sunday, 2 on Monday. */
+function weekNumber(serial, system) {
+    const day = new Date(Math.round((serial - 25569) * 86400000));
+    const start = Date.UTC(day.getUTCFullYear(), 0, 1);
+    const firstWeekday = new Date(start).getUTCDay();
+    const offset = system === 2 ? (firstWeekday + 6) % 7 : firstWeekday;
+    const days = Math.round((day.getTime() - start) / 86400000);
+    return Math.floor((days + offset) / 7) + 1;
+}
+/** ISO week number, where weeks start on Monday and week 1 holds the first Thursday. */
+function isoWeekNumber(serial) {
+    const day = new Date(Math.round((serial - 25569) * 86400000));
+    const thursday = new Date(day.getTime());
+    thursday.setUTCDate(day.getUTCDate() + 3 - ((day.getUTCDay() + 6) % 7));
+    const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
+    firstThursday.setUTCDate(4 - ((firstThursday.getUTCDay() + 6) % 7) + 3);
+    return 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / 86400000 / 7);
+}
 function average(args) {
     const nums = numbers(args);
     return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : E.DIV0();
@@ -1718,6 +2450,10 @@ function indirectRange(ctx, args) {
     return values.length === 1 ? values[0] ?? "" : values;
 }
 function scalar(value) {
+    if (isPending(value))
+        return E.NAME();
+    if (isLambda(value))
+        return E.VALUE();
     if (Array.isArray(value) && value.length === 1)
         return scalar(value[0] ?? "");
     if (value instanceof FormulaError)

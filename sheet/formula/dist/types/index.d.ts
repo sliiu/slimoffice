@@ -1,6 +1,47 @@
 import type { ConsolidateFunc, SheetCell, SheetConsolidation, Workbook } from "@sliiu/sheet-core";
 export type FormulaPrimitive = number | string | boolean;
-export type FormulaValue = FormulaPrimitive | FormulaError | FormulaPrimitive[];
+type Token = {
+    kind: "num";
+    value: number;
+} | {
+    kind: "str";
+    value: string;
+} | {
+    kind: "id";
+    value: string;
+} | {
+    kind: "ref";
+    value: string;
+} | {
+    kind: "op";
+    value: string;
+} | {
+    kind: "lp";
+} | {
+    kind: "rp";
+} | {
+    kind: "comma";
+} | {
+    kind: "colon";
+} | {
+    kind: "bang";
+} | {
+    kind: "lb";
+} | {
+    kind: "rb";
+} | {
+    kind: "semi";
+};
+/** A LAMBDA waiting for its arguments. It only becomes a value once it is called. */
+export interface Lambda {
+    params: string[];
+    body: Token[];
+}
+/** A name with no definition yet. LET and LAMBDA fill these in before the result is used. */
+interface PendingName {
+    name: string;
+}
+export type FormulaValue = FormulaPrimitive | FormulaError | FormulaPrimitive[] | Lambda | PendingName;
 export declare class FormulaError {
     readonly code: string;
     constructor(code: string);

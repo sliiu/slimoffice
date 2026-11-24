@@ -206,3 +206,62 @@ test("lookup references shift, resize, and read back", () => {
   assert.equal(evaluate("=ROW(B2)", ctx(workbook, 4, 4)), 2);
   assert.equal(evaluate("=COLUMN()", ctx(workbook, 4, 3)), 4);
 });
+
+test("conditional extremes, information, rounding, and week numbers", () => {
+  const workbook = book([[{ value: "甲" }, { value: "5" }], [{ value: "乙" }, { value: "9" }], [{ value: "甲" }, { value: "2" }]]);
+  assert.equal(evaluate("=MAXIFS(B1:B3,A1:A3,\"甲\")", ctx(workbook)), 5);
+  assert.equal(evaluate("=MINIFS(B1:B3,A1:A3,\"甲\")", ctx(workbook)), 2);
+  assert.equal(evaluate("=XOR(TRUE,FALSE,TRUE)", ctx(workbook)), false);
+  assert.equal(evaluate("=XOR(TRUE,FALSE)", ctx(workbook)), true);
+  assert.equal(evaluate("=ISERROR(1/0)", ctx(workbook)), true);
+  assert.equal(evaluate("=ISERR(NA())", ctx(workbook)), false);
+  assert.equal(evaluate("=ISNA(NA())", ctx(workbook)), true);
+  assert.equal(evaluate("=ISEVEN(4)", ctx(workbook)), true);
+  assert.equal(evaluate("=ISODD(-3)", ctx(workbook)), true);
+  assert.equal(evaluate("=N(\"甲\")", ctx(workbook)), 0);
+  assert.equal(evaluate("=T(1)", ctx(workbook)), "");
+  assert.equal(evaluate("=TYPE(\"甲\")", ctx(workbook)), 2);
+  assert.equal(evaluate("=TRUNC(-8.9)", ctx(workbook)), -8);
+  assert.equal(evaluate("=MROUND(10,3)", ctx(workbook)), 9);
+  assert.equal(evaluate("=QUOTIENT(5,2)", ctx(workbook)), 2);
+  assert.equal(evaluate("=GCD(12,18)", ctx(workbook)), 6);
+  assert.equal(evaluate("=LCM(4,6)", ctx(workbook)), 12);
+  assert.equal(evaluate("=SUMSQ(3,4)", ctx(workbook)), 25);
+  assert.equal(evaluate("=EVEN(-3)", ctx(workbook)), -4);
+  assert.equal(evaluate("=ODD(4)", ctx(workbook)), 5);
+  assert.equal(formatResult(evaluate("=TEXTSPLIT(\"甲,乙;丙\",\",\",\";\")", ctx(workbook))), "甲,乙,丙,");
+  assert.equal(evaluate("=LOOKUP(6,B1:B3)", ctx(workbook)), 5);
+  assert.equal(evaluate("=XMATCH(\"乙\",A1:A3)", ctx(workbook)), 2);
+  assert.equal(evaluate("=WEEKNUM(DATE(2026,1,1))", ctx(workbook)), 1);
+  assert.equal(evaluate("=ISOWEEKNUM(DATE(2026,1,1))", ctx(workbook)), 1);
+  const random = evaluate("=RANDBETWEEN(1,1)", ctx(workbook));
+  assert.equal(random, 1);
+});
+
+test("array constants, database functions, lambda, and forecasting", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "金额" }],
+    [{ value: "甲" }, { value: "10" }],
+    [{ value: "乙" }, { value: "4" }],
+    [{ value: "甲" }, { value: "6" }],
+  ]);
+  assert.equal(formatResult(evaluate("={1,2;3,4}", ctx(workbook))), "1,2,3,4");
+  assert.equal(evaluate("=SUM({1,2;3,4})", ctx(workbook)), 10);
+  assert.equal(evaluate("=DSUM(A1:B4,\"金额\",A1:A2)", ctx(workbook)), 16);
+  assert.equal(evaluate("=DCOUNT(A1:B4,\"金额\",A1:A2)", ctx(workbook)), 2);
+  assert.equal(evaluate("=DAVERAGE(A1:B4,2,A1:A2)", ctx(workbook)), 8);
+  assert.equal(evaluate("=DMAX(A1:B4,\"金额\",A1:A2)", ctx(workbook)), 10);
+  assert.equal(evaluate("=DMIN(A1:B4,\"金额\",A1:A2)", ctx(workbook)), 6);
+  assert.equal(evaluate("=LAMBDA(x,x*2)(3)", ctx(workbook)), 6);
+  assert.equal(evaluate("=LET(x,2,y,x+3,y*x)", ctx(workbook)), 10);
+  assert.equal(formatResult(evaluate("=SORTBY({3;1;2},{1;3;2})", ctx(workbook))), "3,2,1");
+  assert.equal(formatResult(evaluate("=HSTACK({1;2},{3;4})", ctx(workbook))), "1,3,2,4");
+  assert.equal(formatResult(evaluate("=VSTACK({1,2},{3,4})", ctx(workbook))), "1,2,3,4");
+  assert.equal(evaluate("=DAYS360(DATE(2026,1,1),DATE(2026,3,1))", ctx(workbook)), 60);
+  assert.equal(formatResult(evaluate("=MMULT({1,2;3,4},{5,6;7,8})", ctx(workbook))), "19,22,43,50");
+  assert.equal(evaluate("=FORECAST(3,{2,4,6},{1,2,3})", ctx(workbook)), 6);
+  assert.equal(formatResult(evaluate("=MAKEARRAY(2,2,LAMBDA(r,c,r*10+c))", ctx(workbook))), "11,12,21,22");
+  assert.equal(formatResult(evaluate("=MAP({1,2,3},LAMBDA(x,x*2))", ctx(workbook))), "2,4,6");
+  const rate = evaluate("=XIRR({-100,110},{46023;46388})", ctx(workbook));
+  assert.ok(typeof rate === "number" && Math.abs(rate - 0.1) < 1e-4);
+});
