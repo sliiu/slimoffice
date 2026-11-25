@@ -21,6 +21,8 @@ export interface DocPage {
   margin: DocPageSetup["margin"];
   /** Page background, #rrggbb, when the document sets one. */
   background?: string;
+  /** The left margin the web view uses, in pixels. */
+  webMargin?: number;
   columns: number;
   /** Space between columns, in pixels, when the page has more than one. */
   columnSpace?: number;
@@ -40,10 +42,20 @@ export interface DocPage {
   verticalAlign?: DocPageSetup["verticalAlign"];
   /** The document grid's line pitch, in pixels. */
   linePitch?: number;
+  /** The document grid's character pitch, in pixels. Negative tightens. */
+  charSpace?: number;
   /** Text direction for the section this page belongs to. */
   direction?: "lr" | "tb" | "rl";
   /** The section numbers its lines. */
   lineNumbers?: boolean;
+  /** The section's text runs right to left. */
+  bidi?: boolean;
+  /** The gutter sits on the right. */
+  rtlGutter?: boolean;
+  /** The gutter, in pixels, so the right side can take it when it sits there. */
+  gutter?: number;
+  /** Endnotes print at the end of this section. */
+  endnotesHere?: boolean;
   blocks: DocBlock[];
 }
 
@@ -66,8 +78,22 @@ function storiesFor(section: DocSection, pageIndex: number): { header: DocParagr
  */
 export function paginate(document: Document): DocPage[] {
   const pages: DocPage[] = [];
+  const held: DocBlock[] = [];
   for (const section of document.sections) {
     const laid = pagesFor(section);
+    if (section.page.endnotesHere) {
+      const last = laid.at(-1);
+      if (last) last.blocks.push(...held.splice(0));
+    } else {
+      for (const page of laid) {
+        const kept: DocBlock[] = [];
+        for (const block of page.blocks) {
+          if (isDocParagraph(block) && (block.note?.kind === "endnote" || block.noteSeparator?.kind === "endnote")) held.push(block);
+          else kept.push(block);
+        }
+        page.blocks = kept;
+      }
+    }
     const last = pages.at(-1);
     const first = laid[0];
     if (section.page.break === "continuous" && last && first?.blocks.length && last.blocks.length) {
@@ -87,6 +113,10 @@ export function paginate(document: Document): DocPage[] {
       if (!first.blocks.length) laid.shift();
     }
     pages.push(...laid);
+  }
+  if (held.length) {
+    const last = pages.at(-1);
+    if (last) last.blocks.push(...held);
   }
   return pages.length ? pages : [emptyPage()];
 }
@@ -147,6 +177,7 @@ function pageFrom(section: DocSection, blocks: DocBlock[], pageIndex: number): D
     height: section.page.height * TWIP,
     margin: section.page.margin,
     ...(section.page.background ? { background: section.page.background } : {}),
+    ...(section.page.webMargin ? { webMargin: section.page.webMargin } : {}),
     columns: section.page.columns && section.page.columns > 1 ? section.page.columns : 1,
     ...(section.page.columns && section.page.columns > 1 && section.page.columnSpace ? { columnSpace: section.page.columnSpace * TWIP } : {}),
     ...(section.page.columns && section.page.columns > 1 && section.page.columnSeparator ? { columnSeparator: true } : {}),
@@ -159,8 +190,13 @@ function pageFrom(section: DocSection, blocks: DocBlock[], pageIndex: number): D
     ...(section.page.columnWidths?.length ? { columnWidths: section.page.columnWidths.map((width) => width * TWIP) } : {}),
     ...(section.page.verticalAlign ? { verticalAlign: section.page.verticalAlign } : {}),
     ...(section.page.grid?.linePitch ? { linePitch: section.page.grid.linePitch * TWIP } : {}),
+    ...(section.page.grid?.charSpace ? { charSpace: section.page.grid.charSpace * TWIP } : {}),
     ...(section.page.direction ? { direction: section.page.direction } : {}),
     ...(section.page.lineNumbers ? { lineNumbers: true } : {}),
+    ...(section.page.bidi ? { bidi: true } : {}),
+    ...(section.page.rtlGutter ? { rtlGutter: true } : {}),
+    ...(section.page.gutter ? { gutter: section.page.gutter * TWIP } : {}),
+    ...(section.page.endnotesHere ? { endnotesHere: true } : {}),
     blocks,
   };
 }

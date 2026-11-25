@@ -70,7 +70,7 @@ export function mountDocument(host, doc, options = {}) {
         growFont: () => stepFont(1),
         shrinkFont: () => stepFont(-1),
         font,
-        fontOn: () => textRuns(current())[0]?.font,
+        fontOn: () => shownFont(textRuns(current())[0]),
         color,
         colorOn: () => textRuns(current())[0]?.color,
         clearFormat,
@@ -106,6 +106,7 @@ export function mountDocument(host, doc, options = {}) {
         columnWidths,
         verticalAlign,
         linePitch,
+        charSpace,
         pageNumberFormat,
         pageColor,
         pageColorOn: () => currentSection().page.background,
@@ -174,6 +175,8 @@ export function mountDocument(host, doc, options = {}) {
         hiddenOn: () => flagOn("hidden"),
         emphasis: () => toggleFlag("emphasis"),
         emphasisOn: () => flagOn("emphasis"),
+        ruby: setRuby,
+        rubyOn: () => textRuns(current())[0]?.ruby ?? "",
         changeCase,
         lang,
         kern,
@@ -211,6 +214,13 @@ export function mountDocument(host, doc, options = {}) {
         textBox,
         paper: pageSize,
         pageEdges,
+        sectionBidi,
+        sectionBidiOn: () => currentSection().page.bidi === true,
+        rtlGutter,
+        rtlGutterOn: () => currentSection().page.rtlGutter === true,
+        endnotesHere,
+        endnotesHereOn: () => currentSection().page.endnotesHere === true,
+        noteStart,
         lineNumbers,
         pageBorder,
         direction,
@@ -277,7 +287,7 @@ export function mountDocument(host, doc, options = {}) {
             const paper = el("section", "doc-page");
             paper.style.width = mode === "print" ? `${page.width}px` : "auto";
             paper.style.minHeight = mode === "print" ? `${page.height}px` : "0";
-            paper.style.padding = mode === "print" ? sides(page.margin) : "12px";
+            paper.style.padding = mode === "print" ? sides(page.margin) : page.webMargin ? `${page.webMargin}px` : "12px";
             if (page.background)
                 paper.style.background = page.background;
             paintBorder(paper, page.border);
@@ -287,10 +297,16 @@ export function mountDocument(host, doc, options = {}) {
                 paper.style.alignContent = page.verticalAlign === "both" ? "space-between" : page.verticalAlign;
             if (page.linePitch)
                 paper.style.setProperty("--doc-line-pitch", `${page.linePitch}px`);
+            if (page.charSpace)
+                paper.style.setProperty("--doc-char-space", `${page.charSpace}px`);
             if (page.direction === "tb")
                 paper.style.writingMode = "vertical-rl";
+            if (page.direction === "rl" || page.bidi)
+                paper.style.direction = "rtl";
             if (page.lineNumbers)
                 paper.dataset.lineNumbers = "on";
+            if (page.rtlGutter && page.direction !== "tb" && page.gutter)
+                paper.style.paddingRight = `${page.margin.right * (96 / 1440) + page.gutter}px`;
             if (mode === "print" && page.header.length)
                 paper.append(story("header", page.header, page.headerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length));
             const body = el("div", "doc-body");
@@ -809,17 +825,34 @@ export function mountDocument(host, doc, options = {}) {
     }
     function toggleMark(mark) {
         const runs = targetRuns();
-        const on = runs.length > 0 && runs.every((run) => run[mark]);
+        // Complex text paints the complex-script mark, so that is the one the toggle reads.
+        const on = runs.length > 0 && runs.every((run) => shownMark(run, mark));
         applyToRuns((run) => {
-            if (on)
+            const complex = holdsComplex(run.text) ? complexMark(mark) : undefined;
+            if (on) {
                 delete run[mark];
-            else
+                if (complex)
+                    delete run[complex];
+            }
+            else {
                 run[mark] = true;
+                if (complex)
+                    run[complex] = true;
+            }
         });
     }
     function markOn(mark) {
         const runs = targetRuns();
-        return runs.length > 0 && runs.every((run) => run[mark]);
+        return runs.length > 0 && runs.every((run) => shownMark(run, mark));
+    }
+    /** Sets the pronunciation shown above the current run. An empty value clears it. */
+    function setRuby(value) {
+        applyToRuns((run) => {
+            if (value)
+                run.ruby = value;
+            else
+                delete run.ruby;
+        });
     }
     /** Switches a run flag on the selection, the same way bold does. */
     function toggleFlag(flag) {
@@ -972,6 +1005,9 @@ export function mountDocument(host, doc, options = {}) {
             return;
         applyToRuns((run) => {
             run.fontSize = pixels;
+            // Complex text paints the complex-script size, so the size the user sets has to land there too.
+            if (holdsComplex(run.text))
+                run.fontSizeCs = pixels;
         });
     }
     function stepFont(direction) {
@@ -982,10 +1018,16 @@ export function mountDocument(host, doc, options = {}) {
     }
     function font(name) {
         applyToRuns((run) => {
-            if (name)
+            if (name) {
                 run.font = name;
-            else
+                // Complex text paints the east-asian face first, so a chosen face replaces both.
+                if (holdsComplex(run.text))
+                    run.fontEastAsia = name;
+            }
+            else {
                 delete run.font;
+                delete run.fontEastAsia;
+            }
         });
     }
     function color(value) {
@@ -1400,17 +1442,24 @@ export function mountDocument(host, doc, options = {}) {
             section.page.verticalAlign = align;
         finish();
     }
-    /** Sets the document grid's line pitch. Zero clears the grid. */
+    /** Sets the document grid's line pitch. Zero clears the line pitch and leaves the character pitch. */
     function linePitch(pitch) {
         const section = currentSection();
         if (!Number.isFinite(pitch) || pitch < 0)
             return;
         if (!remember())
             return;
-        if (pitch)
-            section.page.grid = { ...section.page.grid, linePitch: Math.round(pitch) };
-        else
-            delete section.page.grid;
+        setGrid(section, "linePitch", pitch);
+        finish();
+    }
+    /** Sets the document grid's character pitch. Zero clears it. A negative pitch tightens the characters. */
+    function charSpace(space) {
+        const section = currentSection();
+        if (!Number.isFinite(space))
+            return;
+        if (!remember())
+            return;
+        setGrid(section, "charSpace", space);
         finish();
     }
     /** Sets where the section's page numbers start and the format they use. */
@@ -2399,6 +2448,59 @@ export function mountDocument(host, doc, options = {}) {
             return;
         insertDrawing("rect", value, 3657600, 914400);
     }
+    /** Makes the current section run right to left. */
+    function sectionBidi(on) {
+        const section = currentSection();
+        if (!remember())
+            return;
+        if (on)
+            section.page.bidi = true;
+        else
+            delete section.page.bidi;
+        finish();
+    }
+    /** Puts the gutter on the right side of the page. */
+    function rtlGutter(on) {
+        const section = currentSection();
+        if (!remember())
+            return;
+        if (on)
+            section.page.rtlGutter = true;
+        else
+            delete section.page.rtlGutter;
+        finish();
+    }
+    /** Prints endnotes at the end of this section instead of the document. */
+    function endnotesHere(on) {
+        const section = currentSection();
+        if (!remember())
+            return;
+        if (on)
+            section.page.endnotesHere = true;
+        else
+            delete section.page.endnotesHere;
+        finish();
+    }
+    /** Sets where footnotes and endnotes start counting. Zero clears that one. */
+    function noteStart(footnote, endnote) {
+        const section = currentSection();
+        if (!remember())
+            return;
+        const notes = { ...section.page.notes };
+        if (footnote)
+            notes.footnoteStart = Math.round(footnote);
+        else
+            delete notes.footnoteStart;
+        if (endnote)
+            notes.endnoteStart = Math.round(endnote);
+        else
+            delete notes.endnoteStart;
+        if (notes.footnoteStart !== undefined || notes.footnoteRestart || notes.endnoteStart !== undefined || notes.endnoteRestart)
+            section.page.notes = notes;
+        else
+            delete section.page.notes;
+        finish();
+    }
     /** Sets the gutter and how far the header and footer sit from the page edge. */
     function pageEdges(gutter, header, footer) {
         const section = currentSection();
@@ -2991,6 +3093,12 @@ function runNode(run) {
     if (run.tabBefore)
         span.append(document.createTextNode(" "));
     span.append(document.createTextNode(run.caps ? run.text.toUpperCase() : run.text));
+    if (run.ruby) {
+        const guide = document.createElement("span");
+        guide.className = "doc-ruby";
+        guide.textContent = run.ruby;
+        span.append(guide);
+    }
     const complex = holdsComplex(run.text);
     if (run.bold || (complex && run.boldCs))
         span.style.fontWeight = "700";
@@ -3104,6 +3212,19 @@ function cropClip(crop) {
         return "";
     const edge = (value) => Math.max(0, Math.min(value ?? 0, 100));
     return `inset(${edge(crop.top)}% ${edge(crop.right)}% ${edge(crop.bottom)}% ${edge(crop.left)}%)`;
+}
+/** The complex-script mark that pairs with a plain one. Strike has none. */
+function complexMark(mark) {
+    if (mark === "bold")
+        return "boldCs";
+    if (mark === "italic")
+        return "italicCs";
+    return undefined;
+}
+/** The mark the page paints: complex text shows the complex-script mark. */
+function shownMark(run, mark) {
+    const complex = holdsComplex(run.text) ? complexMark(mark) : undefined;
+    return complex ? run[complex] === true : run[mark] === true;
 }
 /** Whether the text holds a character that takes the complex-script size: CJK, or Arabic and Hebrew. */
 function holdsComplex(text) {
@@ -3247,6 +3368,24 @@ function sides(margin) {
 }
 function twips(value) {
     return `${(value * 96) / 1440}px`;
+}
+/** The face the page shows: complex text paints the east-asian face first. */
+function shownFont(run) {
+    if (!run)
+        return undefined;
+    return holdsComplex(run.text) && run.fontEastAsia ? run.fontEastAsia : run.font;
+}
+/** Sets one side of the document grid and drops the grid once nothing is left. */
+function setGrid(section, key, value) {
+    const grid = { ...section.page.grid };
+    if (value)
+        grid[key] = Math.round(value);
+    else
+        delete grid[key];
+    if (grid.type || grid.linePitch || grid.charSpace)
+        section.page.grid = grid;
+    else
+        delete section.page.grid;
 }
 function base64(bytes) {
     let binary = "";

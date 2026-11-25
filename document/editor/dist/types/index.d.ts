@@ -70,8 +70,10 @@ export interface DocumentView {
     columnWidths(widths: number[]): void;
     /** Sets where the section's text sits between the top and bottom margin. */
     verticalAlign(align: "top" | "center" | "both" | "bottom"): void;
-    /** Sets the document grid's line pitch, in twips. Zero clears it. */
+    /** Sets the document grid's line pitch, in twips. Zero clears it and leaves the character pitch. */
     linePitch(twips: number): void;
+    /** Sets the document grid's character pitch, in twips. Zero clears it. A negative pitch tightens. */
+    charSpace(twips: number): void;
     /** Sets where page numbers start and the format they use. A blank format is decimal. */
     pageNumberFormat(start: number, format?: string): void;
     /** Whether the current section draws a line between columns. */
@@ -199,6 +201,10 @@ export interface DocumentView {
     /** Puts a dot emphasis mark on the run. Pressing again clears it. */
     emphasis(): void;
     emphasisOn(): boolean;
+    /** Sets the pronunciation shown above the current run. An empty value clears it. */
+    ruby(text: string): void;
+    /** The pronunciation above the current run. */
+    rubyOn(): string;
     /** Rewrites the current text: upper, lower, sentence, title, or toggle. */
     changeCase(mode: "upper" | "lower" | "sentence" | "title" | "toggle"): void;
     /** Sets the run's language. An empty value clears it. */
@@ -273,6 +279,17 @@ export interface DocumentView {
     paper(width: number, height: number): void;
     /** Sets the gutter and the header and footer distance, in twips. */
     pageEdges(gutter: number, header: number, footer: number): void;
+    /** Makes the current section run right to left, or clears it. */
+    sectionBidi(on: boolean): void;
+    sectionBidiOn(): boolean;
+    /** Puts the gutter on the right, or clears it. */
+    rtlGutter(on: boolean): void;
+    rtlGutterOn(): boolean;
+    /** Prints the endnotes at the end of the current section, or at the end of the document. */
+    endnotesHere(on: boolean): void;
+    endnotesHereOn(): boolean;
+    /** Sets where the current section's footnotes and endnotes start counting. Zero clears both. */
+    noteStart(footnote: number, endnote: number): void;
     /** Turns line numbers on or off for the current section. */
     lineNumbers(on: boolean): void;
     /** Puts a border around the page. An empty color clears it. */

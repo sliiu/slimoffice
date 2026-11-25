@@ -21,8 +21,26 @@ function storiesFor(section, pageIndex) {
  */
 function paginate(document) {
     const pages = [];
+    const held = [];
     for (const section of document.sections) {
         const laid = pagesFor(section);
+        if (section.page.endnotesHere) {
+            const last = laid.at(-1);
+            if (last)
+                last.blocks.push(...held.splice(0));
+        }
+        else {
+            for (const page of laid) {
+                const kept = [];
+                for (const block of page.blocks) {
+                    if ((0, document_core_1.isDocParagraph)(block) && (block.note?.kind === "endnote" || block.noteSeparator?.kind === "endnote"))
+                        held.push(block);
+                    else
+                        kept.push(block);
+                }
+                page.blocks = kept;
+            }
+        }
         const last = pages.at(-1);
         const first = laid[0];
         if (section.page.break === "continuous" && last && first?.blocks.length && last.blocks.length) {
@@ -44,6 +62,11 @@ function paginate(document) {
                 laid.shift();
         }
         pages.push(...laid);
+    }
+    if (held.length) {
+        const last = pages.at(-1);
+        if (last)
+            last.blocks.push(...held);
     }
     return pages.length ? pages : [emptyPage()];
 }
@@ -108,6 +131,7 @@ function pageFrom(section, blocks, pageIndex) {
         height: section.page.height * TWIP,
         margin: section.page.margin,
         ...(section.page.background ? { background: section.page.background } : {}),
+        ...(section.page.webMargin ? { webMargin: section.page.webMargin } : {}),
         columns: section.page.columns && section.page.columns > 1 ? section.page.columns : 1,
         ...(section.page.columns && section.page.columns > 1 && section.page.columnSpace ? { columnSpace: section.page.columnSpace * TWIP } : {}),
         ...(section.page.columns && section.page.columns > 1 && section.page.columnSeparator ? { columnSeparator: true } : {}),
@@ -120,8 +144,13 @@ function pageFrom(section, blocks, pageIndex) {
         ...(section.page.columnWidths?.length ? { columnWidths: section.page.columnWidths.map((width) => width * TWIP) } : {}),
         ...(section.page.verticalAlign ? { verticalAlign: section.page.verticalAlign } : {}),
         ...(section.page.grid?.linePitch ? { linePitch: section.page.grid.linePitch * TWIP } : {}),
+        ...(section.page.grid?.charSpace ? { charSpace: section.page.grid.charSpace * TWIP } : {}),
         ...(section.page.direction ? { direction: section.page.direction } : {}),
         ...(section.page.lineNumbers ? { lineNumbers: true } : {}),
+        ...(section.page.bidi ? { bidi: true } : {}),
+        ...(section.page.rtlGutter ? { rtlGutter: true } : {}),
+        ...(section.page.gutter ? { gutter: section.page.gutter * TWIP } : {}),
+        ...(section.page.endnotesHere ? { endnotesHere: true } : {}),
         blocks,
     };
 }

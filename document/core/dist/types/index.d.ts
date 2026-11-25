@@ -60,6 +60,8 @@ export interface DocRun {
         vert?: boolean;
         twoInOne?: boolean;
     };
+    /** The pronunciation shown above the run, from `ruby`. The run's text is the base. */
+    ruby?: string;
     /** Character scale in percent. 100 is unchanged. */
     scale?: number;
     /** Extra space between characters, in twips. */
@@ -305,8 +307,10 @@ export interface DocPageSetup {
     columnSpace?: number;
     /** A line between columns. */
     columnSeparator?: boolean;
-    /** Page background from settings or the background element, #rrggbb. */
+    /** Page background from settings, the background element, or webSettings, #rrggbb. */
     background?: string;
+    /** The left margin webSettings stores for the web view, in pixels. */
+    webMargin?: number;
     /** Gutter, in twips. */
     gutter?: number;
     /** Distance from the page edge to the header and footer, in twips. */
@@ -334,6 +338,19 @@ export interface DocPageSetup {
     pageNumber?: {
         start?: number;
         format?: string;
+    };
+    /** The section's text runs right to left, from `bidi`. */
+    bidi?: boolean;
+    /** The gutter sits on the right, from `rtlGutter`. */
+    rtlGutter?: boolean;
+    /** Endnotes print at the end of the section instead of the document, from `endnotePr`. */
+    endnotesHere?: boolean;
+    /** Where footnotes and endnotes start counting, and how they are numbered. */
+    notes?: {
+        footnoteStart?: number;
+        footnoteRestart?: string;
+        endnoteStart?: number;
+        endnoteRestart?: string;
     };
 }
 /** One side of a border. `style` is the line, `size` its width in eighths of a point, `color` #rrggbb. */

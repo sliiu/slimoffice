@@ -5,6 +5,8 @@ export interface DocPage {
     margin: DocPageSetup["margin"];
     /** Page background, #rrggbb, when the document sets one. */
     background?: string;
+    /** The left margin the web view uses, in pixels. */
+    webMargin?: number;
     columns: number;
     /** Space between columns, in pixels, when the page has more than one. */
     columnSpace?: number;
@@ -24,10 +26,20 @@ export interface DocPage {
     verticalAlign?: DocPageSetup["verticalAlign"];
     /** The document grid's line pitch, in pixels. */
     linePitch?: number;
+    /** The document grid's character pitch, in pixels. Negative tightens. */
+    charSpace?: number;
     /** Text direction for the section this page belongs to. */
     direction?: "lr" | "tb" | "rl";
     /** The section numbers its lines. */
     lineNumbers?: boolean;
+    /** The section's text runs right to left. */
+    bidi?: boolean;
+    /** The gutter sits on the right. */
+    rtlGutter?: boolean;
+    /** The gutter, in pixels, so the right side can take it when it sits there. */
+    gutter?: number;
+    /** Endnotes print at the end of this section. */
+    endnotesHere?: boolean;
     blocks: DocBlock[];
 }
 export type StoryKind = "default" | "first" | "even";

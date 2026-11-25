@@ -195,7 +195,11 @@ function mergeSection(original: string, page: DocPageSetup): string {
     .replace(/<w:type\b[^/]*\/>/gi, "")
     .replace(/<w:vAlign\b[^/]*\/>/gi, "")
     .replace(/<w:docGrid\b[^/]*\/>/gi, "")
-    .replace(/<w:pgNumType\b[^/]*\/>/gi, "");
+    .replace(/<w:pgNumType\b[^/]*\/>/gi, "")
+    .replace(/<w:bidi\b[^/]*\/>/gi, "")
+    .replace(/<w:rtlGutter\b[^/]*\/>/gi, "")
+    .replace(/<w:footnotePr\b[\s\S]*?<\/w:footnotePr>/gi, "")
+    .replace(/<w:endnotePr\b[\s\S]*?<\/w:endnotePr>/gi, "");
   return `<w:sectPr>${pageXml(page)}${kept}</w:sectPr>`;
 }
 
@@ -216,7 +220,25 @@ function pageXml(page: DocPageSetup): string {
   const numbering = pageNumberXml(page.pageNumber);
   const direction = page.direction === "tb" ? `<w:textDirection w:val="tbRl"/>` : page.direction === "rl" ? `<w:textDirection w:val="rlTb"/>` : "";
   const type = page.break && page.break !== "nextPage" ? `<w:type w:val="${page.break}"/>` : "";
-  return `<w:pgSz w:w="${Math.round(page.width)}" w:h="${Math.round(page.height)}"${orient}/><w:pgMar w:top="${Math.round(page.margin.top)}" w:bottom="${Math.round(page.margin.bottom)}" w:left="${Math.round(page.margin.left)}" w:right="${Math.round(page.margin.right)}"${gutter}${header}${footer}/>${columns}${lines}${pageBorder}${direction}${type}${aligned}${grid}${numbering}`;
+  const bidi = page.bidi ? `<w:bidi/>` : "";
+  const gutterSide = page.rtlGutter ? `<w:rtlGutter/>` : "";
+  const notes = notesXml(page);
+  return `<w:pgSz w:w="${Math.round(page.width)}" w:h="${Math.round(page.height)}"${orient}/><w:pgMar w:top="${Math.round(page.margin.top)}" w:bottom="${Math.round(page.margin.bottom)}" w:left="${Math.round(page.margin.left)}" w:right="${Math.round(page.margin.right)}"${gutter}${header}${footer}/>${columns}${lines}${pageBorder}${direction}${type}${aligned}${grid}${numbering}${bidi}${gutterSide}${notes}`;
+}
+
+/** The section's footnote and endnote numbering, and where the endnotes print. */
+function notesXml(page: DocPageSetup): string {
+  const notes = page.notes;
+  const footnote = noteXml("footnotePr", notes?.footnoteStart, notes?.footnoteRestart, undefined);
+  const endnote = noteXml("endnotePr", notes?.endnoteStart, notes?.endnoteRestart, page.endnotesHere ? "sectEnd" : undefined);
+  return `${footnote}${endnote}`;
+}
+
+function noteXml(name: string, start: number | undefined, restart: string | undefined, pos: string | undefined): string {
+  const begun = start !== undefined ? `<w:numStart w:val="${Math.round(start)}"/>` : "";
+  const again = restart ? `<w:numRestart w:val="${attr(restart)}"/>` : "";
+  const placed = pos ? `<w:pos w:val="${pos}"/>` : "";
+  return begun || again || placed ? `<w:${name}>${begun}${again}${placed}</w:${name}>` : "";
 }
 
 /** Columns, with each column's own width when the section gives them. */
@@ -399,6 +421,7 @@ function runXml(run: DocRun): string {
   if (run.raw) return run.raw;
   const lead = `${run.breakBefore ? `<w:br${run.breakBefore === "line" ? "" : ` w:type="${run.breakBefore}"`}/>` : ""}${run.tabBefore ? "<w:tab/>" : ""}`;
   if (run.watermark) return watermarkXml(run.text);
+  if (run.ruby !== undefined) return rubyXml(run);
   if (run.image) return `<w:r>${lead}${drawingXml(run)}</w:r>`;
   const props = runPropsXml(run);
   const comment = run.comment ? `<w:commentReference w:id="${attr(run.comment)}"/>` : "";
@@ -412,6 +435,12 @@ function eastAsianLayoutXml(layout: NonNullable<DocRun["eastAsianLayout"]>): str
   const vert = layout.vert ? ` w:vert="1"` : "";
   const two = layout.twoInOne ? ` w:vertCompress="1"` : "";
   return `<w:eastAsianLayout${id}${combine}${vert}${two}/>`;
+}
+
+/** Ruby text: the pronunciation above the base. The base keeps the run's formatting. */
+function rubyXml(run: DocRun): string {
+  const props = runPropsXml(run);
+  return `<w:r>${props}<w:ruby><w:rt>${text(run.ruby ?? "")}</w:rt><w:rubyBase><w:r>${props}<w:t xml:space="preserve">${text(run.text)}</w:t></w:r></w:rubyBase></w:ruby></w:r>`;
 }
 
 /** The markup was read without its prefix, so writing it back puts the wordprocessing prefix on every element. */

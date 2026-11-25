@@ -95,8 +95,12 @@ export async function parseDocx(input: ArrayBuffer | Uint8Array | Blob): Promise
   const context: Context = { archive, rels: relationships(archive), numbering: numberingTable(archive), styles: styleTable(archive) };
   const background = colorOf(root ? child(root, "background") : undefined);
   const sections = sectionsFrom(body, context, xml);
-  if (background) {
-    for (const section of sections) section.page.background = background;
+  const web = webSettingsOf(archive);
+  if (background || web.background) {
+    for (const section of sections) section.page.background = background ?? web.background;
+  }
+  if (web.margin) {
+    for (const section of sections) section.page.webMargin = web.margin;
   }
   const sources = bibliography(archive);
   const recipients = mailRecipients(archive);
@@ -127,6 +131,22 @@ export async function parseDocx(input: ArrayBuffer | Uint8Array | Blob): Promise
     ...(readOnly ? { readOnly: true } : {}),
     ...(media.size ? { media } : {}),
     source: archive.files,
+  };
+}
+
+/** The page color and the margin webSettings.xml stores, in pixels, used when the document is shown as a web page. */
+function webSettingsOf(archive: OfficeArchive): { background?: string; margin?: number } {
+  const xml = archive.getText("word/webSettings.xml");
+  if (!xml) return {};
+  const root = child(parseXml(xml), "webSettings");
+  if (!root) return {};
+  const color = colorOf(child(root, "background"));
+  const divs = child(root, "divs");
+  const margin = divs ? child(child(divs, "div") ?? {}, "marLeft") : undefined;
+  const pixels = margin ? Number(attr(margin, "val")) : undefined;
+  return {
+    ...(color ? { background: color } : {}),
+    ...(pixels !== undefined && Number.isFinite(pixels) ? { margin: pixels } : {}),
   };
 }
 
@@ -229,26 +249,36 @@ function notesFrom(archive: OfficeArchive, context: Context): { notes: Map<strin
   return { notes, separators };
 }
 
-/** Puts each note's body right after the paragraph that references it, with the separator line ahead of the first one. */
+/** Puts each note's body right after the paragraph that references it, with the separator line ahead of the first one. A section that ends its own endnotes takes the ones left over. */
 function attachNotes(sections: DocSection[], notes: Map<string, DocParagraph>, separators: DocParagraph[]): void {
   if (!notes.size && !separators.length) return;
+  const placed = new Set<string>();
   for (const section of sections) {
     const blocks: DocBlock[] = [];
     const drawn = new Set<string>();
+    const place = (note: DocParagraph) => {
+      if (!note.note) return;
+      const kind = note.note.kind;
+      if (!drawn.has(kind)) {
+        const line = separators.find((item) => item.noteSeparator?.kind === kind && item.noteSeparator.type === "separator");
+        if (line) blocks.push(line);
+        drawn.add(kind);
+      }
+      blocks.push(note);
+      placed.add(`${kind}:${note.note.id}`);
+    };
     for (const block of section.blocks) {
       blocks.push(block);
       if (!isDocParagraph(block)) continue;
       for (const run of block.runs) {
         const id = noteId(run.raw);
         const note = id ? notes.get(id) : undefined;
-        if (!note?.note) continue;
-        const kind = note.note.kind;
-        if (!drawn.has(kind)) {
-          const line = separators.find((item) => item.noteSeparator?.kind === kind && item.noteSeparator.type === "separator");
-          if (line) blocks.push(line);
-          drawn.add(note.note.kind);
-        }
-        blocks.push(note);
+        if (note?.note) place(note);
+      }
+    }
+    if (section.page.endnotesHere) {
+      for (const [id, note] of notes) {
+        if (note.note?.kind === "endnote" && !placed.has(id)) place(note);
       }
     }
     section.blocks = blocks;
@@ -524,7 +554,31 @@ function readPageExtras(node: XmlNode, margin: XmlNode | undefined): Partial<Doc
   if (grid) extras.grid = grid;
   const numbering = pageNumberOf(child(node, "pgNumType"));
   if (numbering) extras.pageNumber = numbering;
+  if (on(child(node, "bidi"))) extras.bidi = true;
+  if (on(child(node, "rtlGutter"))) extras.rtlGutter = true;
+  const endnotes = child(node, "endnotePr");
+  const endnotePos = endnotes ? child(endnotes, "pos") : undefined;
+  if (endnotePos && attr(endnotePos, "val") === "sectEnd") extras.endnotesHere = true;
+  const notes = notesOf(child(node, "footnotePr"), endnotes);
+  if (notes) extras.notes = notes;
   return extras;
+}
+
+/** Where the section's footnotes and endnotes start, and whether they restart. */
+function notesOf(footnotes: XmlNode | undefined, endnotes: XmlNode | undefined): DocPageSetup["notes"] | undefined {
+  const notes: NonNullable<DocPageSetup["notes"]> = {};
+  const read = (node: XmlNode | undefined, start: "footnoteStart" | "endnoteStart", restart: "footnoteRestart" | "endnoteRestart") => {
+    if (!node) return;
+    const numStart = child(node, "numStart");
+    const begun = numStart ? Number(attr(numStart, "val")) : undefined;
+    if (begun !== undefined && Number.isFinite(begun)) notes[start] = begun;
+    const numRestart = child(node, "numRestart");
+    const again = numRestart ? attr(numRestart, "val") : undefined;
+    if (again) notes[restart] = again;
+  };
+  read(footnotes, "footnoteStart", "footnoteRestart");
+  read(endnotes, "endnoteStart", "endnoteRestart");
+  return notes.footnoteStart !== undefined || notes.footnoteRestart || notes.endnoteStart !== undefined || notes.endnoteRestart ? notes : undefined;
 }
 
 /** The columns element, read here so the width list does not depend on the count. */
@@ -860,6 +914,8 @@ function paragraphFrom(node: XmlNode, context: Context, verbatim: Array<{ name: 
         .map((run) => run.text)
         .join("");
       paragraph.runs.push(fieldRun(instruction.trim(), result, {}, bookmark));
+    } else if (item.name === "ruby") {
+      paragraph.runs.push(rubyRun(item.node, bookmark));
     } else if (KEPT_INLINE.has(item.name)) {
       const shown = item.name === "object" ? visibleText(item.node).trim() : "";
       paragraph.runs.push({ text: shown, raw: markup || serialize(item.name, item.node), ...(bookmark ? { bookmark } : {}) });
@@ -1007,7 +1063,7 @@ function signatureOf(node: XmlNode): string {
 }
 
 /** Inline markup kept verbatim: a footnote or endnote reference, a comment marker, ruby text, an embedded object. */
-const KEPT_INLINE = new Set(["footnoteReference", "endnoteReference", "ruby", "object", "pict", "fldSimple", "commentRangeStart", "commentRangeEnd", "bookmarkEnd", "smartTag"]);
+const KEPT_INLINE = new Set(["footnoteReference", "endnoteReference", "object", "pict", "fldSimple", "commentRangeStart", "commentRangeEnd", "bookmarkEnd", "smartTag"]);
 
 /** A move range marks where a tracked move begins and ends. The text between the marks is read with the move itself. */
 const MOVE_RANGES = new Set(["moveFromRangeStart", "moveFromRangeEnd", "moveToRangeStart", "moveToRangeEnd"]);
@@ -1097,6 +1153,10 @@ function runsFrom(node: XmlNode, context: Context, link: string | undefined, boo
         usedBookmark = true;
         pending = {};
       }
+    } else if (item.name === "ruby") {
+      runs.push(rubyRun(item.node, !usedBookmark ? bookmark : undefined));
+      usedBookmark = true;
+      pending = {};
     } else if (item.name === "commentReference") {
       runs.push(runWith(shared, text(item.node), pending, !usedBookmark ? bookmark : undefined));
       const run = runs[runs.length - 1]!;
@@ -1111,6 +1171,17 @@ function runsFrom(node: XmlNode, context: Context, link: string | undefined, boo
     }
   }
   return runs;
+}
+
+/** Ruby text: the base is the run's text, the guide is the pronunciation shown above it. */
+function rubyRun(node: XmlNode, bookmark: string | undefined): DocRun {
+  const base = child(node, "rubyBase");
+  const guide = child(node, "rt");
+  return {
+    text: base ? visibleText(base) : "",
+    ruby: guide ? visibleText(guide) : "",
+    ...(bookmark ? { bookmark } : {}),
+  };
 }
 
 function runWith(
