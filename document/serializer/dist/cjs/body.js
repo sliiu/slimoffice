@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.applyDocumentEdits = applyDocumentEdits;
+exports.spacingXml = spacingXml;
+exports.indentXml = indentXml;
 exports.storyPartXml = storyPartXml;
 const document_core_1 = require("@sliiu/document-core");
 function applyDocumentEdits(xml, document, relationships = []) {
@@ -166,7 +168,11 @@ function mergeSection(original, page) {
         .replace(/<w:type\b[^/]*\/>/gi, "")
         .replace(/<w:vAlign\b[^/]*\/>/gi, "")
         .replace(/<w:docGrid\b[^/]*\/>/gi, "")
-        .replace(/<w:pgNumType\b[^/]*\/>/gi, "");
+        .replace(/<w:pgNumType\b[^/]*\/>/gi, "")
+        .replace(/<w:bidi\b[^/]*\/>/gi, "")
+        .replace(/<w:rtlGutter\b[^/]*\/>/gi, "")
+        .replace(/<w:footnotePr\b[\s\S]*?<\/w:footnotePr>/gi, "")
+        .replace(/<w:endnotePr\b[\s\S]*?<\/w:endnotePr>/gi, "");
     return `<w:sectPr>${pageXml(page)}${kept}</w:sectPr>`;
 }
 function sectionXml(page) {
@@ -178,14 +184,31 @@ function pageXml(page) {
     const gutter = page.gutter ? ` w:gutter="${Math.round(page.gutter)}"` : "";
     const header = page.headerDistance !== undefined ? ` w:header="${Math.round(page.headerDistance)}"` : "";
     const footer = page.footerDistance !== undefined ? ` w:footer="${Math.round(page.footerDistance)}"` : "";
-    const lines = page.lineNumbers ? `<w:lnNumType w:countBy="1"/>` : "";
+    const lineStart = page.lineStart && page.lineStart !== 1 ? ` w:start="${Math.round(page.lineStart)}"` : "";
+    const lines = page.lineNumbers ? `<w:lnNumType w:countBy="1"${lineStart}/>` : "";
     const pageBorder = page.border ? `<w:pgBorders>${borderSidesXml(page.border)}</w:pgBorders>` : "";
     const aligned = page.verticalAlign && page.verticalAlign !== "top" ? `<w:vAlign w:val="${page.verticalAlign}"/>` : "";
     const grid = gridXml(page.grid);
     const numbering = pageNumberXml(page.pageNumber);
     const direction = page.direction === "tb" ? `<w:textDirection w:val="tbRl"/>` : page.direction === "rl" ? `<w:textDirection w:val="rlTb"/>` : "";
     const type = page.break && page.break !== "nextPage" ? `<w:type w:val="${page.break}"/>` : "";
-    return `<w:pgSz w:w="${Math.round(page.width)}" w:h="${Math.round(page.height)}"${orient}/><w:pgMar w:top="${Math.round(page.margin.top)}" w:bottom="${Math.round(page.margin.bottom)}" w:left="${Math.round(page.margin.left)}" w:right="${Math.round(page.margin.right)}"${gutter}${header}${footer}/>${columns}${lines}${pageBorder}${direction}${type}${aligned}${grid}${numbering}`;
+    const bidi = page.bidi ? `<w:bidi/>` : "";
+    const gutterSide = page.rtlGutter ? `<w:rtlGutter/>` : "";
+    const notes = notesXml(page);
+    return `<w:pgSz w:w="${Math.round(page.width)}" w:h="${Math.round(page.height)}"${orient}/><w:pgMar w:top="${Math.round(page.margin.top)}" w:bottom="${Math.round(page.margin.bottom)}" w:left="${Math.round(page.margin.left)}" w:right="${Math.round(page.margin.right)}"${gutter}${header}${footer}/>${columns}${lines}${pageBorder}${direction}${type}${aligned}${grid}${numbering}${bidi}${gutterSide}${notes}`;
+}
+/** The section's footnote and endnote numbering, and where the endnotes print. */
+function notesXml(page) {
+    const notes = page.notes;
+    const footnote = noteXml("footnotePr", notes?.footnoteStart, notes?.footnoteRestart, undefined);
+    const endnote = noteXml("endnotePr", notes?.endnoteStart, notes?.endnoteRestart, page.endnotesHere ? "sectEnd" : undefined);
+    return `${footnote}${endnote}`;
+}
+function noteXml(name, start, restart, pos) {
+    const begun = start !== undefined ? `<w:numStart w:val="${Math.round(start)}"/>` : "";
+    const again = restart ? `<w:numRestart w:val="${attr(restart)}"/>` : "";
+    const placed = pos ? `<w:pos w:val="${pos}"/>` : "";
+    return begun || again || placed ? `<w:${name}>${begun}${again}${placed}</w:${name}>` : "";
 }
 /** Columns, with each column's own width when the section gives them. */
 function columnsXml(page) {
@@ -277,6 +300,8 @@ function paragraphXml(paragraph, section, links, added) {
         props.push("<w:keepLines/>");
     if (paragraph.widowControl)
         props.push("<w:widowControl/>");
+    if (paragraph.noLineNumbers)
+        props.push("<w:suppressLineNumbers/>");
     if (paragraph.outline !== undefined)
         props.push(`<w:outlineLvl w:val="${Math.round(paragraph.outline)}"/>`);
     for (const mark of paragraph.marks ?? [])
@@ -319,22 +344,33 @@ function frameXml(frame) {
     return `<w:framePr${width}${height}${x}${y}${anchorX}${anchorY}${wrap}${drop}${space}/>`;
 }
 function tabsXml(tabs) {
-    const stops = tabs.map((tab) => `<w:tab w:val="${tab.align ?? "left"}" w:pos="${Math.round(tab.pos)}"/>`).join("");
+    const stops = tabs.map((tab) => {
+        const leader = tab.leader ? ` w:leader="${attr(tab.leader)}"` : "";
+        return `<w:tab w:val="${tab.align ?? "left"}" w:pos="${Math.round(tab.pos)}"${leader}/>`;
+    }).join("");
     return `<w:tabs>${stops}</w:tabs>`;
 }
 function spacingXml(spacing) {
     const before = spacing.before !== undefined ? ` w:before="${Math.round(spacing.before)}"` : "";
     const after = spacing.after !== undefined ? ` w:after="${Math.round(spacing.after)}"` : "";
+    const beforeLines = spacing.beforeLines !== undefined ? ` w:beforeLines="${Math.round(spacing.beforeLines)}"` : "";
+    const afterLines = spacing.afterLines !== undefined ? ` w:afterLines="${Math.round(spacing.afterLines)}"` : "";
+    const beforeAuto = spacing.beforeAuto ? ` w:beforeAutospacing="1"` : "";
+    const afterAuto = spacing.afterAuto ? ` w:afterAutospacing="1"` : "";
     const line = spacing.line !== undefined ? ` w:line="${Math.round(spacing.line)}"` : "";
     const rule = spacing.lineRule ? ` w:lineRule="${spacing.lineRule}"` : "";
-    return `<w:spacing${before}${after}${line}${rule}/>`;
+    return `<w:spacing${before}${after}${beforeLines}${afterLines}${beforeAuto}${afterAuto}${line}${rule}/>`;
 }
 function indentXml(indent) {
     const left = indent.left !== undefined ? ` w:left="${Math.round(indent.left)}"` : "";
     const right = indent.right !== undefined ? ` w:right="${Math.round(indent.right)}"` : "";
     const first = indent.firstLine !== undefined ? ` w:firstLine="${Math.round(indent.firstLine)}"` : "";
     const hanging = indent.hanging !== undefined ? ` w:hanging="${Math.round(indent.hanging)}"` : "";
-    return `<w:ind${left}${right}${first}${hanging}/>`;
+    const leftChars = indent.leftChars !== undefined ? ` w:leftChars="${Math.round(indent.leftChars)}"` : "";
+    const rightChars = indent.rightChars !== undefined ? ` w:rightChars="${Math.round(indent.rightChars)}"` : "";
+    const firstChars = indent.firstLineChars !== undefined ? ` w:firstLineChars="${Math.round(indent.firstLineChars)}"` : "";
+    const hangingChars = indent.hangingChars !== undefined ? ` w:hangingChars="${Math.round(indent.hangingChars)}"` : "";
+    return `<w:ind${left}${right}${first}${hanging}${leftChars}${rightChars}${firstChars}${hangingChars}/>`;
 }
 function runsXml(runs, links, added) {
     let out = "";
@@ -391,6 +427,8 @@ function runXml(run) {
     const lead = `${run.breakBefore ? `<w:br${run.breakBefore === "line" ? "" : ` w:type="${run.breakBefore}"`}/>` : ""}${run.tabBefore ? "<w:tab/>" : ""}`;
     if (run.watermark)
         return watermarkXml(run.text);
+    if (run.ruby !== undefined)
+        return rubyXml(run);
     if (run.image)
         return `<w:r>${lead}${drawingXml(run)}</w:r>`;
     const props = runPropsXml(run);
@@ -404,6 +442,11 @@ function eastAsianLayoutXml(layout) {
     const vert = layout.vert ? ` w:vert="1"` : "";
     const two = layout.twoInOne ? ` w:vertCompress="1"` : "";
     return `<w:eastAsianLayout${id}${combine}${vert}${two}/>`;
+}
+/** Ruby text: the pronunciation above the base. The base keeps the run's formatting. */
+function rubyXml(run) {
+    const props = runPropsXml(run);
+    return `<w:r>${props}<w:ruby><w:rt>${text(run.ruby ?? "")}</w:rt><w:rubyBase><w:r>${props}<w:t xml:space="preserve">${text(run.text)}</w:t></w:r></w:rubyBase></w:ruby></w:r>`;
 }
 /** The markup was read without its prefix, so writing it back puts the wordprocessing prefix on every element. */
 function withPrefix(markup) {
@@ -426,12 +469,16 @@ function runPropsXml(run) {
         parts.push("<w:i/>");
     if (run.italicCs)
         parts.push("<w:iCs/>");
+    if (run.rtl)
+        parts.push("<w:rtl/>");
+    if (run.complex)
+        parts.push("<w:cs/>");
     if (run.caps)
         parts.push("<w:caps/>");
     if (run.smallCaps)
         parts.push("<w:smallCaps/>");
     if (run.underline)
-        parts.push(`<w:u w:val="${run.underline}"/>`);
+        parts.push(`<w:u w:val="${run.underline}"${run.underlineColor ? ` w:color="${attr(run.underlineColor.replace(/^#/, ""))}"` : ""}/>`);
     if (run.strike)
         parts.push("<w:strike/>");
     if (run.doubleStrike)

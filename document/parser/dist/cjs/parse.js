@@ -35,7 +35,9 @@ const HIGHLIGHTS = {
 };
 const UNDERLINES = new Set(["single", "double", "dotted", "dash", "wave"]);
 /** Paragraph switches the model keeps so a rewrite does not drop them. */
-const PARAGRAPH_MARKS = ["suppressLineNumbers", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
+const PARAGRAPH_MARKS = ["suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
+/** Switches a paragraph style can turn on for every paragraph that uses it. */
+const STYLE_MARKS = ["keepNext", "keepLines", "widowControl", "suppressLineNumbers", ...PARAGRAPH_MARKS];
 /** Run switches the model keeps so a rewrite does not drop them. */
 const RUN_MARKS = ["outline", "shadow", "emboss", "imprint", "effect"];
 const BORDER_SIDES = ["top", "left", "bottom", "right"];
@@ -53,9 +55,14 @@ async function parseDocx(input) {
     const context = { archive, rels: relationships(archive), numbering: numberingTable(archive), styles: styleTable(archive) };
     const background = colorOf(root ? (0, xml_1.child)(root, "background") : undefined);
     const sections = sectionsFrom(body, context, xml);
-    if (background) {
+    const web = webSettingsOf(archive);
+    if (background || web.background) {
         for (const section of sections)
-            section.page.background = background;
+            section.page.background = background ?? web.background;
+    }
+    if (web.margin) {
+        for (const section of sections)
+            section.page.webMargin = web.margin;
     }
     const sources = bibliography(archive);
     const recipients = mailRecipients(archive);
@@ -86,6 +93,23 @@ async function parseDocx(input) {
         ...(readOnly ? { readOnly: true } : {}),
         ...(media.size ? { media } : {}),
         source: archive.files,
+    };
+}
+/** The page color and the margin webSettings.xml stores, in pixels, used when the document is shown as a web page. */
+function webSettingsOf(archive) {
+    const xml = archive.getText("word/webSettings.xml");
+    if (!xml)
+        return {};
+    const root = (0, xml_1.child)((0, xml_1.parseXml)(xml), "webSettings");
+    if (!root)
+        return {};
+    const color = colorOf((0, xml_1.child)(root, "background"));
+    const divs = (0, xml_1.child)(root, "divs");
+    const margin = divs ? (0, xml_1.child)((0, xml_1.child)(divs, "div") ?? {}, "marLeft") : undefined;
+    const pixels = margin ? Number((0, xml_1.attr)(margin, "val")) : undefined;
+    return {
+        ...(color ? { background: color } : {}),
+        ...(pixels !== undefined && Number.isFinite(pixels) ? { margin: pixels } : {}),
     };
 }
 /** Every part under word/media/, pictures the story never shows included. */
@@ -189,13 +213,27 @@ function notesFrom(archive, context) {
     read("word/endnotes.xml", "endnote", "endnotes", "endnoteRef");
     return { notes, separators };
 }
-/** Puts each note's body right after the paragraph that references it, with the separator line ahead of the first one. */
+/** Puts each note's body right after the paragraph that references it, with the separator line ahead of the first one. A section that ends its own endnotes takes the ones left over. */
 function attachNotes(sections, notes, separators) {
     if (!notes.size && !separators.length)
         return;
+    const placed = new Set();
     for (const section of sections) {
         const blocks = [];
         const drawn = new Set();
+        const place = (note) => {
+            if (!note.note)
+                return;
+            const kind = note.note.kind;
+            if (!drawn.has(kind)) {
+                const line = separators.find((item) => item.noteSeparator?.kind === kind && item.noteSeparator.type === "separator");
+                if (line)
+                    blocks.push(line);
+                drawn.add(kind);
+            }
+            blocks.push(note);
+            placed.add(`${kind}:${note.note.id}`);
+        };
         for (const block of section.blocks) {
             blocks.push(block);
             if (!(0, document_core_1.isDocParagraph)(block))
@@ -203,16 +241,14 @@ function attachNotes(sections, notes, separators) {
             for (const run of block.runs) {
                 const id = noteId(run.raw);
                 const note = id ? notes.get(id) : undefined;
-                if (!note?.note)
-                    continue;
-                const kind = note.note.kind;
-                if (!drawn.has(kind)) {
-                    const line = separators.find((item) => item.noteSeparator?.kind === kind && item.noteSeparator.type === "separator");
-                    if (line)
-                        blocks.push(line);
-                    drawn.add(note.note.kind);
-                }
-                blocks.push(note);
+                if (note?.note)
+                    place(note);
+            }
+        }
+        if (section.page.endnotesHere) {
+            for (const [id, note] of notes) {
+                if (note.note?.kind === "endnote" && !placed.has(id))
+                    place(note);
             }
         }
         section.blocks = blocks;
@@ -489,8 +525,13 @@ function readPageExtras(node, margin) {
         extras.headerDistance = headerDistance;
     if (footerDistance !== undefined)
         extras.footerDistance = footerDistance;
-    if ((0, xml_1.child)(node, "lnNumType"))
+    const numbered = (0, xml_1.child)(node, "lnNumType");
+    if (numbered) {
         extras.lineNumbers = true;
+        const start = Number((0, xml_1.attr)(numbered, "start"));
+        if (Number.isFinite(start) && start > 0 && start !== 1)
+            extras.lineStart = start;
+    }
     const border = borderOf((0, xml_1.child)(node, "pgBorders"));
     if (border)
         extras.border = border;
@@ -519,7 +560,37 @@ function readPageExtras(node, margin) {
     const numbering = pageNumberOf((0, xml_1.child)(node, "pgNumType"));
     if (numbering)
         extras.pageNumber = numbering;
+    if (on((0, xml_1.child)(node, "bidi")))
+        extras.bidi = true;
+    if (on((0, xml_1.child)(node, "rtlGutter")))
+        extras.rtlGutter = true;
+    const endnotes = (0, xml_1.child)(node, "endnotePr");
+    const endnotePos = endnotes ? (0, xml_1.child)(endnotes, "pos") : undefined;
+    if (endnotePos && (0, xml_1.attr)(endnotePos, "val") === "sectEnd")
+        extras.endnotesHere = true;
+    const notes = notesOf((0, xml_1.child)(node, "footnotePr"), endnotes);
+    if (notes)
+        extras.notes = notes;
     return extras;
+}
+/** Where the section's footnotes and endnotes start, and whether they restart. */
+function notesOf(footnotes, endnotes) {
+    const notes = {};
+    const read = (node, start, restart) => {
+        if (!node)
+            return;
+        const numStart = (0, xml_1.child)(node, "numStart");
+        const begun = numStart ? Number((0, xml_1.attr)(numStart, "val")) : undefined;
+        if (begun !== undefined && Number.isFinite(begun))
+            notes[start] = begun;
+        const numRestart = (0, xml_1.child)(node, "numRestart");
+        const again = numRestart ? (0, xml_1.attr)(numRestart, "val") : undefined;
+        if (again)
+            notes[restart] = again;
+    };
+    read(footnotes, "footnoteStart", "footnoteRestart");
+    read(endnotes, "endnoteStart", "endnoteRestart");
+    return notes.footnoteStart !== undefined || notes.footnoteRestart || notes.endnoteStart !== undefined || notes.endnoteRestart ? notes : undefined;
 }
 /** The columns element, read here so the width list does not depend on the count. */
 function columnsOf(node) {
@@ -687,6 +758,7 @@ function styleTable(archive) {
     if (!root)
         return { styles: {} };
     const styles = {};
+    let defaultParagraph;
     for (const item of (0, xml_1.children)(root, "style")) {
         const id = (0, xml_1.attr)(item, "styleId");
         if (!id)
@@ -695,6 +767,10 @@ function styleTable(archive) {
         const kind = (0, xml_1.attr)(item, "type");
         if (kind === "character" || kind === "table")
             style.type = kind;
+        const markedDefault = (0, xml_1.attr)(item, "default");
+        if (!defaultParagraph && kind !== "character" && kind !== "table" && (markedDefault === "1" || markedDefault === "true")) {
+            defaultParagraph = id;
+        }
         const based = (0, xml_1.child)(item, "basedOn");
         const basedOn = based ? (0, xml_1.attr)(based, "val") : undefined;
         if (basedOn)
@@ -711,11 +787,72 @@ function styleTable(archive) {
         const run = (0, xml_1.child)(item, "rPr");
         if (run)
             Object.assign(style, runProps(run));
+        // Paragraph spacing wins over a run's character spacing, which shares the name on the run.
+        const spacing = props ? spacingFrom((0, xml_1.child)(props, "spacing")) : undefined;
+        if (spacing)
+            style.spacing = spacing;
+        const indent = props ? indentFrom((0, xml_1.child)(props, "ind")) : undefined;
+        if (indent)
+            style.indent = indent;
+        if (props) {
+            const shading = colorOf((0, xml_1.child)(props, "shd"));
+            if (shading)
+                style.shading = shading;
+            const border = borderOf((0, xml_1.child)(props, "pBdr"));
+            if (border)
+                style.border = border;
+            if ((0, xml_1.child)(props, "pageBreakBefore"))
+                style.pageBreakBefore = true;
+            const outline = (0, xml_1.child)(props, "outlineLvl");
+            const outlineLevel = Number(outline ? (0, xml_1.attr)(outline, "val") : undefined);
+            if (Number.isFinite(outlineLevel) && outlineLevel >= 0)
+                style.outline = outlineLevel;
+            const kept = STYLE_MARKS.filter((name) => on((0, xml_1.child)(props, name)));
+            if (kept.length)
+                style.marks = kept;
+            const frame = frameOf((0, xml_1.child)(props, "framePr"));
+            if (frame)
+                style.frame = frame;
+            const direction = directionOf((0, xml_1.child)(props, "textDirection"));
+            if (direction)
+                style.direction = direction;
+            const aligned = (0, xml_1.child)(props, "textAlignment");
+            const alignedValue = aligned ? (0, xml_1.attr)(aligned, "val") : undefined;
+            if (alignedValue)
+                style.textAlign = alignedValue;
+            const numbering = (0, xml_1.child)(props, "numPr");
+            if (numbering) {
+                const idNode = (0, xml_1.child)(numbering, "numId");
+                const levelNode = (0, xml_1.child)(numbering, "ilvl");
+                const numId = idNode ? (0, xml_1.attr)(idNode, "val") : undefined;
+                if (numId && numId !== "0")
+                    style.numbering = { id: numId, level: Number(levelNode ? (0, xml_1.attr)(levelNode, "val") : "0") || 0 };
+            }
+            const tabs = (0, xml_1.child)(props, "tabs");
+            if (tabs) {
+                const stops = [];
+                for (const tab of (0, xml_1.children)(tabs, "tab")) {
+                    const pos = Number((0, xml_1.attr)(tab, "pos"));
+                    if (!Number.isFinite(pos))
+                        continue;
+                    const align = (0, xml_1.attr)(tab, "val");
+                    const leader = (0, xml_1.attr)(tab, "leader");
+                    const stop = { pos };
+                    if (align === "left" || align === "center" || align === "right" || align === "decimal")
+                        stop.align = align;
+                    if (leader)
+                        stop.leader = leader;
+                    stops.push(stop);
+                }
+                if (stops.length)
+                    style.tabs = stops;
+            }
+        }
         styles[id] = style;
     }
     const defaults = defaultsOf((0, xml_1.child)(root, "docDefaults"));
     const latent = latentOf((0, xml_1.child)(root, "latentStyles"));
-    return { styles, ...(defaults ? { defaults } : {}), ...(latent.length ? { latent } : {}) };
+    return { styles, ...(defaults ? { defaults } : {}), ...(defaultParagraph ? { defaultParagraph } : {}), ...(latent.length ? { latent } : {}) };
 }
 /** The formatting a run or a paragraph gets when it names no style. */
 function defaultsOf(node) {
@@ -735,6 +872,20 @@ function defaultsOf(node) {
         defaults.italic = true;
     if (props.color)
         defaults.color = props.color;
+    const paragraphDefaults = (0, xml_1.child)(node, "pPrDefault");
+    const paragraphProps = paragraphDefaults ? (0, xml_1.child)(paragraphDefaults, "pPr") : undefined;
+    if (paragraphProps) {
+        const spacing = spacingFrom((0, xml_1.child)(paragraphProps, "spacing"));
+        const indent = indentFrom((0, xml_1.child)(paragraphProps, "ind"));
+        const align = (0, xml_1.child)(paragraphProps, "jc");
+        const alignValue = align ? (0, xml_1.attr)(align, "val") : undefined;
+        if (spacing)
+            defaults.spacing = spacing;
+        if (indent)
+            defaults.indent = indent;
+        if (alignValue === "center" || alignValue === "right" || alignValue === "both" || alignValue === "left")
+            defaults.align = alignValue;
+    }
     return Object.keys(defaults).length ? defaults : undefined;
 }
 /** Styles Word builds the first time they are used, named and counted. */
@@ -802,12 +953,15 @@ function numberingTable(archive) {
             const format = formatNode ? (0, xml_1.attr)(formatNode, "val") : undefined;
             const pictureId = (0, xml_1.child)(level, "lvlPicBulletId");
             const picture = pictureId ? pictures.get((0, xml_1.attr)(pictureId, "val") ?? "") : undefined;
+            const levelProps = (0, xml_1.child)(level, "pPr");
+            const indent = levelProps ? indentFrom((0, xml_1.child)(levelProps, "ind")) : undefined;
             levels[Number.isFinite(index) ? index : 0] = {
                 text: value,
                 ...(bullet ? { bullet } : {}),
                 ...(picture ? { picture } : {}),
                 ...(Number.isFinite(startAt) && startAt !== 1 ? { start: startAt } : {}),
                 ...(format && format !== "decimal" && format !== "bullet" ? { format } : {}),
+                ...(indent ? { indent } : {}),
             };
         }
         abstracts.set(id, levels);
@@ -905,6 +1059,9 @@ function paragraphFrom(node, context, verbatim = [], blockIndex = -1, carried) {
                 .join("");
             paragraph.runs.push(fieldRun(instruction.trim(), result, {}, bookmark));
         }
+        else if (item.name === "ruby") {
+            paragraph.runs.push(rubyRun(item.node, bookmark));
+        }
         else if (KEPT_INLINE.has(item.name)) {
             const shown = item.name === "object" ? visibleText(item.node).trim() : "";
             paragraph.runs.push({ text: shown, raw: markup || (0, xml_1.serialize)(item.name, item.node), ...(bookmark ? { bookmark } : {}) });
@@ -977,6 +1134,8 @@ function applyParagraphProps(paragraph, props, context) {
         paragraph.keepLines = true;
     if (on((0, xml_1.child)(props, "widowControl")))
         paragraph.widowControl = true;
+    if (on((0, xml_1.child)(props, "suppressLineNumbers")))
+        paragraph.noLineNumbers = true;
     const outline = (0, xml_1.child)(props, "outlineLvl");
     const outlineLevel = Number(outline ? (0, xml_1.attr)(outline, "val") : undefined);
     if (Number.isFinite(outlineLevel) && outlineLevel >= 0)
@@ -1014,7 +1173,13 @@ function applyParagraphProps(paragraph, props, context) {
             if (!Number.isFinite(pos))
                 continue;
             const align = (0, xml_1.attr)(tab, "val");
-            stops.push(align === "center" || align === "right" || align === "decimal" ? { pos, align } : { pos });
+            const leader = (0, xml_1.attr)(tab, "leader");
+            const stop = { pos };
+            if (align === "center" || align === "right" || align === "decimal")
+                stop.align = align;
+            if (leader)
+                stop.leader = leader;
+            stops.push(stop);
         }
         if (stops.length)
             paragraph.tabs = stops;
@@ -1026,11 +1191,21 @@ function spacingFrom(node) {
     const spacing = {};
     const before = positive((0, xml_1.attr)(node, "before"));
     const after = positive((0, xml_1.attr)(node, "after"));
+    const beforeLines = positive((0, xml_1.attr)(node, "beforeLines"));
+    const afterLines = positive((0, xml_1.attr)(node, "afterLines"));
     const line = positive((0, xml_1.attr)(node, "line"));
     if (before !== undefined)
         spacing.before = before;
     if (after !== undefined)
         spacing.after = after;
+    if (beforeLines !== undefined)
+        spacing.beforeLines = beforeLines;
+    if (afterLines !== undefined)
+        spacing.afterLines = afterLines;
+    if ((0, xml_1.attr)(node, "beforeAutospacing") === "1")
+        spacing.beforeAuto = true;
+    if ((0, xml_1.attr)(node, "afterAutospacing") === "1")
+        spacing.afterAuto = true;
     if (line !== undefined) {
         spacing.line = line;
         const rule = (0, xml_1.attr)(node, "lineRule");
@@ -1047,6 +1222,10 @@ function indentFrom(node) {
     const right = positive((0, xml_1.attr)(node, "right") ?? (0, xml_1.attr)(node, "end"));
     const first = positive((0, xml_1.attr)(node, "firstLine"));
     const hanging = positive((0, xml_1.attr)(node, "hanging"));
+    const leftChars = positive((0, xml_1.attr)(node, "leftChars") ?? (0, xml_1.attr)(node, "startChars"));
+    const rightChars = positive((0, xml_1.attr)(node, "rightChars") ?? (0, xml_1.attr)(node, "endChars"));
+    const firstChars = positive((0, xml_1.attr)(node, "firstLineChars"));
+    const hangingChars = positive((0, xml_1.attr)(node, "hangingChars"));
     if (left !== undefined)
         indent.left = left;
     if (right !== undefined)
@@ -1055,6 +1234,14 @@ function indentFrom(node) {
         indent.firstLine = first;
     if (hanging !== undefined)
         indent.hanging = hanging;
+    if (leftChars !== undefined)
+        indent.leftChars = leftChars;
+    if (rightChars !== undefined)
+        indent.rightChars = rightChars;
+    if (firstChars !== undefined)
+        indent.firstLineChars = firstChars;
+    if (hangingChars !== undefined)
+        indent.hangingChars = hangingChars;
     return Object.keys(indent).length ? indent : undefined;
 }
 /** Runs inside a tracked change. The text is readable; the original markup is what gets written back. */
@@ -1078,7 +1265,7 @@ function signatureOf(node) {
         .join(",");
 }
 /** Inline markup kept verbatim: a footnote or endnote reference, a comment marker, ruby text, an embedded object. */
-const KEPT_INLINE = new Set(["footnoteReference", "endnoteReference", "ruby", "object", "pict", "fldSimple", "commentRangeStart", "commentRangeEnd", "bookmarkEnd", "smartTag"]);
+const KEPT_INLINE = new Set(["footnoteReference", "endnoteReference", "object", "pict", "fldSimple", "commentRangeStart", "commentRangeEnd", "bookmarkEnd", "smartTag"]);
 /** A move range marks where a tracked move begins and ends. The text between the marks is read with the move itself. */
 const MOVE_RANGES = new Set(["moveFromRangeStart", "moveFromRangeEnd", "moveToRangeStart", "moveToRangeEnd"]);
 /** One end of a move range, kept so writing puts the marker back where it was. */
@@ -1177,6 +1364,11 @@ function runsFrom(node, context, link, bookmark, verbatim = [], blockIndex = -1,
                 pending = {};
             }
         }
+        else if (item.name === "ruby") {
+            runs.push(rubyRun(item.node, !usedBookmark ? bookmark : undefined));
+            usedBookmark = true;
+            pending = {};
+        }
         else if (item.name === "commentReference") {
             runs.push(runWith(shared, (0, xml_1.text)(item.node), pending, !usedBookmark ? bookmark : undefined));
             const run = runs[runs.length - 1];
@@ -1193,6 +1385,16 @@ function runsFrom(node, context, link, bookmark, verbatim = [], blockIndex = -1,
         }
     }
     return runs;
+}
+/** Ruby text: the base is the run's text, the guide is the pronunciation shown above it. */
+function rubyRun(node, bookmark) {
+    const base = (0, xml_1.child)(node, "rubyBase");
+    const guide = (0, xml_1.child)(node, "rt");
+    return {
+        text: base ? visibleText(base) : "",
+        ruby: guide ? visibleText(guide) : "",
+        ...(bookmark ? { bookmark } : {}),
+    };
 }
 function runWith(shared, value, pending, bookmark) {
     return {
@@ -1216,6 +1418,9 @@ function runProps(props) {
         const value = (0, xml_1.attr)(underline, "val");
         if (value && value !== "none")
             shared.underline = UNDERLINES.has(value) ? value : "single";
+        const color = hexColor((0, xml_1.attr)(underline, "color"));
+        if (color)
+            shared.underlineColor = color;
     }
     if (on((0, xml_1.child)(props, "strike")))
         shared.strike = true;
@@ -1278,6 +1483,10 @@ function runProps(props) {
         shared.boldCs = true;
     if (on((0, xml_1.child)(props, "iCs")))
         shared.italicCs = true;
+    if (on((0, xml_1.child)(props, "rtl")))
+        shared.rtl = true;
+    if (on((0, xml_1.child)(props, "cs")))
+        shared.complex = true;
     const fonts = (0, xml_1.child)(props, "rFonts");
     const font = fonts ? (0, xml_1.attr)(fonts, "ascii") ?? (0, xml_1.attr)(fonts, "hAnsi") : undefined;
     const themeFont = fonts ? themeFace((0, xml_1.attr)(fonts, "asciiTheme") ?? (0, xml_1.attr)(fonts, "hAnsiTheme"), "latin") : undefined;

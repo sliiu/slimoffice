@@ -675,23 +675,25 @@ export function mountDocument(host, doc, options = {}) {
         stamp(node, spot);
         if (sameSpot(spot, selected))
             node.classList.add("is-selected");
-        const style = styleOf(doc.styles, item.style);
+        const style = styleOf(doc.styles, item.style ?? doc.styles?.defaultParagraph);
         const linked = doc.styles?.styles?.[style.link ?? ""];
         const align = item.align ?? style.align;
         if (align)
             node.style.textAlign = align === "both" || align === "distribute" ? "justify" : align;
         if (align === "distribute")
             node.style.textAlignLast = "justify";
-        if (item.shading)
-            node.style.background = item.shading;
-        paintBorder(node, item.border);
-        if (item.outline !== undefined && item.outline > 0)
-            node.style.paddingLeft = twips(item.outline * 360);
-        if (item.widowControl)
+        const shading = item.shading ?? style.shading;
+        if (shading)
+            node.style.background = shading;
+        paintBorder(node, overlay(style.border, item.border));
+        const outline = item.outline ?? style.outline;
+        if (outline !== undefined && outline > 0)
+            node.style.paddingLeft = twips(outline * 360);
+        const marks = [...new Set([...(style.marks ?? []), ...(item.marks ?? [])])];
+        if (item.widowControl || marks.includes("widowControl"))
             node.dataset.widow = "on";
-        if (item.noLineNumbers)
+        if (item.noLineNumbers || marks.includes("suppressLineNumbers"))
             node.dataset.noLineNumber = "on";
-        const marks = item.marks ?? [];
         if (marks.includes("wordWrap"))
             node.dataset.wordWrap = "on";
         if (marks.includes("snapToGrid"))
@@ -716,30 +718,35 @@ export function mountDocument(host, doc, options = {}) {
             node.dataset.adjustRight = "on";
         if (marks.includes("suppressOverlap"))
             node.dataset.noOverlap = "on";
-        if (item.frame?.width)
-            node.style.maxWidth = twips(item.frame.width);
-        if (item.frame?.height)
-            node.style.maxHeight = twips(item.frame.height);
-        if (item.frame && (item.frame.x !== undefined || item.frame.y !== undefined) && !item.frame.dropCap) {
+        const frame = overlay(style.frame, item.frame);
+        if (frame?.width)
+            node.style.maxWidth = twips(frame.width);
+        if (frame?.height)
+            node.style.maxHeight = twips(frame.height);
+        if (frame && (frame.x !== undefined || frame.y !== undefined) && !frame.dropCap) {
             node.style.position = "relative";
-            if (item.frame.x !== undefined)
-                node.style.left = twips(item.frame.x);
-            if (item.frame.y !== undefined)
-                node.style.top = twips(item.frame.y);
+            if (frame.x !== undefined)
+                node.style.left = twips(frame.x);
+            if (frame.y !== undefined)
+                node.style.top = twips(frame.y);
         }
-        if (item.frame?.dropCap)
-            node.dataset.dropCap = String(item.frame.dropCap.lines);
-        if (item.pageBreakBefore)
+        if (frame?.dropCap)
+            node.dataset.dropCap = String(frame.dropCap.lines);
+        if (item.pageBreakBefore || style.pageBreakBefore)
             node.dataset.breakBefore = "page";
-        if (item.textAlign)
-            node.style.verticalAlign = item.textAlign;
-        if (item.direction === "tb")
+        const baseline = item.textAlign ?? style.textAlign;
+        if (baseline)
+            node.style.verticalAlign = baseline;
+        const direction = item.direction ?? style.direction;
+        if (direction === "tb")
             node.style.writingMode = "vertical-rl";
-        else if (item.direction === "rl")
+        else if (direction === "rl")
             node.style.direction = "rtl";
-        // The paragraph's own indent wins, then the list level's, then the style's.
-        const levelIndent = item.numbering ? doc.numbering?.[item.numbering.id]?.[item.numbering.level]?.indent : undefined;
-        const indent = item.indent ?? levelIndent ?? style.indent;
+        // The paragraph's own numbering wins. A style's numbering is how a list style works.
+        const numbering = item.numbering ?? style.numbering;
+        // The paragraph's own indent wins one side at a time, then the list level's, then the style's.
+        const levelIndent = numbering ? doc.numbering?.[numbering.id]?.[numbering.level]?.indent : undefined;
+        const indent = overlay(style.indent, levelIndent, item.indent);
         if (indent?.left)
             node.style.marginLeft = twips(indent.left);
         if (indent?.right)
@@ -761,7 +768,7 @@ export function mountDocument(host, doc, options = {}) {
             node.style.textIndent = chars(-indent.hangingChars);
             node.style.paddingLeft = chars(indent.hangingChars);
         }
-        const spacing = item.spacing ?? style.spacing;
+        const spacing = overlay(style.spacing, item.spacing);
         // The grid stores twips per line; the page variable is the same distance in pixels.
         const pitch = doc.sections[spot.section]?.page.grid?.linePitch;
         const pitchPx = pitch ? (pitch * 96) / 1440 : 0;
@@ -780,8 +787,8 @@ export function mountDocument(host, doc, options = {}) {
         const line = spacing?.line;
         if (line !== undefined)
             node.style.lineHeight = spacing?.lineRule === "auto" ? String(line / 240) : twips(line);
-        const marker = listMarker(doc.numbering, item, listCounts(spot));
-        const picture = item.numbering ? doc.numbering?.[item.numbering.id]?.[item.numbering.level]?.picture : undefined;
+        const marker = listMarker(doc.numbering, numbering ? { ...item, numbering } : item, listCounts(spot, numbering));
+        const picture = numbering ? doc.numbering?.[numbering.id]?.[numbering.level]?.picture : undefined;
         if (picture?.imageBytes) {
             const bullet = document.createElement("img");
             bullet.className = "doc-marker";
@@ -827,7 +834,7 @@ export function mountDocument(host, doc, options = {}) {
             }
             node.append(rendered);
         });
-        placeTabs(node, item.tabs);
+        placeTabs(node, item.tabs ?? style.tabs);
         if (editable && !item.runs.some((run) => !run.image)) {
             const empty = runNode({ text: "" });
             empty.contentEditable = "true";
@@ -849,17 +856,19 @@ export function mountDocument(host, doc, options = {}) {
         return node;
     }
     /** The count at every level for the numbering id this paragraph uses. A deeper level restarts after a shallower one. */
-    function listCounts(spot) {
+    function listCounts(spot, numbering = paragraphAt(spot)?.numbering) {
         const section = doc.sections[spot.section];
         const item = paragraphAt(spot);
-        if (!section || !item?.numbering)
+        if (!section || !numbering)
             return [1];
         const counts = [];
-        const startOf = (level) => doc.numbering?.[item.numbering.id]?.[level]?.start ?? 1;
+        const startOf = (level) => doc.numbering?.[numbering.id]?.[level]?.start ?? 1;
+        const used = (block) => isDocParagraph(block) ? block.numbering ?? styleOf(doc.styles, block.style ?? doc.styles?.defaultParagraph).numbering : undefined;
         for (const block of section.blocks) {
-            if (isDocTable(block) || isDocRaw(block) || block.numbering?.id !== item.numbering.id)
+            const blockNumbering = used(block);
+            if (!blockNumbering || blockNumbering.id !== numbering.id)
                 continue;
-            const level = block.numbering.level;
+            const level = blockNumbering.level;
             counts[level] = (counts[level] ?? startOf(level) - 1) + 1;
             for (let deeper = level + 1; deeper < counts.length; deeper += 1)
                 counts[deeper] = 0;
@@ -3550,6 +3559,13 @@ function twips(value) {
 /** Hundredths of a character, the unit `leftChars` and its siblings are stored in. */
 function chars(hundredths) {
     return `${hundredths / 100}em`;
+}
+/** Layers spacing or indent so a value named later wins, and a side nobody names stays. */
+function overlay(...layers) {
+    const set = layers.filter((layer) => layer !== undefined);
+    if (!set.length)
+        return undefined;
+    return Object.assign({}, ...set);
 }
 /** The face the page shows: complex text paints the east-asian face first. */
 function shownFont(run) {

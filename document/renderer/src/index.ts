@@ -2,6 +2,7 @@ import {
   isDocParagraph,
   isDocRaw,
   isDocTable,
+  styleOf,
   type DocBlock,
   type DocCell,
   type DocPageSetup,
@@ -86,7 +87,7 @@ export function paginate(document: Document): DocPage[] {
   const pages: DocPage[] = [];
   const held: DocBlock[] = [];
   for (const section of document.sections) {
-    const laid = pagesFor(section);
+    const laid = pagesFor(section, document.styles);
     if (section.page.endnotesHere) {
       const last = laid.at(-1);
       if (last) last.blocks.push(...held.splice(0));
@@ -127,7 +128,7 @@ export function paginate(document: Document): DocPage[] {
   return pages.length ? pages : [emptyPage()];
 }
 
-function pagesFor(section: DocSection): DocPage[] {
+function pagesFor(section: DocSection, styles: Document["styles"]): DocPage[] {
   const content = contentHeight(section.page);
   const columns = section.page.columns && section.page.columns > 1 ? section.page.columns : 1;
   const pages: DocPage[] = [];
@@ -146,7 +147,8 @@ function pagesFor(section: DocSection): DocPage[] {
       used += LINE;
       continue;
     }
-    if (isDocParagraph(block) && (block.pageBreakBefore || block.runs.some((run) => run.breakBefore === "page"))) {
+    const style = isDocParagraph(block) ? styleOf(styles, block.style ?? styles?.defaultParagraph) : {};
+    if (isDocParagraph(block) && (block.pageBreakBefore || style.pageBreakBefore || block.runs.some((run) => run.breakBefore === "page"))) {
       if (blocks.length) flush();
     } else if (isDocParagraph(block) && block.runs.some((run) => run.breakBefore === "column")) {
       if (blocks.length) {
@@ -165,9 +167,10 @@ function pagesFor(section: DocSection): DocPage[] {
       continue;
     }
     const height = blockHeight(block);
-    const staysWithNext = isDocParagraph(block) && block.keepNext && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
-    const keepsItsLines = isDocParagraph(block) && block.keepLines && height <= content && used + height > content;
-    const orphan = isDocParagraph(block) && block.widowControl === true && linesOf(block) === 1 && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
+    const marks = style.marks ?? [];
+    const staysWithNext = isDocParagraph(block) && (block.keepNext || marks.includes("keepNext")) && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
+    const keepsItsLines = isDocParagraph(block) && (block.keepLines || marks.includes("keepLines")) && height <= content && used + height > content;
+    const orphan = isDocParagraph(block) && (block.widowControl === true || marks.includes("widowControl")) && linesOf(block) === 1 && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
     if (blocks.length && (used + height > content || staysWithNext || keepsItsLines || orphan)) flush();
     blocks.push(block);
     used += height;

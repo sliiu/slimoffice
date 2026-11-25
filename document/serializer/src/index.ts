@@ -171,6 +171,15 @@ function styleXml(id: string, style: DocStyle | undefined): string {
   if (style.align && style.align !== "left") paragraph.push(`<w:jc w:val="${style.align}"/>`);
   if (style.spacing) paragraph.push(spacingXml(style.spacing));
   if (style.indent) paragraph.push(indentXml(style.indent));
+  if (style.shading) paragraph.push(`<w:shd w:val="clear" w:fill="${escapeAttr(style.shading.replace(/^#/, ""))}"/>`);
+  if (style.pageBreakBefore) paragraph.push("<w:pageBreakBefore/>");
+  if (style.outline !== undefined) paragraph.push(`<w:outlineLvl w:val="${Math.round(style.outline)}"/>`);
+  for (const mark of style.marks ?? []) if (/^[a-zA-Z]+$/.test(mark)) paragraph.push(`<w:${mark}/>`);
+  if (style.direction === "tb") paragraph.push(`<w:textDirection w:val="tbRl"/>`);
+  else if (style.direction === "rl") paragraph.push(`<w:textDirection w:val="rlTb"/>`);
+  if (style.textAlign) paragraph.push(`<w:textAlignment w:val="${escapeAttr(style.textAlign)}"/>`);
+  if (style.numbering) paragraph.push(`<w:numPr><w:ilvl w:val="${Math.round(style.numbering.level)}"/><w:numId w:val="${escapeAttr(style.numbering.id)}"/></w:numPr>`);
+  if (style.tabs?.length) paragraph.push(`<w:tabs>${style.tabs.map((tab) => `<w:tab w:val="${tab.align ?? "left"}" w:pos="${Math.round(tab.pos)}"${tab.leader ? ` w:leader="${escapeAttr(tab.leader)}"` : ""}/>`).join("")}</w:tabs>`);
   const align = paragraph.length ? `<w:pPr>${paragraph.join("")}</w:pPr>` : "";
   const run: string[] = [];
   if (style.bold) run.push("<w:b/>");

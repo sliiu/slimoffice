@@ -71,6 +71,9 @@ const UNDERLINES = new Set<DocUnderline>(["single", "double", "dotted", "dash", 
 /** Paragraph switches the model keeps so a rewrite does not drop them. */
 const PARAGRAPH_MARKS = ["suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
 
+/** Switches a paragraph style can turn on for every paragraph that uses it. */
+const STYLE_MARKS = ["keepNext", "keepLines", "widowControl", "suppressLineNumbers", ...PARAGRAPH_MARKS];
+
 /** Run switches the model keeps so a rewrite does not drop them. */
 const RUN_MARKS = ["outline", "shadow", "emboss", "imprint", "effect"];
 
@@ -733,12 +736,17 @@ function styleTable(archive: OfficeArchive): DocStyleTable {
   const root = child(parseXml(xml), "styles");
   if (!root) return { styles: {} };
   const styles: Record<string, DocStyle> = {};
+  let defaultParagraph: string | undefined;
   for (const item of children(root, "style")) {
     const id = attr(item, "styleId");
     if (!id) continue;
     const style: DocStyle = {};
     const kind = attr(item, "type");
     if (kind === "character" || kind === "table") style.type = kind;
+    const markedDefault = attr(item, "default");
+    if (!defaultParagraph && kind !== "character" && kind !== "table" && (markedDefault === "1" || markedDefault === "true")) {
+      defaultParagraph = id;
+    }
     const based = child(item, "basedOn");
     const basedOn = based ? attr(based, "val") : undefined;
     if (basedOn) style.basedOn = basedOn;
@@ -756,11 +764,52 @@ function styleTable(archive: OfficeArchive): DocStyleTable {
     if (spacing) style.spacing = spacing;
     const indent = props ? indentFrom(child(props, "ind")) : undefined;
     if (indent) style.indent = indent;
+    if (props) {
+      const shading = colorOf(child(props, "shd"));
+      if (shading) style.shading = shading;
+      const border = borderOf(child(props, "pBdr"));
+      if (border) style.border = border;
+      if (child(props, "pageBreakBefore")) style.pageBreakBefore = true;
+      const outline = child(props, "outlineLvl");
+      const outlineLevel = Number(outline ? attr(outline, "val") : undefined);
+      if (Number.isFinite(outlineLevel) && outlineLevel >= 0) style.outline = outlineLevel;
+      const kept = STYLE_MARKS.filter((name) => on(child(props, name)));
+      if (kept.length) style.marks = kept;
+      const frame = frameOf(child(props, "framePr"));
+      if (frame) style.frame = frame;
+      const direction = directionOf(child(props, "textDirection"));
+      if (direction) style.direction = direction;
+      const aligned = child(props, "textAlignment");
+      const alignedValue = aligned ? attr(aligned, "val") : undefined;
+      if (alignedValue) style.textAlign = alignedValue;
+      const numbering = child(props, "numPr");
+      if (numbering) {
+        const idNode = child(numbering, "numId");
+        const levelNode = child(numbering, "ilvl");
+        const numId = idNode ? attr(idNode, "val") : undefined;
+        if (numId && numId !== "0") style.numbering = { id: numId, level: Number(levelNode ? attr(levelNode, "val") : "0") || 0 };
+      }
+      const tabs = child(props, "tabs");
+      if (tabs) {
+        const stops: NonNullable<DocStyle["tabs"]> = [];
+        for (const tab of children(tabs, "tab")) {
+          const pos = Number(attr(tab, "pos"));
+          if (!Number.isFinite(pos)) continue;
+          const align = attr(tab, "val");
+          const leader = attr(tab, "leader");
+          const stop: NonNullable<DocStyle["tabs"]>[number] = { pos };
+          if (align === "left" || align === "center" || align === "right" || align === "decimal") stop.align = align;
+          if (leader) stop.leader = leader;
+          stops.push(stop);
+        }
+        if (stops.length) style.tabs = stops;
+      }
+    }
     styles[id] = style;
   }
   const defaults = defaultsOf(child(root, "docDefaults"));
   const latent = latentOf(child(root, "latentStyles"));
-  return { styles, ...(defaults ? { defaults } : {}), ...(latent.length ? { latent } : {}) };
+  return { styles, ...(defaults ? { defaults } : {}), ...(defaultParagraph ? { defaultParagraph } : {}), ...(latent.length ? { latent } : {}) };
 }
 
 /** The formatting a run or a paragraph gets when it names no style. */
@@ -775,6 +824,17 @@ function defaultsOf(node: XmlNode | undefined): DocDefaults | undefined {
   if (props.bold) defaults.bold = true;
   if (props.italic) defaults.italic = true;
   if (props.color) defaults.color = props.color;
+  const paragraphDefaults = child(node, "pPrDefault");
+  const paragraphProps = paragraphDefaults ? child(paragraphDefaults, "pPr") : undefined;
+  if (paragraphProps) {
+    const spacing = spacingFrom(child(paragraphProps, "spacing"));
+    const indent = indentFrom(child(paragraphProps, "ind"));
+    const align = child(paragraphProps, "jc");
+    const alignValue = align ? attr(align, "val") : undefined;
+    if (spacing) defaults.spacing = spacing;
+    if (indent) defaults.indent = indent;
+    if (alignValue === "center" || alignValue === "right" || alignValue === "both" || alignValue === "left") defaults.align = alignValue;
+  }
   return Object.keys(defaults).length ? defaults : undefined;
 }
 

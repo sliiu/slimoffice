@@ -277,6 +277,12 @@ function styleOf(styles, name) {
         merged.font = defaults.font;
     if (defaults?.color)
         merged.color = defaults.color;
+    if (defaults?.spacing)
+        merged.spacing = defaults.spacing;
+    if (defaults?.indent)
+        merged.indent = defaults.indent;
+    if (defaults?.align)
+        merged.align = defaults.align;
     if (!styles?.styles || !name)
         return merged;
     const chain = [];
@@ -292,10 +298,31 @@ function styleOf(styles, name) {
     for (const style of chain.reverse()) {
         if (style.align)
             merged.align = style.align;
+        // A style sets only the sides it names. The inherited spacing and indent stay.
         if (style.spacing)
-            merged.spacing = style.spacing;
+            merged.spacing = { ...merged.spacing, ...style.spacing };
         if (style.indent)
-            merged.indent = style.indent;
+            merged.indent = { ...merged.indent, ...style.indent };
+        if (style.shading)
+            merged.shading = style.shading;
+        if (style.border)
+            merged.border = { ...merged.border, ...style.border };
+        if (style.pageBreakBefore)
+            merged.pageBreakBefore = true;
+        if (style.outline !== undefined)
+            merged.outline = style.outline;
+        if (style.marks)
+            merged.marks = [...new Set([...(merged.marks ?? []), ...style.marks])];
+        if (style.frame)
+            merged.frame = { ...merged.frame, ...style.frame };
+        if (style.direction)
+            merged.direction = style.direction;
+        if (style.textAlign)
+            merged.textAlign = style.textAlign;
+        if (style.numbering)
+            merged.numbering = style.numbering;
+        if (style.tabs)
+            merged.tabs = style.tabs;
         if (style.bold)
             merged.bold = true;
         if (style.italic)
@@ -307,5 +334,9 @@ function styleOf(styles, name) {
         if (style.color)
             merged.color = style.color;
     }
+    // The link belongs to the named style, not to the one it inherits.
+    const link = chain[0]?.link;
+    if (link)
+        merged.link = link;
     return merged;
 }

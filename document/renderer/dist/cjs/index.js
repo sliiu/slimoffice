@@ -23,7 +23,7 @@ function paginate(document) {
     const pages = [];
     const held = [];
     for (const section of document.sections) {
-        const laid = pagesFor(section);
+        const laid = pagesFor(section, document.styles);
         if (section.page.endnotesHere) {
             const last = laid.at(-1);
             if (last)
@@ -70,7 +70,7 @@ function paginate(document) {
     }
     return pages.length ? pages : [emptyPage()];
 }
-function pagesFor(section) {
+function pagesFor(section, styles) {
     const content = contentHeight(section.page);
     const columns = section.page.columns && section.page.columns > 1 ? section.page.columns : 1;
     const pages = [];
@@ -89,7 +89,8 @@ function pagesFor(section) {
             used += LINE;
             continue;
         }
-        if ((0, document_core_1.isDocParagraph)(block) && (block.pageBreakBefore || block.runs.some((run) => run.breakBefore === "page"))) {
+        const style = (0, document_core_1.isDocParagraph)(block) ? (0, document_core_1.styleOf)(styles, block.style ?? styles?.defaultParagraph) : {};
+        if ((0, document_core_1.isDocParagraph)(block) && (block.pageBreakBefore || style.pageBreakBefore || block.runs.some((run) => run.breakBefore === "page"))) {
             if (blocks.length)
                 flush();
         }
@@ -112,9 +113,10 @@ function pagesFor(section) {
             continue;
         }
         const height = blockHeight(block);
-        const staysWithNext = (0, document_core_1.isDocParagraph)(block) && block.keepNext && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
-        const keepsItsLines = (0, document_core_1.isDocParagraph)(block) && block.keepLines && height <= content && used + height > content;
-        const orphan = (0, document_core_1.isDocParagraph)(block) && block.widowControl === true && linesOf(block) === 1 && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
+        const marks = style.marks ?? [];
+        const staysWithNext = (0, document_core_1.isDocParagraph)(block) && (block.keepNext || marks.includes("keepNext")) && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
+        const keepsItsLines = (0, document_core_1.isDocParagraph)(block) && (block.keepLines || marks.includes("keepLines")) && height <= content && used + height > content;
+        const orphan = (0, document_core_1.isDocParagraph)(block) && (block.widowControl === true || marks.includes("widowControl")) && linesOf(block) === 1 && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
         if (blocks.length && (used + height > content || staysWithNext || keepsItsLines || orphan))
             flush();
         blocks.push(block);

@@ -388,6 +388,26 @@ export interface DocStyle {
   spacing?: DocSpacing;
   /** Left, right, first-line, and hanging indent, from the style's `w:ind`. A paragraph's own indent wins. */
   indent?: DocIndent;
+  /** Paragraph shading, from the style's `w:shd`. */
+  shading?: string;
+  /** A border around the paragraph, from the style's `w:pBdr`. */
+  border?: DocBorder;
+  /** A page break sits before a paragraph that uses this style. */
+  pageBreakBefore?: boolean;
+  /** Outline level, 0 for the top, from the style's `w:outlineLvl`. */
+  outline?: number;
+  /** Paragraph switches the style turns on, such as `keepNext` and `widowControl`. */
+  marks?: string[];
+  /** A frame the style puts the paragraph in, from `w:framePr`. */
+  frame?: DocFrame;
+  /** Text direction the style sets, from `w:textDirection`. */
+  direction?: "lr" | "tb" | "rl";
+  /** How the line sits on its baseline, from the style's `w:textAlignment`. */
+  textAlign?: string;
+  /** The list the style puts the paragraph in, from `w:numPr`. */
+  numbering?: DocNumbering;
+  /** Tab stops the style sets. */
+  tabs?: DocParagraph["tabs"];
   bold?: boolean;
   italic?: boolean;
   fontSize?: number;
@@ -402,6 +422,11 @@ export interface DocDefaults {
   bold?: boolean;
   italic?: boolean;
   color?: string;
+  /** Paragraph spacing from `pPrDefault`, underneath every style. */
+  spacing?: DocSpacing;
+  /** Paragraph indent from `pPrDefault`, underneath every style. */
+  indent?: DocIndent;
+  align?: DocAlign;
 }
 
 /** One latent style: a style Word knows about and builds the first time it is used. */
@@ -415,6 +440,8 @@ export interface DocLatentStyle {
 export interface DocStyleTable {
   styles: Record<string, DocStyle>;
   defaults?: DocDefaults;
+  /** The paragraph style Word uses when a paragraph names none, from `w:default="1"`. */
+  defaultParagraph?: string;
   latent?: DocLatentStyle[];
 }
 
@@ -767,6 +794,9 @@ export function styleOf(styles: DocStyleTable | undefined, name: string | undefi
   if (defaults?.fontSize) merged.fontSize = defaults.fontSize;
   if (defaults?.font) merged.font = defaults.font;
   if (defaults?.color) merged.color = defaults.color;
+  if (defaults?.spacing) merged.spacing = defaults.spacing;
+  if (defaults?.indent) merged.indent = defaults.indent;
+  if (defaults?.align) merged.align = defaults.align;
   if (!styles?.styles || !name) return merged;
   const chain: DocStyle[] = [];
   const seen = new Set<string>();
@@ -779,13 +809,27 @@ export function styleOf(styles: DocStyleTable | undefined, name: string | undefi
   }
   for (const style of chain.reverse()) {
     if (style.align) merged.align = style.align;
-    if (style.spacing) merged.spacing = style.spacing;
-    if (style.indent) merged.indent = style.indent;
+    // A style sets only the sides it names. The inherited spacing and indent stay.
+    if (style.spacing) merged.spacing = { ...merged.spacing, ...style.spacing };
+    if (style.indent) merged.indent = { ...merged.indent, ...style.indent };
+    if (style.shading) merged.shading = style.shading;
+    if (style.border) merged.border = { ...merged.border, ...style.border };
+    if (style.pageBreakBefore) merged.pageBreakBefore = true;
+    if (style.outline !== undefined) merged.outline = style.outline;
+    if (style.marks) merged.marks = [...new Set([...(merged.marks ?? []), ...style.marks])];
+    if (style.frame) merged.frame = { ...merged.frame, ...style.frame };
+    if (style.direction) merged.direction = style.direction;
+    if (style.textAlign) merged.textAlign = style.textAlign;
+    if (style.numbering) merged.numbering = style.numbering;
+    if (style.tabs) merged.tabs = style.tabs;
     if (style.bold) merged.bold = true;
     if (style.italic) merged.italic = true;
     if (style.fontSize) merged.fontSize = style.fontSize;
     if (style.font) merged.font = style.font;
     if (style.color) merged.color = style.color;
   }
+  // The link belongs to the named style, not to the one it inherits.
+  const link = chain[0]?.link;
+  if (link) merged.link = link;
   return merged;
 }

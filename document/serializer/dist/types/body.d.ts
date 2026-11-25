@@ -17,6 +17,8 @@ export interface DocumentEdits {
     parts: string[];
 }
 export declare function applyDocumentEdits(xml: string, document: Document, relationships?: Relationship[]): DocumentEdits;
+export declare function spacingXml(spacing: NonNullable<DocParagraph["spacing"]>): string;
+export declare function indentXml(indent: NonNullable<DocParagraph["indent"]>): string;
 /** A header or footer part, rewritten from the paragraphs the model holds. */
 export declare function storyPartXml(root: "hdr" | "ftr", paragraphs: DocParagraph[]): string;
 export type { DocAlign, DocBlock };

@@ -442,6 +442,26 @@ export interface DocStyle {
     spacing?: DocSpacing;
     /** Left, right, first-line, and hanging indent, from the style's `w:ind`. A paragraph's own indent wins. */
     indent?: DocIndent;
+    /** Paragraph shading, from the style's `w:shd`. */
+    shading?: string;
+    /** A border around the paragraph, from the style's `w:pBdr`. */
+    border?: DocBorder;
+    /** A page break sits before a paragraph that uses this style. */
+    pageBreakBefore?: boolean;
+    /** Outline level, 0 for the top, from the style's `w:outlineLvl`. */
+    outline?: number;
+    /** Paragraph switches the style turns on, such as `keepNext` and `widowControl`. */
+    marks?: string[];
+    /** A frame the style puts the paragraph in, from `w:framePr`. */
+    frame?: DocFrame;
+    /** Text direction the style sets, from `w:textDirection`. */
+    direction?: "lr" | "tb" | "rl";
+    /** How the line sits on its baseline, from the style's `w:textAlignment`. */
+    textAlign?: string;
+    /** The list the style puts the paragraph in, from `w:numPr`. */
+    numbering?: DocNumbering;
+    /** Tab stops the style sets. */
+    tabs?: DocParagraph["tabs"];
     bold?: boolean;
     italic?: boolean;
     fontSize?: number;
@@ -455,6 +475,11 @@ export interface DocDefaults {
     bold?: boolean;
     italic?: boolean;
     color?: string;
+    /** Paragraph spacing from `pPrDefault`, underneath every style. */
+    spacing?: DocSpacing;
+    /** Paragraph indent from `pPrDefault`, underneath every style. */
+    indent?: DocIndent;
+    align?: DocAlign;
 }
 /** One latent style: a style Word knows about and builds the first time it is used. */
 export interface DocLatentStyle {
@@ -466,6 +491,8 @@ export interface DocLatentStyle {
 export interface DocStyleTable {
     styles: Record<string, DocStyle>;
     defaults?: DocDefaults;
+    /** The paragraph style Word uses when a paragraph names none, from `w:default="1"`. */
+    defaultParagraph?: string;
     latent?: DocLatentStyle[];
 }
 /** One work a citation can point at. */
