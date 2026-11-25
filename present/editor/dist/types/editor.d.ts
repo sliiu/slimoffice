@@ -77,7 +77,8 @@ export interface EditorOptions {
     ribbonHost?: HTMLElement;
     /**
      * 可选：视图条（视图切换 · 缩放 · 放映 · 明暗 · 属性栏）挂到编辑器之外，
-     * 例如 playground 顶栏下方横跨缩略图列的 `#view-bar-host`。未提供时放在舞台上方。
+     * 例如 playground 顶栏下方横跨缩略图列的 `#view-bar-host`。命令行一起挂在这里，
+     * 排在视图条上方。未提供时两者都放在舞台上方，命令行在上。
      */
     viewBarHost?: HTMLElement;
     /** 宿主明暗切换；提供后视图条显示太阳 / 月亮按钮。 */

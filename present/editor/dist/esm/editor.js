@@ -210,24 +210,25 @@ export function mountEditor(host, initialPres, opts = {}) {
     }
     // 编辑器整体布局（CSS Grid）：
     //   [顶栏]（跨两列；ribbonHost 外置时省略）
+    //   命令行（tab + 当前分组命令；viewBarHost 外置时省略，由宿主放在视图条上方）
     //   [视图条]（跨两列；viewBarHost 外置时省略）
     //   舞台（1fr）       | 右侧属性栏（舞台行到底；默认收起为 0 列）
     //   备注/时间轴抽屉（默认 0）
-    //   命令行（分组切换器 + 当前分组命令，单行）
     //   状态栏（视图下拉 · 备注开关）
     const ribbonExternal = !!opts.ribbonHost;
     const viewBarExternal = !!opts.viewBarHost;
-    const viewGridRow = ribbonExternal ? 1 : 2;
-    const stageGridRow = 1 + (ribbonExternal ? 0 : 1) + (viewBarExternal ? 0 : 1);
+    const commandExternal = viewBarExternal;
+    const commandGridRow = ribbonExternal ? 1 : 2;
+    const viewGridRow = commandGridRow + (commandExternal ? 0 : 1);
+    const stageGridRow = viewGridRow + (viewBarExternal ? 0 : 1);
     const dockGridRow = stageGridRow + 1;
-    const commandGridRow = stageGridRow + 2;
-    const statusGridRow = stageGridRow + 3;
+    const statusGridRow = stageGridRow + 2;
     const gridRowsTemplate = (dock) => [
         ...(ribbonExternal ? [] : ["auto"]),
+        ...(commandExternal ? [] : ["auto"]),
         ...(viewBarExternal ? [] : ["auto"]),
         "1fr",
         dock ? "auto" : "0",
-        "auto",
         "auto",
     ].join(" ");
     const root = host.ownerDocument.createElement("div");
@@ -800,7 +801,7 @@ export function mountEditor(host, initialPres, opts = {}) {
             rightPanel.style.width = "";
             rightPanel.style.height = "";
         }
-        // 行定义必须与 stage/dock/command/status 的 grid-row 一致；漏掉状态栏行或把 1fr
+        // 行定义必须与 stage/dock/status 的 grid-row 一致；漏掉状态栏行或把 1fr
         // 分给空行，都会把舞台压到底部。
         root.style.gridTemplateRows = gridRowsTemplate(dockOpen);
     };
@@ -8061,16 +8062,17 @@ export function mountEditor(host, initialPres, opts = {}) {
         root.insertBefore(toolbar.el, stageHost);
     }
     if (opts.viewBarHost) {
+        opts.viewBarHost.appendChild(toolbar.commandBar);
         opts.viewBarHost.appendChild(toolbar.viewBar);
     }
     else {
+        toolbar.commandBar.style.gridRow = String(commandGridRow);
+        toolbar.commandBar.style.gridColumn = "1 / -1";
         toolbar.viewBar.style.gridRow = String(viewGridRow);
         toolbar.viewBar.style.gridColumn = "1 / -1";
         root.insertBefore(toolbar.viewBar, stageHost);
+        root.insertBefore(toolbar.commandBar, toolbar.viewBar);
     }
-    toolbar.commandBar.style.gridRow = String(commandGridRow);
-    toolbar.commandBar.style.gridColumn = "1";
-    root.appendChild(toolbar.commandBar);
     toolbar.fitCommandStrip();
     host.ownerDocument.defaultView?.requestAnimationFrame(() => toolbar.fitCommandStrip());
     statusBar.prepend(toolbar.statusStart);

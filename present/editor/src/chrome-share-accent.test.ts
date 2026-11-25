@@ -32,8 +32,8 @@ describe("editor chrome Share indigo", () => {
     assert.doesNotMatch(ribbon, /const exportBtn = [\s\S]{0,200}ppt-topbar-btn--share/);
     assert.doesNotMatch(ribbon, /const themeBtn = mkTopBtn/);
     const css = readFileSync(join(here, "ui-style.ts"), "utf8");
-    assert.doesNotMatch(css, /\.ppt-group-pill\s*\{[^}]*#4[Ff]46[Ee]5/s);
-    assert.doesNotMatch(css, /\.ppt-group-chip\[aria-selected="true"\]\s*\{[^}]*#4[Ff]46[Ee]5/s);
+    assert.doesNotMatch(css, /\.ppt-command-tab\s*\{[^}]*#4[Ff]46[Ee]5/s);
+    assert.doesNotMatch(css, /\.ppt-command-tab--active\s*\{[^}]*#4[Ff]46[Ee]5/s);
     assert.doesNotMatch(ribbon, /const insertBtn = mkTopBtn/);
     assert.doesNotMatch(ribbon, /const moreBtn = mkTopBtn/);
   });

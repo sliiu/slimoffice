@@ -306,9 +306,9 @@ export interface RibbonActions {
 }
 export interface RibbonHandle {
     el: HTMLDivElement;
-    /** 视图切换 · 缩放 | 放映 · 明暗 · 属性栏；宿主放在顶栏下方。 */
+    /** 视图切换 · 缩放 | 放映 · 明暗 · 属性栏；宿主放在命令行下方。 */
     viewBar: HTMLDivElement;
-    /** 底部唯一命令行：左侧分组切换器，右侧是当前分组命令。 */
+    /** 命令行：上方 tab 切换分组，下方是当前分组命令。 */
     commandBar: HTMLDivElement;
     /** 状态栏左端：视图下拉。 */
     statusStart: HTMLDivElement;
