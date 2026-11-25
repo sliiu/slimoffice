@@ -897,7 +897,7 @@ function applyParagraphProps(paragraph: DocParagraph, props: XmlNode, context: C
   if (styleName) paragraph.style = styleName;
   const align = child(props, "jc");
   const value = align ? attr(align, "val") : undefined;
-  if (value === "center" || value === "right" || value === "both" || value === "left") {
+  if (value === "center" || value === "right" || value === "both" || value === "distribute" || value === "left") {
     paragraph.align = value as DocAlign;
   }
   const numbering = child(props, "numPr");

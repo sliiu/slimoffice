@@ -940,7 +940,7 @@ function applyParagraphProps(paragraph, props, context) {
         paragraph.style = styleName;
     const align = child(props, "jc");
     const value = align ? attr(align, "val") : undefined;
-    if (value === "center" || value === "right" || value === "both" || value === "left") {
+    if (value === "center" || value === "right" || value === "both" || value === "distribute" || value === "left") {
         paragraph.align = value;
     }
     const numbering = child(props, "numPr");

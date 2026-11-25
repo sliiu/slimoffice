@@ -316,6 +316,10 @@ export interface DocumentView {
   cellBorder(color: string): void;
   /** Shades the current cell. An empty color clears it. */
   cellShading(color: string): void;
+  /** Shades the selected runs. An empty color clears it. */
+  runShading(color: string): void;
+  /** Puts a border on the selected runs. An empty color clears it. */
+  runBorder(color: string): void;
   /** Sits the current cell's text at the top, center, or bottom. Top clears it. */
   cellAlign(align: "top" | "center" | "bottom"): void;
   /** Where the current cell's text sits. */
@@ -604,6 +608,8 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     headerRow,
     cellBorder,
     cellShading,
+    runShading,
+    runBorder,
     cellAlign,
     cellAlignOn: () => currentCell()?.align,
     rowHeight,
@@ -981,7 +987,8 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     const style = styleOf(doc.styles, item.style);
     const linked = doc.styles?.styles?.[style.link ?? ""];
     const align = item.align ?? style.align;
-    if (align) node.style.textAlign = align === "both" ? "justify" : align;
+    if (align) node.style.textAlign = align === "both" || align === "distribute" ? "justify" : align;
+    if (align === "distribute") node.style.textAlignLast = "justify";
     if (item.shading) node.style.background = item.shading;
     paintBorder(node, item.border);
     if (item.outline !== undefined && item.outline > 0) node.style.paddingLeft = twips(item.outline * 360);
@@ -2464,6 +2471,22 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     if (color) item.shading = color;
     else delete item.shading;
     finish();
+  }
+
+  /** Shades the selected runs, or clears the shading when no color is given. */
+  function runShading(color: string): void {
+    applyToRuns((run) => {
+      if (color) run.shading = color;
+      else delete run.shading;
+    });
+  }
+
+  /** Borders the selected runs, or clears the border when no color is given. The color goes on every side. */
+  function runBorder(color: string): void {
+    applyToRuns((run) => {
+      if (color) run.border = solidBorder(color);
+      else delete run.border;
+    });
   }
 
   /** Borders the current paragraph, or clears it when no color is given. The color goes on every side. */

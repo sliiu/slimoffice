@@ -1,4 +1,4 @@
-export type DocAlign = "left" | "center" | "right" | "both";
+export type DocAlign = "left" | "center" | "right" | "both" | "distribute";
 export type DocUnderline = "single" | "double" | "dotted" | "dash" | "wave";
 export type DocBreak = "page" | "column" | "line";
 export interface DocRun {

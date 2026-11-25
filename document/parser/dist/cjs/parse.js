@@ -945,7 +945,7 @@ function applyParagraphProps(paragraph, props, context) {
         paragraph.style = styleName;
     const align = (0, xml_1.child)(props, "jc");
     const value = align ? (0, xml_1.attr)(align, "val") : undefined;
-    if (value === "center" || value === "right" || value === "both" || value === "left") {
+    if (value === "center" || value === "right" || value === "both" || value === "distribute" || value === "left") {
         paragraph.align = value;
     }
     const numbering = (0, xml_1.child)(props, "numPr");

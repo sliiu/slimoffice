@@ -215,6 +215,7 @@ test("reads each side of a border, a column width, a page number format, a frame
       <w:p><w:pPr>
         <w:pBdr><w:top w:val="double" w:sz="12" w:color="FF0000"/><w:bottom w:val="dotted" w:sz="4" w:color="0000FF"/></w:pBdr>
         <w:framePr w:w="2880" w:hAnchor="page" w:wrap="around" w:dropCap="drop" w:lines="3" w:hSpace="120"/>
+        <w:jc w:val="distribute"/>
         <w:textDirection w:val="tbRl"/><w:textAlignment w:val="center"/><w:divId w:val="3"/>
       </w:pPr><w:r><w:rPr><w:bdr><w:top w:val="single" w:sz="8" w:color="00AA00"/></w:bdr><w:shd w:val="clear" w:fill="FFFF00"/><w:fitText w:val="1440"/><w:eastAsianLayout w:combine="1" w:id="2"/></w:rPr><w:t>Boxed</w:t></w:r></w:p>
       <w:sectPr>
@@ -232,6 +233,7 @@ test("reads each side of a border, a column width, a page number format, a frame
     assert.equal(block.border?.top?.color, "#ff0000");
     assert.equal(block.border?.bottom?.style, "dotted");
     assert.equal(block.border?.left, undefined);
+    assert.equal(block.align, "distribute");
     assert.equal(block.frame?.width, 2880);
     assert.equal(block.frame?.anchorX, "page");
     assert.equal(block.frame?.dropCap?.lines, 3);

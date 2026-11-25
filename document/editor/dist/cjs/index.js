@@ -224,6 +224,8 @@ function mountDocument(host, doc, options = {}) {
         headerRow,
         cellBorder,
         cellShading,
+        runShading,
+        runBorder,
         cellAlign,
         cellAlignOn: () => currentCell()?.align,
         rowHeight,
@@ -645,7 +647,9 @@ function mountDocument(host, doc, options = {}) {
         const linked = doc.styles?.styles?.[style.link ?? ""];
         const align = item.align ?? style.align;
         if (align)
-            node.style.textAlign = align === "both" ? "justify" : align;
+            node.style.textAlign = align === "both" || align === "distribute" ? "justify" : align;
+        if (align === "distribute")
+            node.style.textAlignLast = "justify";
         if (item.shading)
             node.style.background = item.shading;
         paintBorder(node, item.border);
@@ -2272,6 +2276,24 @@ function mountDocument(host, doc, options = {}) {
         else
             delete item.shading;
         finish();
+    }
+    /** Shades the selected runs, or clears the shading when no color is given. */
+    function runShading(color) {
+        applyToRuns((run) => {
+            if (color)
+                run.shading = color;
+            else
+                delete run.shading;
+        });
+    }
+    /** Borders the selected runs, or clears the border when no color is given. The color goes on every side. */
+    function runBorder(color) {
+        applyToRuns((run) => {
+            if (color)
+                run.border = solidBorder(color);
+            else
+                delete run.border;
+        });
     }
     /** Borders the current paragraph, or clears it when no color is given. The color goes on every side. */
     function border(color) {

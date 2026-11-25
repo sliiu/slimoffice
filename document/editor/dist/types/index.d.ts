@@ -293,6 +293,10 @@ export interface DocumentView {
     cellBorder(color: string): void;
     /** Shades the current cell. An empty color clears it. */
     cellShading(color: string): void;
+    /** Shades the selected runs. An empty color clears it. */
+    runShading(color: string): void;
+    /** Puts a border on the selected runs. An empty color clears it. */
+    runBorder(color: string): void;
     /** Sits the current cell's text at the top, center, or bottom. Top clears it. */
     cellAlign(align: "top" | "center" | "bottom"): void;
     /** Where the current cell's text sits. */
