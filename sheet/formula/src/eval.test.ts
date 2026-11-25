@@ -459,3 +459,25 @@ test("legacy names, text tools, and the odd coupon periods", () => {
   assert.equal(evaluate("=CEILING.PRECISE(-1.5,1)", ctx(workbook)), -1);
   assert.equal(evaluate("=FLOOR.PRECISE(1.5,1)", ctx(workbook)), 1);
 });
+
+test("GROUPBY and PIVOTBY summaries", () => {
+  const workbook = book([]);
+  const rows = '{"b";"a";"b"}';
+  const values = '{1;4;2}';
+  // A bare SUM groups the rows and adds a grand total.
+  assert.equal(formatResult(evaluate(`=GROUPBY(${rows},${values},SUM)`, ctx(workbook))), "b,3,a,4,总计,7");
+  // total_depth 0 drops the total, and a negative sort_order sorts that column descending.
+  assert.equal(formatResult(evaluate(`=GROUPBY(${rows},${values},SUM,0,0)`, ctx(workbook))), "b,3,a,4");
+  assert.equal(formatResult(evaluate(`=GROUPBY(${rows},${values},SUM,0,0,-2)`, ctx(workbook))), "a,4,b,3");
+  // The filter array drops rows, and HSTACK runs two aggregations side by side.
+  assert.equal(formatResult(evaluate(`=GROUPBY(${rows},${values},SUM,0,0,,,{TRUE;FALSE;TRUE})`, ctx(workbook))), "b,3");
+  assert.equal(formatResult(evaluate(`=GROUPBY(${rows},${values},HSTACK(SUM,COUNT),0,0)`, ctx(workbook))), "b,3,2,a,4,1");
+  // Two row fields produce a subtotal per outer group when total_depth is 2.
+  const twoFields = '{"北","红";"北","蓝";"南","红"}';
+  assert.equal(formatResult(evaluate(`=GROUPBY(${twoFields},{1;4;2},SUM,0,2)`, ctx(workbook))), "北,红,1,北,蓝,4,北,总计,5,南,红,2,南,总计,2,总计,,7");
+  // A single row field cannot subtotal, and a name that is not an aggregation is rejected.
+  assert.equal(formatResult(evaluate(`=GROUPBY(${rows},${values},SUM,0,2)`, ctx(workbook))), "#VALUE!");
+  assert.equal(formatResult(evaluate(`=GROUPBY(${rows},${values},NOPE)`, ctx(workbook))), "#NAME?");
+  // PIVOTBY spreads one field across columns and totals both ways.
+  assert.equal(formatResult(evaluate(`=PIVOTBY(${rows},{"红";"红";"蓝"},${values},SUM)`, ctx(workbook))), "b,1,2,3,a,4,0,4,总计,5,2,7");
+});

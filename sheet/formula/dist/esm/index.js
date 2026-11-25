@@ -656,11 +656,13 @@ class Parser {
     }
     parseArgList() {
         const args = [];
+        // An empty slot, as in GROUPBY(rows, values, SUM,,,2), counts as an omitted argument.
+        const slot = () => (this.peek()?.kind === "comma" || this.peek()?.kind === "rp" ? { omitted: true } : this.parseExpression());
         if (this.peek()?.kind !== "rp") {
-            args.push(this.parseExpression());
+            args.push(slot());
             while (this.peek()?.kind === "comma") {
                 this.take();
-                args.push(this.parseExpression());
+                args.push(slot());
             }
         }
         return args;
@@ -801,6 +803,9 @@ function flatten(args) {
 }
 function isPending(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "name" in value && !("params" in value);
+}
+function isPendingFunction(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "fn" in value;
 }
 function isLambda(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "params" in value && "body" in value;
@@ -2335,6 +2340,8 @@ function callFunction(name, args, ctx) {
         case "FORECAST.ETS.STAT":
         case "TRIMRANGE":
         case "IMAGE":
+        case "GROUPBY":
+        case "PIVOTBY":
             return extended(name, args, ctx);
         default:
             return E.NAME();
@@ -2734,7 +2741,9 @@ function sortCompare(left, right) {
 }
 /** HSTACK places ranges side by side, VSTACK places them one under the other. Short rows and columns are padded. */
 function stack(name, args) {
-    const blocks = args.map((arg) => (Array.isArray(arg) ? arg : [scalarPrimitive(arg ?? "")]));
+    // A bare function name becomes a marker, so GROUPBY can read a row of them built with HSTACK.
+    const held = (value) => (isPending(value) ? { fn: value.name } : scalarPrimitive(value));
+    const blocks = args.map((arg) => (Array.isArray(arg) ? arg.map((item) => held(item)) : [held(arg ?? "")]));
     if (!blocks.length)
         return E.VALUE();
     if (name === "VSTACK") {
@@ -3720,6 +3729,325 @@ function distTail(name, args) {
     return name === "T.INV" && probability < 0.5 ? -(low + high) / 2 : (low + high) / 2;
 }
 /**
+ * The aggregations GROUPBY and PIVOTBY accept by bare name. A name with no entry here is not an
+ * eta-reduced function, so it stays a plain name and the call fails.
+ */
+const GROUP_AGGREGATES = {
+    SUM: (cells) => cells.reduce((sum, cell) => sum + (typeof cell === "number" ? cell : 0), 0),
+    AVERAGE: (cells) => average(cells),
+    COUNT: (cells) => cells.filter((cell) => typeof cell === "number").length,
+    COUNTA: (cells) => cells.filter((cell) => cell !== "").length,
+    MIN: (cells) => {
+        const nums = cells.filter((cell) => typeof cell === "number");
+        return nums.length ? Math.min(...nums) : 0;
+    },
+    MAX: (cells) => {
+        const nums = cells.filter((cell) => typeof cell === "number");
+        return nums.length ? Math.max(...nums) : 0;
+    },
+    PRODUCT: (cells) => cells.reduce((product, cell) => product * (typeof cell === "number" ? cell : 1), 1),
+    MEDIAN: (cells) => {
+        const nums = cells.filter((cell) => typeof cell === "number").sort((a, b) => a - b);
+        if (!nums.length)
+            return E.NUM();
+        const mid = Math.floor(nums.length / 2);
+        return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+    },
+    "STDEV.S": (cells) => stdev(cells, false),
+    "STDEV.P": (cells) => stdev(cells, true),
+    "VAR.S": (cells) => variance(cells, false),
+    "VAR.P": (cells) => variance(cells, true),
+    "MODE.SNGL": (cells) => modeOf(cells.filter((cell) => typeof cell === "number")),
+};
+/**
+ * The function argument is one reducer, or a row of them stacked by HSTACK. A second row stacked
+ * underneath with VSTACK replaces the headers, one label per reducer.
+ */
+function groupReducers(fn, ctx) {
+    if (isLambda(fn)) {
+        if (fn.params.length < 1 || fn.params.length > 2)
+            return E.VALUE();
+        return [{ label: "", reduce: (cells, all) => applyLambda(fn, fn.params.length === 2 ? [withWidth(cells, 1), withWidth(all, 1)] : [withWidth(cells, 1)], ctx) }];
+    }
+    if (!Array.isArray(fn)) {
+        const single = groupReducer(fn, "");
+        return single instanceof FormulaError ? single : [single];
+    }
+    const width = rangeWidth(fn);
+    const rows = Math.ceil(fn.length / width);
+    if (rows > 2)
+        return E.VALUE();
+    const reducers = [];
+    for (let col = 0; col < width; col += 1) {
+        const label = rows === 2 ? scalarPrimitive(fn[width + col] ?? "") : "";
+        if (rows === 2 && typeof label !== "string")
+            return E.VALUE();
+        const reducer = groupReducer(fn[col], String(label));
+        if (reducer instanceof FormulaError)
+            return reducer;
+        reducers.push(reducer);
+    }
+    return reducers;
+}
+/** A bare name maps to a built-in aggregation. PERCENTOF compares the group with everything. */
+function groupReducer(fn, label) {
+    const named = isPending(fn) ? fn : isPendingFunction(fn) ? { name: fn.fn } : undefined;
+    if (!named)
+        return E.VALUE();
+    fn = named;
+    if (fn.name === "PERCENTOF") {
+        return { label: label || "PERCENTOF", reduce: (cells, all) => percentOf(cells, all) };
+    }
+    const aggregate = GROUP_AGGREGATES[fn.name];
+    if (!aggregate)
+        return E.NAME();
+    return { label: label || fn.name, reduce: (cells) => aggregate(cells) };
+}
+/** PERCENTOF inside a grouping: the group's numbers over all the numbers, which is what the totals show. */
+function percentOf(part, whole) {
+    const total = whole.reduce((sum, cell) => sum + (typeof cell === "number" ? cell : 0), 0);
+    if (total === 0)
+        return E.DIV0();
+    return part.reduce((sum, cell) => sum + (typeof cell === "number" ? cell : 0), 0) / total;
+}
+/** Reads an optional numeric argument, treating a blank cell as "not given". */
+function groupOption(value) {
+    if (value === undefined || isOmitted(value) || value === "")
+        return undefined;
+    const number = asNumber(value);
+    return number instanceof FormulaError ? number : number;
+}
+/**
+ * GROUPBY summarizes values by one or more row fields. PIVOTBY adds column fields, so the summary
+ * spreads across columns as well. The function argument is a bare name such as SUM, or a LAMBDA.
+ */
+function groupBy(name, args, ctx) {
+    const pivoting = name === "PIVOTBY";
+    const rowFields = args[0];
+    const colFields = pivoting ? args[1] : undefined;
+    const data = pivoting ? args[2] : args[1];
+    if (!Array.isArray(rowFields) || !Array.isArray(data))
+        return E.VALUE();
+    if (pivoting && !Array.isArray(colFields))
+        return E.VALUE();
+    const reducers = groupReducers(pivoting ? args[3] : args[2], ctx);
+    if (reducers instanceof FormulaError)
+        return reducers;
+    if (!reducers.length)
+        return E.VALUE();
+    const rowWidth = rangeWidth(rowFields);
+    const colWidth = Array.isArray(colFields) ? rangeWidth(colFields) : 0;
+    const dataWidth = rangeWidth(data);
+    const height = Math.ceil(rowFields.length / rowWidth);
+    if (Math.ceil(data.length / dataWidth) !== height)
+        return E.VALUE();
+    if (Array.isArray(colFields) && Math.ceil(colFields.length / colWidth) !== height)
+        return E.VALUE();
+    const optionAt = pivoting ? 4 : 3;
+    const headers = groupOption(args[optionAt]);
+    const rowDepth = groupOption(args[optionAt + 1]);
+    const rowSort = args[optionAt + 2];
+    const colDepth = pivoting ? groupOption(args[optionAt + 3]) : undefined;
+    const colSort = pivoting ? args[optionAt + 4] : undefined;
+    const filter = pivoting ? args[optionAt + 6] : args[optionAt + 4];
+    if (headers instanceof FormulaError)
+        return headers;
+    if (rowDepth instanceof FormulaError)
+        return rowDepth;
+    if (colDepth instanceof FormulaError)
+        return colDepth;
+    // A header row is detected when the first row is text and the second is a number, unless told otherwise.
+    const headerRow = headers === undefined ? looksLikeHeader(rowFields, rowWidth, data, dataWidth) : headers === 1 || headers === 3;
+    if (headerRow && height < 2)
+        return E.VALUE();
+    const showHeaders = headers === 3 || headers === 2 || (headers === undefined && reducers.length > 1);
+    const bodyStart = headerRow ? 1 : 0;
+    const keep = rowMask(filter, height);
+    if (keep instanceof FormulaError)
+        return keep;
+    const body = [...Array(height - bodyStart).keys()].map((row) => row + bodyStart).filter((row) => keep[row]);
+    const rowKeys = body.map((row) => fieldKey(rowFields, rowWidth, row));
+    const colKeys = body.map((row) => (Array.isArray(colFields) ? fieldKey(colFields, colWidth, row) : []));
+    const sortIndex = groupOption(rowSort);
+    if (sortIndex instanceof FormulaError)
+        return sortIndex;
+    const rowGroups = uniqueKeys(rowKeys);
+    const colGroups = uniqueKeys(colKeys);
+    const subtotalDepth = (depth, fields) => {
+        const levels = depth === undefined ? 1 : Math.trunc(Math.abs(depth));
+        if (levels > fields)
+            return E.VALUE();
+        return levels;
+    };
+    const rowLevels = rowDepth === undefined ? 1 : subtotalDepth(rowDepth, rowWidth);
+    const colLevels = pivoting ? subtotalDepth(typeof colDepth === "number" ? colDepth : undefined, colWidth) : 0;
+    if (rowLevels instanceof FormulaError)
+        return rowLevels;
+    if (colLevels instanceof FormulaError)
+        return colLevels;
+    const rowTotalsFirst = typeof rowDepth === "number" && rowDepth < 0;
+    const colTotalsFirst = typeof colDepth === "number" && colDepth < 0;
+    /** Every value column of the rows and columns whose keys start with the prefix. */
+    const collect = (rowPrefix, colPrefix, column) => {
+        const cells = [];
+        for (let i = 0; i < body.length; i += 1) {
+            if (!keyStartsWith(rowKeys[i], rowPrefix) || !keyStartsWith(colKeys[i], colPrefix))
+                continue;
+            const row = body[i];
+            cells.push(data[row * dataWidth + column] ?? "");
+        }
+        return cells;
+    };
+    const columns = [...Array(dataWidth).keys()];
+    const valueHeaders = headerRow ? columns.map((column) => data[column] ?? "") : columns.map(() => "");
+    const rowHeader = headerRow ? [...Array(rowWidth).keys()].map((column) => rowFields[column] ?? "") : [...Array(rowWidth).keys()].map(() => "");
+    const colHeader = Array.isArray(colFields) && headerRow ? [...Array(colWidth).keys()].map((column) => colFields[column] ?? "") : [...Array(colWidth).keys()].map(() => "");
+    /** The column groups, with a grand total column appended when column totals are on. */
+    const colTargets = colGroups.length ? colGroups.map((key) => key) : [[]];
+    if (pivoting && colLevels > 0)
+        colTargets.push([]);
+    /** One summary row: the row fields, then one cell per column group, value column, and reducer. */
+    const summarize = (label, rowPrefix) => {
+        const cells = [...pad(label, rowWidth)];
+        for (const colKey of colTargets) {
+            for (const column of columns) {
+                const all = collect([], colKey, column);
+                const cellsInGroup = collect(rowPrefix, colKey, column);
+                for (const reducer of reducers) {
+                    const value = reducer.reduce(cellsInGroup, all);
+                    cells.push(value instanceof FormulaError ? value.code : scalarPrimitive(value));
+                }
+            }
+        }
+        return cells;
+    };
+    const grandRow = rowLevels > 0 ? summarize(["总计"], []) : undefined;
+    // Detail rows sit at the full key. Each shallower level adds one subtotal row around the rows it covers.
+    const dataRows = [];
+    const emit = (level, prefix) => {
+        const matches = rowGroups.filter((key) => keyStartsWith(key, prefix));
+        if (!matches.length)
+            return;
+        if (level >= rowWidth) {
+            for (const key of matches)
+                dataRows.push(summarize(key, key));
+            return;
+        }
+        const subtotal = rowLevels > rowWidth - level ? summarize([...prefix, "总计"], prefix) : undefined;
+        if (subtotal && rowTotalsFirst)
+            dataRows.push(subtotal);
+        for (const next of uniqueKeys(matches.map((key) => key.slice(0, level + 1))))
+            emit(level + 1, next);
+        if (subtotal && !rowTotalsFirst)
+            dataRows.push(subtotal);
+    };
+    if (rowTotalsFirst && grandRow)
+        dataRows.push(grandRow);
+    emit(0, []);
+    if (!rowTotalsFirst && grandRow)
+        dataRows.push(grandRow);
+    const outWidth = (dataRows[0] ?? grandRow ?? []).length || rowWidth;
+    // Sorting reorders the detail rows. The grand total stays at its own end.
+    if (sortIndex !== undefined && sortIndex !== 0 && rowLevels <= 1) {
+        const column = Math.min(Math.abs(Math.trunc(sortIndex)) - 1, outWidth - 1);
+        const direction = sortIndex < 0 ? -1 : 1;
+        const total = grandRow ? dataRows.pop() : undefined;
+        dataRows.sort((left, right) => direction * compareCells(left[column] ?? "", right[column] ?? ""));
+        if (total) {
+            if (rowTotalsFirst)
+                dataRows.unshift(total);
+            else
+                dataRows.push(total);
+        }
+    }
+    const headerRows = [];
+    if (showHeaders) {
+        if (colWidth > 0) {
+            for (let level = 0; level < colWidth; level += 1) {
+                const line = [...Array(rowWidth).keys()].map(() => "");
+                for (const colKey of colTargets) {
+                    const span = dataWidth * reducers.length;
+                    const label = colKey.length === 0 ? (level === 0 ? "总计" : "") : colKey[level] ?? "";
+                    line.push(label, ...[...Array(span - 1).keys()].map(() => ""));
+                }
+                headerRows.push(line);
+            }
+        }
+        const names = [...(headers === 2 ? [...Array(rowWidth).keys()].map((column) => `列${column + 1}`) : rowHeader)];
+        for (const colKey of colTargets) {
+            const totalColumn = pivoting && colKey.length === 0 && colGroups.length > 0;
+            for (const column of columns) {
+                for (const reducer of reducers) {
+                    const label = reducers.length > 1 ? reducer.label : valueHeaders[column] ?? "";
+                    names.push(totalColumn && label === "" ? "总计" : label);
+                }
+            }
+        }
+        headerRows.push(names);
+    }
+    const table = [...headerRows, ...dataRows];
+    if (!table.length)
+        return withWidth([""], 1);
+    return withWidth(table.flatMap((line) => pad(line, outWidth)), outWidth);
+}
+/** A blank first row of text over numbers is a header row. */
+function looksLikeHeader(fields, fieldWidth, data, dataWidth) {
+    if (Math.ceil(fields.length / fieldWidth) < 2)
+        return false;
+    const text = fields.slice(0, fieldWidth).some((cell) => typeof cell === "string" && cell !== "");
+    const numeric = data.slice(0, dataWidth).every((cell) => typeof cell === "number");
+    return text && !numeric;
+}
+/** The filter argument keeps a row when its cell is true. It has to cover every source row. */
+function rowMask(filter, height) {
+    if (filter === undefined || isOmitted(filter))
+        return [...Array(height).keys()].map(() => true);
+    const cells = Array.isArray(filter) ? filter : [scalarPrimitive(filter)];
+    if (cells.length !== height)
+        return E.VALUE();
+    return cells.map((cell) => cell === true || cell === 1);
+}
+/** One source row's field values, in column order. */
+function fieldKey(table, width, row) {
+    return [...Array(width).keys()].map((column) => table[row * width + column] ?? "");
+}
+/**
+ * Orders group keys by one column of the result. The index counts from 1, and a negative index sorts
+ * descending. Columns past the key fall back to the first column, which keeps the default A-Z order.
+ */
+function sortGroups(keys, index, value) {
+    if (index === undefined || index === 0)
+        return keys;
+    const column = Math.min(Math.abs(Math.trunc(index)) - 1, value(keys[0] ?? []).length - 1);
+    const direction = index < 0 ? -1 : 1;
+    return [...keys].sort((left, right) => direction * compareCells(value(left)[column] ?? "", value(right)[column] ?? ""));
+}
+/** Numbers compare numerically and everything else as text, matching the default GROUPBY order. */
+function compareCells(left, right) {
+    if (typeof left === "number" && typeof right === "number")
+        return left - right;
+    return String(left).localeCompare(String(right));
+}
+/** Field lists in first-seen order, compared cell by cell so 1 and "1" stay apart. */
+function uniqueKeys(keys) {
+    const out = [];
+    for (const key of keys) {
+        if (!out.some((found) => sameKey(found, key)))
+            out.push(key);
+    }
+    return out;
+}
+function sameKey(left, right) {
+    return left.length === right.length && left.every((cell, index) => cell === right[index]);
+}
+function keyStartsWith(key, prefix) {
+    return prefix.every((cell, index) => key[index] === cell);
+}
+/** Extends a row with blanks so every row of the summary has the same width. */
+function pad(line, width) {
+    return [...line, ...[...Array(Math.max(0, width - line.length)).keys()].map(() => "")];
+}
+/**
  * The long tail of the catalog: the remaining distributions, the interest and maturity securities,
  * complex numbers, and the Bessel functions.
  */
@@ -3748,6 +4076,8 @@ function extended(name, args, ctx) {
         return distSolve(name, args);
     if (name === "GAMMA.DIST" || name === "WEIBULL.DIST" || name === "HYPGEOM.DIST" || name === "NEGBINOM.DIST" || name === "BETA.DIST")
         return distMore(name, args);
+    if (name === "GROUPBY" || name === "PIVOTBY")
+        return groupBy(name, args, ctx);
     return compat(name, args, helpers);
 }
 function hyperbolic(name, args) {
