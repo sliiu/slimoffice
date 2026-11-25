@@ -47,6 +47,14 @@ export declare class FormulaError {
     constructor(code: string);
     toString(): string;
 }
+export declare const E: {
+    DIV0: () => FormulaError;
+    VALUE: () => FormulaError;
+    REF: () => FormulaError;
+    NA: () => FormulaError;
+    NAME: () => FormulaError;
+    NUM: () => FormulaError;
+};
 export interface EvalContext {
     workbook: Workbook;
     sheetIndex: number;
@@ -67,5 +75,13 @@ export interface ConsolidateSpec {
 /** Combine the source ranges into the destination sheet. Stores the definition so it reads back. */
 export declare function consolidateRanges(workbook: Workbook, spec: ConsolidateSpec): SheetConsolidation;
 export declare function formatResult(value: FormulaValue): string;
+/** The position a value came from, when it is a range. Lets OFFSET and INDIRECT move it. */
+export interface RangeOrigin {
+    sheetIndex: number;
+    r1: number;
+    c1: number;
+    r2: number;
+    c2: number;
+}
 export { formatNumber } from "./format.js";
 export declare function setFormula(cell: SheetCell, formula: string): void;

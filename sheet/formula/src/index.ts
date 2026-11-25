@@ -38,7 +38,7 @@ export class FormulaError {
   }
 }
 
-const E = {
+export const E = {
   DIV0: () => new FormulaError("#DIV/0!"),
   VALUE: () => new FormulaError("#VALUE!"),
   REF: () => new FormulaError("#REF!"),
@@ -729,7 +729,7 @@ function findSheet(workbook: Workbook, name: string): number {
 }
 
 /** The position a value came from, when it is a range. Lets OFFSET and INDIRECT move it. */
-interface RangeOrigin {
+export interface RangeOrigin {
   sheetIndex: number;
   r1: number;
   c1: number;
@@ -1992,6 +1992,7 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
     case "COT":
     case "GAMMA":
     case "GAMMALN":
+    case "GAMMALN.PRECISE":
     case "TBILLYIELD":
     case "ACCRINTM":
     case "DOLLARDE":
@@ -2046,6 +2047,76 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
     case "IMSQRT":
     case "IMSUB":
     case "IMSUM":
+    case "IMCOS":
+    case "IMCOSH":
+    case "IMCOT":
+    case "IMCSC":
+    case "IMCSCH":
+    case "IMSEC":
+    case "IMSECH":
+    case "IMSIN":
+    case "IMSINH":
+    case "IMTAN":
+    case "BETADIST":
+    case "BETAINV":
+    case "BINOMDIST":
+    case "CHIDIST":
+    case "CHIINV":
+    case "CHITEST":
+    case "CONFIDENCE":
+    case "COVAR":
+    case "CRITBINOM":
+    case "EXPONDIST":
+    case "FDIST":
+    case "FINV":
+    case "FTEST":
+    case "GAMMADIST":
+    case "GAMMAINV":
+    case "HYPGEOMDIST":
+    case "LOGINV":
+    case "LOGNORMDIST":
+    case "NEGBINOMDIST":
+    case "NORMDIST":
+    case "NORMINV":
+    case "POISSON":
+    case "TDIST":
+    case "TINV":
+    case "TTEST":
+    case "WEIBULL":
+    case "ZTEST":
+    case "CEILING.PRECISE":
+    case "FLOOR.PRECISE":
+    case "ERF.PRECISE":
+    case "ERFC.PRECISE":
+    case "ISO.CEILING":
+    case "MUNIT":
+    case "ARRAYTOTEXT":
+    case "VALUETOTEXT":
+    case "REGEXEXTRACT":
+    case "REGEXREPLACE":
+    case "REGEXTEST":
+    case "JIS":
+    case "PHONETIC":
+    case "INFO":
+    case "AREAS":
+    case "PERCENTOF":
+    case "VARPA":
+    case "STDEVPA":
+    case "F.TEST":
+    case "T.TEST":
+    case "EUROCONVERT":
+    case "AMORDEGRC":
+    case "AMORLINC":
+    case "ODDFPRICE":
+    case "ODDFYIELD":
+    case "ODDLPRICE":
+    case "ODDLYIELD":
+    case "FORECAST.ETS":
+    case "FORECAST.ETS.CONFINT":
+    case "FORECAST.ETS.SEASONALITY":
+    case "FORECAST.ETS.STAT":
+    case "TRIMRANGE":
+    case "IMAGE":
       return extended(name, args, ctx);
     default:
       return E.NAME();
@@ -2992,11 +3063,11 @@ function catalog(name: string, args: FormulaValue[], ctx: EvalContext): FormulaV
   if (name === "COMBINA" || name === "FACTDOUBLE" || name === "PERMUTATIONA" || name === "CEILING.MATH" || name === "FLOOR.MATH") return counting(name, args);
   if (name === "BASE" || name === "DECIMAL" || name === "ROMAN" || name === "ARABIC") return bases(name, args);
   if (name === "BITAND" || name === "BITOR" || name === "BITXOR" || name === "BITLSHIFT" || name === "BITRSHIFT") return bits(name, args);
-  if (name === "GAMMA" || name === "GAMMALN") {
+  if (name === "GAMMA" || name === "GAMMALN" || name === "GAMMALN.PRECISE") {
     const value = asNumber(args[0] ?? 0);
     if (value instanceof FormulaError) return value;
     if (value <= 0 && Number.isInteger(value)) return E.NUM();
-    return name === "GAMMA" ? gamma(value) : logGamma(value);
+    return name === "GAMMA" ? gamma(value) : logGamma(Math.abs(value));
   }
   const value = asNumber(args[0] ?? 0);
   if (value instanceof FormulaError) return value;
@@ -3121,9 +3192,10 @@ function distTail(name: string, args: FormulaValue[]): FormulaValue {
   if (name === "T.INV.2T" || name === "F.INV.RT" || name === "CHISQ.INV.RT") {
     const probability = asNumber(args[0] ?? 0);
     if (probability instanceof FormulaError) return probability;
-    const flipped = name === "T.INV.2T" ? 1 - probability / 2 : 1 - probability;
-    const base = name === "F.INV.RT" ? "F.INV" : name === "CHISQ.INV.RT" ? "CHISQ.INV" : "T.INV";
-    return distTail(base, [flipped, ...args.slice(1)]);
+    // T.INV turns a left-tail probability into a two-tailed one, so the two-tailed inverse must not go through it.
+    if (name === "T.INV.2T") return distTail("T.INV", [1 - probability / 2, ...args.slice(1)]);
+    const base = name === "F.INV.RT" ? "F.INV" : "CHISQ.INV";
+    return distTail(base, [1 - probability, ...args.slice(1)]);
   }
   if (name === "T.DIST.RT" || name === "T.DIST.2T") {
     const value = asNumber(args[0] ?? 0);
@@ -3173,12 +3245,14 @@ function extended(name: string, args: FormulaValue[], ctx: EvalContext): Formula
   if (name === "BAHTTEXT") return bahtText(args);
   if (name === "SERIESSUM") return seriesSum(args);
   if (name === "INTRATE" || name === "RECEIVED" || name === "PRICEMAT" || name === "YIELDMAT") return maturity(name, args);
-  if (name === "COMPLEX" || name.startsWith("IM")) return complex(name, args);
+  if (name === "COMPLEX" || (name.startsWith("IM") && name !== "IMAGE")) return complex(name, args);
   if (name.startsWith("BESSEL")) return bessel(name, args);
   if (name === "PROB" || name === "CHISQ.TEST" || name === "Z.TEST") return tests(name, args);
   if (name === "ACOT" || name === "ACOTH" || name === "SECH" || name === "CSCH" || name === "COTH") return hyperbolic(name, args);
-  if (name === "CONFIDENCE.T" || name === "GAMMA.INV") return distSolve(name, args);
-  return distMore(name, args);
+  if (name === "T.INV.2T" || name === "F.INV.RT" || name === "CHISQ.INV.RT") return distTail(name, args);
+  if (name === "CONFIDENCE.T" || name === "GAMMA.INV" || name === "BETA.INV") return distSolve(name, args);
+  if (name === "GAMMA.DIST" || name === "WEIBULL.DIST" || name === "HYPGEOM.DIST" || name === "NEGBINOM.DIST" || name === "BETA.DIST") return distMore(name, args);
+  return compat(name, args, helpers);
 }
 
 function hyperbolic(name: string, args: FormulaValue[]): FormulaValue {
@@ -3263,6 +3337,25 @@ function distSolve(name: string, args: FormulaValue[]): FormulaValue {
     if (alpha <= 0 || alpha >= 1 || deviation <= 0 || size < 2) return E.NUM();
     const critical = distTail("T.INV", [1 - alpha / 2, size - 1]);
     return typeof critical === "number" ? critical * deviation / Math.sqrt(size) : critical;
+  }
+  if (name === "BETA.INV") {
+    const probability = asNumber(args[0] ?? 0);
+    const alpha = asNumber(args[1] ?? 0);
+    const beta = asNumber(args[2] ?? 0);
+    if (probability instanceof FormulaError) return probability;
+    if (alpha instanceof FormulaError) return alpha;
+    if (beta instanceof FormulaError) return beta;
+    if (probability <= 0 || probability >= 1 || alpha <= 0 || beta <= 0) return E.NUM();
+    let low = 0;
+    let high = 1;
+    for (let step = 0; step < 60; step += 1) {
+      const mid = (low + high) / 2;
+      const value = distMore("BETA.DIST", [mid, alpha, beta, true]);
+      if (value instanceof FormulaError) return value;
+      if ((value as number) < probability) low = mid;
+      else high = mid;
+    }
+    return (low + high) / 2;
   }
   const probability = asNumber(args[0] ?? 0);
   const shape = asNumber(args[1] ?? 0);
@@ -3389,6 +3482,7 @@ function complex(name: string, args: FormulaValue[]): FormulaValue {
   const values = args.map((arg) => parseComplex(asText(arg ?? "0")));
   if (values.some((item) => item === undefined)) return E.NUM();
   const [first, second] = values as ComplexValue[];
+  if (name === "IMSIN" || name === "IMCOS" || name === "IMTAN" || name === "IMCOT" || name === "IMCSC" || name === "IMSEC" || name === "IMSINH" || name === "IMCOSH" || name === "IMCSCH" || name === "IMSECH") return compat(name, args, helpers);
   if (name === "IMREAL") return first!.real;
   if (name === "IMAGINARY") return first!.imag;
   if (name === "IMABS") return Math.hypot(first!.real, first!.imag);
@@ -3838,39 +3932,22 @@ function logGamma(z: number): number {
   return z < 0.5 ? Math.log(Math.PI / Math.sin(Math.PI * z)) - value : value;
 }
 
-/** The regularized incomplete beta, by its continued fraction. Used by the t and F distributions. */
+/**
+ * The regularized incomplete beta, by its power series. The series converges slowly past the
+ * symmetry point, so anything above it is computed as one minus the complementary value.
+ */
 function regularizedBeta(x: number, a: number, b: number): number {
   if (x <= 0) return 0;
   if (x >= 1) return 1;
-  const flip = x > (a + 1) / (a + b + 2);
-  const point = flip ? 1 - x : x;
-  const front = Math.exp(a * Math.log(point) + b * Math.log(1 - point) - logBeta(a, b)) / a;
-  let f = 1;
-  let c = 1;
-  let d = 1 - (a + b) * point / (a + 1);
-  if (Math.abs(d) < 1e-30) d = 1e-30;
-  d = 1 / d;
-  f = d;
-  for (let m = 1; m <= 200; m += 1) {
-    const even = (m * (b - m) * point) / ((a + 2 * m - 1) * (a + 2 * m));
-    d = 1 + even * d;
-    if (Math.abs(d) < 1e-30) d = 1e-30;
-    c = 1 + even / c;
-    if (Math.abs(c) < 1e-30) c = 1e-30;
-    d = 1 / d;
-    f *= c * d;
-    const odd = -((a + m) * (a + b + m) * point) / ((a + 2 * m) * (a + 2 * m + 1));
-    d = 1 + odd * d;
-    if (Math.abs(d) < 1e-30) d = 1e-30;
-    c = 1 + odd / c;
-    if (Math.abs(c) < 1e-30) c = 1e-30;
-    d = 1 / d;
-    const delta = c * d;
-    f *= delta;
-    if (Math.abs(delta - 1) < 1e-10) break;
+  if (x > (a + 1) / (a + b + 2)) return 1 - regularizedBeta(1 - x, b, a);
+  let term = 1 / a;
+  let sum = term;
+  for (let n = 1; n < 400; n += 1) {
+    term *= x * (a + b + n - 1) / (a + n);
+    sum += term;
+    if (Math.abs(term) < 1e-14 * Math.abs(sum)) break;
   }
-  const value = front * f;
-  return flip ? 1 - value : value;
+  return Math.exp(a * Math.log(x) + b * Math.log(1 - x) - logBeta(a, b)) * sum;
 }
 
 function logBeta(a: number, b: number): number {
@@ -4519,6 +4596,14 @@ function convertUnit(value: number, from: string, to: string): FormulaValue {
 }
 
 export { formatNumber } from "./format";
+
+import { compat } from "./compat.js";
+
+const helpers = {
+  flatten, numbers, asNumber, asText, asBool, withWidth, rangeWidth, rangeOrigin, variance, stdev,
+  distFn, distMore, distTail, distInverse, distSolve, normalDist, covariance, tests, coupon, yearFrac,
+  regression, normalInv, parseComplex, formatComplex,
+};
 
 export function setFormula(cell: SheetCell, formula: string): void {
   const body = formula.startsWith("=") ? formula.slice(1) : formula;

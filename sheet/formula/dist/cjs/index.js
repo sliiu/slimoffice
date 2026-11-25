@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatNumber = exports.FormulaError = void 0;
+exports.formatNumber = exports.E = exports.FormulaError = void 0;
 exports.recalculate = recalculate;
 exports.evaluate = evaluate;
 exports.consolidateRanges = consolidateRanges;
@@ -17,7 +17,7 @@ class FormulaError {
     }
 }
 exports.FormulaError = FormulaError;
-const E = {
+exports.E = {
     DIV0: () => new FormulaError("#DIV/0!"),
     VALUE: () => new FormulaError("#VALUE!"),
     REF: () => new FormulaError("#REF!"),
@@ -52,15 +52,15 @@ function evaluate(input, ctx) {
         const parser = new Parser(tokens, ctx);
         const value = parser.parseExpression();
         if (parser.notDone())
-            return E.VALUE();
+            return exports.E.VALUE();
         if (isPending(value))
-            return E.NAME();
+            return exports.E.NAME();
         return Array.isArray(value) && value.length === 1 ? value[0] ?? "" : value;
     }
     catch (err) {
         if (err instanceof FormulaError)
             return err;
-        return E.VALUE();
+        return exports.E.VALUE();
     }
 }
 /** Combine the source ranges into the destination sheet. Stores the definition so it reads back. */
@@ -246,9 +246,9 @@ function ensureCell(sheet, row, col) {
 }
 function formatResult(value) {
     if (isPending(value))
-        return E.NAME().code;
+        return exports.E.NAME().code;
     if (isLambda(value))
-        return E.VALUE().code;
+        return exports.E.VALUE().code;
     if (Array.isArray(value) && value.length === 1)
         return formatResult(value[0] ?? "");
     if (value instanceof FormulaError)
@@ -259,7 +259,7 @@ function formatResult(value) {
         return value ? "TRUE" : "FALSE";
     if (typeof value === "number") {
         if (!Number.isFinite(value))
-            return E.NUM().code;
+            return exports.E.NUM().code;
         if (Number.isInteger(value))
             return String(value);
         return String(Math.round(value * 1e10) / 1e10);
@@ -291,7 +291,7 @@ function tokenize(text) {
                 j += 1;
             }
             if (text[j] !== "'")
-                throw E.VALUE();
+                throw exports.E.VALUE();
             out.push({ kind: "id", value: value.toUpperCase() });
             i = j + 1;
             continue;
@@ -322,7 +322,7 @@ function tokenize(text) {
             const raw = text.slice(i, j);
             const num = Number(raw);
             if (!Number.isFinite(num))
-                throw E.VALUE();
+                throw exports.E.VALUE();
             out.push({ kind: "num", value: num });
             i = j;
             continue;
@@ -400,7 +400,7 @@ function tokenize(text) {
             i += 1;
             continue;
         }
-        throw E.VALUE();
+        throw exports.E.VALUE();
     }
     return out;
 }
@@ -421,7 +421,7 @@ class Parser {
     take() {
         const token = this.tokens[this.i];
         if (!token)
-            throw E.VALUE();
+            throw exports.E.VALUE();
         this.i += 1;
         return token;
     }
@@ -464,7 +464,7 @@ class Parser {
         while (this.peek()?.kind === "op" && ["*", "/"].includes(this.peek().value)) {
             const op = this.take().value;
             const right = this.parsePow();
-            left = binaryNum(left, right, op === "*" ? (a, b) => a * b : (a, b) => (b === 0 ? E.DIV0() : a / b));
+            left = binaryNum(left, right, op === "*" ? (a, b) => a * b : (a, b) => (b === 0 ? exports.E.DIV0() : a / b));
         }
         return left;
     }
@@ -497,7 +497,7 @@ class Parser {
     parsePrimary() {
         const token = this.peek();
         if (!token)
-            throw E.VALUE();
+            throw exports.E.VALUE();
         if (token.kind === "num") {
             this.take();
             return token.value;
@@ -510,7 +510,7 @@ class Parser {
             this.take();
             const value = this.parseExpression();
             if (this.peek()?.kind !== "rp")
-                throw E.VALUE();
+                throw exports.E.VALUE();
             this.take();
             return value;
         }
@@ -521,7 +521,7 @@ class Parser {
         if (token.kind === "ref" || token.kind === "id") {
             return this.parseRefOrCall();
         }
-        throw E.VALUE();
+        throw exports.E.VALUE();
     }
     /** `{1,2;3,4}` is a constant array: commas run across a row, semicolons start the next. */
     parseArray() {
@@ -546,7 +546,7 @@ class Parser {
         }
         rows.push(row);
         if (this.peek()?.kind !== "rb")
-            throw E.VALUE();
+            throw exports.E.VALUE();
         this.take();
         const width = rows.reduce((widest, line) => Math.max(widest, line.length), 1);
         const out = [];
@@ -584,7 +584,7 @@ class Parser {
                 this.i += 1;
         }
         if (this.peek()?.kind !== "rp")
-            throw E.VALUE();
+            throw exports.E.VALUE();
         const body = this.tokens.slice(bodyStart, this.i);
         this.take();
         const lambda = { params, body };
@@ -593,7 +593,7 @@ class Parser {
         this.take();
         const args = this.parseArgList();
         if (this.peek()?.kind !== "rp")
-            throw E.VALUE();
+            throw exports.E.VALUE();
         this.take();
         return applyLambda(lambda, args, this.ctx);
     }
@@ -610,16 +610,16 @@ class Parser {
             this.parseExpression();
             pairs.push({ name: id, tokens: this.tokens.slice(start, this.i) });
             if (this.peek()?.kind !== "comma")
-                throw E.VALUE();
+                throw exports.E.VALUE();
             this.take();
         }
         if (!pairs.length)
-            throw E.VALUE();
+            throw exports.E.VALUE();
         const start = this.i;
         this.parseExpression();
         const body = this.tokens.slice(start, this.i);
         if (this.peek()?.kind !== "rp")
-            throw E.VALUE();
+            throw exports.E.VALUE();
         this.take();
         const names = new Map();
         for (const pair of pairs) {
@@ -631,7 +631,7 @@ class Parser {
         this.take();
         const args = this.parseArgList();
         if (this.peek()?.kind !== "rp")
-            throw E.VALUE();
+            throw exports.E.VALUE();
         this.take();
         return callFunction(name, args, this.ctx);
     }
@@ -649,14 +649,14 @@ class Parser {
     parseRefOrCall() {
         const first = this.take();
         if (first.kind !== "ref" && first.kind !== "id")
-            throw E.VALUE();
+            throw exports.E.VALUE();
         // SheetName!A1 or SheetName!A1:B2
         if (this.peek()?.kind === "bang") {
             this.take();
             const sheetName = first.value;
             const next = this.take();
             if (next.kind !== "ref" && next.kind !== "id")
-                throw E.REF();
+                throw exports.E.REF();
             return this.parseRangeTail(sheetName, next.value);
         }
         if (first.kind === "id" && this.peek()?.kind === "lp")
@@ -672,7 +672,7 @@ class Parser {
             this.take();
             const next = this.take();
             if (next.kind !== "ref" && next.kind !== "id")
-                throw E.REF();
+                throw exports.E.REF();
             endRef = next.value;
         }
         const start = parseA1(startRef);
@@ -685,11 +685,11 @@ class Parser {
                     return evaluate(named.refersTo.startsWith("=") ? named.refersTo : `=${named.refersTo}`, this.ctx);
                 return { name: startRef };
             }
-            throw E.NAME();
+            throw exports.E.NAME();
         }
         const sheetIndex = sheetName ? findSheet(this.ctx.workbook, sheetName) : this.ctx.sheetIndex;
         if (sheetIndex < 0)
-            return E.REF();
+            return exports.E.REF();
         const values = readRange(this.ctx.workbook, sheetIndex, start, end);
         if (start.row === end.row && start.col === end.col)
             return values;
@@ -795,7 +795,7 @@ function scalarPrimitive(value) {
 /** Runs a LAMBDA body with each parameter bound to the matching argument. */
 function applyLambda(lambda, args, ctx) {
     if (args.length !== lambda.params.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     const bound = new Map(lambda.params.map((param, index) => [param, args[index] ?? ""]));
     return new Parser(rewrite(lambda.body, bound), ctx).parseExpression();
 }
@@ -838,9 +838,9 @@ function numbers(args) {
 }
 function asNumber(value) {
     if (isPending(value))
-        return E.NAME();
+        return exports.E.NAME();
     if (isLambda(value))
-        return E.VALUE();
+        return exports.E.VALUE();
     if (Array.isArray(value) && value.length === 1)
         return asNumber(value[0] ?? "");
     if (value instanceof FormulaError)
@@ -854,7 +854,7 @@ function asNumber(value) {
     if (value === "")
         return 0;
     const num = Number(value);
-    return Number.isFinite(num) ? num : E.VALUE();
+    return Number.isFinite(num) ? num : exports.E.VALUE();
 }
 function asText(value) {
     if (isLambda(value))
@@ -871,9 +871,9 @@ function asText(value) {
 }
 function asBool(value) {
     if (isPending(value))
-        return E.NAME();
+        return exports.E.NAME();
     if (isLambda(value))
-        return E.VALUE();
+        return exports.E.VALUE();
     if (Array.isArray(value) && value.length === 1)
         return asBool(value[0] ?? false);
     if (value instanceof FormulaError)
@@ -888,7 +888,7 @@ function asBool(value) {
         return true;
     if (value === "FALSE")
         return false;
-    return E.VALUE();
+    return exports.E.VALUE();
 }
 function binaryNum(left, right, op) {
     const a = asNumber(left);
@@ -901,9 +901,9 @@ function binaryNum(left, right, op) {
 }
 function compare(left, right, op) {
     if (isPending(left) || isPending(right))
-        return E.NAME();
+        return exports.E.NAME();
     if (isLambda(left) || isLambda(right))
-        return E.VALUE();
+        return exports.E.VALUE();
     if (left instanceof FormulaError)
         return left;
     if (right instanceof FormulaError)
@@ -912,7 +912,7 @@ function compare(left, right, op) {
     const l = flat(left);
     const r = flat(right);
     if (Array.isArray(l) || Array.isArray(r))
-        return E.VALUE();
+        return exports.E.VALUE();
     const ln = typeof l === "number" || (typeof l === "string" && /^-?\d+(?:\.\d+)?$/.test(l)) ? Number(l) : null;
     const rn = typeof r === "number" || (typeof r === "string" && /^-?\d+(?:\.\d+)?$/.test(r)) ? Number(r) : null;
     let cmp;
@@ -932,7 +932,7 @@ function compare(left, right, op) {
         return cmp <= 0;
     if (op === ">=")
         return cmp >= 0;
-    return E.VALUE();
+    return exports.E.VALUE();
 }
 function callFunction(name, args, ctx) {
     switch (name) {
@@ -991,7 +991,7 @@ function callFunction(name, args, ctx) {
                 if (flag)
                     trues += 1;
             }
-            return seen ? trues % 2 === 1 : E.VALUE();
+            return seen ? trues % 2 === 1 : exports.E.VALUE();
         }
         case "NOT": {
             const b = asBool(args[0] ?? false);
@@ -1006,7 +1006,7 @@ function callFunction(name, args, ctx) {
             if (name === "ABS")
                 return Math.abs(n);
             if (name === "SQRT")
-                return n < 0 ? E.NUM() : Math.sqrt(n);
+                return n < 0 ? exports.E.NUM() : Math.sqrt(n);
             return Math.trunc(n);
         }
         case "ROUND": {
@@ -1027,7 +1027,7 @@ function callFunction(name, args, ctx) {
             if (d instanceof FormulaError)
                 return d;
             if (d === 0)
-                return E.DIV0();
+                return exports.E.DIV0();
             return n - d * Math.floor(n / d);
         }
         case "TRUNC": {
@@ -1050,7 +1050,7 @@ function callFunction(name, args, ctx) {
             if (n === 0 || multiple === 0)
                 return 0;
             if (n > 0 !== multiple > 0)
-                return E.NUM();
+                return exports.E.NUM();
             return Math.round(n / multiple) * multiple;
         }
         case "QUOTIENT": {
@@ -1061,7 +1061,7 @@ function callFunction(name, args, ctx) {
             if (d instanceof FormulaError)
                 return d;
             if (d === 0)
-                return E.DIV0();
+                return exports.E.DIV0();
             return Math.trunc(n / d);
         }
         case "GCD":
@@ -1088,7 +1088,7 @@ function callFunction(name, args, ctx) {
             const first = Math.ceil(Math.min(low, high));
             const last = Math.floor(Math.max(low, high));
             if (first > last)
-                return E.NUM();
+                return exports.E.NUM();
             return first + Math.floor(Math.random() * (last - first + 1));
         }
         case "POWER":
@@ -1124,14 +1124,14 @@ function callFunction(name, args, ctx) {
             return flatten(args).map((item) => asText(item)).join("");
         case "VALUE": {
             const n = Number(asText(args[0] ?? ""));
-            return Number.isFinite(n) ? n : E.VALUE();
+            return Number.isFinite(n) ? n : exports.E.VALUE();
         }
         case "TRUE":
             return true;
         case "FALSE":
             return false;
         case "NA":
-            return E.NA();
+            return exports.E.NA();
         case "ISBLANK": {
             const v = args[0];
             return v === "" || v === undefined || (Array.isArray(v) && v.length === 0);
@@ -1163,10 +1163,10 @@ function callFunction(name, args, ctx) {
         case "ERROR.TYPE": {
             const v = collapse(args[0] ?? "");
             if (!(v instanceof FormulaError))
-                return E.NA();
+                return exports.E.NA();
             const codes = ["#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A"];
             const index = codes.indexOf(v.code);
-            return index < 0 ? E.NA() : index + 1;
+            return index < 0 ? exports.E.NA() : index + 1;
         }
         case "ISEVEN":
         case "ISODD": {
@@ -1225,7 +1225,7 @@ function callFunction(name, args, ctx) {
             if (col instanceof FormulaError)
                 return col;
             if (row < 1 || col < 1)
-                return E.VALUE();
+                return exports.E.VALUE();
             const abs = asNumber(args[2] ?? 1);
             if (abs instanceof FormulaError)
                 return abs;
@@ -1239,12 +1239,12 @@ function callFunction(name, args, ctx) {
             if (index instanceof FormulaError)
                 return index;
             const pick = args[Math.floor(index)];
-            return pick === undefined ? E.VALUE() : pick;
+            return pick === undefined ? exports.E.VALUE() : pick;
         }
         case "TRANSPOSE": {
             const table = args[0];
             if (!(table instanceof Array))
-                return table ?? E.VALUE();
+                return table ?? exports.E.VALUE();
             const width = rangeWidth(table);
             const height = Math.ceil(table.length / width);
             const out = [];
@@ -1297,18 +1297,18 @@ function callFunction(name, args, ctx) {
             if (needle instanceof FormulaError)
                 return needle;
             if (!(table instanceof Array) || col instanceof FormulaError)
-                return E.VALUE();
+                return exports.E.VALUE();
             if (approximate instanceof FormulaError)
                 return approximate;
             const cols = rangeWidth(table);
             const index = Math.max(1, Math.floor(col));
             if (index > cols)
-                return E.REF();
+                return exports.E.REF();
             const column = [];
             for (let offset = 0; offset < table.length; offset += cols)
                 column.push(table[offset] ?? "");
             const at = approximate ? approxIndex(column, needle, -1) : column.findIndex((cell) => lookupEqual(cell, needle));
-            return at < 0 ? E.NA() : table[at * cols + index - 1] ?? E.NA();
+            return at < 0 ? exports.E.NA() : table[at * cols + index - 1] ?? exports.E.NA();
         }
         case "XLOOKUP": {
             const needle = scalar(args[0]);
@@ -1318,28 +1318,28 @@ function callFunction(name, args, ctx) {
             if (needle instanceof FormulaError)
                 return needle;
             if (!(lookup instanceof Array) || !(result instanceof Array))
-                return E.NA();
+                return exports.E.NA();
             if (mode instanceof FormulaError)
                 return mode;
             const at = mode < 0 || mode === 1 ? approxIndex(lookup, needle, mode < 0 ? -1 : 1) : lookup.findIndex((item) => lookupEqual(item, needle));
             if (at < 0)
-                return args[3] !== undefined ? scalar(args[3]) : E.NA();
-            return result[at] ?? E.NA();
+                return args[3] !== undefined ? scalar(args[3]) : exports.E.NA();
+            return result[at] ?? exports.E.NA();
         }
         case "INDEX": {
             const table = args[0];
             const row = asNumber(args[1] ?? 1);
             const col = asNumber(args[2] ?? 1);
             if (!(table instanceof Array))
-                return table ?? E.REF();
+                return table ?? exports.E.REF();
             if (row instanceof FormulaError)
                 return row;
             if (col instanceof FormulaError)
                 return col;
             if (args[2] === undefined)
-                return table[Math.max(0, Math.floor(row) - 1)] ?? E.REF();
+                return table[Math.max(0, Math.floor(row) - 1)] ?? exports.E.REF();
             const width = rangeWidth(table);
-            return table[(Math.max(0, Math.floor(row) - 1)) * width + (Math.max(0, Math.floor(col) - 1))] ?? E.REF();
+            return table[(Math.max(0, Math.floor(row) - 1)) * width + (Math.max(0, Math.floor(col) - 1))] ?? exports.E.REF();
         }
         case "MATCH":
         case "XMATCH": {
@@ -1349,12 +1349,12 @@ function callFunction(name, args, ctx) {
             if (needle instanceof FormulaError)
                 return needle;
             if (!(table instanceof Array))
-                return E.NA();
+                return exports.E.NA();
             if (mode instanceof FormulaError)
                 return mode;
             const at = mode === 0 ? table.findIndex((item) => lookupEqual(item, needle)) : approxIndex(table, needle, mode > 0 ? -1 : 1);
             if (at < 0)
-                return args[3] !== undefined ? scalar(args[3]) : E.NA();
+                return args[3] !== undefined ? scalar(args[3]) : exports.E.NA();
             return at + 1;
         }
         case "LOOKUP": {
@@ -1363,7 +1363,7 @@ function callFunction(name, args, ctx) {
             if (needle instanceof FormulaError)
                 return needle;
             if (!(lookup instanceof Array))
-                return E.NA();
+                return exports.E.NA();
             const result = Array.isArray(args[2]) ? args[2] : lookup;
             const width = rangeWidth(lookup);
             const rows = Math.ceil(lookup.length / width);
@@ -1373,12 +1373,12 @@ function callFunction(name, args, ctx) {
                 column.push(lookup[across ? i : i * width] ?? "");
             const at = approxIndex(column, needle, -1);
             if (at < 0)
-                return E.NA();
+                return exports.E.NA();
             const resultWidth = rangeWidth(result);
             const resultRows = Math.ceil(result.length / resultWidth);
             if (across && resultRows === 1)
-                return result[at] ?? E.NA();
-            return result[at * resultWidth + resultWidth - 1] ?? E.NA();
+                return result[at] ?? exports.E.NA();
+            return result[at * resultWidth + resultWidth - 1] ?? exports.E.NA();
         }
         case "TEXT": {
             const value = asNumber(args[0] ?? 0);
@@ -1412,7 +1412,7 @@ function callFunction(name, args, ctx) {
         case "UNIQUE": {
             const table = args[0];
             if (!(table instanceof Array))
-                return table ?? E.VALUE();
+                return table ?? exports.E.VALUE();
             const seen = new Set();
             const out = [];
             for (const item of table) {
@@ -1427,14 +1427,14 @@ function callFunction(name, args, ctx) {
         case "SORT": {
             const table = args[0];
             if (!(table instanceof Array))
-                return table ?? E.VALUE();
+                return table ?? exports.E.VALUE();
             return withWidth([...table].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })), rangeWidth(table));
         }
         case "FILTER": {
             const table = args[0];
             const include = args[1];
             if (!(table instanceof Array) || !(include instanceof Array))
-                return E.VALUE();
+                return exports.E.VALUE();
             const width = rangeWidth(table);
             const out = [];
             for (let offset = 0, row = 0; offset < table.length; offset += width, row += 1) {
@@ -1442,7 +1442,7 @@ function callFunction(name, args, ctx) {
                     continue;
                 out.push(...table.slice(offset, offset + width));
             }
-            return out.length ? withWidth(out, width) : E.VALUE();
+            return out.length ? withWidth(out, width) : exports.E.VALUE();
         }
         case "SUMIF":
         case "COUNTIF":
@@ -1466,7 +1466,7 @@ function callFunction(name, args, ctx) {
                 if (cond)
                     return args[i + 1] ?? "";
             }
-            return E.NA();
+            return exports.E.NA();
         }
         case "IFNA": {
             const primary = args[0];
@@ -1480,7 +1480,7 @@ function callFunction(name, args, ctx) {
                 if (sameValue(probe, args[i]))
                     return args[i + 1] ?? "";
             }
-            return args.length % 2 === 0 ? (args[args.length - 1] ?? "") : E.NA();
+            return args.length % 2 === 0 ? (args[args.length - 1] ?? "") : exports.E.NA();
         }
         case "FIND":
         case "SEARCH": {
@@ -1491,7 +1491,7 @@ function callFunction(name, args, ctx) {
                 return start;
             const from = Math.max(0, Math.floor(start) - 1);
             const at = findText(haystack, needle, from, name === "SEARCH");
-            return at < 0 ? E.VALUE() : at + 1;
+            return at < 0 ? exports.E.VALUE() : at + 1;
         }
         case "SUBSTITUTE": {
             const text = asText(args[0] ?? "");
@@ -1527,7 +1527,7 @@ function callFunction(name, args, ctx) {
             if (times instanceof FormulaError)
                 return times;
             if (times < 0)
-                return E.VALUE();
+                return exports.E.VALUE();
             return text.repeat(Math.min(10000, Math.floor(times)));
         }
         case "EXACT":
@@ -1537,7 +1537,7 @@ function callFunction(name, args, ctx) {
             const colDelim = asText(args[1] ?? "");
             const rowDelim = args[2] === undefined ? "" : asText(args[2]);
             if (!colDelim && !rowDelim)
-                return E.VALUE();
+                return exports.E.VALUE();
             const lines = rowDelim ? text.split(rowDelim) : [text];
             const rows = lines.map((line) => (colDelim ? line.split(colDelim) : [line]));
             const width = rows.reduce((widest, line) => Math.max(widest, line.length), 1);
@@ -1604,7 +1604,7 @@ function callFunction(name, args, ctx) {
         case "MEDIAN": {
             const nums = numbers(args).sort((a, b) => a - b);
             if (!nums.length)
-                return E.NUM();
+                return exports.E.NUM();
             const mid = Math.floor(nums.length / 2);
             return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
         }
@@ -1615,7 +1615,7 @@ function callFunction(name, args, ctx) {
             if (k instanceof FormulaError)
                 return k;
             const value = nums[Math.floor(k) - 1];
-            return value === undefined ? E.NUM() : value;
+            return value === undefined ? exports.E.NUM() : value;
         }
         case "RANK":
         case "RANK.EQ": {
@@ -1627,7 +1627,7 @@ function callFunction(name, args, ctx) {
             if (order instanceof FormulaError)
                 return order;
             if (!nums.some((item) => item === target))
-                return E.NA();
+                return exports.E.NA();
             const ahead = nums.filter((item) => (order === 0 ? item > target : item < target)).length;
             return ahead + 1;
         }
@@ -1661,7 +1661,7 @@ function callFunction(name, args, ctx) {
             if (end instanceof FormulaError)
                 return end;
             if (end < start)
-                return E.NUM();
+                return exports.E.NUM();
             const unit = asText(args[2] ?? "D").toUpperCase();
             if (unit === "D")
                 return Math.round(end - start);
@@ -1680,7 +1680,7 @@ function callFunction(name, args, ctx) {
                 return datedifDays(from, to, "MD");
             if (unit === "YD")
                 return datedifDays(from, to, "YD");
-            return E.NUM();
+            return exports.E.NUM();
         }
         case "WEEKNUM": {
             const serial = asNumber(args[0] ?? 0);
@@ -1710,7 +1710,7 @@ function callFunction(name, args, ctx) {
             const marker = asText(args[1] ?? "");
             const at = text.indexOf(marker);
             if (at < 0)
-                return E.NA();
+                return exports.E.NA();
             return name === "TEXTBEFORE" ? text.slice(0, at) : text.slice(at + marker.length);
         }
         case "NETWORKDAYS": {
@@ -1734,7 +1734,7 @@ function callFunction(name, args, ctx) {
             if (code instanceof FormulaError)
                 return code;
             const fn = SUBTOTALS[Math.floor(code) % 100];
-            return fn ? fn(visibleArgs(args.slice(1), Math.floor(code) >= 100)) : E.VALUE();
+            return fn ? fn(visibleArgs(args.slice(1), Math.floor(code) >= 100)) : exports.E.VALUE();
         }
         case "HLOOKUP": {
             const needle = scalar(args[0]);
@@ -1744,16 +1744,16 @@ function callFunction(name, args, ctx) {
             if (needle instanceof FormulaError)
                 return needle;
             if (!(table instanceof Array) || row instanceof FormulaError)
-                return E.VALUE();
+                return exports.E.VALUE();
             if (approximate instanceof FormulaError)
                 return approximate;
             const width = rangeWidth(table);
             const index = Math.max(1, Math.floor(row));
             if (index > Math.ceil(table.length / width))
-                return E.REF();
+                return exports.E.REF();
             const header = table.slice(0, width);
             const at = approximate ? approxIndex(header, needle, -1) : header.findIndex((cell) => lookupEqual(cell, needle));
-            return at < 0 ? E.NA() : table[(index - 1) * width + at] ?? E.NA();
+            return at < 0 ? exports.E.NA() : table[(index - 1) * width + at] ?? exports.E.NA();
         }
         case "PMT":
         case "PV":
@@ -1768,7 +1768,7 @@ function callFunction(name, args, ctx) {
             if (rate instanceof FormulaError)
                 return rate;
             if (rate <= -1)
-                return E.NUM();
+                return exports.E.NUM();
             return numbers(args.slice(1)).reduce((sum, value, index) => sum + value / (1 + rate) ** (index + 1), 0);
         }
         case "IRR": {
@@ -1808,7 +1808,7 @@ function callFunction(name, args, ctx) {
             if (q instanceof FormulaError)
                 return q;
             if (q < 0 || q > 4)
-                return E.NUM();
+                return exports.E.NUM();
             return percentile(numbers(args.slice(0, 1)), q / 4);
         }
         case "CORREL":
@@ -1839,12 +1839,12 @@ function callFunction(name, args, ctx) {
             if (code instanceof FormulaError)
                 return code;
             if (code < 1 || code > 255)
-                return E.VALUE();
+                return exports.E.VALUE();
             return String.fromCharCode(Math.floor(code));
         }
         case "CODE": {
             const text = asText(args[0] ?? "");
-            return text ? text.charCodeAt(0) : E.VALUE();
+            return text ? text.charCodeAt(0) : exports.E.VALUE();
         }
         case "TIME": {
             const h = asNumber(args[0] ?? 0);
@@ -1874,7 +1874,7 @@ function callFunction(name, args, ctx) {
         case "DATEVALUE": {
             const match = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(asText(args[0] ?? "").trim());
             if (!match)
-                return E.VALUE();
+                return exports.E.VALUE();
             return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86400000 + 25569;
         }
         case "WORKDAY": {
@@ -2027,7 +2027,7 @@ function callFunction(name, args, ctx) {
             if (periods instanceof FormulaError)
                 return periods;
             if (first <= 0 || periods < 1)
-                return E.NUM();
+                return exports.E.NUM();
             const n = Math.floor(periods);
             return name === "EFFECT" ? (1 + first / n) ** n - 1 : ((1 + first) ** (1 / n) - 1) * n;
         }
@@ -2180,6 +2180,7 @@ function callFunction(name, args, ctx) {
         case "COT":
         case "GAMMA":
         case "GAMMALN":
+        case "GAMMALN.PRECISE":
         case "TBILLYIELD":
         case "ACCRINTM":
         case "DOLLARDE":
@@ -2234,9 +2235,79 @@ function callFunction(name, args, ctx) {
         case "IMSQRT":
         case "IMSUB":
         case "IMSUM":
+        case "IMCOS":
+        case "IMCOSH":
+        case "IMCOT":
+        case "IMCSC":
+        case "IMCSCH":
+        case "IMSEC":
+        case "IMSECH":
+        case "IMSIN":
+        case "IMSINH":
+        case "IMTAN":
+        case "BETADIST":
+        case "BETAINV":
+        case "BINOMDIST":
+        case "CHIDIST":
+        case "CHIINV":
+        case "CHITEST":
+        case "CONFIDENCE":
+        case "COVAR":
+        case "CRITBINOM":
+        case "EXPONDIST":
+        case "FDIST":
+        case "FINV":
+        case "FTEST":
+        case "GAMMADIST":
+        case "GAMMAINV":
+        case "HYPGEOMDIST":
+        case "LOGINV":
+        case "LOGNORMDIST":
+        case "NEGBINOMDIST":
+        case "NORMDIST":
+        case "NORMINV":
+        case "POISSON":
+        case "TDIST":
+        case "TINV":
+        case "TTEST":
+        case "WEIBULL":
+        case "ZTEST":
+        case "CEILING.PRECISE":
+        case "FLOOR.PRECISE":
+        case "ERF.PRECISE":
+        case "ERFC.PRECISE":
+        case "ISO.CEILING":
+        case "MUNIT":
+        case "ARRAYTOTEXT":
+        case "VALUETOTEXT":
+        case "REGEXEXTRACT":
+        case "REGEXREPLACE":
+        case "REGEXTEST":
+        case "JIS":
+        case "PHONETIC":
+        case "INFO":
+        case "AREAS":
+        case "PERCENTOF":
+        case "VARPA":
+        case "STDEVPA":
+        case "F.TEST":
+        case "T.TEST":
+        case "EUROCONVERT":
+        case "AMORDEGRC":
+        case "AMORLINC":
+        case "ODDFPRICE":
+        case "ODDFYIELD":
+        case "ODDLPRICE":
+        case "ODDLYIELD":
+        case "FORECAST.ETS":
+        case "FORECAST.ETS.CONFINT":
+        case "FORECAST.ETS.SEASONALITY":
+        case "FORECAST.ETS.STAT":
+        case "TRIMRANGE":
+        case "IMAGE":
             return extended(name, args, ctx);
         default:
-            return E.NAME();
+            return exports.E.NAME();
     }
 }
 /**
@@ -2246,7 +2317,7 @@ function callFunction(name, args, ctx) {
 function reshape(name, args) {
     const source = args[0];
     if (!Array.isArray(source))
-        return E.VALUE();
+        return exports.E.VALUE();
     const width = rangeWidth(source);
     const height = Math.ceil(source.length / width);
     const count = (value, fallback) => {
@@ -2285,7 +2356,7 @@ function reshape(name, args) {
         if (size instanceof FormulaError)
             return size;
         if (size < 1)
-            return E.NUM();
+            return exports.E.NUM();
         const pad = args[2] === undefined ? "" : scalarPrimitive(args[2]);
         const across = name === "WRAPROWS";
         const lines = Math.ceil(source.length / size);
@@ -2304,7 +2375,7 @@ function reshape(name, args) {
         if (cols instanceof FormulaError)
             return cols;
         if (rows < height || cols < width)
-            return E.VALUE();
+            return exports.E.VALUE();
         const pad = args[3] === undefined ? "" : scalarPrimitive(args[3]);
         const out = [];
         for (let row = 0; row < rows; row += 1)
@@ -2317,7 +2388,7 @@ function reshape(name, args) {
         return rows;
     const pick = (total, requested) => {
         if (requested === 0 || Math.abs(requested) > total)
-            return E.VALUE();
+            return exports.E.VALUE();
         const out = [];
         const span = Math.abs(requested);
         for (let i = 0; i < span; i += 1)
@@ -2355,11 +2426,11 @@ function reshape(name, args) {
         const index = Math.trunc(value);
         const limit = name === "CHOOSEROWS" ? height : width;
         if (index === 0 || Math.abs(index) > limit)
-            return E.VALUE();
+            return exports.E.VALUE();
         indexes.push(index > 0 ? index - 1 : limit + index);
     }
     if (!indexes.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     const out = [];
     if (name === "CHOOSEROWS")
         for (const row of indexes)
@@ -2381,7 +2452,7 @@ function statsFn(name, args) {
         if (k instanceof FormulaError)
             return k;
         if (n < 0 || k < 0 || k > n || !Number.isInteger(n) || !Number.isInteger(k))
-            return E.NUM();
+            return exports.E.NUM();
         let out = 1;
         for (let i = 0; i < k; i += 1)
             out *= n - i;
@@ -2404,15 +2475,15 @@ function statsFn(name, args) {
     const ranged = name === "PERCENTRANK" || name === "TRIMMEAN" || name === "PERCENTILE.EXC" || name === "QUARTILE.EXC";
     const nums = numbers(ranged ? args.slice(0, 1) : args);
     if (!nums.length)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "GEOMEAN") {
         if (nums.some((item) => item <= 0))
-            return E.NUM();
+            return exports.E.NUM();
         return Math.exp(nums.reduce((sum, item) => sum + Math.log(item), 0) / nums.length);
     }
     if (name === "HARMEAN") {
         if (nums.some((item) => item <= 0))
-            return E.NUM();
+            return exports.E.NUM();
         return nums.length / nums.reduce((sum, item) => sum + 1 / item, 0);
     }
     const mean = nums.reduce((sum, item) => sum + item, 0) / nums.length;
@@ -2423,7 +2494,7 @@ function statsFn(name, args) {
     const square = nums.reduce((sum, item) => sum + (item - mean) ** 2, 0);
     if (name === "SKEW" || name === "SKEW.P" || name === "KURT") {
         if (nums.length < (name === "KURT" ? 4 : 3) || square === 0)
-            return E.DIV0();
+            return exports.E.DIV0();
         const deviation = Math.sqrt(square / (name === "SKEW.P" ? nums.length : nums.length - 1));
         const moment = nums.reduce((sum, item) => sum + ((item - mean) / deviation) ** (name === "KURT" ? 4 : 3), 0);
         const n = nums.length;
@@ -2437,7 +2508,7 @@ function statsFn(name, args) {
             return target;
         const sorted = [...nums].sort((a, b) => a - b);
         if (target < sorted[0] || target > sorted[sorted.length - 1])
-            return E.NA();
+            return exports.E.NA();
         const above = sorted.filter((item) => item < target).length;
         const same = sorted.filter((item) => item === target).length;
         return (above + (same > 1 ? (same - 1) / 2 : 0)) / (sorted.length - 1);
@@ -2447,7 +2518,7 @@ function statsFn(name, args) {
         if (fraction instanceof FormulaError)
             return fraction;
         if (fraction < 0 || fraction >= 1)
-            return E.NUM();
+            return exports.E.NUM();
         const sorted = [...nums].sort((a, b) => a - b);
         const cut = Math.floor(sorted.length * fraction / 2);
         const kept = sorted.slice(cut, sorted.length - cut);
@@ -2458,11 +2529,11 @@ function statsFn(name, args) {
         return k;
     const probe = name === "QUARTILE.EXC" ? k / 4 : k;
     if (probe <= 0 || probe >= 1)
-        return E.NUM();
+        return exports.E.NUM();
     const sorted = [...nums].sort((a, b) => a - b);
     const position = probe * (sorted.length + 1) - 1;
     if (position < 0 || position > sorted.length - 1)
-        return E.NUM();
+        return exports.E.NUM();
     const lower = Math.floor(position);
     return sorted[lower] + (sorted[Math.ceil(position)] - sorted[lower]) * (position - lower);
 }
@@ -2479,7 +2550,7 @@ function financeExtra(name, args) {
     if (name === "CUMPRINC" || name === "CUMIPMT") {
         const [rate, periods, present, first, last] = [at(0), at(1), at(2), at(3), at(4)];
         if (rate <= 0 || periods < 1 || first < 1 || last < first || last > periods)
-            return E.NUM();
+            return exports.E.NUM();
         const payment = present * rate / (1 - (1 + rate) ** -periods);
         let total = 0;
         let balance = present;
@@ -2495,7 +2566,7 @@ function financeExtra(name, args) {
     if (name === "RRI" || name === "PDURATION") {
         const [periods, present, future] = [at(0), at(1), at(2)];
         if (present <= 0 || future <= 0 || periods <= 0)
-            return E.NUM();
+            return exports.E.NUM();
         const growth = Math.log(future / present);
         return name === "RRI" ? Math.exp(growth / periods) - 1 : growth / Math.log(1 + periods);
     }
@@ -2503,23 +2574,23 @@ function financeExtra(name, args) {
         const [settlement, maturity, third, redemption] = [at(0), at(1), at(2), at(3)];
         const days = maturity - settlement;
         if (days <= 0)
-            return E.NUM();
+            return exports.E.NUM();
         if (name === "TBILLPRICE")
             return 100 * (1 - third * days / 360);
         if (redemption === 0)
-            return E.DIV0();
+            return exports.E.DIV0();
         return (redemption - third) / redemption * (360 / days);
     }
     const rate = at(0);
     if (name === "ACCRINT") {
         const [first, settlement, par, frequency] = [at(1), at(2), at(3), at(4)];
         if (frequency <= 0 || settlement < first)
-            return E.NUM();
+            return exports.E.NUM();
         return par * rate / frequency * Math.round((settlement - first) / (365 / frequency));
     }
     const [coupon, settlement, maturity, frequency] = [at(1), at(2), at(3), at(4)];
     if (![1, 2, 4].includes(frequency) || maturity <= settlement)
-        return E.NUM();
+        return exports.E.NUM();
     const periods = Math.ceil((maturity - settlement) / (365 / frequency));
     const perRate = rate / frequency;
     if (name === "PRICE" || name === "DURATION") {
@@ -2532,11 +2603,11 @@ function financeExtra(name, args) {
             price += discounted;
             weighted += period / frequency * discounted;
         }
-        return name === "PRICE" ? price : price === 0 ? E.DIV0() : weighted / price;
+        return name === "PRICE" ? price : price === 0 ? exports.E.DIV0() : weighted / price;
     }
     const present = at(5);
     if (present <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     let low = 0;
     let high = 1;
     for (let step = 0; step < 60; step += 1) {
@@ -2556,13 +2627,13 @@ function financeExtra(name, args) {
 function textExtra(name, args) {
     const text = asText(args[0] ?? "");
     if (name === "UNICODE")
-        return text ? text.codePointAt(0) : E.VALUE();
+        return text ? text.codePointAt(0) : exports.E.VALUE();
     if (name === "UNICHAR") {
         const code = asNumber(args[0] ?? 0);
         if (code instanceof FormulaError)
             return code;
         if (code < 1 || code > 0x10ffff)
-            return E.VALUE();
+            return exports.E.VALUE();
         return String.fromCodePoint(Math.floor(code));
     }
     if (name === "CLEAN")
@@ -2577,7 +2648,7 @@ function textExtra(name, args) {
         const cleaned = text.split(group).join("").replace(decimal, ".");
         const value = Number(cleaned.replace(/%$/, ""));
         if (!Number.isFinite(value))
-            return E.VALUE();
+            return exports.E.VALUE();
         return cleaned.endsWith("%") ? value / 100 : value;
     }
     const value = asNumber(args[0] ?? 0);
@@ -2596,21 +2667,21 @@ function textExtra(name, args) {
 function sortBy(args) {
     const table = args[0];
     if (!Array.isArray(table))
-        return table ?? E.VALUE();
+        return table ?? exports.E.VALUE();
     const width = rangeWidth(table);
     const rows = Math.ceil(table.length / width);
     const keys = [];
     for (let i = 1; i < args.length; i += 2) {
         const by = args[i];
         if (!Array.isArray(by))
-            return E.VALUE();
+            return exports.E.VALUE();
         const order = i + 1 < args.length ? asNumber(args[i + 1] ?? 1) : 1;
         if (order instanceof FormulaError)
             return order;
         keys.push({ values: by, descending: order < 0 });
     }
     if (!keys.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     const order = [...Array(rows).keys()].sort((a, b) => {
         for (const key of keys) {
             const diff = sortCompare(key.values[a] ?? "", key.values[b] ?? "");
@@ -2635,7 +2706,7 @@ function sortCompare(left, right) {
 function stack(name, args) {
     const blocks = args.map((arg) => (Array.isArray(arg) ? arg : [scalarPrimitive(arg ?? "")]));
     if (!blocks.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     if (name === "VSTACK") {
         const width = blocks.reduce((widest, block) => Math.max(widest, rangeWidth(block)), 1);
         const out = [];
@@ -2667,19 +2738,19 @@ function stack(name, args) {
 function database(name, args) {
     const table = args[0];
     if (!Array.isArray(table))
-        return E.VALUE();
+        return exports.E.VALUE();
     const width = rangeWidth(table);
     const rows = Math.ceil(table.length / width);
     if (rows < 2)
-        return E.VALUE();
+        return exports.E.VALUE();
     const header = table.slice(0, width).map((cell) => String(cell).toUpperCase());
     const field = args[1];
     const column = typeof field === "number" ? Math.floor(field) - 1 : header.indexOf(asText(field ?? "").toUpperCase());
     if (column < 0 || column >= width)
-        return E.VALUE();
+        return exports.E.VALUE();
     const criteria = args[2];
     if (!Array.isArray(criteria))
-        return E.VALUE();
+        return exports.E.VALUE();
     const criteriaWidth = rangeWidth(criteria);
     const criteriaRows = Math.ceil(criteria.length / criteriaWidth);
     const criteriaCols = criteria.slice(0, criteriaWidth).map((cell) => header.indexOf(String(cell).toUpperCase()));
@@ -2699,7 +2770,7 @@ function database(name, args) {
     const values = matched.map((row) => table[row * width + column] ?? "");
     if (name === "DGET") {
         if (values.length !== 1)
-            return E.NUM();
+            return exports.E.NUM();
         return values[0] ?? "";
     }
     if (name === "DCOUNT")
@@ -2724,7 +2795,7 @@ function database(name, args) {
     const population = name === "DSTDEVP" || name === "DVARP";
     const divisor = nums.length - (population ? 0 : 1);
     if (divisor <= 0)
-        return E.DIV0();
+        return exports.E.DIV0();
     const variance = spread / divisor;
     return name === "DSTDEV" || name === "DSTDEVP" ? Math.sqrt(variance) : variance;
 }
@@ -2743,13 +2814,13 @@ function days360(start, end) {
 /** MMULT multiplies two matrices. The first range's width must equal the second range's height. */
 function matrixProduct(left, right) {
     if (!Array.isArray(left) || !Array.isArray(right))
-        return E.VALUE();
+        return exports.E.VALUE();
     const leftWidth = rangeWidth(left);
     const rightWidth = rangeWidth(right);
     const leftRows = Math.ceil(left.length / leftWidth);
     const rightRows = Math.ceil(right.length / rightWidth);
     if (leftWidth !== rightRows)
-        return E.VALUE();
+        return exports.E.VALUE();
     const out = [];
     for (let row = 0; row < leftRows; row += 1) {
         for (let col = 0; col < rightWidth; col += 1) {
@@ -2777,7 +2848,7 @@ function forecast(args) {
     const knownX = numbers(args.slice(2, 3));
     const count = Math.min(knownY.length, knownX.length);
     if (count < 2)
-        return E.VALUE();
+        return exports.E.VALUE();
     const xs = knownX.slice(0, count);
     const ys = knownY.slice(0, count);
     const meanX = xs.reduce((sum, item) => sum + item, 0) / count;
@@ -2789,7 +2860,7 @@ function forecast(args) {
         square += (xs[i] - meanX) ** 2;
     }
     if (square === 0)
-        return E.DIV0();
+        return exports.E.DIV0();
     const slope = across / square;
     return meanY + slope * (x - meanX);
 }
@@ -2802,7 +2873,7 @@ function xirr(args) {
         return guess;
     const count = Math.min(values.length, dates.length);
     if (count < 2 || guess <= -1)
-        return E.NUM();
+        return exports.E.NUM();
     const flows = values.slice(0, count);
     const days = dates.slice(0, count);
     const first = days[0];
@@ -2812,7 +2883,7 @@ function xirr(args) {
         const value = worth(rate);
         const slope = (worth(rate + 1e-6) - value) / 1e-6;
         if (!Number.isFinite(value))
-            return E.NUM();
+            return exports.E.NUM();
         if (Math.abs(value) < 1e-7)
             return rate;
         if (slope === 0)
@@ -2821,7 +2892,7 @@ function xirr(args) {
         if (rate <= -1)
             rate = -0.999999;
     }
-    return Math.abs(worth(rate)) < 1e-4 ? rate : E.NUM();
+    return Math.abs(worth(rate)) < 1e-4 ? rate : exports.E.NUM();
 }
 /** MAKEARRAY builds a grid by calling the LAMBDA with each row and column number, both starting at 1. */
 function makeArray(args, ctx) {
@@ -2833,7 +2904,7 @@ function makeArray(args, ctx) {
     if (cols instanceof FormulaError)
         return cols;
     if (!isLambda(lambda) || lambda.params.length !== 2)
-        return E.VALUE();
+        return exports.E.VALUE();
     const height = Math.max(1, Math.floor(rows));
     const width = Math.max(1, Math.floor(cols));
     const out = [];
@@ -2852,13 +2923,13 @@ function mapArray(args, ctx) {
     const lambda = args[args.length - 1];
     const ranges = args.slice(0, -1);
     if (!isLambda(lambda) || !ranges.length || lambda.params.length !== ranges.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     const first = ranges[0];
     if (!Array.isArray(first))
-        return E.VALUE();
+        return exports.E.VALUE();
     const width = rangeWidth(first);
     if (ranges.some((range) => !Array.isArray(range) || range.length !== first.length))
-        return E.VALUE();
+        return exports.E.VALUE();
     const out = [];
     for (let i = 0; i < first.length; i += 1) {
         const value = applyLambda(lambda, ranges.map((range) => range[i] ?? ""), ctx);
@@ -2874,7 +2945,7 @@ function foldArray(name, args, ctx) {
     const range = args[1];
     const lambda = args[2];
     if (!Array.isArray(range) || !isLambda(lambda) || lambda.params.length !== 2)
-        return E.VALUE();
+        return exports.E.VALUE();
     let acc = start;
     const steps = [scalarPrimitive(start)];
     for (const item of range) {
@@ -2893,7 +2964,7 @@ function byAxis(name, args, ctx) {
     const range = args[0];
     const lambda = args[1];
     if (!Array.isArray(range) || !isLambda(lambda) || lambda.params.length !== 1)
-        return E.VALUE();
+        return exports.E.VALUE();
     const width = rangeWidth(range);
     const height = Math.ceil(range.length / width);
     const across = name === "BYROW";
@@ -2915,7 +2986,7 @@ function byAxis(name, args, ctx) {
 function weekendMask(code) {
     const masks = { 1: 65, 2: 96, 3: 48, 4: 24, 5: 12, 6: 6, 7: 3, 11: 64, 12: 32, 13: 16, 14: 8, 15: 4, 16: 2, 17: 1 };
     const mask = masks[Math.floor(code)];
-    return mask === undefined ? E.NUM() : mask;
+    return mask === undefined ? exports.E.NUM() : mask;
 }
 /** A bit set in the mask marks a weekend day. Bit 0 is Monday and bit 6 is Sunday. */
 function isWeekend(serial, mask) {
@@ -2949,9 +3020,9 @@ function networkDaysIntl(start, end, mask) {
  */
 function coupon(name, settle, mature, frequency) {
     if (![1, 2, 4].includes(frequency))
-        return E.NUM();
+        return exports.E.NUM();
     if (mature <= settle)
-        return E.NUM();
+        return exports.E.NUM();
     const months = 12 / frequency;
     const end = new Date(Math.round((mature - 25569) * 86400000));
     const dates = [];
@@ -2961,7 +3032,7 @@ function coupon(name, settle, mature, frequency) {
         if (serial <= settle)
             break;
         if (step > 1200)
-            return E.NUM();
+            return exports.E.NUM();
     }
     const next = dates[dates.length - 2] ?? dates[0];
     const previous = dates[dates.length - 1];
@@ -2989,7 +3060,7 @@ function depreciation(name, args) {
     if (life instanceof FormulaError)
         return life;
     if (life <= 0 || cost < 0)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "SLN")
         return (cost - salvage) / life;
     const period = asNumber(args[3] ?? 0);
@@ -2997,7 +3068,7 @@ function depreciation(name, args) {
         return period;
     const year = Math.floor(period);
     if (year < 1 || year > life)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "SYD")
         return (cost - salvage) * (life - year + 1) / (life * (life + 1) / 2);
     if (name === "DB") {
@@ -3005,7 +3076,7 @@ function depreciation(name, args) {
         if (months instanceof FormulaError)
             return months;
         if (months < 1 || months > 12)
-            return E.NUM();
+            return exports.E.NUM();
         const rate = Math.round((1 - (salvage / cost) ** (1 / life)) * 1000) / 1000;
         let book = cost;
         const charge = (which) => {
@@ -3023,7 +3094,7 @@ function depreciation(name, args) {
     if (factor instanceof FormulaError)
         return factor;
     if (factor <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     let book = cost;
     let value = 0;
     for (let which = 1; which <= year; which += 1) {
@@ -3036,7 +3107,7 @@ function depreciation(name, args) {
 function regression(name, ys, xs) {
     const count = Math.min(ys.length, xs.length);
     if (count < 2)
-        return E.VALUE();
+        return exports.E.VALUE();
     const x = xs.slice(0, count);
     const y = ys.slice(0, count);
     const meanX = x.reduce((sum, item) => sum + item, 0) / count;
@@ -3050,14 +3121,14 @@ function regression(name, ys, xs) {
         squareY += (y[i] - meanY) ** 2;
     }
     if (squareX === 0)
-        return E.DIV0();
+        return exports.E.DIV0();
     const slope = across / squareX;
     if (name === "SLOPE")
         return slope;
     if (name === "INTERCEPT")
         return meanY - slope * meanX;
     if (squareY === 0)
-        return E.DIV0();
+        return exports.E.DIV0();
     if (name === "RSQ")
         return across ** 2 / (squareX * squareY);
     let residual = 0;
@@ -3071,11 +3142,11 @@ function trend(name, args) {
     const knownX = args[1] === undefined ? knownY.map((_item, index) => index + 1) : numbers(args.slice(1, 2));
     const count = Math.min(knownY.length, knownX.length);
     if (count < 2)
-        return E.VALUE();
+        return exports.E.VALUE();
     const log = name === "GROWTH" || name === "LOGEST";
     const y = knownY.slice(0, count);
     if (log && y.some((item) => item <= 0))
-        return E.NUM();
+        return exports.E.NUM();
     const fitted = log ? y.map((item) => Math.log(item)) : y;
     const fit = regression("SLOPE", fitted, knownX.slice(0, count));
     const base = regression("INTERCEPT", fitted, knownX.slice(0, count));
@@ -3087,7 +3158,7 @@ function trend(name, args) {
         return withWidth([Math.exp(fit), Math.exp(base)], 2);
     const probe = args[2] === undefined ? knownX.slice(0, count) : numbers(args.slice(2, 3));
     if (!probe.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     const out = probe.map((item) => (log ? Math.exp(base + fit * item) : base + fit * item));
     return out.length === 1 ? out[0] : withWidth(out, 1);
 }
@@ -3111,13 +3182,13 @@ function financeMore(name, args) {
     if (name === "ISPMT") {
         const [rate, period, periods, present] = [at(0), at(1), at(2), at(3)];
         if (periods === 0)
-            return E.DIV0();
+            return exports.E.DIV0();
         return present * rate * (period / periods - 1);
     }
     if (name === "VDB") {
         const [cost, salvage, life, start, end, factor] = [at(0), at(1), at(2), at(3), at(4), at(5) || 2];
         if (life <= 0 || factor <= 0 || start < 0 || end <= start || end > life)
-            return E.NUM();
+            return exports.E.NUM();
         const charge = (which) => {
             const book = cost * (1 - factor / life) ** (which - 1);
             return Math.min(book * factor / life, Math.max(0, book - salvage));
@@ -3138,11 +3209,11 @@ function financeMore(name, args) {
     const [settlement, maturity, third, redemption] = [at(0), at(1), at(2), at(3)];
     const days = maturity - settlement;
     if (days <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "PRICEDISC")
         return redemption * (1 - third * days / 360);
     if (name === "YIELDDISC")
-        return redemption === 0 ? E.DIV0() : (redemption - third) / third * (360 / days);
+        return redemption === 0 ? exports.E.DIV0() : (redemption - third) / third * (360 / days);
     if (name === "TBILLEQ")
         return (365 * third) / (360 - third * days);
     const modified = financeExtra("DURATION", [third, at(1), at(2), at(3), at(4), at(5)]);
@@ -3175,7 +3246,7 @@ function distFn(name, args) {
         if (target instanceof FormulaError)
             return target;
         if (nums.length < 2 || target <= nums[0] || target >= nums[nums.length - 1])
-            return E.NA();
+            return exports.E.NA();
         const below = nums.filter((item) => item < target).length;
         const span = nums.find((item) => item >= target) - nums[below - 1];
         const fraction = span === 0 ? 0 : (target - nums[below - 1]) / span;
@@ -3192,7 +3263,7 @@ function distFn(name, args) {
         if (size instanceof FormulaError)
             return size;
         if (alpha <= 0 || alpha >= 1 || deviation <= 0 || size < 1)
-            return E.NUM();
+            return exports.E.NUM();
         return normalInv(1 - alpha / 2) * deviation / Math.sqrt(size);
     }
     const x = asNumber(args[0] ?? 0);
@@ -3214,7 +3285,7 @@ function distFn(name, args) {
         const successes = Math.floor(x);
         const count = Math.floor(trials);
         if (successes < 0 || count < 0 || successes > count || probability < 0 || probability > 1)
-            return E.NUM();
+            return exports.E.NUM();
         const term = (k) => binomial(count, k) * probability ** k * (1 - probability) ** (count - k);
         if (!cumulative)
             return term(successes);
@@ -3229,7 +3300,7 @@ function distFn(name, args) {
             return cumulative;
         const events = Math.floor(x);
         if (events < 0 || second <= 0)
-            return E.NUM();
+            return exports.E.NUM();
         const term = (k) => (Math.exp(-second) * second ** k) / factorial(k);
         if (!cumulative)
             return term(events);
@@ -3243,7 +3314,7 @@ function distFn(name, args) {
         if (cumulative instanceof FormulaError)
             return cumulative;
         if (x < 0 || second <= 0)
-            return E.NUM();
+            return exports.E.NUM();
         return cumulative ? 1 - Math.exp(-second * x) : second * Math.exp(-second * x);
     }
     if (name === "LOGNORM.DIST") {
@@ -3254,7 +3325,7 @@ function distFn(name, args) {
         if (cumulative instanceof FormulaError)
             return cumulative;
         if (x <= 0 || deviation <= 0)
-            return E.NUM();
+            return exports.E.NUM();
         const z = (Math.log(x) - second) / deviation;
         return cumulative ? normalCdf(z) : Math.exp(-z * z / 2) / (x * deviation * Math.sqrt(2 * Math.PI));
     }
@@ -3264,13 +3335,13 @@ function distFn(name, args) {
     if (name === "CHISQ.DIST") {
         const freedom = Math.floor(second);
         if (x < 0 || freedom < 1)
-            return E.NUM();
+            return exports.E.NUM();
         return cumulative ? gammaP(freedom / 2, x / 2) : (x ** (freedom / 2 - 1) * Math.exp(-x / 2)) / (2 ** (freedom / 2) * gamma(freedom / 2));
     }
     if (name === "T.DIST") {
         const freedom = Math.floor(second);
         if (freedom < 1)
-            return E.NUM();
+            return exports.E.NUM();
         const density = gamma((freedom + 1) / 2) / (Math.sqrt(freedom * Math.PI) * gamma(freedom / 2)) * (1 + x * x / freedom) ** (-(freedom + 1) / 2);
         if (!cumulative)
             return density;
@@ -3286,7 +3357,7 @@ function distFn(name, args) {
     const d1 = Math.floor(second);
     const d2 = Math.floor(third);
     if (x < 0 || d1 < 1 || d2 < 1)
-        return E.NUM();
+        return exports.E.NUM();
     const ratio = (d1 * x) / (d1 * x + d2);
     if (!cumulativeF) {
         const factor = (d1 / d2) ** (d1 / 2) * x ** (d1 / 2 - 1) / beta(d1 / 2, d2 / 2);
@@ -3300,23 +3371,23 @@ function mathExtra(name, args) {
         const value = asNumber(args[0] ?? 0);
         if (value instanceof FormulaError)
             return value;
-        return value < 0 ? E.NUM() : Math.sqrt(value * Math.PI);
+        return value < 0 ? exports.E.NUM() : Math.sqrt(value * Math.PI);
     }
     if (name === "TIMEVALUE") {
         const match = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/.exec(asText(args[0] ?? "").trim());
         if (!match)
-            return E.VALUE();
+            return exports.E.VALUE();
         const hours = Number(match[1]);
         const minutes = Number(match[2]);
         const seconds = Number(match[3] ?? 0);
         if (hours > 23 || minutes > 59 || seconds > 59)
-            return E.VALUE();
+            return exports.E.VALUE();
         return (hours * 3600 + minutes * 60 + seconds) / 86400;
     }
     if (name === "MULTINOMIAL") {
         const nums = numbers(args);
         if (!nums.length || nums.some((item) => item < 0 || !Number.isInteger(item)))
-            return E.NUM();
+            return exports.E.NUM();
         const total = nums.reduce((sum, item) => sum + item, 0);
         let out = factorial(total);
         for (const item of nums)
@@ -3327,7 +3398,7 @@ function mathExtra(name, args) {
     const right = numbers(args.slice(1, 2));
     const count = Math.min(left.length, right.length);
     if (!count)
-        return E.VALUE();
+        return exports.E.VALUE();
     let total = 0;
     for (let i = 0; i < count; i += 1) {
         const a = left[i];
@@ -3353,7 +3424,7 @@ function catalog(name, args, ctx) {
     if (name === "SHEET")
         return sheetNumber(ctx, args[0]);
     if (name === "SHEETS")
-        return args[0] === undefined ? ctx.workbook.sheets.length : rangeOrigin(args[0]) ? 1 : E.VALUE();
+        return args[0] === undefined ? ctx.workbook.sheets.length : rangeOrigin(args[0]) ? 1 : exports.E.VALUE();
     if (name === "HYPERLINK")
         return args.length > 1 ? args[1] ?? "" : args[0] ?? "";
     if (name === "RANDARRAY")
@@ -3395,13 +3466,13 @@ function catalog(name, args, ctx) {
         return bases(name, args);
     if (name === "BITAND" || name === "BITOR" || name === "BITXOR" || name === "BITLSHIFT" || name === "BITRSHIFT")
         return bits(name, args);
-    if (name === "GAMMA" || name === "GAMMALN") {
+    if (name === "GAMMA" || name === "GAMMALN" || name === "GAMMALN.PRECISE") {
         const value = asNumber(args[0] ?? 0);
         if (value instanceof FormulaError)
             return value;
         if (value <= 0 && Number.isInteger(value))
-            return E.NUM();
-        return name === "GAMMA" ? gamma(value) : logGamma(value);
+            return exports.E.NUM();
+        return name === "GAMMA" ? gamma(value) : logGamma(Math.abs(value));
     }
     const value = asNumber(args[0] ?? 0);
     if (value instanceof FormulaError)
@@ -3415,20 +3486,20 @@ function catalog(name, args, ctx) {
     if (name === "ASINH")
         return Math.asinh(value);
     if (name === "ACOSH")
-        return value < 1 ? E.NUM() : Math.acosh(value);
+        return value < 1 ? exports.E.NUM() : Math.acosh(value);
     if (name === "ATANH")
-        return value <= -1 || value >= 1 ? E.NUM() : Math.atanh(value);
+        return value <= -1 || value >= 1 ? exports.E.NUM() : Math.atanh(value);
     if (name === "SEC")
-        return Math.cos(value) === 0 ? E.DIV0() : 1 / Math.cos(value);
+        return Math.cos(value) === 0 ? exports.E.DIV0() : 1 / Math.cos(value);
     if (name === "CSC")
-        return Math.sin(value) === 0 ? E.DIV0() : 1 / Math.sin(value);
-    return Math.tan(value) === 0 ? E.DIV0() : 1 / Math.tan(value);
+        return Math.sin(value) === 0 ? exports.E.DIV0() : 1 / Math.sin(value);
+    return Math.tan(value) === 0 ? exports.E.DIV0() : 1 / Math.tan(value);
 }
 /** AVERAGEA and its family count text as zero, unlike the versions that skip it. */
 function textAware(name, args) {
     const values = flatten(args).map((item) => (typeof item === "number" ? item : typeof item === "boolean" ? Number(item) : 0));
     if (!values.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     if (name === "MAXA")
         return Math.max(...values);
     if (name === "MINA")
@@ -3438,7 +3509,7 @@ function textAware(name, args) {
         return mean;
     const square = values.reduce((sum, item) => sum + (item - mean) ** 2, 0);
     if (values.length < 2)
-        return E.DIV0();
+        return exports.E.DIV0();
     const spread = square / (values.length - 1);
     return name === "STDEVA" ? Math.sqrt(spread) : spread;
 }
@@ -3448,7 +3519,7 @@ function covariance(name, args) {
     const count = Math.min(left.length, right.length);
     const divisor = count - (name === "COVARIANCE.S" ? 1 : 0);
     if (divisor <= 0)
-        return E.DIV0();
+        return exports.E.DIV0();
     const meanX = left.slice(0, count).reduce((sum, item) => sum + item, 0) / count;
     const meanY = right.slice(0, count).reduce((sum, item) => sum + item, 0) / count;
     let total = 0;
@@ -3468,7 +3539,7 @@ function rankMode(name, args) {
             return order;
         const same = nums.filter((item) => item === target).length;
         if (!same)
-            return E.NA();
+            return exports.E.NA();
         const ahead = nums.filter((item) => (order === 0 ? item > target : item < target)).length;
         return ahead + (same + 1) / 2;
     }
@@ -3478,7 +3549,7 @@ function rankMode(name, args) {
         counts.set(item, (counts.get(item) ?? 0) + 1);
     const most = Math.max(0, ...counts.values());
     if (most < 2)
-        return E.NA();
+        return exports.E.NA();
     return withWidth([...counts].filter(([, count]) => count === most).map(([value]) => value), 1);
 }
 function normalExtra(name, args) {
@@ -3490,7 +3561,7 @@ function normalExtra(name, args) {
     if (name === "GAUSS")
         return normalCdf(value) - 0.5;
     if (name === "FISHER")
-        return value <= -1 || value >= 1 ? E.NUM() : Math.atanh(value);
+        return value <= -1 || value >= 1 ? exports.E.NUM() : Math.atanh(value);
     if (name === "FISHERINV")
         return Math.tanh(value);
     const mean = asNumber(args[1] ?? 0);
@@ -3499,7 +3570,7 @@ function normalExtra(name, args) {
         return mean;
     if (deviation instanceof FormulaError)
         return deviation;
-    return deviation === 0 ? E.DIV0() : (value - mean) / deviation;
+    return deviation === 0 ? exports.E.DIV0() : (value - mean) / deviation;
 }
 function distInverse(name, args) {
     if (name === "BINOM.DIST.RANGE") {
@@ -3535,7 +3606,7 @@ function distInverse(name, args) {
         if (alpha instanceof FormulaError)
             return alpha;
         if (alpha < 0 || alpha > 1)
-            return E.NUM();
+            return exports.E.NUM();
         for (let k = 0; k <= Math.floor(trials); k += 1) {
             const cumulative = distFn("BINOM.DIST", [k, trials, probability, true]);
             if (cumulative instanceof FormulaError)
@@ -3543,7 +3614,7 @@ function distInverse(name, args) {
             if (typeof cumulative === "number" && cumulative >= alpha)
                 return k;
         }
-        return E.NUM();
+        return exports.E.NUM();
     }
     const probability = asNumber(args[0] ?? 0);
     const mean = asNumber(args[1] ?? 0);
@@ -3555,7 +3626,7 @@ function distInverse(name, args) {
     if (deviation instanceof FormulaError)
         return deviation;
     if (probability <= 0 || probability >= 1 || deviation <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     return Math.exp(mean + deviation * normalInv(probability));
 }
 /** The one-tailed and right-tailed forms, and the inverses found by bisection. */
@@ -3564,9 +3635,11 @@ function distTail(name, args) {
         const probability = asNumber(args[0] ?? 0);
         if (probability instanceof FormulaError)
             return probability;
-        const flipped = name === "T.INV.2T" ? 1 - probability / 2 : 1 - probability;
-        const base = name === "F.INV.RT" ? "F.INV" : name === "CHISQ.INV.RT" ? "CHISQ.INV" : "T.INV";
-        return distTail(base, [flipped, ...args.slice(1)]);
+        // T.INV turns a left-tail probability into a two-tailed one, so the two-tailed inverse must not go through it.
+        if (name === "T.INV.2T")
+            return distTail("T.INV", [1 - probability / 2, ...args.slice(1)]);
+        const base = name === "F.INV.RT" ? "F.INV" : "CHISQ.INV";
+        return distTail(base, [1 - probability, ...args.slice(1)]);
     }
     if (name === "T.DIST.RT" || name === "T.DIST.2T") {
         const value = asNumber(args[0] ?? 0);
@@ -3591,7 +3664,7 @@ function distTail(name, args) {
     if (freedom instanceof FormulaError)
         return freedom;
     if (probability <= 0 || probability >= 1 || freedom < 1)
-        return E.NUM();
+        return exports.E.NUM();
     const target = name === "T.INV" ? (probability + 1) / 2 : probability;
     const third = name === "F.INV" ? asNumber(args[2] ?? 1) : 1;
     if (third instanceof FormulaError)
@@ -3600,7 +3673,7 @@ function distTail(name, args) {
     let high = 1;
     const probe = (point) => {
         const value = name === "T.INV" ? distFn("T.DIST", [point, freedom, true]) : name === "F.INV" ? distFn("F.DIST", [point, freedom, third, true]) : distFn("CHISQ.DIST", [point, freedom, true]);
-        return typeof value === "number" ? value : E.NUM();
+        return typeof value === "number" ? value : exports.E.NUM();
     };
     while (probe(high) < target)
         high *= 2;
@@ -3631,7 +3704,7 @@ function extended(name, args, ctx) {
         return seriesSum(args);
     if (name === "INTRATE" || name === "RECEIVED" || name === "PRICEMAT" || name === "YIELDMAT")
         return maturity(name, args);
-    if (name === "COMPLEX" || name.startsWith("IM"))
+    if (name === "COMPLEX" || (name.startsWith("IM") && name !== "IMAGE"))
         return complex(name, args);
     if (name.startsWith("BESSEL"))
         return bessel(name, args);
@@ -3639,9 +3712,13 @@ function extended(name, args, ctx) {
         return tests(name, args);
     if (name === "ACOT" || name === "ACOTH" || name === "SECH" || name === "CSCH" || name === "COTH")
         return hyperbolic(name, args);
-    if (name === "CONFIDENCE.T" || name === "GAMMA.INV")
+    if (name === "T.INV.2T" || name === "F.INV.RT" || name === "CHISQ.INV.RT")
+        return distTail(name, args);
+    if (name === "CONFIDENCE.T" || name === "GAMMA.INV" || name === "BETA.INV")
         return distSolve(name, args);
-    return distMore(name, args);
+    if (name === "GAMMA.DIST" || name === "WEIBULL.DIST" || name === "HYPGEOM.DIST" || name === "NEGBINOM.DIST" || name === "BETA.DIST")
+        return distMore(name, args);
+    return (0, compat_js_1.compat)(name, args, helpers);
 }
 function hyperbolic(name, args) {
     const value = asNumber(args[0] ?? 0);
@@ -3652,11 +3729,11 @@ function hyperbolic(name, args) {
     if (name === "SECH")
         return 1 / Math.cosh(value);
     if (name === "CSCH")
-        return value === 0 ? E.DIV0() : 1 / Math.sinh(value);
+        return value === 0 ? exports.E.DIV0() : 1 / Math.sinh(value);
     if (name === "COTH")
-        return value === 0 ? E.DIV0() : 1 / Math.tanh(value);
+        return value === 0 ? exports.E.DIV0() : 1 / Math.tanh(value);
     if (Math.abs(value) <= 1)
-        return E.NUM();
+        return exports.E.NUM();
     return Math.log((value + 1) / (value - 1)) / 2;
 }
 /** GAMMA.DIST, WEIBULL, the hypergeometric and negative binomial, and the beta distribution. */
@@ -3675,7 +3752,7 @@ function distMore(name, args) {
         if (cumulative instanceof FormulaError)
             return cumulative;
         if (x < 0 || second <= 0 || scale <= 0)
-            return E.NUM();
+            return exports.E.NUM();
         const z = x / scale;
         return cumulative ? gammaP(second, z) : (z ** (second - 1) * Math.exp(-z)) / (scale * gamma(second));
     }
@@ -3687,7 +3764,7 @@ function distMore(name, args) {
         if (cumulative instanceof FormulaError)
             return cumulative;
         if (x < 0 || second <= 0 || scale <= 0)
-            return E.NUM();
+            return exports.E.NUM();
         const ratio = (x / scale) ** second;
         return cumulative ? 1 - Math.exp(-ratio) : (second / scale) * (x / scale) ** (second - 1) * Math.exp(-ratio);
     }
@@ -3703,7 +3780,7 @@ function distMore(name, args) {
         const N = Math.floor(population);
         const K = Math.floor(second);
         if (draw < 0 || n < 0 || K < 0 || N < 1 || K > N || n > N)
-            return E.NUM();
+            return exports.E.NUM();
         return (binomial(K, draw) * binomial(N - K, n - draw)) / binomial(N, n);
     }
     if (name === "NEGBINOM.DIST") {
@@ -3716,7 +3793,7 @@ function distMore(name, args) {
         const failures = Math.floor(x);
         const target = Math.floor(second);
         if (failures < 0 || target < 1 || probability <= 0 || probability > 1)
-            return E.NUM();
+            return exports.E.NUM();
         const term = (k) => binomial(k + target - 1, k) * probability ** target * (1 - probability) ** k;
         if (!cumulative)
             return term(failures);
@@ -3732,7 +3809,7 @@ function distMore(name, args) {
     if (cumulative instanceof FormulaError)
         return cumulative;
     if (x < 0 || x > 1 || second <= 0 || beta2 <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     if (!cumulative)
         return (x ** (second - 1) * (1 - x) ** (beta2 - 1)) / beta(second, beta2);
     return regularizedBeta(x, second, beta2);
@@ -3750,9 +3827,35 @@ function distSolve(name, args) {
         if (size instanceof FormulaError)
             return size;
         if (alpha <= 0 || alpha >= 1 || deviation <= 0 || size < 2)
-            return E.NUM();
+            return exports.E.NUM();
         const critical = distTail("T.INV", [1 - alpha / 2, size - 1]);
         return typeof critical === "number" ? critical * deviation / Math.sqrt(size) : critical;
+    }
+    if (name === "BETA.INV") {
+        const probability = asNumber(args[0] ?? 0);
+        const alpha = asNumber(args[1] ?? 0);
+        const beta = asNumber(args[2] ?? 0);
+        if (probability instanceof FormulaError)
+            return probability;
+        if (alpha instanceof FormulaError)
+            return alpha;
+        if (beta instanceof FormulaError)
+            return beta;
+        if (probability <= 0 || probability >= 1 || alpha <= 0 || beta <= 0)
+            return exports.E.NUM();
+        let low = 0;
+        let high = 1;
+        for (let step = 0; step < 60; step += 1) {
+            const mid = (low + high) / 2;
+            const value = distMore("BETA.DIST", [mid, alpha, beta, true]);
+            if (value instanceof FormulaError)
+                return value;
+            if (value < probability)
+                low = mid;
+            else
+                high = mid;
+        }
+        return (low + high) / 2;
     }
     const probability = asNumber(args[0] ?? 0);
     const shape = asNumber(args[1] ?? 0);
@@ -3764,7 +3867,7 @@ function distSolve(name, args) {
     if (scale instanceof FormulaError)
         return scale;
     if (probability <= 0 || probability >= 1 || shape <= 0 || scale <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     let low = 0;
     let high = scale;
     while (distMore("GAMMA.DIST", [high, shape, scale, true]) < probability)
@@ -3789,12 +3892,12 @@ function tests(name, args) {
         if (mean instanceof FormulaError)
             return mean;
         if (data.length < 2)
-            return E.NA();
+            return exports.E.NA();
         const sigma = args[2] === undefined ? stdev(args.slice(0, 1), false) : asNumber(args[2]);
         if (typeof sigma !== "number")
             return sigma;
         if (sigma === 0)
-            return E.DIV0();
+            return exports.E.DIV0();
         const sample = data.reduce((sum, item) => sum + item, 0) / data.length;
         return 1 - normalCdf((sample - mean) / (sigma / Math.sqrt(data.length)));
     }
@@ -3803,7 +3906,7 @@ function tests(name, args) {
         const expected = numbers(args.slice(1, 2));
         const count = Math.min(actual.length, expected.length);
         if (!count || expected.slice(0, count).some((item) => item === 0))
-            return E.DIV0();
+            return exports.E.DIV0();
         let stat = 0;
         for (let i = 0; i < count; i += 1)
             stat += (actual[i] - expected[i]) ** 2 / expected[i];
@@ -3820,10 +3923,10 @@ function tests(name, args) {
         return upper;
     const count = Math.min(values.length, probabilities.length);
     if (!count)
-        return E.VALUE();
+        return exports.E.VALUE();
     const total = probabilities.slice(0, count).reduce((sum, item) => sum + item, 0);
     if (Math.abs(total - 1) > 1e-6 || probabilities.slice(0, count).some((item) => item < 0))
-        return E.NUM();
+        return exports.E.NUM();
     let sum = 0;
     for (let i = 0; i < count; i += 1)
         if (values[i] >= lower && values[i] <= upper)
@@ -3843,17 +3946,17 @@ function maturity(name, args) {
     const [settlement, mature] = [at(0), at(1)];
     const days = mature - settlement;
     if (days <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     const year = yearFrac(settlement, mature, 0);
     if (typeof year !== "number" || year === 0)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "INTRATE")
-        return at(2) === 0 ? E.DIV0() : (at(3) - at(2)) / at(2) / year;
+        return at(2) === 0 ? exports.E.DIV0() : (at(3) - at(2)) / at(2) / year;
     if (name === "RECEIVED")
         return at(2) / (1 - at(3) * year);
     const span = (from, to) => {
         const fraction = yearFrac(from, to, 0);
-        return typeof fraction === "number" ? fraction : E.NUM();
+        return typeof fraction === "number" ? fraction : exports.E.NUM();
     };
     const fromIssue = span(at(2), mature);
     const accrued = span(at(2), settlement);
@@ -3866,7 +3969,7 @@ function maturity(name, args) {
     const price = at(4);
     const redemption = 100 + at(3) * fromIssue;
     const paid = price + at(3) * accrued;
-    return paid === 0 ? E.DIV0() : (redemption - paid) / paid / year;
+    return paid === 0 ? exports.E.DIV0() : (redemption - paid) / paid / year;
 }
 function parseComplex(text) {
     const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)?([+-]?(?:\d+(?:\.\d*)?|\.\d+)?(?:e[+-]?\d+)?)[ij]$/i.exec(text.replace(/\s/g, ""));
@@ -3899,8 +4002,10 @@ function complex(name, args) {
     }
     const values = args.map((arg) => parseComplex(asText(arg ?? "0")));
     if (values.some((item) => item === undefined))
-        return E.NUM();
+        return exports.E.NUM();
     const [first, second] = values;
+    if (name === "IMSIN" || name === "IMCOS" || name === "IMTAN" || name === "IMCOT" || name === "IMCSC" || name === "IMSEC" || name === "IMSINH" || name === "IMCOSH" || name === "IMCSCH" || name === "IMSECH")
+        return (0, compat_js_1.compat)(name, args, helpers);
     if (name === "IMREAL")
         return first.real;
     if (name === "IMAGINARY")
@@ -3908,7 +4013,7 @@ function complex(name, args) {
     if (name === "IMABS")
         return Math.hypot(first.real, first.imag);
     if (name === "IMARGUMENT")
-        return first.real === 0 && first.imag === 0 ? E.DIV0() : Math.atan2(first.imag, first.real);
+        return first.real === 0 && first.imag === 0 ? exports.E.DIV0() : Math.atan2(first.imag, first.real);
     if (name === "IMCONJUGATE")
         return formatComplex({ real: first.real, imag: -first.imag });
     if (name === "IMSQRT") {
@@ -3922,7 +4027,7 @@ function complex(name, args) {
         if (name === "IMEXP")
             return formatComplex({ real: Math.exp(first.real) * Math.cos(first.imag), imag: Math.exp(first.real) * Math.sin(first.imag) });
         if (magnitude === 0)
-            return E.NUM();
+            return exports.E.NUM();
         const scale = name === "IMLOG10" ? Math.LN10 : name === "IMLOG2" ? Math.LN2 : 1;
         return formatComplex({ real: Math.log(magnitude) / scale, imag: angle / scale });
     }
@@ -3935,7 +4040,7 @@ function complex(name, args) {
         return formatComplex({ real: magnitude * Math.cos(angle), imag: magnitude * Math.sin(angle) });
     }
     if (!second)
-        return E.VALUE();
+        return exports.E.VALUE();
     if (name === "IMSUM")
         return formatComplex({ real: first.real + second.real, imag: first.imag + second.imag });
     if (name === "IMSUB")
@@ -3944,7 +4049,7 @@ function complex(name, args) {
         return formatComplex({ real: first.real * second.real - first.imag * second.imag, imag: first.real * second.imag + first.imag * second.real });
     const denominator = second.real ** 2 + second.imag ** 2;
     if (denominator === 0)
-        return E.NUM();
+        return exports.E.NUM();
     return formatComplex({ real: (first.real * second.real + first.imag * second.imag) / denominator, imag: (first.imag * second.real - first.real * second.imag) / denominator });
 }
 /** Bessel functions of the first and second kind, and the modified ones, for integer order. */
@@ -3957,7 +4062,7 @@ function bessel(name, args) {
         return order;
     const n = Math.floor(order);
     if (n < 0 || !Number.isInteger(order))
-        return E.NUM();
+        return exports.E.NUM();
     const modified = name === "BESSELI" || name === "BESSELK";
     const rising = (sign) => {
         const half = Math.abs(x) / 2;
@@ -3976,9 +4081,9 @@ function bessel(name, args) {
     if (name === "BESSELI")
         return rising(1);
     if (x <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     if (n !== 0)
-        return E.NUM();
+        return exports.E.NUM();
     const euler = 0.5772156649015329;
     const half = x / 2;
     const base = rising(modified ? 1 : -1);
@@ -4007,7 +4112,7 @@ function seriesSum(args) {
         return step;
     const coefficients = numbers(args.slice(3, 4));
     if (!coefficients.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     return coefficients.reduce((sum, coefficient, index) => sum + coefficient * x ** (start + index * step), 0);
 }
 const BAHT_ONES = ["", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
@@ -4060,7 +4165,7 @@ function cellInfo(name, args, ctx) {
     }
     if (kind === "filename" || kind === "sheet")
         return sheet?.name ?? "";
-    return E.VALUE();
+    return exports.E.VALUE();
 }
 function counting(name, args) {
     if (name === "CEILING.MATH" || name === "FLOOR.MATH") {
@@ -4082,7 +4187,7 @@ function counting(name, args) {
         return n;
     if (name === "FACTDOUBLE") {
         if (n < 0 || !Number.isInteger(n))
-            return E.NUM();
+            return exports.E.NUM();
         let out = 1;
         for (let i = Math.floor(n); i > 1; i -= 2)
             out *= i;
@@ -4092,7 +4197,7 @@ function counting(name, args) {
     if (k instanceof FormulaError)
         return k;
     if (!Number.isInteger(n) || !Number.isInteger(k) || n < 0 || k < 0)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "PERMUTATIONA")
         return n ** k;
     return binomial(Math.floor(n) + Math.floor(k) - 1, Math.floor(k));
@@ -4103,7 +4208,7 @@ function bases(name, args) {
         if (value instanceof FormulaError)
             return value;
         if (value < 1 || value > 3999 || !Number.isInteger(value))
-            return E.VALUE();
+            return exports.E.VALUE();
         const glyphs = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
         let rest = Math.floor(value);
         let out = "";
@@ -4122,7 +4227,7 @@ function bases(name, args) {
             const current = values[text[i]];
             const next = values[text[i + 1] ?? ""] ?? 0;
             if (current === undefined)
-                return E.VALUE();
+                return exports.E.VALUE();
             total += current < next ? -current : current;
         }
         return total;
@@ -4138,7 +4243,7 @@ function bases(name, args) {
         if (places instanceof FormulaError)
             return places;
         if (value < 0 || !Number.isInteger(value) || radix < 2 || radix > 36)
-            return E.NUM();
+            return exports.E.NUM();
         const out = Math.floor(value).toString(Math.floor(radix)).toUpperCase();
         return places > out.length ? out.padStart(Math.floor(places), "0") : out;
     }
@@ -4147,10 +4252,10 @@ function bases(name, args) {
     if (radix instanceof FormulaError)
         return radix;
     if (radix < 2 || radix > 36)
-        return E.NUM();
+        return exports.E.NUM();
     const digits = text.toUpperCase();
     if ([...digits].some((char) => parseInt(char, Math.floor(radix)) !== parseInt(char, Math.floor(radix)) || parseInt(char, 36) >= radix))
-        return E.NUM();
+        return exports.E.NUM();
     return parseInt(digits, Math.floor(radix));
 }
 const BIT_LIMIT = 2 ** 48;
@@ -4162,13 +4267,13 @@ function bits(name, args) {
     if (right instanceof FormulaError)
         return right;
     if (!Number.isInteger(left) || !Number.isInteger(right) || left < 0 || left >= BIT_LIMIT)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "BITLSHIFT")
-        return right < 0 ? bits("BITRSHIFT", [left, -right]) : left * 2 ** right >= BIT_LIMIT ? E.NUM() : left * 2 ** right;
+        return right < 0 ? bits("BITRSHIFT", [left, -right]) : left * 2 ** right >= BIT_LIMIT ? exports.E.NUM() : left * 2 ** right;
     if (name === "BITRSHIFT")
         return right < 0 ? bits("BITLSHIFT", [left, -right]) : Math.floor(left / 2 ** right);
     if (right < 0 || right >= BIT_LIMIT)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "BITAND")
         return left & right;
     if (name === "BITOR")
@@ -4177,11 +4282,11 @@ function bits(name, args) {
 }
 function matrixAlgebra(name, value) {
     if (!Array.isArray(value))
-        return E.VALUE();
+        return exports.E.VALUE();
     const width = rangeWidth(value);
     const height = Math.ceil(value.length / width);
     if (width !== height)
-        return E.VALUE();
+        return exports.E.VALUE();
     const grid = Array.from({ length: width }, (_, row) => value.slice(row * width, row * width + width).map((cell) => asNumber(cell)));
     for (const row of grid)
         for (const cell of row)
@@ -4224,7 +4329,7 @@ function invert(matrix) {
     for (let col = 0; col < size; col += 1) {
         let pivot = rows.slice(col).reduce((best, row, offset) => (Math.abs(row[col]) > Math.abs(rows[best][col]) ? col + offset : best), col);
         if (rows[pivot][col] === 0)
-            return E.NUM();
+            return exports.E.NUM();
         [rows[col], rows[pivot]] = [rows[pivot], rows[col]];
         const scale = rows[col][col];
         rows[col] = rows[col].map((cell) => cell / scale);
@@ -4247,7 +4352,7 @@ function modifiedRate(args) {
     if (reinvest instanceof FormulaError)
         return reinvest;
     if (finance <= -1 || reinvest <= -1 || flows.length < 2)
-        return E.NUM();
+        return exports.E.NUM();
     let negative = 0;
     let positive = 0;
     flows.forEach((flow, index) => {
@@ -4257,7 +4362,7 @@ function modifiedRate(args) {
             positive += flow * (1 + reinvest) ** (flows.length - 1 - index);
     });
     if (negative === 0 || positive === 0)
-        return E.DIV0();
+        return exports.E.DIV0();
     return (positive / -negative) ** (1 / (flows.length - 1)) - 1;
 }
 /** XNPV discounts each amount by the fraction of a year since the first date. */
@@ -4266,12 +4371,12 @@ function datedPresent(args) {
     if (rate instanceof FormulaError)
         return rate;
     if (rate <= -1)
-        return E.NUM();
+        return exports.E.NUM();
     const amounts = numbers(args.slice(1, 2));
     const dates = numbers(args.slice(2, 3));
     const count = Math.min(amounts.length, dates.length);
     if (count < 2)
-        return E.VALUE();
+        return exports.E.VALUE();
     const first = dates[0];
     let total = 0;
     for (let i = 0; i < count; i += 1)
@@ -4288,7 +4393,7 @@ function financeRest(name, args) {
             return fraction;
         const base = Math.floor(Math.abs(fraction));
         if (base < 1)
-            return E.NUM();
+            return exports.E.NUM();
         const sign = value < 0 ? -1 : 1;
         const whole = Math.trunc(Math.abs(value));
         const rest = Math.abs(value) - whole;
@@ -4305,9 +4410,9 @@ function financeRest(name, args) {
         return third;
     const days = maturity - settlement;
     if (days <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     if (name === "TBILLYIELD")
-        return third === 0 ? E.DIV0() : (100 - third) / third * (360 / days);
+        return third === 0 ? exports.E.DIV0() : (100 - third) / third * (360 / days);
     const par = asNumber(args[3] ?? 0);
     if (par instanceof FormulaError)
         return par;
@@ -4323,7 +4428,7 @@ function aggregate(args) {
     const code = Math.floor(fn);
     const handler = SUBTOTALS[code];
     if (!handler)
-        return E.VALUE();
+        return exports.E.VALUE();
     const skipHidden = option === 1 || option === 3 || option === 5 || option === 7;
     const skipErrors = option >= 2 && option <= 7;
     const cleaned = args.slice(2).map((arg) => {
@@ -4358,7 +4463,7 @@ function randomArray(args) {
     if (whole instanceof FormulaError)
         return whole;
     if (rows < 1 || cols < 1)
-        return E.VALUE();
+        return exports.E.VALUE();
     const out = [];
     for (let i = 0; i < Math.floor(rows) * Math.floor(cols); i += 1) {
         const value = min + Math.random() * (max - min);
@@ -4370,9 +4475,9 @@ function randomArray(args) {
 function formulaText(ctx, value) {
     const origin = rangeOrigin(value);
     if (!origin)
-        return E.NA();
+        return exports.E.NA();
     const formula = ctx.workbook.sheets[origin.sheetIndex]?.cells[origin.r1]?.[origin.c1]?.formula;
-    return formula ? `=${formula}` : E.NA();
+    return formula ? `=${formula}` : exports.E.NA();
 }
 function sheetNumber(ctx, value) {
     if (value === undefined)
@@ -4382,7 +4487,7 @@ function sheetNumber(ctx, value) {
         return origin.sheetIndex + 1;
     const name = asText(value).toUpperCase();
     const index = ctx.workbook.sheets.findIndex((sheet) => sheet.name.toUpperCase() === name);
-    return index < 0 ? E.NA() : index + 1;
+    return index < 0 ? exports.E.NA() : index + 1;
 }
 /** ISFORMULA looks at the cell a reference points at, not at the value it holds. */
 function cellHasFormula(ctx, value) {
@@ -4441,47 +4546,26 @@ function logGamma(z) {
     const value = 0.5 * Math.log(2 * Math.PI) + (shifted - 0.5) * Math.log(t) - t + Math.log(x);
     return z < 0.5 ? Math.log(Math.PI / Math.sin(Math.PI * z)) - value : value;
 }
-/** The regularized incomplete beta, by its continued fraction. Used by the t and F distributions. */
+/**
+ * The regularized incomplete beta, by its power series. The series converges slowly past the
+ * symmetry point, so anything above it is computed as one minus the complementary value.
+ */
 function regularizedBeta(x, a, b) {
     if (x <= 0)
         return 0;
     if (x >= 1)
         return 1;
-    const flip = x > (a + 1) / (a + b + 2);
-    const point = flip ? 1 - x : x;
-    const front = Math.exp(a * Math.log(point) + b * Math.log(1 - point) - logBeta(a, b)) / a;
-    let f = 1;
-    let c = 1;
-    let d = 1 - (a + b) * point / (a + 1);
-    if (Math.abs(d) < 1e-30)
-        d = 1e-30;
-    d = 1 / d;
-    f = d;
-    for (let m = 1; m <= 200; m += 1) {
-        const even = (m * (b - m) * point) / ((a + 2 * m - 1) * (a + 2 * m));
-        d = 1 + even * d;
-        if (Math.abs(d) < 1e-30)
-            d = 1e-30;
-        c = 1 + even / c;
-        if (Math.abs(c) < 1e-30)
-            c = 1e-30;
-        d = 1 / d;
-        f *= c * d;
-        const odd = -((a + m) * (a + b + m) * point) / ((a + 2 * m) * (a + 2 * m + 1));
-        d = 1 + odd * d;
-        if (Math.abs(d) < 1e-30)
-            d = 1e-30;
-        c = 1 + odd / c;
-        if (Math.abs(c) < 1e-30)
-            c = 1e-30;
-        d = 1 / d;
-        const delta = c * d;
-        f *= delta;
-        if (Math.abs(delta - 1) < 1e-10)
+    if (x > (a + 1) / (a + b + 2))
+        return 1 - regularizedBeta(1 - x, b, a);
+    let term = 1 / a;
+    let sum = term;
+    for (let n = 1; n < 400; n += 1) {
+        term *= x * (a + b + n - 1) / (a + n);
+        sum += term;
+        if (Math.abs(term) < 1e-14 * Math.abs(sum))
             break;
     }
-    const value = front * f;
-    return flip ? 1 - value : value;
+    return Math.exp(a * Math.log(x) + b * Math.log(1 - x) - logBeta(a, b)) * sum;
 }
 function logBeta(a, b) {
     return logGamma(a) + logGamma(b) - logGamma(a + b);
@@ -4502,7 +4586,7 @@ function normalDist(name, args) {
         if (p instanceof FormulaError)
             return p;
         if (p <= 0 || p >= 1)
-            return E.NUM();
+            return exports.E.NUM();
         return normalInv(p);
     }
     const x = asNumber(args[0] ?? 0);
@@ -4515,11 +4599,11 @@ function normalDist(name, args) {
     if (deviation instanceof FormulaError)
         return deviation;
     if (deviation <= 0)
-        return E.NUM();
+        return exports.E.NUM();
     const z = (x - mean) / deviation;
     if (name === "NORM.INV") {
         if (x <= 0 || x >= 1)
-            return E.NUM();
+            return exports.E.NUM();
         return mean + deviation * normalInv(x);
     }
     const cumulative = asBool(args[3] ?? true);
@@ -4599,7 +4683,7 @@ function extremeIf(name, args) {
 function gcdLcm(name, args) {
     const nums = numbers(args).map((item) => Math.trunc(Math.abs(item)));
     if (!nums.length)
-        return E.VALUE();
+        return exports.E.VALUE();
     const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
     const value = nums.reduce((acc, item) => gcd(acc, item));
     if (name === "GCD")
@@ -4633,7 +4717,7 @@ function isoWeekNumber(serial) {
 }
 function average(args) {
     const nums = numbers(args);
-    return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : E.DIV0();
+    return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : exports.E.DIV0();
 }
 function conditional(name, range, criterion, sumRange) {
     const values = Array.isArray(range) ? range : [range ?? ""];
@@ -4643,7 +4727,7 @@ function conditional(name, range, criterion, sumRange) {
         return matched.length;
     const nums = matched.map((index) => asNumber(sums[index] ?? 0)).filter((item) => typeof item === "number");
     if (name === "AVERAGEIF")
-        return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : E.DIV0();
+        return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : exports.E.DIV0();
     return nums.reduce((a, b) => a + b, 0);
 }
 function conditionals(name, args) {
@@ -4667,7 +4751,7 @@ function conditionals(name, args) {
         return matched.length;
     const nums = matched.map((row) => asNumber(Array.isArray(sums) ? sums[row] ?? 0 : sums ?? 0)).filter((item) => typeof item === "number");
     if (name === "AVERAGEIFS")
-        return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : E.DIV0();
+        return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : exports.E.DIV0();
     return nums.reduce((a, b) => a + b, 0);
 }
 function matches(value, criterion) {
@@ -4784,7 +4868,7 @@ function columnName(col) {
 function offsetRange(ctx, args) {
     const origin = rangeOrigin(args[0]);
     if (!origin)
-        return E.VALUE();
+        return exports.E.VALUE();
     const rows = asNumber(args[1] ?? 0);
     const cols = asNumber(args[2] ?? 0);
     const height = args[3] === undefined ? origin.r2 - origin.r1 + 1 : asNumber(args[3]);
@@ -4798,11 +4882,11 @@ function offsetRange(ctx, args) {
     if (width instanceof FormulaError)
         return width;
     if (height < 1 || width < 1)
-        return E.REF();
+        return exports.E.REF();
     const r1 = origin.r1 + Math.trunc(rows);
     const c1 = origin.c1 + Math.trunc(cols);
     if (r1 < 0 || c1 < 0)
-        return E.REF();
+        return exports.E.REF();
     const values = readRange(ctx.workbook, origin.sheetIndex, { row: r1, col: c1 }, { row: r1 + Math.trunc(height) - 1, col: c1 + Math.trunc(width) - 1 });
     return values.length === 1 ? values[0] ?? "" : values;
 }
@@ -4816,18 +4900,18 @@ function indirectRange(ctx, args) {
     const start = parseA1(startText ?? "");
     const end = parseA1(endText ?? startText ?? "");
     if (!start || !end)
-        return E.REF();
+        return exports.E.REF();
     const sheetIndex = sheetName === undefined ? ctx.sheetIndex : findSheet(ctx.workbook, sheetName);
     if (sheetIndex < 0)
-        return E.REF();
+        return exports.E.REF();
     const values = readRange(ctx.workbook, sheetIndex, start, end);
     return values.length === 1 ? values[0] ?? "" : values;
 }
 function scalar(value) {
     if (isPending(value))
-        return E.NAME();
+        return exports.E.NAME();
     if (isLambda(value))
-        return E.VALUE();
+        return exports.E.VALUE();
     if (Array.isArray(value) && value.length === 1)
         return scalar(value[0] ?? "");
     if (value instanceof FormulaError)
@@ -4892,7 +4976,7 @@ function finance(name, args) {
     if (name === "PMT") {
         const [rate, nper, pv, fv = 0, type = 0] = [first, second, third, fourth, fifth];
         if (rate === 0)
-            return nper === 0 ? E.NUM() : -(pv + fv) / nper;
+            return nper === 0 ? exports.E.NUM() : -(pv + fv) / nper;
         const grown = (1 + rate) ** nper;
         return (-(pv * grown + fv) * rate) / ((1 + rate * due(type)) * (grown - 1));
     }
@@ -4913,16 +4997,16 @@ function finance(name, args) {
     if (name === "NPER") {
         const [rate, pmt, pv, fv = 0, type = 0] = [first, second, third, fourth, fifth];
         if (rate === 0)
-            return pmt === 0 ? E.NUM() : -(pv + fv) / pmt;
+            return pmt === 0 ? exports.E.NUM() : -(pv + fv) / pmt;
         const paid = pmt * (1 + rate * due(type));
         if (paid + pv * rate === 0)
-            return E.NUM();
+            return exports.E.NUM();
         return Math.log((paid - fv * rate) / (paid + pv * rate)) / Math.log(1 + rate);
     }
     if (name === "IPMT" || name === "PPMT") {
         const [rate, per, nper, pv, fv = 0, type = 0] = [first, second, third, fourth, fifth, sixth];
         if (per < 1 || per > nper)
-            return E.NUM();
+            return exports.E.NUM();
         const payment = finance("PMT", [rate, nper, pv, fv, type]);
         if (typeof payment !== "number")
             return payment;
@@ -4939,7 +5023,7 @@ function solveRate(nper, pmt, pv, fv, type, guess) {
     let rate = guess;
     for (let step = 0; step < 50; step += 1) {
         if (rate <= -1)
-            return E.NUM();
+            return exports.E.NUM();
         const grown = (1 + rate) ** nper;
         const due = type ? 1 : 0;
         const value = pv * grown + pmt * (1 + rate * due) * (grown - 1) / rate + fv;
@@ -4947,21 +5031,21 @@ function solveRate(nper, pmt, pv, fv, type, guess) {
             (pmt * (1 + rate * due) * (nper * rate * (1 + rate) ** (nper - 1) - (grown - 1))) / rate ** 2 +
             (pmt * due * (grown - 1)) / rate;
         if (slope === 0)
-            return E.NUM();
+            return exports.E.NUM();
         const next = rate - value / slope;
         if (Math.abs(next - rate) < 1e-9)
             return next;
         rate = next;
     }
-    return E.NUM();
+    return exports.E.NUM();
 }
 function internalRate(values, guess) {
     if (!values.some((item) => item > 0) || !values.some((item) => item < 0))
-        return E.NUM();
+        return exports.E.NUM();
     let rate = guess;
     for (let step = 0; step < 50; step += 1) {
         if (rate <= -1)
-            return E.NUM();
+            return exports.E.NUM();
         let value = 0;
         let slope = 0;
         values.forEach((item, index) => {
@@ -4969,19 +5053,19 @@ function internalRate(values, guess) {
             slope -= (index * item) / (1 + rate) ** (index + 1);
         });
         if (slope === 0)
-            return E.NUM();
+            return exports.E.NUM();
         const next = rate - value / slope;
         if (Math.abs(next - rate) < 1e-9)
             return next;
         rate = next;
     }
-    return E.NUM();
+    return exports.E.NUM();
 }
 function variance(args, population) {
     const nums = numbers(args);
     const divisor = nums.length - (population ? 0 : 1);
     if (divisor <= 0)
-        return E.DIV0();
+        return exports.E.DIV0();
     const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
     return nums.reduce((sum, item) => sum + (item - mean) ** 2, 0) / divisor;
 }
@@ -4991,7 +5075,7 @@ function stdev(args, population) {
 }
 function modeOf(nums) {
     if (!nums.length)
-        return E.NUM();
+        return exports.E.NUM();
     const counts = new Map();
     for (const item of nums)
         counts.set(item, (counts.get(item) ?? 0) + 1);
@@ -5003,11 +5087,11 @@ function modeOf(nums) {
             seen = count;
         }
     }
-    return seen > 1 ? best : E.NA();
+    return seen > 1 ? best : exports.E.NA();
 }
 function percentile(nums, k) {
     if (!nums.length || k < 0 || k > 1)
-        return E.NUM();
+        return exports.E.NUM();
     const sorted = [...nums].sort((a, b) => a - b);
     const position = k * (sorted.length - 1);
     const lower = Math.floor(position);
@@ -5018,7 +5102,7 @@ function percentile(nums, k) {
 function correl(left, right) {
     const length = Math.min(left.length, right.length);
     if (length < 2)
-        return E.DIV0();
+        return exports.E.DIV0();
     const xs = left.slice(0, length);
     const ys = right.slice(0, length);
     const mean = (list) => list.reduce((a, b) => a + b, 0) / list.length;
@@ -5034,7 +5118,7 @@ function correl(left, right) {
         vx += dx * dx;
         vy += dy * dy;
     }
-    return vx === 0 || vy === 0 ? E.DIV0() : cross / Math.sqrt(vx * vy);
+    return vx === 0 || vy === 0 ? exports.E.DIV0() : cross / Math.sqrt(vx * vy);
 }
 function mathFn(name, args) {
     if (name === "PI")
@@ -5043,14 +5127,14 @@ function mathFn(name, args) {
     if (n instanceof FormulaError)
         return n;
     if (name === "LN")
-        return n > 0 ? Math.log(n) : E.NUM();
+        return n > 0 ? Math.log(n) : exports.E.NUM();
     if (name === "LOG10")
-        return n > 0 ? Math.log10(n) : E.NUM();
+        return n > 0 ? Math.log10(n) : exports.E.NUM();
     if (name === "LOG") {
         const base = asNumber(args[1] ?? 10);
         if (base instanceof FormulaError)
             return base;
-        return n > 0 && base > 0 && base !== 1 ? Math.log(n) / Math.log(base) : E.NUM();
+        return n > 0 && base > 0 && base !== 1 ? Math.log(n) / Math.log(base) : exports.E.NUM();
     }
     if (name === "EXP")
         return Math.exp(n);
@@ -5061,14 +5145,14 @@ function mathFn(name, args) {
     if (name === "TAN")
         return Math.tan(n);
     if (name === "ASIN" || name === "ACOS")
-        return n < -1 || n > 1 ? E.NUM() : name === "ASIN" ? Math.asin(n) : Math.acos(n);
+        return n < -1 || n > 1 ? exports.E.NUM() : name === "ASIN" ? Math.asin(n) : Math.acos(n);
     if (name === "ATAN")
         return Math.atan(n);
     if (name === "ATAN2") {
         const y = asNumber(args[1] ?? 0);
         if (y instanceof FormulaError)
             return y;
-        return n === 0 && y === 0 ? E.DIV0() : Math.atan2(y, n);
+        return n === 0 && y === 0 ? exports.E.DIV0() : Math.atan2(y, n);
     }
     if (name === "SIGN")
         return Math.sign(n);
@@ -5078,7 +5162,7 @@ function mathFn(name, args) {
         return (n * 180) / Math.PI;
     if (name === "FACT") {
         if (n < 0 || !Number.isInteger(n) || n > 170)
-            return E.NUM();
+            return exports.E.NUM();
         let out = 1;
         for (let i = 2; i <= n; i += 1)
             out *= i;
@@ -5088,7 +5172,7 @@ function mathFn(name, args) {
     if (k instanceof FormulaError)
         return k;
     if (n < 0 || k < 0 || k > n || !Number.isInteger(n) || !Number.isInteger(k))
-        return E.NUM();
+        return exports.E.NUM();
     let out = 1;
     for (let i = 1; i <= k; i += 1)
         out = (out * (n - k + i)) / i;
@@ -5115,7 +5199,7 @@ function yearFrac(start, end, basis) {
     if (basis === 3)
         return (to - from) / 365;
     if (basis !== 0 && basis !== 4)
-        return E.NUM();
+        return exports.E.NUM();
     const a = new Date(Math.round((from - 25569) * 86400000));
     const b = new Date(Math.round((to - 25569) * 86400000));
     const day = (date) => Math.min(date.getUTCDate(), 30);
@@ -5131,19 +5215,19 @@ function baseConvert(name, args) {
     const target = to === "DEC" ? 10 : to === "BIN" ? 2 : to === "OCT" ? 8 : 16;
     const digits = raw.startsWith("-") ? raw.slice(1) : raw;
     if (!digits || [...digits].some((char) => BASE_DIGITS.indexOf(char) < 0 || BASE_DIGITS.indexOf(char) >= source))
-        return E.NUM();
+        return exports.E.NUM();
     const magnitude = parseInt(digits, source);
     const value = raw.startsWith("-") ? -magnitude : magnitude;
     if (to === "DEC")
         return value;
     if (value < 0)
-        return E.NUM();
+        return exports.E.NUM();
     const places = asNumber(args[1] ?? 0);
     if (args[1] !== undefined && places instanceof FormulaError)
         return places;
     const out = value.toString(target).toUpperCase();
     if (out.length > 10)
-        return E.NUM();
+        return exports.E.NUM();
     return typeof places === "number" && places > out.length ? out.padStart(Math.min(10, Math.floor(places)), "0") : out;
 }
 const UNITS = {
@@ -5171,7 +5255,7 @@ function convertUnit(value, from, to) {
     const source = UNITS[from.toLowerCase()];
     const target = UNITS[to.toLowerCase()];
     if (!source || !target || source.group !== target.group)
-        return E.NA();
+        return exports.E.NA();
     if (source.group === "temp") {
         const unit = (code) => code.toLowerCase();
         const kelvin = unit(from) === "k" ? value : unit(from) === "f" ? (value - 32) * 5 / 9 + 273.15 : value + 273.15;
@@ -5185,6 +5269,12 @@ function convertUnit(value, from, to) {
 }
 var format_2 = require("./format");
 Object.defineProperty(exports, "formatNumber", { enumerable: true, get: function () { return format_2.formatNumber; } });
+const compat_js_1 = require("./compat.js");
+const helpers = {
+    flatten, numbers, asNumber, asText, asBool, withWidth, rangeWidth, rangeOrigin, variance, stdev,
+    distFn, distMore, distTail, distInverse, distSolve, normalDist, covariance, tests, coupon, yearFrac,
+    regression, normalInv, parseComplex, formatComplex,
+};
 function setFormula(cell, formula) {
     const body = formula.startsWith("=") ? formula.slice(1) : formula;
     cell.formula = body;

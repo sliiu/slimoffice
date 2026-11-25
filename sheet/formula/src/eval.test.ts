@@ -423,3 +423,36 @@ test("distributions, complex numbers, and the remaining conversions", () => {
   assert.equal(evaluate("=ROUND(RECEIVED(DATE(2026,1,1),DATE(2027,1,1),100,0.1),2)", ctx(workbook)), 111.11);
   assert.equal(evaluate("=BAHTTEXT(0)", ctx(workbook)), "ศูนย์บาทถ้วน");
 });
+
+test("legacy names, text tools, and the odd coupon periods", () => {
+  const workbook = book([[{ value: "1" }, { value: "2" }], [{ value: "3" }, { value: "4" }]]);
+  assert.equal(Math.round(evaluate("=BETA.DIST(0.5,2,5,TRUE)", ctx(workbook)) as number * 1e6) / 1e6, 0.890625);
+  assert.equal(evaluate("=BETADIST(0.5,2,5)", ctx(workbook)), evaluate("=BETA.DIST(0.5,2,5,TRUE)", ctx(workbook)));
+  assert.equal(Math.round(evaluate("=BETA.INV(0.890625,2,5)", ctx(workbook)) as number * 1000) / 1000, 0.5);
+  assert.equal(Math.round(evaluate("=T.DIST(1,10,TRUE)", ctx(workbook)) as number * 1000) / 1000, 0.83);
+  assert.equal(Math.round(evaluate("=TDIST(1,10,2)", ctx(workbook)) as number * 1000) / 1000, 0.341);
+  assert.equal(Math.round(evaluate("=T.INV.2T(0.05,10)", ctx(workbook)) as number * 100) / 100, 2.63);
+  assert.equal(evaluate("=TINV(0.05,10)", ctx(workbook)), evaluate("=T.INV.2T(0.05,10)", ctx(workbook)));
+  assert.equal(Math.round(evaluate("=FINV(0.05,5,5)", ctx(workbook)) as number * 100) / 100, 5.05);
+  assert.equal(Math.round(evaluate("=CHIINV(0.05,1)", ctx(workbook)) as number * 100) / 100, 3.84);
+  assert.equal(Math.round(evaluate("=GAMMALN.PRECISE(3)", ctx(workbook)) as number * 1000) / 1000, 0.693);
+  assert.equal(evaluate("=IMSIN(\"i\")", ctx(workbook)), evaluate("=COMPLEX(0,SINH(1))", ctx(workbook)));
+  assert.equal(evaluate("=IMCOS(\"0\")", ctx(workbook)), "1");
+  assert.equal(formatResult(evaluate("=MUNIT(2)", ctx(workbook))), "1,0,0,1");
+  assert.equal(evaluate('=REGEXTEST("abc123","[0-9]+")', ctx(workbook)), true);
+  assert.equal(evaluate('=REGEXEXTRACT("abc123","[0-9]+")', ctx(workbook)), "123");
+  assert.equal(evaluate('=REGEXREPLACE("a1b2","[0-9]","x")', ctx(workbook)), "axbx");
+  assert.equal(evaluate("=ARRAYTOTEXT({1,2;3,4})", ctx(workbook)), "1, 2; 3, 4");
+  assert.equal(evaluate("=VALUETOTEXT(A1)", ctx(workbook)), "1");
+  assert.equal(evaluate("=JIS(\"A\")", ctx(workbook)), "Ａ");
+  assert.equal(evaluate("=PERCENTOF(1,4)", ctx(workbook)), 0.25);
+  assert.equal(evaluate("=VARPA(1,2,3)", ctx(workbook)), evaluate("=VAR.P(1,2,3)", ctx(workbook)));
+  assert.equal(evaluate("=EUROCONVERT(1,\"EUR\",\"DEM\")", ctx(workbook)), 1.95583);
+  assert.equal(evaluate("=IMAGE(\"http://x\")", ctx(workbook)), "http://x");
+  assert.equal(Math.round(evaluate("=ODDFPRICE(40000,41000,39900,40100,0.05,0.06,100,2)", ctx(workbook)) as number), 97);
+  assert.equal(Math.round(evaluate("=ODDLPRICE(40000,41000,40900,0.05,0.06,100,2)", ctx(workbook)) as number), 99);
+  assert.equal(Math.round(evaluate("=FORECAST.ETS(4,{2,4,6},{1,2,3})", ctx(workbook)) as number), 8);
+  assert.equal(evaluate("=FORECAST.ETS.SEASONALITY(4,{2,4,6},{1,2,3})", ctx(workbook)), 1);
+  assert.equal(evaluate("=CEILING.PRECISE(-1.5,1)", ctx(workbook)), -1);
+  assert.equal(evaluate("=FLOOR.PRECISE(1.5,1)", ctx(workbook)), 1);
+});
