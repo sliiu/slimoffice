@@ -147,9 +147,12 @@ function pageFrom(section, blocks, pageIndex) {
         ...(section.page.grid?.charSpace ? { charSpace: section.page.grid.charSpace * TWIP } : {}),
         ...(section.page.direction ? { direction: section.page.direction } : {}),
         ...(section.page.lineNumbers ? { lineNumbers: true } : {}),
+        ...(section.page.lineStart ? { lineStart: section.page.lineStart } : {}),
         ...(section.page.bidi ? { bidi: true } : {}),
         ...(section.page.rtlGutter ? { rtlGutter: true } : {}),
         ...(section.page.gutter ? { gutter: section.page.gutter * TWIP } : {}),
+        ...(section.page.headerDistance ? { headerDistance: section.page.headerDistance * TWIP } : {}),
+        ...(section.page.footerDistance ? { footerDistance: section.page.footerDistance * TWIP } : {}),
         ...(section.page.endnotesHere ? { endnotesHere: true } : {}),
         blocks,
     };

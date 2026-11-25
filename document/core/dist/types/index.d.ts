@@ -31,6 +31,8 @@ export interface DocRun {
     themeColor?: string;
     /** Character style name from rStyle. */
     runStyle?: string;
+    /** The underline's own color, #rrggbb, from `u/@w:color`. Absent follows the text. */
+    underlineColor?: string;
     /** Shown in capitals. */
     caps?: boolean;
     /** Shown in small capitals. */
@@ -242,6 +244,8 @@ export interface DocParagraph {
     rowStyle?: string;
     /** This paragraph is a caption, numbered per kind ("Figure 1"). */
     caption?: string;
+    /** Line numbers skip this paragraph, from `suppressLineNumbers`. */
+    noLineNumbers?: boolean;
     /** This paragraph is the body of a footnote or an endnote, shown at the bottom of the page. */
     note?: {
         kind: "footnote" | "endnote";
@@ -252,10 +256,11 @@ export interface DocParagraph {
         kind: "footnote" | "endnote";
         type: "separator" | "continuationSeparator";
     };
-    /** Tab stops, in twips from the left margin. */
+    /** Tab stops, in twips from the left margin. A leader is the line that fills the gap: dot, hyphen, underscore, middleDot, or none. */
     tabs?: Array<{
         pos: number;
         align?: "left" | "center" | "right" | "decimal";
+        leader?: string;
     }>;
     runs: DocRun[];
 }
@@ -318,6 +323,8 @@ export interface DocPageSetup {
     footerDistance?: number;
     /** Line numbers restart each page. */
     lineNumbers?: boolean;
+    /** The first line's number, from `lnNumType/@w:start`. */
+    lineStart?: number;
     /** A border around the page, one side at a time. */
     border?: DocBorder;
     /** Text direction for the section. */

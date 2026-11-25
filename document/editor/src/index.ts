@@ -244,6 +244,8 @@ export interface DocumentView {
   runSwitch(name: string, on: boolean): void;
   /** Whether the shadow switch is on for the current run. */
   shadowOn(): boolean;
+  /** Whether one run switch is on for the current run: shadow, outline, emboss, imprint, or effect. */
+  runSwitchOn(name: string): boolean;
   /** Keeps this paragraph on the same page as the next one. */
   keepWithNext(): void;
   keepWithNextOn(): boolean;
@@ -260,10 +262,12 @@ export interface DocumentView {
   paragraphSwitch(name: string, on: boolean): void;
   /** Whether the word wrap switch is on for the current paragraph. */
   wordWrapOn(): boolean;
+  /** Whether one paragraph switch is on, such as word wrap or snapping to the grid. */
+  paragraphSwitchOn(name: string): boolean;
   /** Whether the paragraph runs right to left. */
   bidiOn(): boolean;
-  /** Adds a tab stop to the current paragraph, in twips from the left margin. */
-  tabStop(pos: number, align?: "left" | "center" | "right" | "decimal"): void;
+  /** Adds a tab stop to the current paragraph, in twips from the left margin. A leader fills the gap up to it: dot, hyphen, underscore, middleDot, or none. */
+  tabStop(pos: number, align?: "left" | "center" | "right" | "decimal", leader?: string): void;
   /** Inserts a cover page and makes the first page show its own header. */
   cover(title: string): void;
   /** Inserts a rectangle. The text is its label. */
@@ -315,6 +319,17 @@ export interface DocumentView {
   noteStart(footnote: number, endnote: number): void;
   /** Turns line numbers on or off for the current section. */
   lineNumbers(on: boolean): void;
+  /** Whether the current section numbers its lines. */
+  lineNumbersOn(): boolean;
+  /** Sets the first line's number. One is the ordinary start and clears it. */
+  lineStart(start: number): void;
+  /** Sets the underline's color, #rrggbb. An empty color makes it follow the text. */
+  underlineColor(color: string): void;
+  /** The underline color the current run shows, or "" when it follows the text. */
+  underlineColorOn(): string;
+  /** Skips line numbers for the current paragraph, or numbers it again. */
+  noLineNumbers(on: boolean): void;
+  noLineNumbersOn(): boolean;
   /** Puts a border around the page. An empty color clears it. */
   pageBorder(color: string): void;
   /** Sets the text direction of the current section. */
@@ -422,7 +437,7 @@ const INDENT_STEP = 720;
 const INDENT_EDGES = ["left", "right", "firstLine", "hanging"] as const;
 const SECTION_STARTS = ["nextPage", "continuous", "evenPage", "oddPage", "nextColumn"] as const;
 const RUN_SWITCHES = ["outline", "shadow", "emboss", "imprint", "effect"];
-const PARAGRAPH_SWITCHES = ["suppressLineNumbers", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
+const PARAGRAPH_SWITCHES = ["suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
 
 /** Changes the letters without touching anything that is not a letter. */
 function cased(text: string, mode: "upper" | "lower" | "sentence" | "title" | "toggle"): string {
@@ -597,6 +612,7 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     runStyle,
     runSwitch,
     shadowOn: () => switchOn("shadow"),
+    runSwitchOn: switchOn,
     keepWithNext: () => toggleParagraph("keepNext"),
     keepWithNextOn: () => paragraphOn("keepNext"),
     keepLines: () => toggleParagraph("keepLines"),
@@ -607,6 +623,7 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     outlineOn: () => current()?.outline,
     paragraphSwitch,
     wordWrapOn: () => paragraphSwitchOn("wordWrap"),
+    paragraphSwitchOn,
     bidiOn: () => paragraphSwitchOn("bidi"),
     tabStop,
     cover,
@@ -636,6 +653,12 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     endnotesHereOn: () => currentSection().page.endnotesHere === true,
     noteStart,
     lineNumbers,
+    lineNumbersOn: () => currentSection().page.lineNumbers === true,
+    lineStart,
+    underlineColor,
+    underlineColorOn: () => textRuns(current())[0]?.underlineColor ?? "",
+    noLineNumbers,
+    noLineNumbersOn: () => current()?.noLineNumbers === true,
     pageBorder,
     direction,
     watermark,
@@ -706,9 +729,13 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
       if (page.charSpace) paper.style.setProperty("--doc-char-space", `${page.charSpace}px`);
       if (page.direction === "tb") paper.style.writingMode = "vertical-rl";
       if (page.direction === "rl" || page.bidi) paper.style.direction = "rtl";
-      if (page.lineNumbers) paper.dataset.lineNumbers = "on";
+      if (page.lineNumbers) {
+        paper.dataset.lineNumbers = "on";
+        paper.style.counterReset = `doc-line ${page.lineStart ?? 1}`;
+      }
       if (page.rtlGutter && page.direction !== "tb" && page.gutter) paper.style.paddingRight = `${page.margin.right * (96 / 1440) + page.gutter}px`;
-      if (mode === "print" && page.header.length) paper.append(story("header", page.header, page.headerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length));
+      else if (page.direction !== "tb" && page.gutter) paper.style.paddingLeft = `${page.margin.left * (96 / 1440) + page.gutter}px`;
+      if (mode === "print" && page.header.length) paper.append(story("header", page.header, page.headerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length, page.headerDistance));
       const body = el("div", "doc-body");
       body.style.position = "relative";
       if (page.columns > 1) {
@@ -726,7 +753,7 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
       }
       paper.append(body);
       if (notes.length) paper.append(noteList(notes, sectionIndex, separator));
-      if (mode === "print" && page.footer.length) paper.append(story("footer", page.footer, page.footerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length));
+      if (mode === "print" && page.footer.length) paper.append(story("footer", page.footer, page.footerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length, page.footerDistance));
       paper.dataset.page = String(pageIndex);
       root.append(paper);
     });
@@ -784,8 +811,9 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
   }
 
   /** A header or footer. Its paragraphs edit the section's own copy, so the change is written back with the part. */
-  function story(kind: "header" | "footer", items: DocParagraph[], storyKind: StoryKind, sectionIndex: number, page: number, total: number): HTMLElement {
+  function story(kind: "header" | "footer", items: DocParagraph[], storyKind: StoryKind, sectionIndex: number, page: number, total: number, distance?: number): HTMLElement {
     const node = el("div", `doc-${kind}`);
+    if (distance) node.style[kind === "header" ? "top" : "bottom"] = `${distance}px`;
     items.forEach((item, index) => {
       const spot: Spot = { section: sectionIndex, block: index, story: kind, storyKind };
       const para = paragraph(item, spot, true);
@@ -1038,6 +1066,16 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     paintBorder(node, item.border);
     if (item.outline !== undefined && item.outline > 0) node.style.paddingLeft = twips(item.outline * 360);
     if (item.widowControl) node.dataset.widow = "on";
+    if (item.noLineNumbers) node.dataset.noLineNumber = "on";
+    const marks = item.marks ?? [];
+    if (marks.includes("wordWrap")) node.dataset.wordWrap = "on";
+    if (marks.includes("snapToGrid")) node.dataset.snapToGrid = "on";
+    if (marks.includes("contextualSpacing")) node.dataset.contextual = "on";
+    if (marks.includes("mirrorIndents")) node.dataset.mirror = "on";
+    if (marks.includes("kinsoku")) node.dataset.kinsoku = "on";
+    if (marks.includes("overflowPunct")) node.dataset.overflow = "on";
+    if (marks.includes("topLinePunct")) node.dataset.topLine = "on";
+    if (marks.includes("autoSpaceDE") || marks.includes("autoSpaceDN")) node.dataset.autoSpace = "on";
     if (item.frame?.width) node.style.maxWidth = twips(item.frame.width);
     if (item.frame?.dropCap) node.dataset.dropCap = String(item.frame.dropCap.lines);
     if (item.pageBreakBefore) node.dataset.breakBefore = "page";
@@ -1099,6 +1137,7 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
       }
       node.append(rendered);
     });
+    placeTabs(node, item.tabs);
     if (editable && !item.runs.some((run) => !run.image)) {
       const empty = runNode({ text: "" });
       empty.contentEditable = "true";
@@ -2427,13 +2466,14 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     });
   }
 
-  /** Adds a tab stop to the current paragraph. One at the same position replaces the old alignment. */
-  function tabStop(pos: number, align: "left" | "center" | "right" | "decimal" = "left"): void {
+  /** Adds a tab stop to the current paragraph. One at the same position replaces the old alignment and leader. */
+  function tabStop(pos: number, align: "left" | "center" | "right" | "decimal" = "left", leader?: string): void {
     const item = current();
     if (!item || !Number.isFinite(pos)) return;
     if (!remember()) return;
     const tabs = (item.tabs ?? []).filter((tab) => tab.pos !== pos);
-    tabs.push(align === "left" ? { pos } : { pos, align });
+    const stop = align === "left" ? { pos } : { pos, align };
+    tabs.push(leader ? { ...stop, leader } : stop);
     item.tabs = tabs.sort((a, b) => a.pos - b.pos);
     finish();
   }
@@ -2709,7 +2749,43 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     const section = currentSection();
     if (!remember()) return;
     if (on) section.page.lineNumbers = true;
-    else delete section.page.lineNumbers;
+    else {
+      delete section.page.lineNumbers;
+      delete section.page.lineStart;
+    }
+    finish();
+  }
+
+  /** Sets the number the section's first line gets. One is the ordinary start. */
+  function lineStart(start: number): void {
+    const section = currentSection();
+    if (!Number.isFinite(start) || start < 1) return;
+    if (!remember()) return;
+    section.page.lineNumbers = true;
+    if (start === 1) delete section.page.lineStart;
+    else section.page.lineStart = Math.floor(start);
+    finish();
+  }
+
+  /** Colors the underline, or lets it follow the text when no color is given. */
+  function underlineColor(color: string): void {
+    applyToRuns((run) => {
+      if (color) {
+        run.underline = run.underline ?? "single";
+        run.underlineColor = color;
+      } else {
+        delete run.underlineColor;
+      }
+    });
+  }
+
+  /** Drops line numbers from the current paragraph, or numbers it again. */
+  function noLineNumbers(on: boolean): void {
+    const item = current();
+    if (!item) return;
+    if (!remember()) return;
+    if (on) item.noLineNumbers = true;
+    else delete item.noLineNumbers;
     finish();
   }
 
@@ -3150,6 +3226,7 @@ function copyStyle(from: DocRun | undefined, to: DocRun): void {
   if (from.bold) to.bold = true;
   if (from.italic) to.italic = true;
   if (from.underline) to.underline = from.underline;
+  if (from.underlineColor) to.underlineColor = from.underlineColor;
   if (from.strike) to.strike = true;
   if (from.vertAlign) to.vertAlign = from.vertAlign;
   if (from.highlight) to.highlight = from.highlight;
@@ -3183,6 +3260,28 @@ function placePicture(node: HTMLElement, run: DocRun): void {
   if (run.grouped?.length) node.dataset.grouped = String(run.grouped.length);
 }
 
+/** Sizes each tab gap to the next stop and draws the leader that stop asks for. */
+function placeTabs(node: HTMLElement, tabs: DocParagraph["tabs"]): void {
+  const gaps = node.querySelectorAll<HTMLElement>(".doc-tab");
+  gaps.forEach((gap, index) => {
+    const stop = tabs?.[index];
+    if (!stop) return;
+    gap.style.width = twips(stop.pos);
+    const line = stop.leader === "hyphen" ? "dashed" : stop.leader === "underscore" ? "solid" : stop.leader === "none" ? "none" : "dotted";
+    gap.style.borderBottomStyle = line;
+  });
+}
+
+/** Paints one of the run's text effects. The letters stay filled, so the text stays readable. */
+function paintRunEffect(span: HTMLElement, marks: string[] | undefined): void {
+  if (!marks?.length) return;
+  if (marks.includes("shadow")) span.style.textShadow = "1px 1px 1px rgb(0 0 0 / 40%)";
+  if (marks.includes("outline")) span.style.webkitTextStroke = "1px currentColor";
+  if (marks.includes("emboss")) span.style.textShadow = "1px 1px 0 #fff, -1px -1px 0 rgb(0 0 0 / 40%)";
+  if (marks.includes("imprint")) span.style.textShadow = "-1px -1px 0 #fff, 1px 1px 0 rgb(0 0 0 / 40%)";
+  if (marks.includes("effect")) span.style.textShadow = "0 0 4px currentColor";
+}
+
 function runNode(run: DocRun): HTMLElement {
   if (run.image) {
     if (run.imageBytes) {
@@ -3210,7 +3309,12 @@ function runNode(run: DocRun): HTMLElement {
     mark.contentEditable = "false";
     span.append(mark);
   }
-  if (run.tabBefore) span.append(document.createTextNode(" "));
+  if (run.tabBefore) {
+    const tab = document.createElement("span");
+    tab.className = "doc-tab";
+    tab.contentEditable = "false";
+    span.append(tab);
+  }
   span.append(document.createTextNode(run.caps ? run.text.toUpperCase() : run.text));
   if (run.ruby) {
     const guide = document.createElement("span");
@@ -3225,6 +3329,7 @@ function runNode(run: DocRun): HTMLElement {
   if (run.emphasis) span.style.textEmphasis = "dot";
   if (run.italic || (complex && run.italicCs)) span.style.fontStyle = "italic";
   if (run.underline) span.style.textDecoration = underlineOf(run.underline);
+  if (run.underlineColor) span.style.textDecorationColor = run.underlineColor;
   if (run.strike || run.doubleStrike) span.style.textDecoration = `${span.style.textDecoration} line-through`.trim();
   if (run.doubleStrike) span.style.textDecorationStyle = "double";
   if (run.vertAlign === "superscript") span.style.verticalAlign = "super";
@@ -3244,6 +3349,8 @@ function runNode(run: DocRun): HTMLElement {
   if (run.eastAsianLayout?.twoInOne) span.style.fontSize = "0.5em";
   if (run.scale && run.scale !== 100) span.style.transform = `scaleX(${run.scale / 100})`;
   if (run.spacing) span.style.letterSpacing = `${(run.spacing * 96) / 1440}px`;
+  if (run.kern) span.style.fontKerning = "normal";
+  paintRunEffect(span, run.marks);
   if (run.position) span.style.position = "relative";
   if (run.position) span.style.top = `${-run.position / 2}px`;
   if (run.comment) span.dataset.comment = run.comment;

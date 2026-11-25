@@ -69,7 +69,7 @@ const HIGHLIGHTS: Record<string, string> = {
 const UNDERLINES = new Set<DocUnderline>(["single", "double", "dotted", "dash", "wave"]);
 
 /** Paragraph switches the model keeps so a rewrite does not drop them. */
-const PARAGRAPH_MARKS = ["suppressLineNumbers", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
+const PARAGRAPH_MARKS = ["suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
 
 /** Run switches the model keeps so a rewrite does not drop them. */
 const RUN_MARKS = ["outline", "shadow", "emboss", "imprint", "effect"];
@@ -534,7 +534,12 @@ function readPageExtras(node: XmlNode, margin: XmlNode | undefined): Partial<Doc
   if (gutter !== undefined) extras.gutter = gutter;
   if (headerDistance !== undefined) extras.headerDistance = headerDistance;
   if (footerDistance !== undefined) extras.footerDistance = footerDistance;
-  if (child(node, "lnNumType")) extras.lineNumbers = true;
+  const numbered = child(node, "lnNumType");
+  if (numbered) {
+    extras.lineNumbers = true;
+    const start = Number(attr(numbered, "start"));
+    if (Number.isFinite(start) && start > 0 && start !== 1) extras.lineStart = start;
+  }
   const border = borderOf(child(node, "pgBorders"));
   if (border) extras.border = border;
   const direction = child(node, "textDirection");
@@ -977,6 +982,7 @@ function applyParagraphProps(paragraph: DocParagraph, props: XmlNode, context: C
   if (on(child(props, "keepNext"))) paragraph.keepNext = true;
   if (on(child(props, "keepLines"))) paragraph.keepLines = true;
   if (on(child(props, "widowControl"))) paragraph.widowControl = true;
+  if (on(child(props, "suppressLineNumbers"))) paragraph.noLineNumbers = true;
   const outline = child(props, "outlineLvl");
   const outlineLevel = Number(outline ? attr(outline, "val") : undefined);
   if (Number.isFinite(outlineLevel) && outlineLevel >= 0) paragraph.outline = outlineLevel;
@@ -1000,12 +1006,16 @@ function applyParagraphProps(paragraph: DocParagraph, props: XmlNode, context: C
   if (rowStyleValue) paragraph.rowStyle = rowStyleValue;
   const tabs = child(props, "tabs");
   if (tabs) {
-    const stops: Array<{ pos: number; align?: "center" | "right" | "decimal" }> = [];
+    const stops: Array<{ pos: number; align?: "center" | "right" | "decimal"; leader?: string }> = [];
     for (const tab of children(tabs, "tab")) {
       const pos = Number(attr(tab, "pos"));
       if (!Number.isFinite(pos)) continue;
       const align = attr(tab, "val");
-      stops.push(align === "center" || align === "right" || align === "decimal" ? { pos, align } : { pos });
+      const leader = attr(tab, "leader");
+      const stop: { pos: number; align?: "center" | "right" | "decimal"; leader?: string } = { pos };
+      if (align === "center" || align === "right" || align === "decimal") stop.align = align;
+      if (leader) stop.leader = leader;
+      stops.push(stop);
     }
     if (stops.length) paragraph.tabs = stops;
   }
@@ -1208,6 +1218,8 @@ function runProps(props: XmlNode | undefined): Omit<DocRun, "text"> {
   if (underline) {
     const value = attr(underline, "val");
     if (value && value !== "none") shared.underline = UNDERLINES.has(value as DocUnderline) ? (value as DocUnderline) : "single";
+    const color = hexColor(attr(underline, "color"));
+    if (color) shared.underlineColor = color;
   }
   if (on(child(props, "strike"))) shared.strike = true;
   if (on(child(props, "dstrike"))) shared.doubleStrike = true;

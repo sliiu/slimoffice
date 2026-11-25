@@ -213,7 +213,8 @@ function pageXml(page: DocPageSetup): string {
   const gutter = page.gutter ? ` w:gutter="${Math.round(page.gutter)}"` : "";
   const header = page.headerDistance !== undefined ? ` w:header="${Math.round(page.headerDistance)}"` : "";
   const footer = page.footerDistance !== undefined ? ` w:footer="${Math.round(page.footerDistance)}"` : "";
-  const lines = page.lineNumbers ? `<w:lnNumType w:countBy="1"/>` : "";
+  const lineStart = page.lineStart && page.lineStart !== 1 ? ` w:start="${Math.round(page.lineStart)}"` : "";
+  const lines = page.lineNumbers ? `<w:lnNumType w:countBy="1"${lineStart}/>` : "";
   const pageBorder = page.border ? `<w:pgBorders>${borderSidesXml(page.border)}</w:pgBorders>` : "";
   const aligned = page.verticalAlign && page.verticalAlign !== "top" ? `<w:vAlign w:val="${page.verticalAlign}"/>` : "";
   const grid = gridXml(page.grid);
@@ -325,6 +326,7 @@ function paragraphXml(paragraph: DocParagraph, section: string | undefined, link
   if (paragraph.keepNext) props.push("<w:keepNext/>");
   if (paragraph.keepLines) props.push("<w:keepLines/>");
   if (paragraph.widowControl) props.push("<w:widowControl/>");
+  if (paragraph.noLineNumbers) props.push("<w:suppressLineNumbers/>");
   if (paragraph.outline !== undefined) props.push(`<w:outlineLvl w:val="${Math.round(paragraph.outline)}"/>`);
   for (const mark of paragraph.marks ?? []) if (/^[a-zA-Z]+$/.test(mark)) props.push(`<w:${mark}/>`);
   if (paragraph.frame) props.push(frameXml(paragraph.frame));
@@ -356,7 +358,10 @@ function frameXml(frame: DocFrame): string {
 }
 
 function tabsXml(tabs: NonNullable<DocParagraph["tabs"]>): string {
-  const stops = tabs.map((tab) => `<w:tab w:val="${tab.align ?? "left"}" w:pos="${Math.round(tab.pos)}"/>`).join("");
+  const stops = tabs.map((tab) => {
+    const leader = tab.leader ? ` w:leader="${attr(tab.leader)}"` : "";
+    return `<w:tab w:val="${tab.align ?? "left"}" w:pos="${Math.round(tab.pos)}"${leader}/>`;
+  }).join("");
   return `<w:tabs>${stops}</w:tabs>`;
 }
 
@@ -462,7 +467,7 @@ function runPropsXml(run: DocRun): string {
   if (run.italicCs) parts.push("<w:iCs/>");
   if (run.caps) parts.push("<w:caps/>");
   if (run.smallCaps) parts.push("<w:smallCaps/>");
-  if (run.underline) parts.push(`<w:u w:val="${run.underline}"/>`);
+  if (run.underline) parts.push(`<w:u w:val="${run.underline}"${run.underlineColor ? ` w:color="${attr(run.underlineColor.replace(/^#/, ""))}"` : ""}/>`);
   if (run.strike) parts.push("<w:strike/>");
   if (run.doubleStrike) parts.push("<w:dstrike/>");
   if (run.hidden) parts.push("<w:vanish/>");

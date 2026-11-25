@@ -32,12 +32,18 @@ export interface DocPage {
     direction?: "lr" | "tb" | "rl";
     /** The section numbers its lines. */
     lineNumbers?: boolean;
+    /** The first line's number. */
+    lineStart?: number;
     /** The section's text runs right to left. */
     bidi?: boolean;
     /** The gutter sits on the right. */
     rtlGutter?: boolean;
-    /** The gutter, in pixels, so the right side can take it when it sits there. */
+    /** The gutter, in pixels. It sits on the left unless the section puts it on the right. */
     gutter?: number;
+    /** Distance from the page edge to the header, in pixels. */
+    headerDistance?: number;
+    /** Distance from the page edge to the footer, in pixels. */
+    footerDistance?: number;
     /** Endnotes print at the end of this section. */
     endnotesHere?: boolean;
     blocks: DocBlock[];

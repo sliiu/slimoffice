@@ -217,6 +217,8 @@ export interface DocumentView {
     runSwitch(name: string, on: boolean): void;
     /** Whether the shadow switch is on for the current run. */
     shadowOn(): boolean;
+    /** Whether one run switch is on for the current run: shadow, outline, emboss, imprint, or effect. */
+    runSwitchOn(name: string): boolean;
     /** Keeps this paragraph on the same page as the next one. */
     keepWithNext(): void;
     keepWithNextOn(): boolean;
@@ -233,10 +235,12 @@ export interface DocumentView {
     paragraphSwitch(name: string, on: boolean): void;
     /** Whether the word wrap switch is on for the current paragraph. */
     wordWrapOn(): boolean;
+    /** Whether one paragraph switch is on, such as word wrap or snapping to the grid. */
+    paragraphSwitchOn(name: string): boolean;
     /** Whether the paragraph runs right to left. */
     bidiOn(): boolean;
-    /** Adds a tab stop to the current paragraph, in twips from the left margin. */
-    tabStop(pos: number, align?: "left" | "center" | "right" | "decimal"): void;
+    /** Adds a tab stop to the current paragraph, in twips from the left margin. A leader fills the gap up to it: dot, hyphen, underscore, middleDot, or none. */
+    tabStop(pos: number, align?: "left" | "center" | "right" | "decimal", leader?: string): void;
     /** Inserts a cover page and makes the first page show its own header. */
     cover(title: string): void;
     /** Inserts a rectangle. The text is its label. */
@@ -292,6 +296,17 @@ export interface DocumentView {
     noteStart(footnote: number, endnote: number): void;
     /** Turns line numbers on or off for the current section. */
     lineNumbers(on: boolean): void;
+    /** Whether the current section numbers its lines. */
+    lineNumbersOn(): boolean;
+    /** Sets the first line's number. One is the ordinary start and clears it. */
+    lineStart(start: number): void;
+    /** Sets the underline's color, #rrggbb. An empty color makes it follow the text. */
+    underlineColor(color: string): void;
+    /** The underline color the current run shows, or "" when it follows the text. */
+    underlineColorOn(): string;
+    /** Skips line numbers for the current paragraph, or numbers it again. */
+    noLineNumbers(on: boolean): void;
+    noLineNumbersOn(): boolean;
     /** Puts a border around the page. An empty color clears it. */
     pageBorder(color: string): void;
     /** Sets the text direction of the current section. */
