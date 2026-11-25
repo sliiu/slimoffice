@@ -265,3 +265,28 @@ test("array constants, database functions, lambda, and forecasting", () => {
   const rate = evaluate("=XIRR({-100,110},{46023;46388})", ctx(workbook));
   assert.ok(typeof rate === "number" && Math.abs(rate - 0.1) < 1e-4);
 });
+
+test("workday calendars, depreciation, regression, and array folds", () => {
+  const workbook = book([]);
+  assert.equal(evaluate("=DAYS(DATE(2026,1,11),DATE(2026,1,1))", ctx(workbook)), 10);
+  assert.equal(evaluate("=WORKDAY.INTL(DATE(2026,1,1),1,11)", ctx(workbook)), evaluate("=DATE(2026,1,2)", ctx(workbook)));
+  assert.equal(evaluate("=NETWORKDAYS.INTL(DATE(2026,1,1),DATE(2026,1,7),11)", ctx(workbook)), 6);
+  assert.equal(evaluate("=COUPDAYS(DATE(2026,1,15),DATE(2028,1,15),2)", ctx(workbook)), 181);
+  assert.equal(evaluate("=COUPNUM(DATE(2026,1,15),DATE(2028,1,15),2)", ctx(workbook)), 4);
+  assert.equal(evaluate("=SLN(1000,100,5)", ctx(workbook)), 180);
+  assert.equal(evaluate("=SYD(1000,100,5,1)", ctx(workbook)), 300);
+  assert.equal(Math.round(evaluate("=DB(1000,100,5,1)", ctx(workbook)) as number), 369);
+  assert.equal(evaluate("=DDB(1000,100,5,1)", ctx(workbook)), 400);
+  assert.equal(Math.round(evaluate("=EFFECT(0.1,2)", ctx(workbook)) as number * 1e6) / 1e6, 0.1025);
+  assert.equal(evaluate("=ROUND(NOMINAL(0.1025,2),4)", ctx(workbook)), 0.1);
+  assert.equal(evaluate("=SLOPE({2,4,6},{1,2,3})", ctx(workbook)), 2);
+  assert.equal(evaluate("=INTERCEPT({2,4,6},{1,2,3})", ctx(workbook)), 0);
+  assert.equal(evaluate("=RSQ({2,4,6},{1,2,3})", ctx(workbook)), 1);
+  assert.equal(evaluate("=STEYX({2,4,6},{1,2,3})", ctx(workbook)), 0);
+  assert.equal(Math.round(evaluate("=NORM.S.DIST(0,TRUE)", ctx(workbook)) as number * 100) / 100, 0.5);
+  assert.equal(Math.round(evaluate("=NORM.INV(0.5,10,2)", ctx(workbook)) as number), 10);
+  assert.equal(evaluate("=REDUCE(0,{1,2,3,4},LAMBDA(a,b,a+b))", ctx(workbook)), 10);
+  assert.equal(formatResult(evaluate("=SCAN(0,{1,2,3},LAMBDA(a,b,a+b))", ctx(workbook))), "0,1,3,6");
+  assert.equal(formatResult(evaluate("=BYROW({1,2;3,4},LAMBDA(r,SUM(r)))", ctx(workbook))), "3,7");
+  assert.equal(formatResult(evaluate("=BYCOL({1,2;3,4},LAMBDA(c,SUM(c)))", ctx(workbook))), "4,6");
+});

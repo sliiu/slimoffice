@@ -1750,6 +1750,77 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
       return makeArray(args, ctx);
     case "MAP":
       return mapArray(args, ctx);
+    case "REDUCE":
+    case "SCAN":
+      return foldArray(name, args, ctx);
+    case "BYROW":
+    case "BYCOL":
+      return byAxis(name, args, ctx);
+    case "DAYS": {
+      const end = asNumber(args[0] ?? 0);
+      const start = asNumber(args[1] ?? 0);
+      if (end instanceof FormulaError) return end;
+      if (start instanceof FormulaError) return start;
+      return Math.round(end - start);
+    }
+    case "WORKDAY.INTL": {
+      const start = asNumber(args[0] ?? 0);
+      const days = asNumber(args[1] ?? 0);
+      const weekend = asNumber(args[2] ?? 1);
+      if (start instanceof FormulaError) return start;
+      if (days instanceof FormulaError) return days;
+      if (weekend instanceof FormulaError) return weekend;
+      const mask = weekendMask(weekend);
+      return mask instanceof FormulaError ? mask : workdayIntl(start, days, mask);
+    }
+    case "NETWORKDAYS.INTL": {
+      const start = asNumber(args[0] ?? 0);
+      const end = asNumber(args[1] ?? 0);
+      const weekend = asNumber(args[2] ?? 1);
+      if (start instanceof FormulaError) return start;
+      if (end instanceof FormulaError) return end;
+      if (weekend instanceof FormulaError) return weekend;
+      const mask = weekendMask(weekend);
+      return mask instanceof FormulaError ? mask : networkDaysIntl(start, end, mask);
+    }
+    case "COUPDAYS":
+    case "COUPNUM":
+    case "COUPPCD":
+    case "COUPNCD": {
+      const settle = asNumber(args[0] ?? 0);
+      const mature = asNumber(args[1] ?? 0);
+      const frequency = asNumber(args[2] ?? 0);
+      if (settle instanceof FormulaError) return settle;
+      if (mature instanceof FormulaError) return mature;
+      if (frequency instanceof FormulaError) return frequency;
+      return coupon(name, settle, mature, frequency);
+    }
+    case "SLN":
+    case "SYD":
+    case "DB":
+    case "DDB":
+      return depreciation(name, args);
+    case "EFFECT":
+    case "NOMINAL": {
+      const first = asNumber(args[0] ?? 0);
+      const periods = asNumber(args[1] ?? 0);
+      if (first instanceof FormulaError) return first;
+      if (periods instanceof FormulaError) return periods;
+      if (first <= 0 || periods < 1) return E.NUM();
+      const n = Math.floor(periods);
+      return name === "EFFECT" ? (1 + first / n) ** n - 1 : ((1 + first) ** (1 / n) - 1) * n;
+    }
+    case "SLOPE":
+    case "INTERCEPT":
+    case "RSQ":
+    case "STEYX":
+      return regression(name, args);
+    case "NORM.DIST":
+    case "NORM.S.DIST":
+    case "NORM.INV":
+    case "NORMSDIST":
+    case "NORMSINV":
+      return normalDist(name, args);
     default:
       return E.NAME();
   }
@@ -1979,6 +2050,239 @@ function mapArray(args: FormulaValue[], ctx: EvalContext): FormulaValue {
     out.push(scalarPrimitive(value));
   }
   return withWidth(out, width);
+}
+
+/** REDUCE folds the LAMBDA over the range. SCAN returns every step, including the start value. */
+function foldArray(name: string, args: FormulaValue[], ctx: EvalContext): FormulaValue {
+  const start = args[0] ?? "";
+  const range = args[1];
+  const lambda = args[2];
+  if (!Array.isArray(range) || !isLambda(lambda) || lambda.params.length !== 2) return E.VALUE();
+  let acc = start;
+  const steps: FormulaPrimitive[] = [scalarPrimitive(start)];
+  for (const item of range) {
+    const next = applyLambda(lambda, [acc, item], ctx);
+    if (next instanceof FormulaError) return next;
+    acc = next;
+    steps.push(scalarPrimitive(next));
+  }
+  if (name === "REDUCE") return acc;
+  return withWidth(steps, 1);
+}
+
+/** BYROW calls the LAMBDA with each row, BYCOL with each column. The LAMBDA takes the whole row or column. */
+function byAxis(name: string, args: FormulaValue[], ctx: EvalContext): FormulaValue {
+  const range = args[0];
+  const lambda = args[1];
+  if (!Array.isArray(range) || !isLambda(lambda) || lambda.params.length !== 1) return E.VALUE();
+  const width = rangeWidth(range);
+  const height = Math.ceil(range.length / width);
+  const across = name === "BYROW";
+  const count = across ? height : width;
+  const out: FormulaPrimitive[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const slice: FormulaPrimitive[] = [];
+    const length = across ? width : height;
+    for (let j = 0; j < length; j += 1) slice.push(range[(across ? i : j) * width + (across ? j : i)] ?? "");
+    const value = applyLambda(lambda, [withWidth(slice, across ? width : 1)], ctx);
+    if (value instanceof FormulaError) return value;
+    out.push(scalarPrimitive(value));
+  }
+  return withWidth(out, across ? 1 : count);
+}
+
+/** Excel's weekend codes. 1 is Saturday and Sunday, 11 is Sunday only, and 2 through 7 start the pair on each weekday. */
+function weekendMask(code: number): number | FormulaError {
+  const masks: Record<number, number> = { 1: 65, 2: 96, 3: 48, 4: 24, 5: 12, 6: 6, 7: 3, 11: 64, 12: 32, 13: 16, 14: 8, 15: 4, 16: 2, 17: 1 };
+  const mask = masks[Math.floor(code)];
+  return mask === undefined ? E.NUM() : mask;
+}
+
+/** A bit set in the mask marks a weekend day. Bit 0 is Monday and bit 6 is Sunday. */
+function isWeekend(serial: number, mask: number): boolean {
+  const weekday = new Date(Math.round((serial - 25569) * 86400000)).getUTCDay();
+  const bit = weekday === 0 ? 6 : weekday - 1;
+  return (mask & (1 << bit)) !== 0;
+}
+
+function workdayIntl(start: number, days: number, mask: number): number {
+  const step = days >= 0 ? 1 : -1;
+  let left = Math.abs(Math.trunc(days));
+  let day = Math.round(start);
+  while (left > 0) {
+    day += step;
+    if (!isWeekend(day, mask)) left -= 1;
+  }
+  return day;
+}
+
+function networkDaysIntl(start: number, end: number, mask: number): number {
+  const step = end >= start ? 1 : -1;
+  let count = 0;
+  for (let day = Math.round(start); step > 0 ? day <= end : day >= end; day += step) {
+    if (!isWeekend(day, mask)) count += step;
+  }
+  return count;
+}
+
+/**
+ * Coupon dates run backward from maturity by whole periods. COUPDAYS is the length of the period holding
+ * the settlement, COUPNUM counts the coupons still due, and the other two return the period's end dates.
+ */
+function coupon(name: string, settle: number, mature: number, frequency: number): FormulaValue {
+  if (![1, 2, 4].includes(frequency)) return E.NUM();
+  if (mature <= settle) return E.NUM();
+  const months = 12 / frequency;
+  const end = new Date(Math.round((mature - 25569) * 86400000));
+  const dates: number[] = [];
+  for (let step = 0; ; step += 1) {
+    const serial = Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - months * step, end.getUTCDate()) / 86400000 + 25569;
+    dates.push(Math.round(serial));
+    if (serial <= settle) break;
+    if (step > 1200) return E.NUM();
+  }
+  const next = dates[dates.length - 2] ?? dates[0]!;
+  const previous = dates[dates.length - 1]!;
+  if (name === "COUPDAYS") return next - previous;
+  if (name === "COUPNUM") return dates.length - 1;
+  if (name === "COUPNCD") return next;
+  return previous;
+}
+
+/** SLN is straight line, SYD sums the years' digits, DB is declining balance, and DDB is double declining. */
+function depreciation(name: string, args: FormulaValue[]): FormulaValue {
+  const cost = asNumber(args[0] ?? 0);
+  const salvage = asNumber(args[1] ?? 0);
+  const life = asNumber(args[2] ?? 0);
+  if (cost instanceof FormulaError) return cost;
+  if (salvage instanceof FormulaError) return salvage;
+  if (life instanceof FormulaError) return life;
+  if (life <= 0 || cost < 0) return E.NUM();
+  if (name === "SLN") return (cost - salvage) / life;
+  const period = asNumber(args[3] ?? 0);
+  if (period instanceof FormulaError) return period;
+  const year = Math.floor(period);
+  if (year < 1 || year > life) return E.NUM();
+  if (name === "SYD") return (cost - salvage) * (life - year + 1) / (life * (life + 1) / 2);
+  if (name === "DB") {
+    const months = args[4] === undefined ? 12 : asNumber(args[4]);
+    if (months instanceof FormulaError) return months;
+    if (months < 1 || months > 12) return E.NUM();
+    const rate = Math.round((1 - (salvage / cost) ** (1 / life)) * 1000) / 1000;
+    let book = cost;
+    const charge = (which: number) => {
+      const full = book * rate;
+      const amount = which === 1 ? full * months / 12 : which === Math.floor(life) + 1 ? book * (12 - months) / 12 : full;
+      book -= amount;
+      return amount;
+    };
+    let value = 0;
+    for (let which = 1; which <= year; which += 1) value = charge(which);
+    return value;
+  }
+  const factor = args[4] === undefined ? 2 : asNumber(args[4]);
+  if (factor instanceof FormulaError) return factor;
+  if (factor <= 0) return E.NUM();
+  let book = cost;
+  let value = 0;
+  for (let which = 1; which <= year; which += 1) {
+    value = Math.min(book * factor / life, book - salvage);
+    book -= value;
+  }
+  return value;
+}
+
+/** The straight line through the known pairs, shared by SLOPE, INTERCEPT, RSQ, and STEYX. */
+function regression(name: string, args: FormulaValue[]): FormulaValue {
+  const ys = numbers(args.slice(0, 1));
+  const xs = numbers(args.slice(1, 2));
+  const count = Math.min(ys.length, xs.length);
+  if (count < 2) return E.VALUE();
+  const x = xs.slice(0, count);
+  const y = ys.slice(0, count);
+  const meanX = x.reduce((sum, item) => sum + item, 0) / count;
+  const meanY = y.reduce((sum, item) => sum + item, 0) / count;
+  let across = 0;
+  let squareX = 0;
+  let squareY = 0;
+  for (let i = 0; i < count; i += 1) {
+    across += (x[i]! - meanX) * (y[i]! - meanY);
+    squareX += (x[i]! - meanX) ** 2;
+    squareY += (y[i]! - meanY) ** 2;
+  }
+  if (squareX === 0) return E.DIV0();
+  const slope = across / squareX;
+  if (name === "SLOPE") return slope;
+  if (name === "INTERCEPT") return meanY - slope * meanX;
+  if (squareY === 0) return E.DIV0();
+  if (name === "RSQ") return across ** 2 / (squareX * squareY);
+  let residual = 0;
+  for (let i = 0; i < count; i += 1) residual += (y[i]! - (meanY + slope * (x[i]! - meanX))) ** 2;
+  return Math.sqrt(residual / (count - 2));
+}
+
+/** The standard normal density and distribution, and the inverse through a rational approximation. */
+function normalDist(name: string, args: FormulaValue[]): FormulaValue {
+  if (name === "NORM.S.DIST" || name === "NORMSDIST") {
+    const z = asNumber(args[0] ?? 0);
+    if (z instanceof FormulaError) return z;
+    const cumulative = name === "NORMSDIST" || asBool(args[1] ?? true);
+    if (cumulative instanceof FormulaError) return cumulative;
+    return cumulative ? normalCdf(z) : Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI);
+  }
+  if (name === "NORMSINV") {
+    const p = asNumber(args[0] ?? 0);
+    if (p instanceof FormulaError) return p;
+    if (p <= 0 || p >= 1) return E.NUM();
+    return normalInv(p);
+  }
+  const x = asNumber(args[0] ?? 0);
+  const mean = asNumber(args[1] ?? 0);
+  const deviation = asNumber(args[2] ?? 1);
+  if (x instanceof FormulaError) return x;
+  if (mean instanceof FormulaError) return mean;
+  if (deviation instanceof FormulaError) return deviation;
+  if (deviation <= 0) return E.NUM();
+  const z = (x - mean) / deviation;
+  if (name === "NORM.INV") {
+    if (x <= 0 || x >= 1) return E.NUM();
+    return mean + deviation * normalInv(x);
+  }
+  const cumulative = asBool(args[3] ?? true);
+  if (cumulative instanceof FormulaError) return cumulative;
+  return cumulative ? normalCdf(z) : Math.exp(-z * z / 2) / (deviation * Math.sqrt(2 * Math.PI));
+}
+
+/** Abramowitz and Stegun's approximation of the standard normal distribution. */
+function normalCdf(z: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const poly = t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const tail = poly * Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI);
+  return z >= 0 ? 1 - tail : tail;
+}
+
+/** Peter Acklam's rational approximation of the inverse standard normal distribution. */
+function normalInv(p: number): number {
+  const a = [-3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2, 1.38357751867269e2, -3.066479806614716e1, 2.506628277459239];
+  const b = [-5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2, 6.680131188771972e1, -1.328068155288572e1];
+  const c = [-7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+  const d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137143, 3.754408661907416];
+  const low = 0.02425;
+  const high = 1 - low;
+  let q: number;
+  if (p < low) {
+    const t = Math.sqrt(-2 * Math.log(p));
+    q = (((((c[0]! * t + c[1]!) * t + c[2]!) * t + c[3]!) * t + c[4]!) * t + c[5]!) / ((((d[0]! * t + d[1]!) * t + d[2]!) * t + d[3]!) * t + 1);
+  } else if (p > high) {
+    const t = Math.sqrt(-2 * Math.log(1 - p));
+    q = -(((((c[0]! * t + c[1]!) * t + c[2]!) * t + c[3]!) * t + c[4]!) * t + c[5]!) / ((((d[0]! * t + d[1]!) * t + d[2]!) * t + d[3]!) * t + 1);
+  } else {
+    const t = p - 0.5;
+    const r = t * t;
+    q = (((((a[0]! * r + a[1]!) * r + a[2]!) * r + a[3]!) * r + a[4]!) * r + a[5]!) * t / (((((b[0]! * r + b[1]!) * r + b[2]!) * r + b[3]!) * r + b[4]!) * r + 1);
+  }
+  const err = normalCdf(q) - p;
+  return q - err / (Math.exp(-q * q / 2) / Math.sqrt(2 * Math.PI));
 }
 
 const SUBTOTALS: Record<number, (args: FormulaValue[]) => FormulaValue> = {
