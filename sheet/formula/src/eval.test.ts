@@ -290,3 +290,37 @@ test("workday calendars, depreciation, regression, and array folds", () => {
   assert.equal(formatResult(evaluate("=BYROW({1,2;3,4},LAMBDA(r,SUM(r)))", ctx(workbook))), "3,7");
   assert.equal(formatResult(evaluate("=BYCOL({1,2;3,4},LAMBDA(c,SUM(c)))", ctx(workbook))), "4,6");
 });
+
+test("array shaping, statistics, finance extras, and text", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "金额" }],
+    [{ value: "甲" }, { value: "2" }],
+    [{ value: "乙" }, { value: "4" }],
+    [{ value: "甲" }, { value: "8" }],
+  ]);
+  assert.equal(formatResult(evaluate("=TAKE({1,2;3,4;5,6},2)", ctx(workbook))), "1,2,3,4");
+  assert.equal(formatResult(evaluate("=DROP({1,2;3,4;5,6},1)", ctx(workbook))), "3,4,5,6");
+  assert.equal(formatResult(evaluate("=CHOOSECOLS({1,2,3;4,5,6},3,1)", ctx(workbook))), "3,1,6,4");
+  assert.equal(formatResult(evaluate("=CHOOSEROWS({1,2;3,4;5,6},-1)", ctx(workbook))), "5,6");
+  assert.equal(formatResult(evaluate("=TOCOL({1,2;3,4})", ctx(workbook))), "1,2,3,4");
+  assert.equal(formatResult(evaluate("=TOROW({1,2;3,4},1)", ctx(workbook))), "1,3,2,4");
+  assert.equal(formatResult(evaluate("=WRAPROWS({1,2,3,4},2)", ctx(workbook))), "1,2,3,4");
+  assert.equal(formatResult(evaluate("=EXPAND({1,2},2,2,0)", ctx(workbook))), "1,2,0,0");
+  assert.equal(evaluate("=DCOUNTA(A1:B4,\"金额\",A1:A2)", ctx(workbook)), 2);
+  assert.equal(evaluate("=DPRODUCT(A1:B4,\"金额\",A1:A2)", ctx(workbook)), 16);
+  assert.equal(evaluate("=DGET(A1:B4,\"金额\",{\"品类\";\"乙\"})", ctx(workbook)), 4);
+  assert.equal(evaluate("=ROUND(GEOMEAN(1,3,9),4)", ctx(workbook)), 3);
+  assert.equal(evaluate("=HARMEAN(1,2,4)", ctx(workbook)), 12 / 7);
+  assert.equal(evaluate("=PERMUT(5,2)", ctx(workbook)), 20);
+  assert.equal(formatResult(evaluate("=FREQUENCY({1,2,3,4},{2,4})", ctx(workbook))), "2,2,0");
+  assert.equal(evaluate("=ROUND(CUMPRINC(0.1,2,100,1,2,0),2)", ctx(workbook)), -100);
+  assert.equal(evaluate("=ROUND(RRI(2,100,121),4)", ctx(workbook)), 0.1);
+  assert.equal(Math.round(evaluate("=PDURATION(0.1,100,121)", ctx(workbook)) as number * 1e6) / 1e6, 2);
+  assert.equal(evaluate("=NUMBERVALUE(\"1.234,5\",\",\",\".\")", ctx(workbook)), 1234.5);
+  assert.equal(evaluate("=FIXED(1234.5,2)", ctx(workbook)), "1,234.50");
+  assert.equal(evaluate("=DOLLAR(12,2)", ctx(workbook)), "$12.00");
+  assert.equal(evaluate("=UNICODE(\"甲\")", ctx(workbook)), 0x7532);
+  assert.equal(evaluate("=UNICHAR(30002)", ctx(workbook)), "甲");
+  assert.equal(evaluate('=CLEAN("a"&CHAR(10)&"b")', ctx(workbook)), "ab");
+  assert.equal(evaluate("=ASC(\"Ａ\")", ctx(workbook)), "A");
+});

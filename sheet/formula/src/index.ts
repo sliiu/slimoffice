@@ -1728,9 +1728,14 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
       return stack(name, args);
     case "DSUM":
     case "DCOUNT":
+    case "DCOUNTA":
     case "DAVERAGE":
     case "DMAX":
     case "DMIN":
+    case "DPRODUCT":
+    case "DSTDEV":
+    case "DVAR":
+    case "DGET":
       return database(name, args);
     case "DAYS360": {
       const start = asNumber(args[0] ?? 0);
@@ -1821,9 +1826,328 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
     case "NORMSDIST":
     case "NORMSINV":
       return normalDist(name, args);
+    case "TAKE":
+    case "DROP":
+    case "CHOOSECOLS":
+    case "CHOOSEROWS":
+    case "TOCOL":
+    case "TOROW":
+    case "WRAPROWS":
+    case "WRAPCOLS":
+    case "EXPAND":
+      return reshape(name, args);
+    case "GEOMEAN":
+    case "HARMEAN":
+    case "TRIMMEAN":
+    case "SKEW":
+    case "KURT":
+    case "DEVSQ":
+    case "AVEDEV":
+    case "PERCENTILE.EXC":
+    case "QUARTILE.EXC":
+    case "PERCENTRANK":
+    case "FREQUENCY":
+    case "PERMUT":
+      return statsFn(name, args);
+    case "CUMPRINC":
+    case "CUMIPMT":
+    case "RRI":
+    case "PDURATION":
+    case "ACCRINT":
+    case "PRICE":
+    case "YIELD":
+    case "DURATION":
+    case "DISC":
+    case "TBILLPRICE":
+      return financeExtra(name, args);
+    case "NUMBERVALUE":
+    case "FIXED":
+    case "DOLLAR":
+    case "UNICODE":
+    case "UNICHAR":
+    case "CLEAN":
+    case "ASC":
+      return textExtra(name, args);
     default:
       return E.NAME();
   }
+}
+
+/**
+ * Reshapes an array. TAKE and DROP keep or skip rows and columns from either end, CHOOSECOLS and CHOOSEROWS
+ * pick by number, TOCOL and TOROW flatten, WRAPROWS and WRAPCOLS fold a list, and EXPAND pads to a size.
+ */
+function reshape(name: string, args: FormulaValue[]): FormulaValue {
+  const source = args[0];
+  if (!Array.isArray(source)) return E.VALUE();
+  const width = rangeWidth(source);
+  const height = Math.ceil(source.length / width);
+  const count = (value: FormulaValue | undefined, fallback: number): number | FormulaError => {
+    if (value === undefined) return fallback;
+    const parsed = asNumber(value);
+    return parsed instanceof FormulaError ? parsed : Math.trunc(parsed);
+  };
+  if (name === "TOCOL" || name === "TOROW") {
+    const scanByRow = asNumber(args[1] ?? 0);
+    if (scanByRow instanceof FormulaError) return scanByRow;
+    const ignore = asNumber(args[2] ?? 0);
+    if (ignore instanceof FormulaError) return ignore;
+    const out: FormulaPrimitive[] = [];
+    const read = (row: number, col: number) => {
+      const cell = source[row * width + col] ?? "";
+      if ((ignore === 1 || ignore === 3) && cell === "") return;
+      out.push(cell);
+    };
+    const byColumn = scanByRow !== 0;
+    if (byColumn) for (let col = 0; col < width; col += 1) for (let row = 0; row < height; row += 1) read(row, col);
+    else for (let row = 0; row < height; row += 1) for (let col = 0; col < width; col += 1) read(row, col);
+    return withWidth(out, name === "TOROW" ? Math.max(1, out.length) : 1);
+  }
+  if (name === "WRAPROWS" || name === "WRAPCOLS") {
+    const size = count(args[1], 0);
+    if (size instanceof FormulaError) return size;
+    if (size < 1) return E.NUM();
+    const pad = args[2] === undefined ? "" : scalarPrimitive(args[2]);
+    const across = name === "WRAPROWS";
+    const lines = Math.ceil(source.length / size);
+    const out: FormulaPrimitive[] = [];
+    for (let line = 0; line < lines; line += 1) {
+      for (let i = 0; i < size; i += 1) out.push(source[(across ? line * size : i * lines) + (across ? i : line)] ?? pad);
+    }
+    return withWidth(out, across ? size : lines);
+  }
+  if (name === "EXPAND") {
+    const rows = count(args[1], height);
+    const cols = count(args[2], width);
+    if (rows instanceof FormulaError) return rows;
+    if (cols instanceof FormulaError) return cols;
+    if (rows < height || cols < width) return E.VALUE();
+    const pad = args[3] === undefined ? "" : scalarPrimitive(args[3]);
+    const out: FormulaPrimitive[] = [];
+    for (let row = 0; row < rows; row += 1) for (let col = 0; col < cols; col += 1) out.push(source[row * width + col] ?? pad);
+    return withWidth(out, cols);
+  }
+  const rows = count(args[1], name.endsWith("ROWS") ? 1 : height);
+  if (rows instanceof FormulaError) return rows;
+  const pick = (total: number, requested: number): number[] | FormulaError => {
+    if (requested === 0 || Math.abs(requested) > total) return E.VALUE();
+    const out: number[] = [];
+    const span = Math.abs(requested);
+    for (let i = 0; i < span; i += 1) out.push(requested > 0 ? i : total - span + i);
+    return out;
+  };
+  if (name === "TAKE" || name === "DROP") {
+    const cols = count(args[2], name === "DROP" ? 0 : width);
+    if (cols instanceof FormulaError) return cols;
+    const dropped = (total: number, requested: number): number[] | FormulaError => {
+      if (requested === 0) return [];
+      return pick(total, requested);
+    };
+    const rowDrop = name === "DROP" ? dropped(height, rows) : pick(height, rows || height);
+    if (rowDrop instanceof FormulaError) return rowDrop;
+    const rowIndex = name === "TAKE" ? rowDrop : [...Array(height).keys()].filter((row) => !rowDrop.includes(row));
+    const colDrop = name === "DROP" ? dropped(width, cols) : pick(width, cols || width);
+    if (colDrop instanceof FormulaError) return colDrop;
+    const colIndex = name === "TAKE" ? colDrop : [...Array(width).keys()].filter((col) => !colDrop.includes(col));
+    const out: FormulaPrimitive[] = [];
+    for (const row of rowIndex) for (const col of colIndex) out.push(source[row * width + col] ?? "");
+    return withWidth(out, Math.max(1, colIndex.length));
+  }
+  const indexes: number[] = [];
+  for (const arg of args.slice(1)) {
+    const value = asNumber(arg ?? 0);
+    if (value instanceof FormulaError) return value;
+    const index = Math.trunc(value);
+    const limit = name === "CHOOSEROWS" ? height : width;
+    if (index === 0 || Math.abs(index) > limit) return E.VALUE();
+    indexes.push(index > 0 ? index - 1 : limit + index);
+  }
+  if (!indexes.length) return E.VALUE();
+  const out: FormulaPrimitive[] = [];
+  if (name === "CHOOSEROWS") for (const row of indexes) for (let col = 0; col < width; col += 1) out.push(source[row * width + col] ?? "");
+  else for (let row = 0; row < height; row += 1) for (const col of indexes) out.push(source[row * width + col] ?? "");
+  return withWidth(out, name === "CHOOSEROWS" ? width : indexes.length);
+}
+
+/** The descriptive statistics that read one list: means, rank, spread, and the exclusive percentile. */
+function statsFn(name: string, args: FormulaValue[]): FormulaValue {
+  if (name === "PERMUT") {
+    const n = asNumber(args[0] ?? 0);
+    const k = asNumber(args[1] ?? 0);
+    if (n instanceof FormulaError) return n;
+    if (k instanceof FormulaError) return k;
+    if (n < 0 || k < 0 || k > n || !Number.isInteger(n) || !Number.isInteger(k)) return E.NUM();
+    let out = 1;
+    for (let i = 0; i < k; i += 1) out *= n - i;
+    return out;
+  }
+  if (name === "FREQUENCY") {
+    const data = numbers(args.slice(0, 1));
+    const bins = numbers(args.slice(1, 2)).sort((a, b) => a - b);
+    const counts = bins.map(() => 0);
+    let above = 0;
+    for (const value of data) {
+      const bin = bins.findIndex((edge) => value <= edge);
+      if (bin < 0) above += 1;
+      else counts[bin] = (counts[bin] ?? 0) + 1;
+    }
+    return withWidth([...counts, above], 1);
+  }
+  const ranged = name === "PERCENTRANK" || name === "TRIMMEAN" || name === "PERCENTILE.EXC" || name === "QUARTILE.EXC";
+  const nums = numbers(ranged ? args.slice(0, 1) : args);
+  if (!nums.length) return E.NUM();
+  if (name === "GEOMEAN") {
+    if (nums.some((item) => item <= 0)) return E.NUM();
+    return Math.exp(nums.reduce((sum, item) => sum + Math.log(item), 0) / nums.length);
+  }
+  if (name === "HARMEAN") {
+    if (nums.some((item) => item <= 0)) return E.NUM();
+    return nums.length / nums.reduce((sum, item) => sum + 1 / item, 0);
+  }
+  const mean = nums.reduce((sum, item) => sum + item, 0) / nums.length;
+  if (name === "AVEDEV") return nums.reduce((sum, item) => sum + Math.abs(item - mean), 0) / nums.length;
+  if (name === "DEVSQ") return nums.reduce((sum, item) => sum + (item - mean) ** 2, 0);
+  const square = nums.reduce((sum, item) => sum + (item - mean) ** 2, 0);
+  if (name === "SKEW" || name === "KURT") {
+    if (nums.length < (name === "KURT" ? 4 : 3) || square === 0) return E.DIV0();
+    const deviation = Math.sqrt(square / (nums.length - 1));
+    const moment = nums.reduce((sum, item) => sum + ((item - mean) / deviation) ** (name === "KURT" ? 4 : 3), 0);
+    const n = nums.length;
+    return name === "SKEW" ? (n / ((n - 1) * (n - 2))) * moment : ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * moment - (3 * (n - 1) ** 2) / ((n - 2) * (n - 3));
+  }
+  if (name === "PERCENTRANK") {
+    const target = asNumber(args[1] ?? 0);
+    if (target instanceof FormulaError) return target;
+    const sorted = [...nums].sort((a, b) => a - b);
+    if (target < sorted[0]! || target > sorted[sorted.length - 1]!) return E.NA();
+    const above = sorted.filter((item) => item < target).length;
+    const same = sorted.filter((item) => item === target).length;
+    return (above + (same > 1 ? (same - 1) / 2 : 0)) / (sorted.length - 1);
+  }
+  if (name === "TRIMMEAN") {
+    const fraction = asNumber(args[1] ?? 0);
+    if (fraction instanceof FormulaError) return fraction;
+    if (fraction < 0 || fraction >= 1) return E.NUM();
+    const sorted = [...nums].sort((a, b) => a - b);
+    const cut = Math.floor(sorted.length * fraction / 2);
+    const kept = sorted.slice(cut, sorted.length - cut);
+    return kept.reduce((sum, item) => sum + item, 0) / kept.length;
+  }
+  const k = asNumber(args[1] ?? 0);
+  if (k instanceof FormulaError) return k;
+  const probe = name === "QUARTILE.EXC" ? k / 4 : k;
+  if (probe <= 0 || probe >= 1) return E.NUM();
+  const sorted = [...nums].sort((a, b) => a - b);
+  const position = probe * (sorted.length + 1) - 1;
+  if (position < 0 || position > sorted.length - 1) return E.NUM();
+  const lower = Math.floor(position);
+  return sorted[lower]! + (sorted[Math.ceil(position)]! - sorted[lower]!) * (position - lower);
+}
+
+/** Loan totals, growth rates, and the straight bond and treasury bill prices. */
+function financeExtra(name: string, args: FormulaValue[]): FormulaValue {
+  const values: number[] = [];
+  for (const arg of args) {
+    const value = asNumber(arg ?? 0);
+    if (value instanceof FormulaError) return value;
+    values.push(value);
+  }
+  const at = (index: number): number => values[index] ?? 0;
+  if (name === "CUMPRINC" || name === "CUMIPMT") {
+    const [rate, periods, present, first, last] = [at(0), at(1), at(2), at(3), at(4)];
+    if (rate <= 0 || periods < 1 || first < 1 || last < first || last > periods) return E.NUM();
+    const payment = present * rate / (1 - (1 + rate) ** -periods);
+    let total = 0;
+    let balance = present;
+    for (let period = 1; period <= last; period += 1) {
+      const interest = balance * rate;
+      const principal = payment - interest;
+      if (period >= first) total += name === "CUMIPMT" ? interest : principal;
+      balance -= principal;
+    }
+    return -Math.abs(total);
+  }
+  if (name === "RRI" || name === "PDURATION") {
+    const [periods, present, future] = [at(0), at(1), at(2)];
+    if (present <= 0 || future <= 0 || periods <= 0) return E.NUM();
+    const growth = Math.log(future / present);
+    return name === "RRI" ? Math.exp(growth / periods) - 1 : growth / Math.log(1 + periods);
+  }
+  if (name === "DISC" || name === "TBILLPRICE") {
+    const [settlement, maturity, third, redemption] = [at(0), at(1), at(2), at(3)];
+    const days = maturity - settlement;
+    if (days <= 0) return E.NUM();
+    if (name === "TBILLPRICE") return 100 * (1 - third * days / 360);
+    if (redemption === 0) return E.DIV0();
+    return (redemption - third) / redemption * (360 / days);
+  }
+  const rate = at(0);
+  if (name === "ACCRINT") {
+    const [first, settlement, par, frequency] = [at(1), at(2), at(3), at(4)];
+    if (frequency <= 0 || settlement < first) return E.NUM();
+    return par * rate / frequency * Math.round((settlement - first) / (365 / frequency));
+  }
+  const [coupon, settlement, maturity, frequency] = [at(1), at(2), at(3), at(4)];
+  if (![1, 2, 4].includes(frequency) || maturity <= settlement) return E.NUM();
+  const periods = Math.ceil((maturity - settlement) / (365 / frequency));
+  const perRate = rate / frequency;
+  if (name === "PRICE" || name === "DURATION") {
+    const redemption = at(5);
+    let price = 0;
+    let weighted = 0;
+    for (let period = 1; period <= periods; period += 1) {
+      const cash = coupon / frequency + (period === periods ? redemption : 0);
+      const discounted = cash / (1 + perRate) ** period;
+      price += discounted;
+      weighted += period / frequency * discounted;
+    }
+    return name === "PRICE" ? price : price === 0 ? E.DIV0() : weighted / price;
+  }
+  const present = at(5);
+  if (present <= 0) return E.NUM();
+  let low = 0;
+  let high = 1;
+  for (let step = 0; step < 60; step += 1) {
+    const mid = (low + high) / 2;
+    let price = 0;
+    for (let period = 1; period <= periods; period += 1) {
+      price += (coupon / frequency + (period === periods ? 100 : 0)) / (1 + mid / frequency) ** period;
+    }
+    if (price > present) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+}
+
+/** NUMBERVALUE reads a number with its own separators. The rest format or clean a text value. */
+function textExtra(name: string, args: FormulaValue[]): FormulaValue {
+  const text = asText(args[0] ?? "");
+  if (name === "UNICODE") return text ? text.codePointAt(0)! : E.VALUE();
+  if (name === "UNICHAR") {
+    const code = asNumber(args[0] ?? 0);
+    if (code instanceof FormulaError) return code;
+    if (code < 1 || code > 0x10ffff) return E.VALUE();
+    return String.fromCodePoint(Math.floor(code));
+  }
+  if (name === "CLEAN") return text.replace(/[\u0000-\u001f]/g, "");
+  if (name === "ASC") return text.normalize("NFKC");
+  if (name === "NUMBERVALUE") {
+    const decimal = asText(args[1] ?? ".");
+    const group = asText(args[2] ?? ",");
+    const cleaned = text.split(group).join("").replace(decimal, ".");
+    const value = Number(cleaned.replace(/%$/, ""));
+    if (!Number.isFinite(value)) return E.VALUE();
+    return cleaned.endsWith("%") ? value / 100 : value;
+  }
+  const value = asNumber(args[0] ?? 0);
+  if (value instanceof FormulaError) return value;
+  const digits = name === "DOLLAR" ? asNumber(args[1] ?? 2) : asNumber(args[1] ?? 2);
+  if (digits instanceof FormulaError) return digits;
+  const fixed = value.toFixed(Math.max(0, Math.floor(digits)));
+  const [whole, fraction] = fixed.split(".");
+  const grouped = (whole ?? "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const body = fraction === undefined ? grouped : `${grouped}.${fraction}`;
+  return name === "DOLLAR" ? `$${body}` : body;
 }
 
 /** SORTBY orders the first range by the values in each following range, ascending unless the order is negative. */
@@ -1918,13 +2242,23 @@ function database(name: string, args: FormulaValue[]): FormulaValue {
     if (ok) matched.push(row);
   }
   const values = matched.map((row) => table[row * width + column] ?? "");
+  if (name === "DGET") {
+    if (values.length !== 1) return E.NUM();
+    return values[0] ?? "";
+  }
   if (name === "DCOUNT") return values.filter((item) => typeof item === "number").length;
+  if (name === "DCOUNTA") return values.filter((item) => item !== "").length;
   const nums = values.map((item) => asNumber(item)).filter((item): item is number => typeof item === "number");
   if (!nums.length) return 0;
   if (name === "DSUM") return nums.reduce((sum, item) => sum + item, 0);
   if (name === "DAVERAGE") return nums.reduce((sum, item) => sum + item, 0) / nums.length;
   if (name === "DMAX") return Math.max(...nums);
-  return Math.min(...nums);
+  if (name === "DMIN") return Math.min(...nums);
+  if (name === "DPRODUCT") return nums.reduce((product, item) => product * item, 1);
+  const mean = nums.reduce((sum, item) => sum + item, 0) / nums.length;
+  const spread = nums.reduce((sum, item) => sum + (item - mean) ** 2, 0);
+  if (nums.length < 2) return E.DIV0();
+  return name === "DSTDEV" ? Math.sqrt(spread / (nums.length - 1)) : spread / (nums.length - 1);
 }
 
 /** DAYS360 counts each month as 30 days, using the US (NASD) convention. */
