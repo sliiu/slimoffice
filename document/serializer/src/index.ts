@@ -1,6 +1,6 @@
 import { isDocParagraph, isDocRaw, isDocTable, type DocComment, type DocMailMerge, type DocNumberingLevel, type DocParagraph, type DocRecipient, type DocSource, type DocStyle, type Document } from "@sliiu/document-core";
 import { strFromU8, strToU8, zipSync } from "fflate";
-import { applyDocumentEdits, storyPartXml, type Relationship } from "./body";
+import { applyDocumentEdits, indentXml, spacingXml, storyPartXml, type Relationship } from "./body";
 
 export { blankDocument } from "./blank";
 
@@ -167,7 +167,11 @@ function styleXml(id: string, style: DocStyle | undefined): string {
   const type = style.type ?? "paragraph";
   const based = style.basedOn ? `<w:basedOn w:val="${escapeAttr(style.basedOn)}"/>` : "";
   const link = style.link ? `<w:link w:val="${escapeAttr(style.link)}"/>` : "";
-  const align = style.align && style.align !== "left" ? `<w:pPr><w:jc w:val="${style.align}"/></w:pPr>` : "";
+  const paragraph: string[] = [];
+  if (style.align && style.align !== "left") paragraph.push(`<w:jc w:val="${style.align}"/>`);
+  if (style.spacing) paragraph.push(spacingXml(style.spacing));
+  if (style.indent) paragraph.push(indentXml(style.indent));
+  const align = paragraph.length ? `<w:pPr>${paragraph.join("")}</w:pPr>` : "";
   const run: string[] = [];
   if (style.bold) run.push("<w:b/>");
   if (style.italic) run.push("<w:i/>");
@@ -205,7 +209,8 @@ function abstractXml(id: number, levels: DocNumberingLevel[]): string {
       const format = level?.format || (level?.bullet || level?.picture || !text.includes("%") ? "bullet" : "decimal");
       const start = level?.start && level.start !== 1 ? level.start : 1;
       const picture = level?.picture ? `<w:lvlPicBulletId w:val="${id + index}"/>` : "";
-      return `<w:lvl w:ilvl="${index}">${picture}<w:start w:val="${start}"/><w:numFmt w:val="${escapeAttr(format)}"/><w:lvlText w:val="${escapeAttr(text)}"/></w:lvl>`;
+      const indent = level?.indent ? `<w:pPr>${indentXml(level.indent)}</w:pPr>` : "";
+      return `<w:lvl w:ilvl="${index}">${picture}<w:start w:val="${start}"/><w:numFmt w:val="${escapeAttr(format)}"/><w:lvlText w:val="${escapeAttr(text)}"/>${indent}</w:lvl>`;
     })
     .join("");
   return `<w:abstractNum w:abstractNumId="${id}">${body}</w:abstractNum>`;

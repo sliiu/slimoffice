@@ -751,6 +751,11 @@ function styleTable(archive: OfficeArchive): DocStyleTable {
     if (value === "center" || value === "right" || value === "both" || value === "left") style.align = value;
     const run = child(item, "rPr");
     if (run) Object.assign(style, runProps(run));
+    // Paragraph spacing wins over a run's character spacing, which shares the name on the run.
+    const spacing = props ? spacingFrom(child(props, "spacing")) : undefined;
+    if (spacing) style.spacing = spacing;
+    const indent = props ? indentFrom(child(props, "ind")) : undefined;
+    if (indent) style.indent = indent;
     styles[id] = style;
   }
   const defaults = defaultsOf(child(root, "docDefaults"));
@@ -833,12 +838,15 @@ function numberingTable(archive: OfficeArchive): DocNumberingTable {
       const format = formatNode ? attr(formatNode, "val") : undefined;
       const pictureId = child(level, "lvlPicBulletId");
       const picture = pictureId ? pictures.get(attr(pictureId, "val") ?? "") : undefined;
+      const levelProps = child(level, "pPr");
+      const indent = levelProps ? indentFrom(child(levelProps, "ind")) : undefined;
       levels[Number.isFinite(index) ? index : 0] = {
         text: value,
         ...(bullet ? { bullet } : {}),
         ...(picture ? { picture } : {}),
         ...(Number.isFinite(startAt) && startAt !== 1 ? { start: startAt } : {}),
         ...(format && format !== "decimal" && format !== "bullet" ? { format } : {}),
+        ...(indent ? { indent } : {}),
       };
     }
     abstracts.set(id, levels);
@@ -1026,9 +1034,15 @@ function spacingFrom(node: XmlNode | undefined): DocSpacing | undefined {
   const spacing: DocSpacing = {};
   const before = positive(attr(node, "before"));
   const after = positive(attr(node, "after"));
+  const beforeLines = positive(attr(node, "beforeLines"));
+  const afterLines = positive(attr(node, "afterLines"));
   const line = positive(attr(node, "line"));
   if (before !== undefined) spacing.before = before;
   if (after !== undefined) spacing.after = after;
+  if (beforeLines !== undefined) spacing.beforeLines = beforeLines;
+  if (afterLines !== undefined) spacing.afterLines = afterLines;
+  if (attr(node, "beforeAutospacing") === "1") spacing.beforeAuto = true;
+  if (attr(node, "afterAutospacing") === "1") spacing.afterAuto = true;
   if (line !== undefined) {
     spacing.line = line;
     const rule = attr(node, "lineRule");
@@ -1044,10 +1058,18 @@ function indentFrom(node: XmlNode | undefined): DocIndent | undefined {
   const right = positive(attr(node, "right") ?? attr(node, "end"));
   const first = positive(attr(node, "firstLine"));
   const hanging = positive(attr(node, "hanging"));
+  const leftChars = positive(attr(node, "leftChars") ?? attr(node, "startChars"));
+  const rightChars = positive(attr(node, "rightChars") ?? attr(node, "endChars"));
+  const firstChars = positive(attr(node, "firstLineChars"));
+  const hangingChars = positive(attr(node, "hangingChars"));
   if (left !== undefined) indent.left = left;
   if (right !== undefined) indent.right = right;
   if (first !== undefined) indent.firstLine = first;
   if (hanging !== undefined) indent.hanging = hanging;
+  if (leftChars !== undefined) indent.leftChars = leftChars;
+  if (rightChars !== undefined) indent.rightChars = rightChars;
+  if (firstChars !== undefined) indent.firstLineChars = firstChars;
+  if (hangingChars !== undefined) indent.hangingChars = hangingChars;
   return Object.keys(indent).length ? indent : undefined;
 }
 
@@ -1262,6 +1284,8 @@ function runProps(props: XmlNode | undefined): Omit<DocRun, "text"> {
   if (Number.isFinite(halfPointsCs) && halfPointsCs > 0) shared.fontSizeCs = halfPointsCs / 2;
   if (on(child(props, "bCs"))) shared.boldCs = true;
   if (on(child(props, "iCs"))) shared.italicCs = true;
+  if (on(child(props, "rtl"))) shared.rtl = true;
+  if (on(child(props, "cs"))) shared.complex = true;
   const fonts = child(props, "rFonts");
   const font = fonts ? attr(fonts, "ascii") ?? attr(fonts, "hAnsi") : undefined;
   const themeFont = fonts ? themeFace(attr(fonts, "asciiTheme") ?? attr(fonts, "hAnsiTheme"), "latin") : undefined;

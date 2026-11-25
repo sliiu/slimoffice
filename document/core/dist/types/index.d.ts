@@ -64,6 +64,10 @@ export interface DocRun {
     };
     /** The pronunciation shown above the run, from `ruby`. The run's text is the base. */
     ruby?: string;
+    /** The run reads right to left, from `rtl`. */
+    rtl?: boolean;
+    /** The run is complex-script text, from `cs`. */
+    complex?: boolean;
     /** Character scale in percent. 100 is unchanged. */
     scale?: number;
     /** Extra space between characters, in twips. */
@@ -197,6 +201,12 @@ export interface DocSpacing {
     before?: number;
     /** Twips after the paragraph. */
     after?: number;
+    /** Lines of the document grid before and after the paragraph, from `beforeLines` and `afterLines`. */
+    beforeLines?: number;
+    afterLines?: number;
+    /** Word picks the space before or after this paragraph itself, from `beforeAutospacing` and `afterAutospacing`. */
+    beforeAuto?: boolean;
+    afterAuto?: boolean;
     /** Line spacing in twips when rule is "exact" or "atLeast"; a 240-based multiple when "auto". */
     line?: number;
     lineRule?: "auto" | "exact" | "atLeast";
@@ -207,6 +217,11 @@ export interface DocIndent {
     right?: number;
     firstLine?: number;
     hanging?: number;
+    /** The same indents measured in hundredths of a character, from `leftChars`, `rightChars`, `firstLineChars`, and `hangingChars`. */
+    leftChars?: number;
+    rightChars?: number;
+    firstLineChars?: number;
+    hangingChars?: number;
 }
 export interface DocParagraph {
     style?: string;
@@ -423,6 +438,10 @@ export interface DocStyle {
     /** "paragraph", "character", or "table". A paragraph style is the default. */
     type?: "character" | "table";
     align?: DocAlign;
+    /** Space before and after, from the style's `w:spacing`. A paragraph's own spacing wins. */
+    spacing?: DocSpacing;
+    /** Left, right, first-line, and hanging indent, from the style's `w:ind`. A paragraph's own indent wins. */
+    indent?: DocIndent;
     bold?: boolean;
     italic?: boolean;
     fontSize?: number;
@@ -542,6 +561,8 @@ export interface DocNumberingLevel {
     start?: number;
     /** Number format: decimal, lowerLetter, upperRoman, and the rest Word stores. */
     format?: string;
+    /** The level's own indent, from its `w:pPr/w:ind`. A paragraph's own indent wins. */
+    indent?: DocIndent;
 }
 /** Resolved numbering, keyed by numId. Filled in by the parser from numbering.xml. */
 export type DocNumberingTable = Record<string, DocNumberingLevel[]>;

@@ -271,6 +271,10 @@ export function styleOf(styles, name) {
     for (const style of chain.reverse()) {
         if (style.align)
             merged.align = style.align;
+        if (style.spacing)
+            merged.spacing = style.spacing;
+        if (style.indent)
+            merged.indent = style.indent;
         if (style.bold)
             merged.bold = true;
         if (style.italic)

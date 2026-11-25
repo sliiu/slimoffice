@@ -1076,13 +1076,25 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     if (marks.includes("overflowPunct")) node.dataset.overflow = "on";
     if (marks.includes("topLinePunct")) node.dataset.topLine = "on";
     if (marks.includes("autoSpaceDE") || marks.includes("autoSpaceDN")) node.dataset.autoSpace = "on";
+    if (marks.includes("bidi")) node.style.direction = "rtl";
+    if (marks.includes("suppressAutoHyphens")) node.dataset.noHyphen = "on";
+    if (marks.includes("adjustRightInd")) node.dataset.adjustRight = "on";
+    if (marks.includes("suppressOverlap")) node.dataset.noOverlap = "on";
     if (item.frame?.width) node.style.maxWidth = twips(item.frame.width);
+    if (item.frame?.height) node.style.maxHeight = twips(item.frame.height);
+    if (item.frame && (item.frame.x !== undefined || item.frame.y !== undefined) && !item.frame.dropCap) {
+      node.style.position = "relative";
+      if (item.frame.x !== undefined) node.style.left = twips(item.frame.x);
+      if (item.frame.y !== undefined) node.style.top = twips(item.frame.y);
+    }
     if (item.frame?.dropCap) node.dataset.dropCap = String(item.frame.dropCap.lines);
     if (item.pageBreakBefore) node.dataset.breakBefore = "page";
     if (item.textAlign) node.style.verticalAlign = item.textAlign;
     if (item.direction === "tb") node.style.writingMode = "vertical-rl";
     else if (item.direction === "rl") node.style.direction = "rtl";
-    const indent = item.indent;
+    // The paragraph's own indent wins, then the list level's, then the style's.
+    const levelIndent = item.numbering ? doc.numbering?.[item.numbering.id]?.[item.numbering.level]?.indent : undefined;
+    const indent = item.indent ?? levelIndent ?? style.indent;
     if (indent?.left) node.style.marginLeft = twips(indent.left);
     if (indent?.right) node.style.marginRight = twips(indent.right);
     if (indent?.firstLine) node.style.textIndent = twips(indent.firstLine);
@@ -1090,10 +1102,26 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
       node.style.textIndent = twips(-indent.hanging);
       node.style.paddingLeft = twips(indent.hanging);
     }
-    if (item.spacing?.before) node.style.marginTop = twips(item.spacing.before);
-    if (item.spacing?.after) node.style.marginBottom = twips(item.spacing.after);
-    const line = item.spacing?.line;
-    if (line !== undefined) node.style.lineHeight = item.spacing?.lineRule === "auto" ? String(line / 240) : twips(line);
+    // A character indent is hundredths of a character. The twip indent wins when both are set.
+    if (!indent?.left && indent?.leftChars) node.style.marginLeft = chars(indent.leftChars);
+    if (!indent?.right && indent?.rightChars) node.style.marginRight = chars(indent.rightChars);
+    if (!indent?.firstLine && !indent?.hanging && indent?.firstLineChars) node.style.textIndent = chars(indent.firstLineChars);
+    if (!indent?.hanging && indent?.hangingChars) {
+      node.style.textIndent = chars(-indent.hangingChars);
+      node.style.paddingLeft = chars(indent.hangingChars);
+    }
+    const spacing = item.spacing ?? style.spacing;
+    // The grid stores twips per line; the page variable is the same distance in pixels.
+    const pitch = doc.sections[spot.section]?.page.grid?.linePitch;
+    const pitchPx = pitch ? (pitch * 96) / 1440 : 0;
+    if (spacing?.before) node.style.marginTop = twips(spacing.before);
+    else if (spacing?.beforeLines && pitchPx) node.style.marginTop = `${spacing.beforeLines * pitchPx}px`;
+    else if (spacing?.beforeAuto) node.style.marginTop = "1em";
+    if (spacing?.after) node.style.marginBottom = twips(spacing.after);
+    else if (spacing?.afterLines && pitchPx) node.style.marginBottom = `${spacing.afterLines * pitchPx}px`;
+    else if (spacing?.afterAuto) node.style.marginBottom = "1em";
+    const line = spacing?.line;
+    if (line !== undefined) node.style.lineHeight = spacing?.lineRule === "auto" ? String(line / 240) : twips(line);
     const marker = listMarker(doc.numbering, item, listCounts(spot));
     const picture = item.numbering ? doc.numbering?.[item.numbering.id]?.[item.numbering.level]?.picture : undefined;
     if (picture?.imageBytes) {
@@ -3260,16 +3288,26 @@ function placePicture(node: HTMLElement, run: DocRun): void {
   if (run.grouped?.length) node.dataset.grouped = String(run.grouped.length);
 }
 
-/** Sizes each tab gap to the next stop and draws the leader that stop asks for. */
+/** Sizes each tab gap to the next stop, aligns it the way that stop asks, and draws its leader. */
 function placeTabs(node: HTMLElement, tabs: DocParagraph["tabs"]): void {
   const gaps = node.querySelectorAll<HTMLElement>(".doc-tab");
   gaps.forEach((gap, index) => {
     const stop = tabs?.[index];
     if (!stop) return;
     gap.style.width = twips(stop.pos);
+    gap.style.textAlign = stop.align === "decimal" ? "left" : stop.align ?? "left";
+    if (stop.align === "decimal") gap.dataset.align = "decimal";
     const line = stop.leader === "hyphen" ? "dashed" : stop.leader === "underscore" ? "solid" : stop.leader === "none" ? "none" : "dotted";
     gap.style.borderBottomStyle = line;
   });
+}
+
+/** An emphasis mark, mapped onto the CSS style that draws the same shape. */
+function emphasisOf(mark: string): string {
+  if (mark === "comma") return "sesame";
+  if (mark === "circle") return "circle";
+  if (mark === "underDot") return "dot";
+  return "dot";
 }
 
 /** Paints one of the run's text effects. The letters stay filled, so the text stays readable. */
@@ -3326,7 +3364,13 @@ function runNode(run: DocRun): HTMLElement {
   if (run.bold || (complex && run.boldCs)) span.style.fontWeight = "700";
   if (run.smallCaps) span.style.fontVariant = "small-caps";
   if (run.hidden) span.style.display = "none";
-  if (run.emphasis) span.style.textEmphasis = "dot";
+  if (run.emphasis) {
+    span.style.textEmphasis = emphasisOf(run.emphasis);
+    if (run.emphasis === "underDot") span.style.textEmphasisPosition = "under";
+  }
+  if (run.lang) span.lang = run.lang;
+  if (run.rtl) span.dir = "rtl";
+  if (run.complex) span.dataset.complex = "on";
   if (run.italic || (complex && run.italicCs)) span.style.fontStyle = "italic";
   if (run.underline) span.style.textDecoration = underlineOf(run.underline);
   if (run.underlineColor) span.style.textDecorationColor = run.underlineColor;
@@ -3557,6 +3601,11 @@ function sides(margin: { top: number; bottom: number; left: number; right: numbe
 
 function twips(value: number): string {
   return `${(value * 96) / 1440}px`;
+}
+
+/** Hundredths of a character, the unit `leftChars` and its siblings are stored in. */
+function chars(hundredths: number): string {
+  return `${hundredths / 100}em`;
 }
 
 /** The face the page shows: complex text paints the east-asian face first. */

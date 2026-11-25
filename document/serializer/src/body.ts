@@ -365,20 +365,28 @@ function tabsXml(tabs: NonNullable<DocParagraph["tabs"]>): string {
   return `<w:tabs>${stops}</w:tabs>`;
 }
 
-function spacingXml(spacing: NonNullable<DocParagraph["spacing"]>): string {
+export function spacingXml(spacing: NonNullable<DocParagraph["spacing"]>): string {
   const before = spacing.before !== undefined ? ` w:before="${Math.round(spacing.before)}"` : "";
   const after = spacing.after !== undefined ? ` w:after="${Math.round(spacing.after)}"` : "";
+  const beforeLines = spacing.beforeLines !== undefined ? ` w:beforeLines="${Math.round(spacing.beforeLines)}"` : "";
+  const afterLines = spacing.afterLines !== undefined ? ` w:afterLines="${Math.round(spacing.afterLines)}"` : "";
+  const beforeAuto = spacing.beforeAuto ? ` w:beforeAutospacing="1"` : "";
+  const afterAuto = spacing.afterAuto ? ` w:afterAutospacing="1"` : "";
   const line = spacing.line !== undefined ? ` w:line="${Math.round(spacing.line)}"` : "";
   const rule = spacing.lineRule ? ` w:lineRule="${spacing.lineRule}"` : "";
-  return `<w:spacing${before}${after}${line}${rule}/>`;
+  return `<w:spacing${before}${after}${beforeLines}${afterLines}${beforeAuto}${afterAuto}${line}${rule}/>`;
 }
 
-function indentXml(indent: NonNullable<DocParagraph["indent"]>): string {
+export function indentXml(indent: NonNullable<DocParagraph["indent"]>): string {
   const left = indent.left !== undefined ? ` w:left="${Math.round(indent.left)}"` : "";
   const right = indent.right !== undefined ? ` w:right="${Math.round(indent.right)}"` : "";
   const first = indent.firstLine !== undefined ? ` w:firstLine="${Math.round(indent.firstLine)}"` : "";
   const hanging = indent.hanging !== undefined ? ` w:hanging="${Math.round(indent.hanging)}"` : "";
-  return `<w:ind${left}${right}${first}${hanging}/>`;
+  const leftChars = indent.leftChars !== undefined ? ` w:leftChars="${Math.round(indent.leftChars)}"` : "";
+  const rightChars = indent.rightChars !== undefined ? ` w:rightChars="${Math.round(indent.rightChars)}"` : "";
+  const firstChars = indent.firstLineChars !== undefined ? ` w:firstLineChars="${Math.round(indent.firstLineChars)}"` : "";
+  const hangingChars = indent.hangingChars !== undefined ? ` w:hangingChars="${Math.round(indent.hangingChars)}"` : "";
+  return `<w:ind${left}${right}${first}${hanging}${leftChars}${rightChars}${firstChars}${hangingChars}/>`;
 }
 
 function runsXml(runs: DocRun[], links: LinkIds, added: Relationship[]): string {
@@ -465,6 +473,8 @@ function runPropsXml(run: DocRun): string {
   if (run.boldCs) parts.push("<w:bCs/>");
   if (run.italic) parts.push("<w:i/>");
   if (run.italicCs) parts.push("<w:iCs/>");
+  if (run.rtl) parts.push("<w:rtl/>");
+  if (run.complex) parts.push("<w:cs/>");
   if (run.caps) parts.push("<w:caps/>");
   if (run.smallCaps) parts.push("<w:smallCaps/>");
   if (run.underline) parts.push(`<w:u w:val="${run.underline}"${run.underlineColor ? ` w:color="${attr(run.underlineColor.replace(/^#/, ""))}"` : ""}/>`);
