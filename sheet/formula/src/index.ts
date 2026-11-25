@@ -1109,6 +1109,23 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
       return args[0] instanceof FormulaError && args[0].code !== "#N/A";
     case "ISNA":
       return args[0] instanceof FormulaError && args[0].code === "#N/A";
+    case "ISLOGICAL": {
+      const v = collapse(args[0] ?? "");
+      return typeof v === "boolean";
+    }
+    case "ISNONTEXT": {
+      const v = collapse(args[0] ?? "");
+      return typeof v !== "string";
+    }
+    case "ISFORMULA":
+      return cellHasFormula(ctx, args[0]);
+    case "ERROR.TYPE": {
+      const v = collapse(args[0] ?? "");
+      if (!(v instanceof FormulaError)) return E.NA();
+      const codes = ["#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A"];
+      const index = codes.indexOf(v.code);
+      return index < 0 ? E.NA() : index + 1;
+    }
     case "ISEVEN":
     case "ISODD": {
       const n = asNumber(args[0] ?? 0);
@@ -1734,7 +1751,9 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
     case "DMIN":
     case "DPRODUCT":
     case "DSTDEV":
+    case "DSTDEVP":
     case "DVAR":
+    case "DVARP":
     case "DGET":
       return database(name, args);
     case "DAYS360": {
@@ -1789,6 +1808,7 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
       return mask instanceof FormulaError ? mask : networkDaysIntl(start, end, mask);
     }
     case "COUPDAYS":
+    case "COUPDAYBS":
     case "COUPNUM":
     case "COUPPCD":
     case "COUPNCD": {
@@ -1819,7 +1839,7 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
     case "INTERCEPT":
     case "RSQ":
     case "STEYX":
-      return regression(name, args);
+      return regression(name, numbers(args.slice(0, 1)), numbers(args.slice(1, 2)));
     case "NORM.DIST":
     case "NORM.S.DIST":
     case "NORM.INV":
@@ -1867,7 +1887,41 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
     case "UNICHAR":
     case "CLEAN":
     case "ASC":
+    case "DBCS":
       return textExtra(name, args);
+    case "TREND":
+    case "GROWTH":
+    case "LINEST":
+    case "LOGEST":
+      return trend(name, args);
+    case "FVSCHEDULE":
+    case "ISPMT":
+    case "MDURATION":
+    case "PRICEDISC":
+    case "YIELDDISC":
+    case "TBILLEQ":
+    case "VDB":
+      return financeMore(name, args);
+    case "BINOM.DIST":
+    case "POISSON.DIST":
+    case "EXPON.DIST":
+    case "LOGNORM.DIST":
+    case "CHISQ.DIST":
+    case "T.DIST":
+    case "F.DIST":
+    case "CONFIDENCE.NORM":
+    case "PERCENTRANK.INC":
+    case "PERCENTRANK.EXC":
+    case "ERF":
+    case "ERFC":
+      return distFn(name, args);
+    case "SUMX2MY2":
+    case "SUMX2PY2":
+    case "SUMXMY2":
+    case "MULTINOMIAL":
+    case "SQRTPI":
+    case "TIMEVALUE":
+      return mathExtra(name, args);
     default:
       return E.NAME();
   }
@@ -2131,6 +2185,7 @@ function textExtra(name: string, args: FormulaValue[]): FormulaValue {
   }
   if (name === "CLEAN") return text.replace(/[\u0000-\u001f]/g, "");
   if (name === "ASC") return text.normalize("NFKC");
+  if (name === "DBCS") return text;
   if (name === "NUMBERVALUE") {
     const decimal = asText(args[1] ?? ".");
     const group = asText(args[2] ?? ",");
@@ -2257,8 +2312,11 @@ function database(name: string, args: FormulaValue[]): FormulaValue {
   if (name === "DPRODUCT") return nums.reduce((product, item) => product * item, 1);
   const mean = nums.reduce((sum, item) => sum + item, 0) / nums.length;
   const spread = nums.reduce((sum, item) => sum + (item - mean) ** 2, 0);
-  if (nums.length < 2) return E.DIV0();
-  return name === "DSTDEV" ? Math.sqrt(spread / (nums.length - 1)) : spread / (nums.length - 1);
+  const population = name === "DSTDEVP" || name === "DVARP";
+  const divisor = nums.length - (population ? 0 : 1);
+  if (divisor <= 0) return E.DIV0();
+  const variance = spread / divisor;
+  return name === "DSTDEV" || name === "DSTDEVP" ? Math.sqrt(variance) : variance;
 }
 
 /** DAYS360 counts each month as 30 days, using the US (NASD) convention. */
@@ -2478,6 +2536,7 @@ function coupon(name: string, settle: number, mature: number, frequency: number)
   const next = dates[dates.length - 2] ?? dates[0]!;
   const previous = dates[dates.length - 1]!;
   if (name === "COUPDAYS") return next - previous;
+  if (name === "COUPDAYBS") return Math.round(settle) - previous;
   if (name === "COUPNUM") return dates.length - 1;
   if (name === "COUPNCD") return next;
   return previous;
@@ -2526,10 +2585,8 @@ function depreciation(name: string, args: FormulaValue[]): FormulaValue {
   return value;
 }
 
-/** The straight line through the known pairs, shared by SLOPE, INTERCEPT, RSQ, and STEYX. */
-function regression(name: string, args: FormulaValue[]): FormulaValue {
-  const ys = numbers(args.slice(0, 1));
-  const xs = numbers(args.slice(1, 2));
+/** The straight line through the known pairs, shared by SLOPE, INTERCEPT, RSQ, STEYX, and the trend functions. */
+function regression(name: string, ys: number[], xs: number[]): FormulaValue {
   const count = Math.min(ys.length, xs.length);
   if (count < 2) return E.VALUE();
   const x = xs.slice(0, count);
@@ -2553,6 +2610,312 @@ function regression(name: string, args: FormulaValue[]): FormulaValue {
   let residual = 0;
   for (let i = 0; i < count; i += 1) residual += (y[i]! - (meanY + slope * (x[i]! - meanX))) ** 2;
   return Math.sqrt(residual / (count - 2));
+}
+
+/** The fitted line at new x values. GROWTH and LOGEST fit the logarithms, so the known y must be positive. */
+function trend(name: string, args: FormulaValue[]): FormulaValue {
+  const knownY = numbers(args.slice(0, 1));
+  const knownX = args[1] === undefined ? knownY.map((_item, index) => index + 1) : numbers(args.slice(1, 2));
+  const count = Math.min(knownY.length, knownX.length);
+  if (count < 2) return E.VALUE();
+  const log = name === "GROWTH" || name === "LOGEST";
+  const y = knownY.slice(0, count);
+  if (log && y.some((item) => item <= 0)) return E.NUM();
+  const fitted = log ? y.map((item) => Math.log(item)) : y;
+  const fit = regression("SLOPE", fitted, knownX.slice(0, count));
+  const base = regression("INTERCEPT", fitted, knownX.slice(0, count));
+  if (typeof fit !== "number" || typeof base !== "number") return fit instanceof FormulaError ? fit : base;
+  if (name === "LINEST") return withWidth([fit, base], 2);
+  if (name === "LOGEST") return withWidth([Math.exp(fit), Math.exp(base)], 2);
+  const probe = args[2] === undefined ? knownX.slice(0, count) : numbers(args.slice(2, 3));
+  if (!probe.length) return E.VALUE();
+  const out = probe.map((item) => (log ? Math.exp(base + fit * item) : base + fit * item));
+  return out.length === 1 ? out[0]! : withWidth(out, 1);
+}
+
+/** The remaining finance functions: scheduled growth, straight interest, discount securities, and variable decline. */
+function financeMore(name: string, args: FormulaValue[]): FormulaValue {
+  if (name === "FVSCHEDULE") {
+    const present = asNumber(args[0] ?? 0);
+    if (present instanceof FormulaError) return present;
+    const rates = numbers(args.slice(1, 2));
+    return rates.reduce((grown, rate) => grown * (1 + rate), present);
+  }
+  const values: number[] = [];
+  for (const arg of args) {
+    const value = asNumber(arg ?? 0);
+    if (value instanceof FormulaError) return value;
+    values.push(value);
+  }
+  const at = (index: number): number => values[index] ?? 0;
+  if (name === "ISPMT") {
+    const [rate, period, periods, present] = [at(0), at(1), at(2), at(3)];
+    if (periods === 0) return E.DIV0();
+    return present * rate * (period / periods - 1);
+  }
+  if (name === "VDB") {
+    const [cost, salvage, life, start, end, factor] = [at(0), at(1), at(2), at(3), at(4), at(5) || 2];
+    if (life <= 0 || factor <= 0 || start < 0 || end <= start || end > life) return E.NUM();
+    const charge = (which: number): number => {
+      const book = cost * (1 - factor / life) ** (which - 1);
+      return Math.min(book * factor / life, Math.max(0, book - salvage));
+    };
+    let total = 0;
+    const first = Math.floor(start);
+    const last = Math.ceil(end);
+    for (let which = first + 1; which <= last; which += 1) {
+      let piece = charge(which);
+      if (which === first + 1) piece *= 1 - (start - first);
+      if (which === last && end !== last) piece *= end - (last - 1);
+      total += piece;
+    }
+    return total;
+  }
+  const [settlement, maturity, third, redemption] = [at(0), at(1), at(2), at(3)];
+  const days = maturity - settlement;
+  if (days <= 0) return E.NUM();
+  if (name === "PRICEDISC") return redemption * (1 - third * days / 360);
+  if (name === "YIELDDISC") return redemption === 0 ? E.DIV0() : (redemption - third) / third * (360 / days);
+  if (name === "TBILLEQ") return (365 * third) / (360 - third * days);
+  const modified = financeExtra("DURATION", [third, at(1), at(2), at(3), at(4), at(5)]);
+  return typeof modified === "number" ? modified / (1 + third / at(4)) : modified;
+}
+
+/** Binomial, Poisson, exponential, lognormal, chi-square, t, and F distributions, plus the error function. */
+function distFn(name: string, args: FormulaValue[]): FormulaValue {
+  if (name === "ERF" || name === "ERFC") {
+    const lower = asNumber(args[0] ?? 0);
+    if (lower instanceof FormulaError) return lower;
+    const upper = args[1] === undefined ? undefined : asNumber(args[1]);
+    if (upper instanceof FormulaError) return upper;
+    const erf = (z: number): number => {
+      const t = 1 / (1 + 0.3275911 * Math.abs(z));
+      const poly = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+      const value = 1 - poly * Math.exp(-z * z);
+      return z < 0 ? -value : value;
+    };
+    if (name === "ERFC") return 1 - erf(lower);
+    return upper === undefined ? erf(lower) : erf(upper) - erf(lower);
+  }
+  if (name === "PERCENTRANK.INC" || name === "PERCENTRANK.EXC") return statsFn("PERCENTRANK", args);
+  if (name === "CONFIDENCE.NORM") {
+    const alpha = asNumber(args[0] ?? 0);
+    const deviation = asNumber(args[1] ?? 0);
+    const size = asNumber(args[2] ?? 0);
+    if (alpha instanceof FormulaError) return alpha;
+    if (deviation instanceof FormulaError) return deviation;
+    if (size instanceof FormulaError) return size;
+    if (alpha <= 0 || alpha >= 1 || deviation <= 0 || size < 1) return E.NUM();
+    return normalInv(1 - alpha / 2) * deviation / Math.sqrt(size);
+  }
+  const x = asNumber(args[0] ?? 0);
+  const second = asNumber(args[1] ?? 0);
+  if (x instanceof FormulaError) return x;
+  if (second instanceof FormulaError) return second;
+  if (name === "BINOM.DIST") {
+    const trials = asNumber(args[1] ?? 0);
+    const probability = asNumber(args[2] ?? 0);
+    const cumulative = asBool(args[3] ?? true);
+    if (trials instanceof FormulaError) return trials;
+    if (probability instanceof FormulaError) return probability;
+    if (cumulative instanceof FormulaError) return cumulative;
+    const successes = Math.floor(x);
+    const count = Math.floor(trials);
+    if (successes < 0 || count < 0 || successes > count || probability < 0 || probability > 1) return E.NUM();
+    const term = (k: number): number => binomial(count, k) * probability ** k * (1 - probability) ** (count - k);
+    if (!cumulative) return term(successes);
+    let total = 0;
+    for (let k = 0; k <= successes; k += 1) total += term(k);
+    return total;
+  }
+  if (name === "POISSON.DIST") {
+    const cumulative = asBool(args[2] ?? true);
+    if (cumulative instanceof FormulaError) return cumulative;
+    const events = Math.floor(x);
+    if (events < 0 || second <= 0) return E.NUM();
+    const term = (k: number): number => (Math.exp(-second) * second ** k) / factorial(k);
+    if (!cumulative) return term(events);
+    let total = 0;
+    for (let k = 0; k <= events; k += 1) total += term(k);
+    return total;
+  }
+  if (name === "EXPON.DIST") {
+    const cumulative = asBool(args[2] ?? true);
+    if (cumulative instanceof FormulaError) return cumulative;
+    if (x < 0 || second <= 0) return E.NUM();
+    return cumulative ? 1 - Math.exp(-second * x) : second * Math.exp(-second * x);
+  }
+  if (name === "LOGNORM.DIST") {
+    const deviation = asNumber(args[2] ?? 1);
+    const cumulative = asBool(args[3] ?? true);
+    if (deviation instanceof FormulaError) return deviation;
+    if (cumulative instanceof FormulaError) return cumulative;
+    if (x <= 0 || deviation <= 0) return E.NUM();
+    const z = (Math.log(x) - second) / deviation;
+    return cumulative ? normalCdf(z) : Math.exp(-z * z / 2) / (x * deviation * Math.sqrt(2 * Math.PI));
+  }
+  const cumulative = asBool(args[2] ?? true);
+  if (cumulative instanceof FormulaError) return cumulative;
+  if (name === "CHISQ.DIST") {
+    const freedom = Math.floor(second);
+    if (x < 0 || freedom < 1) return E.NUM();
+    return cumulative ? gammaP(freedom / 2, x / 2) : (x ** (freedom / 2 - 1) * Math.exp(-x / 2)) / (2 ** (freedom / 2) * gamma(freedom / 2));
+  }
+  if (name === "T.DIST") {
+    const freedom = Math.floor(second);
+    if (freedom < 1) return E.NUM();
+    const density = gamma((freedom + 1) / 2) / (Math.sqrt(freedom * Math.PI) * gamma(freedom / 2)) * (1 + x * x / freedom) ** (-(freedom + 1) / 2);
+    if (!cumulative) return density;
+    const beta = regularizedBeta(freedom / (freedom + x * x), freedom / 2, 0.5);
+    return x >= 0 ? 1 - beta / 2 : beta / 2;
+  }
+  const third = asNumber(args[2] ?? 0);
+  if (third instanceof FormulaError) return third;
+  const cumulativeF = asBool(args[3] ?? true);
+  if (cumulativeF instanceof FormulaError) return cumulativeF;
+  const d1 = Math.floor(second);
+  const d2 = Math.floor(third);
+  if (x < 0 || d1 < 1 || d2 < 1) return E.NUM();
+  const ratio = (d1 * x) / (d1 * x + d2);
+  if (!cumulativeF) {
+    const factor = (d1 / d2) ** (d1 / 2) * x ** (d1 / 2 - 1) / beta(d1 / 2, d2 / 2);
+    return factor / (1 + (d1 / d2) * x) ** ((d1 + d2) / 2);
+  }
+  return regularizedBeta(ratio, d1 / 2, d2 / 2);
+}
+
+/** Sums of products of two lists, the multinomial, the square root of pi, and a time read from text. */
+function mathExtra(name: string, args: FormulaValue[]): FormulaValue {
+  if (name === "SQRTPI") {
+    const value = asNumber(args[0] ?? 0);
+    if (value instanceof FormulaError) return value;
+    return value < 0 ? E.NUM() : Math.sqrt(value * Math.PI);
+  }
+  if (name === "TIMEVALUE") {
+    const match = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/.exec(asText(args[0] ?? "").trim());
+    if (!match) return E.VALUE();
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = Number(match[3] ?? 0);
+    if (hours > 23 || minutes > 59 || seconds > 59) return E.VALUE();
+    return (hours * 3600 + minutes * 60 + seconds) / 86400;
+  }
+  if (name === "MULTINOMIAL") {
+    const nums = numbers(args);
+    if (!nums.length || nums.some((item) => item < 0 || !Number.isInteger(item))) return E.NUM();
+    const total = nums.reduce((sum, item) => sum + item, 0);
+    let out = factorial(total);
+    for (const item of nums) out /= factorial(item);
+    return out;
+  }
+  const left = numbers(args.slice(0, 1));
+  const right = numbers(args.slice(1, 2));
+  const count = Math.min(left.length, right.length);
+  if (!count) return E.VALUE();
+  let total = 0;
+  for (let i = 0; i < count; i += 1) {
+    const a = left[i]!;
+    const b = right[i]!;
+    if (name === "SUMX2MY2") total += a * a - b * b;
+    else if (name === "SUMX2PY2") total += a * a + b * b;
+    else total += (a - b) ** 2;
+  }
+  return total;
+}
+
+/** ISFORMULA looks at the cell a reference points at, not at the value it holds. */
+function cellHasFormula(ctx: EvalContext, value: FormulaValue | undefined): boolean {
+  const origin = rangeOrigin(value);
+  if (!origin) return false;
+  return Boolean(ctx.workbook.sheets[origin.sheetIndex]?.cells[origin.r1]?.[origin.c1]?.formula);
+}
+
+function factorial(n: number): number {
+  let out = 1;
+  for (let i = 2; i <= n; i += 1) out *= i;
+  return out;
+}
+
+function binomial(n: number, k: number): number {
+  let out = 1;
+  for (let i = 1; i <= k; i += 1) out = (out * (n - k + i)) / i;
+  return out;
+}
+
+/** Lanczos approximation of the gamma function, accurate enough for the distribution densities. */
+function gamma(z: number): number {
+  const p = [676.5203681218851, -1259.1392167224028, 771.3234287776531, -176.6150291621406, 12.507343278686905, -0.13857109526572012, 9.984369578019572e-6, 1.5056327351493116e-7];
+  if (z < 0.5) return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+  let x = 0.9999999999998099;
+  for (let i = 0; i < p.length; i += 1) x += p[i]! / (z + i);
+  const t = z + p.length - 1.5;
+  return Math.sqrt(2 * Math.PI) * t ** (z - 0.5) * Math.exp(-t) * x;
+}
+
+function beta(a: number, b: number): number {
+  return (gamma(a) * gamma(b)) / gamma(a + b);
+}
+
+/** The lower regularized gamma, by its series. Used by the chi-square distribution. */
+function gammaP(shape: number, x: number): number {
+  if (x <= 0) return 0;
+  let term = 1 / shape;
+  let sum = term;
+  for (let n = 1; n < 200; n += 1) {
+    term *= x / (shape + n);
+    sum += term;
+    if (Math.abs(term) < 1e-12 * Math.abs(sum)) break;
+  }
+  return sum * Math.exp(-x + shape * Math.log(x) - logGamma(shape));
+}
+
+function logGamma(z: number): number {
+  const p = [676.5203681218851, -1259.1392167224028, 771.3234287776531, -176.6150291621406, 12.507343278686905, -0.13857109526572012, 9.984369578019572e-6, 1.5056327351493116e-7];
+  let x = 0.9999999999998099;
+  const shifted = z < 0.5 ? 1 - z : z;
+  for (let i = 0; i < p.length; i += 1) x += p[i]! / (shifted + i);
+  const t = shifted + p.length - 1.5;
+  const value = 0.5 * Math.log(2 * Math.PI) + (shifted - 0.5) * Math.log(t) - t + Math.log(x);
+  return z < 0.5 ? Math.log(Math.PI / Math.sin(Math.PI * z)) - value : value;
+}
+
+/** The regularized incomplete beta, by its continued fraction. Used by the t and F distributions. */
+function regularizedBeta(x: number, a: number, b: number): number {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const flip = x > (a + 1) / (a + b + 2);
+  const point = flip ? 1 - x : x;
+  const front = Math.exp(a * Math.log(point) + b * Math.log(1 - point) - logBeta(a, b)) / a;
+  let f = 1;
+  let c = 1;
+  let d = 1 - (a + b) * point / (a + 1);
+  if (Math.abs(d) < 1e-30) d = 1e-30;
+  d = 1 / d;
+  f = d;
+  for (let m = 1; m <= 200; m += 1) {
+    const even = (m * (b - m) * point) / ((a + 2 * m - 1) * (a + 2 * m));
+    d = 1 + even * d;
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    c = 1 + even / c;
+    if (Math.abs(c) < 1e-30) c = 1e-30;
+    d = 1 / d;
+    f *= c * d;
+    const odd = -((a + m) * (a + b + m) * point) / ((a + 2 * m) * (a + 2 * m + 1));
+    d = 1 + odd * d;
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    c = 1 + odd / c;
+    if (Math.abs(c) < 1e-30) c = 1e-30;
+    d = 1 / d;
+    const delta = c * d;
+    f *= delta;
+    if (Math.abs(delta - 1) < 1e-10) break;
+  }
+  const value = front * f;
+  return flip ? 1 - value : value;
+}
+
+function logBeta(a: number, b: number): number {
+  return logGamma(a) + logGamma(b) - logGamma(a + b);
 }
 
 /** The standard normal density and distribution, and the inverse through a rational approximation. */

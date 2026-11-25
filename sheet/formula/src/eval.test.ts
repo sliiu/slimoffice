@@ -324,3 +324,38 @@ test("array shaping, statistics, finance extras, and text", () => {
   assert.equal(evaluate('=CLEAN("a"&CHAR(10)&"b")', ctx(workbook)), "ab");
   assert.equal(evaluate("=ASC(\"Ａ\")", ctx(workbook)), "A");
 });
+
+test("trend lines, distributions, information, and date counts", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "金额" }],
+    [{ value: "甲" }, { value: "2" }],
+    [{ value: "乙" }, { value: "4" }],
+    [{ value: "甲" }, { value: "8", formula: "B2+6" }],
+  ]);
+  assert.equal(formatResult(evaluate("=TREND({2,4,6},{1,2,3},{4})", ctx(workbook))), "8");
+  assert.equal(evaluate("=ROUND(GROWTH({2,4,8},{1,2,3},4),4)", ctx(workbook)), 16);
+  assert.equal(formatResult(evaluate("=LINEST({2,4,6},{1,2,3})", ctx(workbook))), "2,0");
+  assert.equal(evaluate("=ROUND(INDEX(LOGEST({2,4,8},{1,2,3}),1),4)", ctx(workbook)), 2);
+  assert.equal(evaluate("=ROUND(FVSCHEDULE(100,{0.1,0.1}),4)", ctx(workbook)), 121);
+  assert.equal(evaluate("=ROUND(ISPMT(0.1,1,2,100),2)", ctx(workbook)), -5);
+  assert.equal(evaluate("=COUPDAYBS(DATE(2026,1,15),DATE(2028,1,15),2)", ctx(workbook)), 0);
+  assert.equal(Math.round(evaluate("=BINOM.DIST(2,4,0.5,FALSE)", ctx(workbook)) as number * 16), 6);
+  assert.equal(Math.round(evaluate("=POISSON.DIST(0,1,FALSE)", ctx(workbook)) as number * 1000) / 1000, 0.368);
+  assert.equal(evaluate("=ROUND(EXPON.DIST(0,1,TRUE),4)", ctx(workbook)), 0);
+  assert.equal(evaluate("=ROUND(CONFIDENCE.NORM(0.05,1,100),4)", ctx(workbook)), 0.196);
+  assert.equal(evaluate("=ROUND(ERF(0),4)", ctx(workbook)), 0);
+  assert.equal(evaluate("=ROUND(ERFC(0),4)", ctx(workbook)), 1);
+  assert.equal(evaluate("=SUMX2MY2({2,3},{1,1})", ctx(workbook)), 11);
+  assert.equal(evaluate("=SUMX2PY2({2,3},{1,1})", ctx(workbook)), 15);
+  assert.equal(evaluate("=SUMXMY2({2,3},{1,1})", ctx(workbook)), 5);
+  assert.equal(evaluate("=MULTINOMIAL(2,1)", ctx(workbook)), 3);
+  assert.equal(evaluate("=ROUND(SQRTPI(1),4)", ctx(workbook)), 1.7725);
+  assert.equal(evaluate("=TIMEVALUE(\"12:00:00\")", ctx(workbook)), 0.5);
+  assert.equal(evaluate("=ISLOGICAL(TRUE)", ctx(workbook)), true);
+  assert.equal(evaluate("=ISNONTEXT(1)", ctx(workbook)), true);
+  assert.equal(evaluate("=ISFORMULA(B4)", ctx(workbook)), true);
+  assert.equal(evaluate("=ISFORMULA(A1)", ctx(workbook)), false);
+  assert.equal(evaluate("=ERROR.TYPE(1/0)", ctx(workbook)), 2);
+  assert.equal(evaluate("=DSTDEVP(A1:B4,2,A1:A2)", ctx(workbook)), 3);
+  assert.equal(evaluate("=DVARP(A1:B4,2,A1:A2)", ctx(workbook)), 9);
+});
