@@ -725,7 +725,7 @@ function readRange(workbook, sheetIndex, start, end) {
         for (let c = c1; c <= c2; c += 1) {
             out.push(cellPrimitive(sheet, r, c, workbook, sheetIndex));
             hidden.push(hiddenRows.has(r));
-            subtotals.push(/^SUBTOTAL\s*\(/i.test(sheet.cells[r]?.[c]?.formula ?? ""));
+            subtotals.push(/^(SUBTOTAL|AGGREGATE)\s*\(/i.test(sheet.cells[r]?.[c]?.formula ?? ""));
         }
     }
     return tagRange(out, c2 - c1 + 1, hidden, subtotals, { sheetIndex, r1, c1, r2, c2 });
@@ -1617,7 +1617,8 @@ function callFunction(name, args, ctx) {
             const value = nums[Math.floor(k) - 1];
             return value === undefined ? E.NUM() : value;
         }
-        case "RANK": {
+        case "RANK":
+        case "RANK.EQ": {
             const target = asNumber(args[0] ?? 0);
             if (target instanceof FormulaError)
                 return target;
@@ -1991,6 +1992,7 @@ function callFunction(name, args, ctx) {
         }
         case "COUPDAYS":
         case "COUPDAYBS":
+        case "COUPDAYSNC":
         case "COUPNUM":
         case "COUPPCD":
         case "COUPNCD": {
@@ -2031,6 +2033,7 @@ function callFunction(name, args, ctx) {
         case "NORM.DIST":
         case "NORM.S.DIST":
         case "NORM.INV":
+        case "NORM.S.INV":
         case "NORMSDIST":
         case "NORMSINV":
             return normalDist(name, args);
@@ -2048,6 +2051,7 @@ function callFunction(name, args, ctx) {
         case "HARMEAN":
         case "TRIMMEAN":
         case "SKEW":
+        case "SKEW.P":
         case "KURT":
         case "DEVSQ":
         case "AVEDEV":
@@ -2110,6 +2114,73 @@ function callFunction(name, args, ctx) {
         case "SQRTPI":
         case "TIMEVALUE":
             return mathExtra(name, args);
+        case "AVERAGEA":
+        case "MAXA":
+        case "MINA":
+        case "STDEVA":
+        case "VARA":
+        case "COVARIANCE.P":
+        case "COVARIANCE.S":
+        case "RANK.AVG":
+        case "MODE.MULT":
+        case "STANDARDIZE":
+        case "PHI":
+        case "GAUSS":
+        case "FISHER":
+        case "FISHERINV":
+        case "LOGNORM.INV":
+        case "BINOM.DIST.RANGE":
+        case "BINOM.INV":
+        case "T.INV":
+        case "T.DIST.2T":
+        case "T.DIST.RT":
+        case "F.INV":
+        case "F.DIST.RT":
+        case "CHISQ.INV":
+        case "CHISQ.DIST.RT":
+        case "MDETERM":
+        case "MINVERSE":
+        case "MIRR":
+        case "XNPV":
+        case "FORMULATEXT":
+        case "ISREF":
+        case "SHEET":
+        case "SHEETS":
+        case "HYPERLINK":
+        case "RANDARRAY":
+        case "AGGREGATE":
+        case "COMBINA":
+        case "FACTDOUBLE":
+        case "PERMUTATIONA":
+        case "CEILING.MATH":
+        case "FLOOR.MATH":
+        case "BASE":
+        case "DECIMAL":
+        case "ROMAN":
+        case "ARABIC":
+        case "BITAND":
+        case "BITOR":
+        case "BITXOR":
+        case "BITLSHIFT":
+        case "BITRSHIFT":
+        case "SINH":
+        case "COSH":
+        case "TANH":
+        case "ASINH":
+        case "ACOSH":
+        case "ATANH":
+        case "SEC":
+        case "CSC":
+        case "COT":
+        case "GAMMA":
+        case "GAMMALN":
+        case "TBILLYIELD":
+        case "ACCRINTM":
+        case "DOLLARDE":
+        case "DOLLARFR":
+        case "DELTA":
+        case "GESTEP":
+            return catalog(name, args, ctx);
         default:
             return E.NAME();
     }
@@ -2296,12 +2367,14 @@ function statsFn(name, args) {
     if (name === "DEVSQ")
         return nums.reduce((sum, item) => sum + (item - mean) ** 2, 0);
     const square = nums.reduce((sum, item) => sum + (item - mean) ** 2, 0);
-    if (name === "SKEW" || name === "KURT") {
+    if (name === "SKEW" || name === "SKEW.P" || name === "KURT") {
         if (nums.length < (name === "KURT" ? 4 : 3) || square === 0)
             return E.DIV0();
-        const deviation = Math.sqrt(square / (nums.length - 1));
+        const deviation = Math.sqrt(square / (name === "SKEW.P" ? nums.length : nums.length - 1));
         const moment = nums.reduce((sum, item) => sum + ((item - mean) / deviation) ** (name === "KURT" ? 4 : 3), 0);
         const n = nums.length;
+        if (name === "SKEW.P")
+            return moment / n;
         return name === "SKEW" ? (n / ((n - 1) * (n - 2))) * moment : ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * moment - (3 * (n - 1) ** 2) / ((n - 2) * (n - 3));
     }
     if (name === "PERCENTRANK") {
@@ -2842,6 +2915,8 @@ function coupon(name, settle, mature, frequency) {
         return next - previous;
     if (name === "COUPDAYBS")
         return Math.round(settle) - previous;
+    if (name === "COUPDAYSNC")
+        return next - Math.round(settle);
     if (name === "COUPNUM")
         return dates.length - 1;
     if (name === "COUPNCD")
@@ -3038,8 +3113,20 @@ function distFn(name, args) {
             return 1 - erf(lower);
         return upper === undefined ? erf(lower) : erf(upper) - erf(lower);
     }
-    if (name === "PERCENTRANK.INC" || name === "PERCENTRANK.EXC")
+    if (name === "PERCENTRANK.INC")
         return statsFn("PERCENTRANK", args);
+    if (name === "PERCENTRANK.EXC") {
+        const nums = numbers(args.slice(0, 1)).sort((a, b) => a - b);
+        const target = asNumber(args[1] ?? 0);
+        if (target instanceof FormulaError)
+            return target;
+        if (nums.length < 2 || target <= nums[0] || target >= nums[nums.length - 1])
+            return E.NA();
+        const below = nums.filter((item) => item < target).length;
+        const span = nums.find((item) => item >= target) - nums[below - 1];
+        const fraction = span === 0 ? 0 : (target - nums[below - 1]) / span;
+        return (below + fraction) / (nums.length + 1);
+    }
     if (name === "CONFIDENCE.NORM") {
         const alpha = asNumber(args[0] ?? 0);
         const deviation = asNumber(args[1] ?? 0);
@@ -3200,6 +3287,595 @@ function mathExtra(name, args) {
     }
     return total;
 }
+/**
+ * The rest of the common catalog: text-aware statistics, matrix algebra, the inverse distributions,
+ * base and bit arithmetic, hyperbolic functions, and the sheet and formula lookups.
+ */
+function catalog(name, args, ctx) {
+    if (name === "FORMULATEXT")
+        return formulaText(ctx, args[0]);
+    if (name === "ISREF")
+        return rangeOrigin(args[0]) !== undefined;
+    if (name === "SHEET")
+        return sheetNumber(ctx, args[0]);
+    if (name === "SHEETS")
+        return args[0] === undefined ? ctx.workbook.sheets.length : rangeOrigin(args[0]) ? 1 : E.VALUE();
+    if (name === "HYPERLINK")
+        return args.length > 1 ? args[1] ?? "" : args[0] ?? "";
+    if (name === "RANDARRAY")
+        return randomArray(args);
+    if (name === "AGGREGATE")
+        return aggregate(args);
+    if (name === "MDETERM" || name === "MINVERSE")
+        return matrixAlgebra(name, args[0]);
+    if (name === "MIRR")
+        return modifiedRate(args);
+    if (name === "XNPV")
+        return datedPresent(args);
+    if (name === "TBILLYIELD" || name === "ACCRINTM" || name === "DOLLARDE" || name === "DOLLARFR")
+        return financeRest(name, args);
+    if (name === "DELTA" || name === "GESTEP") {
+        const left = asNumber(args[0] ?? 0);
+        const right = asNumber(args[1] ?? 0);
+        if (left instanceof FormulaError)
+            return left;
+        if (right instanceof FormulaError)
+            return right;
+        return (name === "DELTA" ? left === right : left >= right) ? 1 : 0;
+    }
+    if (name === "AVERAGEA" || name === "MAXA" || name === "MINA" || name === "STDEVA" || name === "VARA")
+        return textAware(name, args);
+    if (name === "COVARIANCE.P" || name === "COVARIANCE.S")
+        return covariance(name, args);
+    if (name === "RANK.AVG" || name === "MODE.MULT")
+        return rankMode(name, args);
+    if (name === "STANDARDIZE" || name === "PHI" || name === "GAUSS" || name === "FISHER" || name === "FISHERINV")
+        return normalExtra(name, args);
+    if (name === "LOGNORM.INV" || name === "BINOM.INV" || name === "BINOM.DIST.RANGE")
+        return distInverse(name, args);
+    if (name === "T.INV" || name === "T.DIST.2T" || name === "T.DIST.RT" || name === "F.INV" || name === "F.DIST.RT" || name === "CHISQ.INV" || name === "CHISQ.DIST.RT")
+        return distTail(name, args);
+    if (name === "COMBINA" || name === "FACTDOUBLE" || name === "PERMUTATIONA" || name === "CEILING.MATH" || name === "FLOOR.MATH")
+        return counting(name, args);
+    if (name === "BASE" || name === "DECIMAL" || name === "ROMAN" || name === "ARABIC")
+        return bases(name, args);
+    if (name === "BITAND" || name === "BITOR" || name === "BITXOR" || name === "BITLSHIFT" || name === "BITRSHIFT")
+        return bits(name, args);
+    if (name === "GAMMA" || name === "GAMMALN") {
+        const value = asNumber(args[0] ?? 0);
+        if (value instanceof FormulaError)
+            return value;
+        if (value <= 0 && Number.isInteger(value))
+            return E.NUM();
+        return name === "GAMMA" ? gamma(value) : logGamma(value);
+    }
+    const value = asNumber(args[0] ?? 0);
+    if (value instanceof FormulaError)
+        return value;
+    if (name === "SINH")
+        return Math.sinh(value);
+    if (name === "COSH")
+        return Math.cosh(value);
+    if (name === "TANH")
+        return Math.tanh(value);
+    if (name === "ASINH")
+        return Math.asinh(value);
+    if (name === "ACOSH")
+        return value < 1 ? E.NUM() : Math.acosh(value);
+    if (name === "ATANH")
+        return value <= -1 || value >= 1 ? E.NUM() : Math.atanh(value);
+    if (name === "SEC")
+        return Math.cos(value) === 0 ? E.DIV0() : 1 / Math.cos(value);
+    if (name === "CSC")
+        return Math.sin(value) === 0 ? E.DIV0() : 1 / Math.sin(value);
+    return Math.tan(value) === 0 ? E.DIV0() : 1 / Math.tan(value);
+}
+/** AVERAGEA and its family count text as zero, unlike the versions that skip it. */
+function textAware(name, args) {
+    const values = flatten(args).map((item) => (typeof item === "number" ? item : typeof item === "boolean" ? Number(item) : 0));
+    if (!values.length)
+        return E.VALUE();
+    if (name === "MAXA")
+        return Math.max(...values);
+    if (name === "MINA")
+        return Math.min(...values);
+    const mean = values.reduce((sum, item) => sum + item, 0) / values.length;
+    if (name === "AVERAGEA")
+        return mean;
+    const square = values.reduce((sum, item) => sum + (item - mean) ** 2, 0);
+    if (values.length < 2)
+        return E.DIV0();
+    const spread = square / (values.length - 1);
+    return name === "STDEVA" ? Math.sqrt(spread) : spread;
+}
+function covariance(name, args) {
+    const left = numbers(args.slice(0, 1));
+    const right = numbers(args.slice(1, 2));
+    const count = Math.min(left.length, right.length);
+    const divisor = count - (name === "COVARIANCE.S" ? 1 : 0);
+    if (divisor <= 0)
+        return E.DIV0();
+    const meanX = left.slice(0, count).reduce((sum, item) => sum + item, 0) / count;
+    const meanY = right.slice(0, count).reduce((sum, item) => sum + item, 0) / count;
+    let total = 0;
+    for (let i = 0; i < count; i += 1)
+        total += (left[i] - meanX) * (right[i] - meanY);
+    return total / divisor;
+}
+/** RANK.AVG splits a tie, MODE.MULT lists every value that appears most often. */
+function rankMode(name, args) {
+    if (name === "RANK.AVG") {
+        const target = asNumber(args[0] ?? 0);
+        if (target instanceof FormulaError)
+            return target;
+        const nums = numbers(args.slice(1, 2));
+        const order = asNumber(args[2] ?? 0);
+        if (order instanceof FormulaError)
+            return order;
+        const same = nums.filter((item) => item === target).length;
+        if (!same)
+            return E.NA();
+        const ahead = nums.filter((item) => (order === 0 ? item > target : item < target)).length;
+        return ahead + (same + 1) / 2;
+    }
+    const nums = numbers(args);
+    const counts = new Map();
+    for (const item of nums)
+        counts.set(item, (counts.get(item) ?? 0) + 1);
+    const most = Math.max(0, ...counts.values());
+    if (most < 2)
+        return E.NA();
+    return withWidth([...counts].filter(([, count]) => count === most).map(([value]) => value), 1);
+}
+function normalExtra(name, args) {
+    const value = asNumber(args[0] ?? 0);
+    if (value instanceof FormulaError)
+        return value;
+    if (name === "PHI")
+        return Math.exp(-value * value / 2) / Math.sqrt(2 * Math.PI);
+    if (name === "GAUSS")
+        return normalCdf(value) - 0.5;
+    if (name === "FISHER")
+        return value <= -1 || value >= 1 ? E.NUM() : Math.atanh(value);
+    if (name === "FISHERINV")
+        return Math.tanh(value);
+    const mean = asNumber(args[1] ?? 0);
+    const deviation = asNumber(args[2] ?? 1);
+    if (mean instanceof FormulaError)
+        return mean;
+    if (deviation instanceof FormulaError)
+        return deviation;
+    return deviation === 0 ? E.DIV0() : (value - mean) / deviation;
+}
+function distInverse(name, args) {
+    if (name === "BINOM.DIST.RANGE") {
+        const trials = asNumber(args[0] ?? 0);
+        const probability = asNumber(args[1] ?? 0);
+        const from = asNumber(args[2] ?? 0);
+        const to = args[3] === undefined ? from : asNumber(args[3]);
+        if (trials instanceof FormulaError)
+            return trials;
+        if (probability instanceof FormulaError)
+            return probability;
+        if (from instanceof FormulaError)
+            return from;
+        if (to instanceof FormulaError)
+            return to;
+        let total = 0;
+        for (let k = Math.floor(from); k <= Math.floor(to); k += 1) {
+            const term = distFn("BINOM.DIST", [k, trials, probability, false]);
+            if (term instanceof FormulaError)
+                return term;
+            total += typeof term === "number" ? term : 0;
+        }
+        return total;
+    }
+    if (name === "BINOM.INV") {
+        const trials = asNumber(args[0] ?? 0);
+        const probability = asNumber(args[1] ?? 0);
+        const alpha = asNumber(args[2] ?? 0);
+        if (trials instanceof FormulaError)
+            return trials;
+        if (probability instanceof FormulaError)
+            return probability;
+        if (alpha instanceof FormulaError)
+            return alpha;
+        if (alpha < 0 || alpha > 1)
+            return E.NUM();
+        for (let k = 0; k <= Math.floor(trials); k += 1) {
+            const cumulative = distFn("BINOM.DIST", [k, trials, probability, true]);
+            if (cumulative instanceof FormulaError)
+                return cumulative;
+            if (typeof cumulative === "number" && cumulative >= alpha)
+                return k;
+        }
+        return E.NUM();
+    }
+    const probability = asNumber(args[0] ?? 0);
+    const mean = asNumber(args[1] ?? 0);
+    const deviation = asNumber(args[2] ?? 1);
+    if (probability instanceof FormulaError)
+        return probability;
+    if (mean instanceof FormulaError)
+        return mean;
+    if (deviation instanceof FormulaError)
+        return deviation;
+    if (probability <= 0 || probability >= 1 || deviation <= 0)
+        return E.NUM();
+    return Math.exp(mean + deviation * normalInv(probability));
+}
+/** The one-tailed and right-tailed forms, and the inverses found by bisection. */
+function distTail(name, args) {
+    if (name === "T.DIST.RT" || name === "T.DIST.2T") {
+        const value = asNumber(args[0] ?? 0);
+        const freedom = asNumber(args[1] ?? 0);
+        if (value instanceof FormulaError)
+            return value;
+        if (freedom instanceof FormulaError)
+            return freedom;
+        const upper = distFn("T.DIST", [Math.abs(value), freedom, true]);
+        if (typeof upper !== "number")
+            return upper;
+        return name === "T.DIST.RT" ? 1 - upper : 2 * (1 - upper);
+    }
+    if (name === "F.DIST.RT" || name === "CHISQ.DIST.RT") {
+        const value = distFn(name === "F.DIST.RT" ? "F.DIST" : "CHISQ.DIST", args);
+        return typeof value === "number" ? 1 - value : value;
+    }
+    const probability = asNumber(args[0] ?? 0);
+    const freedom = asNumber(args[1] ?? 0);
+    if (probability instanceof FormulaError)
+        return probability;
+    if (freedom instanceof FormulaError)
+        return freedom;
+    if (probability <= 0 || probability >= 1 || freedom < 1)
+        return E.NUM();
+    const target = name === "T.INV" ? (probability + 1) / 2 : probability;
+    const third = name === "F.INV" ? asNumber(args[2] ?? 1) : 1;
+    if (third instanceof FormulaError)
+        return third;
+    let low = 0;
+    let high = 1;
+    const probe = (point) => {
+        const value = name === "T.INV" ? distFn("T.DIST", [point, freedom, true]) : name === "F.INV" ? distFn("F.DIST", [point, freedom, third, true]) : distFn("CHISQ.DIST", [point, freedom, true]);
+        return typeof value === "number" ? value : E.NUM();
+    };
+    while (probe(high) < target)
+        high *= 2;
+    for (let step = 0; step < 60; step += 1) {
+        const mid = (low + high) / 2;
+        const value = probe(mid);
+        if (value instanceof FormulaError)
+            return value;
+        if (value < target)
+            low = mid;
+        else
+            high = mid;
+    }
+    return name === "T.INV" && probability < 0.5 ? -(low + high) / 2 : (low + high) / 2;
+}
+function counting(name, args) {
+    if (name === "CEILING.MATH" || name === "FLOOR.MATH") {
+        const value = asNumber(args[0] ?? 0);
+        const step = asNumber(args[1] ?? 1);
+        const mode = asNumber(args[2] ?? 0);
+        if (value instanceof FormulaError)
+            return value;
+        if (step instanceof FormulaError)
+            return step;
+        if (mode instanceof FormulaError)
+            return mode;
+        const size = Math.abs(step) || 1;
+        const toward = name === "CEILING.MATH" ? (value < 0 && mode !== 0 ? Math.floor(value / size) : Math.ceil(value / size)) : (value < 0 && mode !== 0 ? Math.ceil(value / size) : Math.floor(value / size));
+        return toward * size;
+    }
+    const n = asNumber(args[0] ?? 0);
+    if (n instanceof FormulaError)
+        return n;
+    if (name === "FACTDOUBLE") {
+        if (n < 0 || !Number.isInteger(n))
+            return E.NUM();
+        let out = 1;
+        for (let i = Math.floor(n); i > 1; i -= 2)
+            out *= i;
+        return out;
+    }
+    const k = asNumber(args[1] ?? 0);
+    if (k instanceof FormulaError)
+        return k;
+    if (!Number.isInteger(n) || !Number.isInteger(k) || n < 0 || k < 0)
+        return E.NUM();
+    if (name === "PERMUTATIONA")
+        return n ** k;
+    return binomial(Math.floor(n) + Math.floor(k) - 1, Math.floor(k));
+}
+function bases(name, args) {
+    if (name === "ROMAN") {
+        const value = asNumber(args[0] ?? 0);
+        if (value instanceof FormulaError)
+            return value;
+        if (value < 1 || value > 3999 || !Number.isInteger(value))
+            return E.VALUE();
+        const glyphs = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+        let rest = Math.floor(value);
+        let out = "";
+        for (const [amount, glyph] of glyphs)
+            while (rest >= amount) {
+                out += glyph;
+                rest -= amount;
+            }
+        return out;
+    }
+    if (name === "ARABIC") {
+        const text = asText(args[0] ?? "").trim().toUpperCase();
+        const values = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+        let total = 0;
+        for (let i = 0; i < text.length; i += 1) {
+            const current = values[text[i]];
+            const next = values[text[i + 1] ?? ""] ?? 0;
+            if (current === undefined)
+                return E.VALUE();
+            total += current < next ? -current : current;
+        }
+        return total;
+    }
+    if (name === "BASE") {
+        const value = asNumber(args[0] ?? 0);
+        const radix = asNumber(args[1] ?? 10);
+        const places = asNumber(args[2] ?? 0);
+        if (value instanceof FormulaError)
+            return value;
+        if (radix instanceof FormulaError)
+            return radix;
+        if (places instanceof FormulaError)
+            return places;
+        if (value < 0 || !Number.isInteger(value) || radix < 2 || radix > 36)
+            return E.NUM();
+        const out = Math.floor(value).toString(Math.floor(radix)).toUpperCase();
+        return places > out.length ? out.padStart(Math.floor(places), "0") : out;
+    }
+    const text = asText(args[0] ?? "").trim();
+    const radix = asNumber(args[1] ?? 10);
+    if (radix instanceof FormulaError)
+        return radix;
+    if (radix < 2 || radix > 36)
+        return E.NUM();
+    const digits = text.toUpperCase();
+    if ([...digits].some((char) => parseInt(char, Math.floor(radix)) !== parseInt(char, Math.floor(radix)) || parseInt(char, 36) >= radix))
+        return E.NUM();
+    return parseInt(digits, Math.floor(radix));
+}
+const BIT_LIMIT = 2 ** 48;
+function bits(name, args) {
+    const left = asNumber(args[0] ?? 0);
+    const right = asNumber(args[1] ?? 0);
+    if (left instanceof FormulaError)
+        return left;
+    if (right instanceof FormulaError)
+        return right;
+    if (!Number.isInteger(left) || !Number.isInteger(right) || left < 0 || left >= BIT_LIMIT)
+        return E.NUM();
+    if (name === "BITLSHIFT")
+        return right < 0 ? bits("BITRSHIFT", [left, -right]) : left * 2 ** right >= BIT_LIMIT ? E.NUM() : left * 2 ** right;
+    if (name === "BITRSHIFT")
+        return right < 0 ? bits("BITLSHIFT", [left, -right]) : Math.floor(left / 2 ** right);
+    if (right < 0 || right >= BIT_LIMIT)
+        return E.NUM();
+    if (name === "BITAND")
+        return left & right;
+    if (name === "BITOR")
+        return left | right;
+    return left ^ right;
+}
+function matrixAlgebra(name, value) {
+    if (!Array.isArray(value))
+        return E.VALUE();
+    const width = rangeWidth(value);
+    const height = Math.ceil(value.length / width);
+    if (width !== height)
+        return E.VALUE();
+    const grid = Array.from({ length: width }, (_, row) => value.slice(row * width, row * width + width).map((cell) => asNumber(cell)));
+    for (const row of grid)
+        for (const cell of row)
+            if (cell instanceof FormulaError)
+                return cell;
+    const matrix = grid.map((row) => row);
+    if (name === "MDETERM")
+        return determinant(matrix);
+    const inverse = invert(matrix);
+    if (inverse instanceof FormulaError)
+        return inverse;
+    return withWidth(inverse.flat(), width);
+}
+function determinant(matrix) {
+    const size = matrix.length;
+    if (size === 1)
+        return matrix[0][0];
+    const rows = matrix.map((row) => [...row]);
+    let sign = 1;
+    for (let col = 0; col < size; col += 1) {
+        let pivot = rows.slice(col).findIndex((row) => row[col] !== 0);
+        if (pivot < 0)
+            return 0;
+        pivot += col;
+        if (pivot !== col) {
+            [rows[col], rows[pivot]] = [rows[pivot], rows[col]];
+            sign = -sign;
+        }
+        for (let row = col + 1; row < size; row += 1) {
+            const factor = rows[row][col] / rows[col][col];
+            for (let k = col; k < size; k += 1)
+                rows[row][k] -= factor * rows[col][k];
+        }
+    }
+    return sign * rows.reduce((product, row, index) => product * row[index], 1);
+}
+function invert(matrix) {
+    const size = matrix.length;
+    const rows = matrix.map((row, index) => [...row, ...Array.from({ length: size }, (_, col) => (col === index ? 1 : 0))]);
+    for (let col = 0; col < size; col += 1) {
+        let pivot = rows.slice(col).reduce((best, row, offset) => (Math.abs(row[col]) > Math.abs(rows[best][col]) ? col + offset : best), col);
+        if (rows[pivot][col] === 0)
+            return E.NUM();
+        [rows[col], rows[pivot]] = [rows[pivot], rows[col]];
+        const scale = rows[col][col];
+        rows[col] = rows[col].map((cell) => cell / scale);
+        for (let row = 0; row < size; row += 1) {
+            if (row === col)
+                continue;
+            const factor = rows[row][col];
+            rows[row] = rows[row].map((cell, index) => cell - factor * rows[col][index]);
+        }
+    }
+    return rows.map((row) => row.slice(size));
+}
+/** MIRR discounts the outflows at the finance rate and compounds the inflows at the reinvestment rate. */
+function modifiedRate(args) {
+    const flows = numbers(args.slice(0, 1));
+    const finance = asNumber(args[1] ?? 0);
+    const reinvest = asNumber(args[2] ?? 0);
+    if (finance instanceof FormulaError)
+        return finance;
+    if (reinvest instanceof FormulaError)
+        return reinvest;
+    if (finance <= -1 || reinvest <= -1 || flows.length < 2)
+        return E.NUM();
+    let negative = 0;
+    let positive = 0;
+    flows.forEach((flow, index) => {
+        if (flow < 0)
+            negative += flow / (1 + finance) ** index;
+        else
+            positive += flow * (1 + reinvest) ** (flows.length - 1 - index);
+    });
+    if (negative === 0 || positive === 0)
+        return E.DIV0();
+    return (positive / -negative) ** (1 / (flows.length - 1)) - 1;
+}
+/** XNPV discounts each amount by the fraction of a year since the first date. */
+function datedPresent(args) {
+    const rate = asNumber(args[0] ?? 0);
+    if (rate instanceof FormulaError)
+        return rate;
+    if (rate <= -1)
+        return E.NUM();
+    const amounts = numbers(args.slice(1, 2));
+    const dates = numbers(args.slice(2, 3));
+    const count = Math.min(amounts.length, dates.length);
+    if (count < 2)
+        return E.VALUE();
+    const first = dates[0];
+    let total = 0;
+    for (let i = 0; i < count; i += 1)
+        total += amounts[i] / (1 + rate) ** ((dates[i] - first) / 365);
+    return total;
+}
+function financeRest(name, args) {
+    if (name === "DOLLARDE" || name === "DOLLARFR") {
+        const value = asNumber(args[0] ?? 0);
+        const fraction = asNumber(args[1] ?? 0);
+        if (value instanceof FormulaError)
+            return value;
+        if (fraction instanceof FormulaError)
+            return fraction;
+        const base = Math.floor(Math.abs(fraction));
+        if (base < 1)
+            return E.NUM();
+        const sign = value < 0 ? -1 : 1;
+        const whole = Math.trunc(Math.abs(value));
+        const rest = Math.abs(value) - whole;
+        return name === "DOLLARDE" ? sign * (whole + rest * 100 / base) : sign * (whole + rest * base / 100);
+    }
+    const settlement = asNumber(args[0] ?? 0);
+    const maturity = asNumber(args[1] ?? 0);
+    const third = asNumber(args[2] ?? 0);
+    if (settlement instanceof FormulaError)
+        return settlement;
+    if (maturity instanceof FormulaError)
+        return maturity;
+    if (third instanceof FormulaError)
+        return third;
+    const days = maturity - settlement;
+    if (days <= 0)
+        return E.NUM();
+    if (name === "TBILLYIELD")
+        return third === 0 ? E.DIV0() : (100 - third) / third * (360 / days);
+    const par = asNumber(args[3] ?? 0);
+    if (par instanceof FormulaError)
+        return par;
+    return par * third * days / 365;
+}
+function aggregate(args) {
+    const fn = asNumber(args[0] ?? 0);
+    const option = asNumber(args[1] ?? 0);
+    if (fn instanceof FormulaError)
+        return fn;
+    if (option instanceof FormulaError)
+        return option;
+    const code = Math.floor(fn);
+    const handler = SUBTOTALS[code];
+    if (!handler)
+        return E.VALUE();
+    const skipHidden = option === 1 || option === 3 || option === 5 || option === 7;
+    const skipErrors = option >= 2 && option <= 7;
+    const cleaned = args.slice(2).map((arg) => {
+        if (!Array.isArray(arg))
+            return arg instanceof FormulaError && skipErrors ? [] : arg;
+        const kept = arg.filter((item, index) => {
+            const flags = arg;
+            if (skipHidden && (flags.hidden?.[index] ?? false))
+                return false;
+            if (flags.subtotals?.[index] ?? false)
+                return false;
+            return !(skipErrors && typeof item === "string" && item.startsWith("#"));
+        });
+        return tagRange(kept, rangeWidth(arg), [], []);
+    });
+    return handler(cleaned);
+}
+function randomArray(args) {
+    const rows = asNumber(args[0] ?? 1);
+    const cols = asNumber(args[1] ?? 1);
+    const min = asNumber(args[2] ?? 0);
+    const max = asNumber(args[3] ?? 1);
+    const whole = asBool(args[4] ?? false);
+    if (rows instanceof FormulaError)
+        return rows;
+    if (cols instanceof FormulaError)
+        return cols;
+    if (min instanceof FormulaError)
+        return min;
+    if (max instanceof FormulaError)
+        return max;
+    if (whole instanceof FormulaError)
+        return whole;
+    if (rows < 1 || cols < 1)
+        return E.VALUE();
+    const out = [];
+    for (let i = 0; i < Math.floor(rows) * Math.floor(cols); i += 1) {
+        const value = min + Math.random() * (max - min);
+        out.push(whole ? Math.floor(value) : value);
+    }
+    return out.length === 1 ? out[0] : withWidth(out, Math.floor(cols));
+}
+/** FORMULATEXT reads the formula stored on the cell, with its leading equals sign. */
+function formulaText(ctx, value) {
+    const origin = rangeOrigin(value);
+    if (!origin)
+        return E.NA();
+    const formula = ctx.workbook.sheets[origin.sheetIndex]?.cells[origin.r1]?.[origin.c1]?.formula;
+    return formula ? `=${formula}` : E.NA();
+}
+function sheetNumber(ctx, value) {
+    if (value === undefined)
+        return ctx.sheetIndex + 1;
+    const origin = rangeOrigin(value);
+    if (origin)
+        return origin.sheetIndex + 1;
+    const name = asText(value).toUpperCase();
+    const index = ctx.workbook.sheets.findIndex((sheet) => sheet.name.toUpperCase() === name);
+    return index < 0 ? E.NA() : index + 1;
+}
 /** ISFORMULA looks at the cell a reference points at, not at the value it holds. */
 function cellHasFormula(ctx, value) {
     const origin = rangeOrigin(value);
@@ -3313,7 +3989,7 @@ function normalDist(name, args) {
             return cumulative;
         return cumulative ? normalCdf(z) : Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI);
     }
-    if (name === "NORMSINV") {
+    if (name === "NORMSINV" || name === "NORM.S.INV") {
         const p = asNumber(args[0] ?? 0);
         if (p instanceof FormulaError)
             return p;
