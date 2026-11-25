@@ -395,3 +395,31 @@ test("matrix algebra, bases, bits, and the wider catalog", () => {
   assert.equal(evaluate("=AGGREGATE(9,0,{1,2,3})", ctx(workbook)), 6);
   assert.equal(Math.abs(evaluate("=NORM.S.INV(0.5)", ctx(workbook)) as number) < 1e-6, true);
 });
+
+test("distributions, complex numbers, and the remaining conversions", () => {
+  const workbook = book([[{ value: "1" }]]);
+  assert.equal(evaluate("=BIN2HEX(\"1010\")", ctx(workbook)), "A");
+  assert.equal(evaluate("=HEX2BIN(\"A\")", ctx(workbook)), "1010");
+  assert.equal(evaluate("=OCT2HEX(10)", ctx(workbook)), "8");
+  assert.equal(evaluate("=ROUND(ACOT(1),4)", ctx(workbook)), 0.7854);
+  assert.equal(evaluate("=ROUND(SECH(0),4)", ctx(workbook)), 1);
+  assert.equal(evaluate("=ROUND(BESSELJ(1,0),4)", ctx(workbook)), 0.7652);
+  assert.equal(evaluate("=ROUND(BESSELI(1,0),4)", ctx(workbook)), 1.2661);
+  assert.equal(evaluate("=ROUND(BESSELY(1,0),4)", ctx(workbook)), 0.0883);
+  assert.equal(evaluate("=ROUND(BESSELK(1,0),4)", ctx(workbook)), 0.421);
+  assert.equal(evaluate("=COMPLEX(3,4)", ctx(workbook)), "3+4i");
+  assert.equal(evaluate("=IMABS(\"3+4i\")", ctx(workbook)), 5);
+  assert.equal(evaluate("=IMSUM(\"1+2i\",\"3+4i\")", ctx(workbook)), "4+6i");
+  assert.equal(evaluate("=IMPRODUCT(\"1+2i\",\"3+4i\")", ctx(workbook)), "-5+10i");
+  assert.equal(evaluate("=SERIESSUM(2,0,1,{1,1})", ctx(workbook)), 3);
+  assert.equal(evaluate("=ENCODEURL(\"a b\")", ctx(workbook)), "a%20b");
+  assert.equal(evaluate("=CELL(\"row\",A1)", ctx(workbook)), 1);
+  assert.equal(evaluate("=ROUND(GAMMA.DIST(1,1,1,TRUE),4)", ctx(workbook)), 0.6321);
+  assert.equal(evaluate("=ROUND(WEIBULL.DIST(1,1,1,TRUE),4)", ctx(workbook)), 0.6321);
+  assert.equal(evaluate("=HYPGEOM.DIST(1,2,4,2,FALSE)", ctx(workbook)), 4 / 6);
+  assert.equal(evaluate("=PROB({1,2,3},{0.2,0.3,0.5},2,3)", ctx(workbook)), 0.8);
+  assert.equal(evaluate("=ROUND(Z.TEST({1,2,3},1,1),4)", ctx(workbook)), 0.0416);
+  assert.equal(evaluate("=ROUND(INTRATE(DATE(2026,1,1),DATE(2027,1,1),100,110),4)", ctx(workbook)), 0.1);
+  assert.equal(evaluate("=ROUND(RECEIVED(DATE(2026,1,1),DATE(2027,1,1),100,0.1),2)", ctx(workbook)), 111.11);
+  assert.equal(evaluate("=BAHTTEXT(0)", ctx(workbook)), "ศูนย์บาทถ้วน");
+});

@@ -1890,10 +1890,16 @@ function callFunction(name, args, ctx) {
             return yearFrac(start, end, basis);
         }
         case "BIN2DEC":
+        case "BIN2HEX":
+        case "BIN2OCT":
         case "DEC2BIN":
         case "HEX2DEC":
+        case "HEX2BIN":
+        case "HEX2OCT":
         case "DEC2HEX":
         case "OCT2DEC":
+        case "OCT2BIN":
+        case "OCT2HEX":
         case "DEC2OCT":
             return baseConvert(name, args);
         case "CONVERT": {
@@ -2172,6 +2178,54 @@ function callFunction(name, args, ctx) {
         case "DELTA":
         case "GESTEP":
             return catalog(name, args, ctx);
+        case "ACOT":
+        case "ACOTH":
+        case "SECH":
+        case "CSCH":
+        case "COTH":
+        case "T.INV.2T":
+        case "F.INV.RT":
+        case "CHISQ.INV.RT":
+        case "CONFIDENCE.T":
+        case "GAMMA.DIST":
+        case "GAMMA.INV":
+        case "WEIBULL.DIST":
+        case "HYPGEOM.DIST":
+        case "NEGBINOM.DIST":
+        case "BETA.DIST":
+        case "BETA.INV":
+        case "Z.TEST":
+        case "PROB":
+        case "CHISQ.TEST":
+        case "INTRATE":
+        case "RECEIVED":
+        case "PRICEMAT":
+        case "YIELDMAT":
+        case "ENCODEURL":
+        case "SERIESSUM":
+        case "BAHTTEXT":
+        case "CELL":
+        case "BESSELJ":
+        case "BESSELY":
+        case "BESSELI":
+        case "BESSELK":
+        case "COMPLEX":
+        case "IMABS":
+        case "IMAGINARY":
+        case "IMARGUMENT":
+        case "IMCONJUGATE":
+        case "IMDIV":
+        case "IMEXP":
+        case "IMLN":
+        case "IMLOG10":
+        case "IMLOG2":
+        case "IMPOWER":
+        case "IMPRODUCT":
+        case "IMREAL":
+        case "IMSQRT":
+        case "IMSUB":
+        case "IMSUM":
+            return extended(name, args, ctx);
         default:
             return E.NAME();
     }
@@ -3324,7 +3378,7 @@ function catalog(name, args, ctx) {
         return normalExtra(name, args);
     if (name === "LOGNORM.INV" || name === "BINOM.INV" || name === "BINOM.DIST.RANGE")
         return distInverse(name, args);
-    if (name === "T.INV" || name === "T.DIST.2T" || name === "T.DIST.RT" || name === "F.INV" || name === "F.DIST.RT" || name === "CHISQ.INV" || name === "CHISQ.DIST.RT")
+    if (name === "T.INV" || name === "T.INV.2T" || name === "T.DIST.2T" || name === "T.DIST.RT" || name === "F.INV" || name === "F.INV.RT" || name === "F.DIST.RT" || name === "CHISQ.INV" || name === "CHISQ.INV.RT" || name === "CHISQ.DIST.RT")
         return distTail(name, args);
     if (name === "COMBINA" || name === "FACTDOUBLE" || name === "PERMUTATIONA" || name === "CEILING.MATH" || name === "FLOOR.MATH")
         return counting(name, args);
@@ -3497,6 +3551,14 @@ function distInverse(name, args) {
 }
 /** The one-tailed and right-tailed forms, and the inverses found by bisection. */
 function distTail(name, args) {
+    if (name === "T.INV.2T" || name === "F.INV.RT" || name === "CHISQ.INV.RT") {
+        const probability = asNumber(args[0] ?? 0);
+        if (probability instanceof FormulaError)
+            return probability;
+        const flipped = name === "T.INV.2T" ? 1 - probability / 2 : 1 - probability;
+        const base = name === "F.INV.RT" ? "F.INV" : name === "CHISQ.INV.RT" ? "CHISQ.INV" : "T.INV";
+        return distTail(base, [flipped, ...args.slice(1)]);
+    }
     if (name === "T.DIST.RT" || name === "T.DIST.2T") {
         const value = asNumber(args[0] ?? 0);
         const freedom = asNumber(args[1] ?? 0);
@@ -3544,6 +3606,452 @@ function distTail(name, args) {
             high = mid;
     }
     return name === "T.INV" && probability < 0.5 ? -(low + high) / 2 : (low + high) / 2;
+}
+/**
+ * The long tail of the catalog: the remaining distributions, the interest and maturity securities,
+ * complex numbers, and the Bessel functions.
+ */
+function extended(name, args, ctx) {
+    if (name === "ENCODEURL")
+        return encodeURIComponent(asText(args[0] ?? ""));
+    if (name === "CELL")
+        return cellInfo(name, args, ctx);
+    if (name === "BAHTTEXT")
+        return bahtText(args);
+    if (name === "SERIESSUM")
+        return seriesSum(args);
+    if (name === "INTRATE" || name === "RECEIVED" || name === "PRICEMAT" || name === "YIELDMAT")
+        return maturity(name, args);
+    if (name === "COMPLEX" || name.startsWith("IM"))
+        return complex(name, args);
+    if (name.startsWith("BESSEL"))
+        return bessel(name, args);
+    if (name === "PROB" || name === "CHISQ.TEST" || name === "Z.TEST")
+        return tests(name, args);
+    if (name === "ACOT" || name === "ACOTH" || name === "SECH" || name === "CSCH" || name === "COTH")
+        return hyperbolic(name, args);
+    if (name === "CONFIDENCE.T" || name === "GAMMA.INV")
+        return distSolve(name, args);
+    return distMore(name, args);
+}
+function hyperbolic(name, args) {
+    const value = asNumber(args[0] ?? 0);
+    if (value instanceof FormulaError)
+        return value;
+    if (name === "ACOT")
+        return Math.atan2(1, value);
+    if (name === "SECH")
+        return 1 / Math.cosh(value);
+    if (name === "CSCH")
+        return value === 0 ? E.DIV0() : 1 / Math.sinh(value);
+    if (name === "COTH")
+        return value === 0 ? E.DIV0() : 1 / Math.tanh(value);
+    if (Math.abs(value) <= 1)
+        return E.NUM();
+    return Math.log((value + 1) / (value - 1)) / 2;
+}
+/** GAMMA.DIST, WEIBULL, the hypergeometric and negative binomial, and the beta distribution. */
+function distMore(name, args) {
+    const x = asNumber(args[0] ?? 0);
+    const second = asNumber(args[1] ?? 0);
+    if (x instanceof FormulaError)
+        return x;
+    if (second instanceof FormulaError)
+        return second;
+    if (name === "GAMMA.DIST") {
+        const scale = asNumber(args[2] ?? 1);
+        const cumulative = asBool(args[3] ?? true);
+        if (scale instanceof FormulaError)
+            return scale;
+        if (cumulative instanceof FormulaError)
+            return cumulative;
+        if (x < 0 || second <= 0 || scale <= 0)
+            return E.NUM();
+        const z = x / scale;
+        return cumulative ? gammaP(second, z) : (z ** (second - 1) * Math.exp(-z)) / (scale * gamma(second));
+    }
+    if (name === "WEIBULL.DIST") {
+        const scale = asNumber(args[2] ?? 1);
+        const cumulative = asBool(args[3] ?? true);
+        if (scale instanceof FormulaError)
+            return scale;
+        if (cumulative instanceof FormulaError)
+            return cumulative;
+        if (x < 0 || second <= 0 || scale <= 0)
+            return E.NUM();
+        const ratio = (x / scale) ** second;
+        return cumulative ? 1 - Math.exp(-ratio) : (second / scale) * (x / scale) ** (second - 1) * Math.exp(-ratio);
+    }
+    if (name === "HYPGEOM.DIST") {
+        const population = asNumber(args[2] ?? 0);
+        const sample = asNumber(args[3] ?? 0);
+        if (population instanceof FormulaError)
+            return population;
+        if (sample instanceof FormulaError)
+            return sample;
+        const draw = Math.floor(x);
+        const n = Math.floor(sample);
+        const N = Math.floor(population);
+        const K = Math.floor(second);
+        if (draw < 0 || n < 0 || K < 0 || N < 1 || K > N || n > N)
+            return E.NUM();
+        return (binomial(K, draw) * binomial(N - K, n - draw)) / binomial(N, n);
+    }
+    if (name === "NEGBINOM.DIST") {
+        const probability = asNumber(args[2] ?? 0);
+        const cumulative = asBool(args[3] ?? true);
+        if (probability instanceof FormulaError)
+            return probability;
+        if (cumulative instanceof FormulaError)
+            return cumulative;
+        const failures = Math.floor(x);
+        const target = Math.floor(second);
+        if (failures < 0 || target < 1 || probability <= 0 || probability > 1)
+            return E.NUM();
+        const term = (k) => binomial(k + target - 1, k) * probability ** target * (1 - probability) ** k;
+        if (!cumulative)
+            return term(failures);
+        let total = 0;
+        for (let k = 0; k <= failures; k += 1)
+            total += term(k);
+        return total;
+    }
+    const beta2 = asNumber(args[2] ?? 0);
+    const cumulative = asBool(args[3] ?? true);
+    if (beta2 instanceof FormulaError)
+        return beta2;
+    if (cumulative instanceof FormulaError)
+        return cumulative;
+    if (x < 0 || x > 1 || second <= 0 || beta2 <= 0)
+        return E.NUM();
+    if (!cumulative)
+        return (x ** (second - 1) * (1 - x) ** (beta2 - 1)) / beta(second, beta2);
+    return regularizedBeta(x, second, beta2);
+}
+/** CONFIDENCE.T and GAMMA.INV, both found by bisection over a distribution we already have. */
+function distSolve(name, args) {
+    if (name === "CONFIDENCE.T") {
+        const alpha = asNumber(args[0] ?? 0);
+        const deviation = asNumber(args[1] ?? 0);
+        const size = asNumber(args[2] ?? 0);
+        if (alpha instanceof FormulaError)
+            return alpha;
+        if (deviation instanceof FormulaError)
+            return deviation;
+        if (size instanceof FormulaError)
+            return size;
+        if (alpha <= 0 || alpha >= 1 || deviation <= 0 || size < 2)
+            return E.NUM();
+        const critical = distTail("T.INV", [1 - alpha / 2, size - 1]);
+        return typeof critical === "number" ? critical * deviation / Math.sqrt(size) : critical;
+    }
+    const probability = asNumber(args[0] ?? 0);
+    const shape = asNumber(args[1] ?? 0);
+    const scale = asNumber(args[2] ?? 1);
+    if (probability instanceof FormulaError)
+        return probability;
+    if (shape instanceof FormulaError)
+        return shape;
+    if (scale instanceof FormulaError)
+        return scale;
+    if (probability <= 0 || probability >= 1 || shape <= 0 || scale <= 0)
+        return E.NUM();
+    let low = 0;
+    let high = scale;
+    while (distMore("GAMMA.DIST", [high, shape, scale, true]) < probability)
+        high *= 2;
+    for (let step = 0; step < 60; step += 1) {
+        const mid = (low + high) / 2;
+        const value = distMore("GAMMA.DIST", [mid, shape, scale, true]);
+        if (value instanceof FormulaError)
+            return value;
+        if (value < probability)
+            low = mid;
+        else
+            high = mid;
+    }
+    return (low + high) / 2;
+}
+/** PROB sums the probabilities between two limits. The two tests compare an observed spread with the expected one. */
+function tests(name, args) {
+    if (name === "Z.TEST") {
+        const data = numbers(args.slice(0, 1));
+        const mean = asNumber(args[1] ?? 0);
+        if (mean instanceof FormulaError)
+            return mean;
+        if (data.length < 2)
+            return E.NA();
+        const sigma = args[2] === undefined ? stdev(args.slice(0, 1), false) : asNumber(args[2]);
+        if (typeof sigma !== "number")
+            return sigma;
+        if (sigma === 0)
+            return E.DIV0();
+        const sample = data.reduce((sum, item) => sum + item, 0) / data.length;
+        return 1 - normalCdf((sample - mean) / (sigma / Math.sqrt(data.length)));
+    }
+    if (name === "CHISQ.TEST") {
+        const actual = numbers(args.slice(0, 1));
+        const expected = numbers(args.slice(1, 2));
+        const count = Math.min(actual.length, expected.length);
+        if (!count || expected.slice(0, count).some((item) => item === 0))
+            return E.DIV0();
+        let stat = 0;
+        for (let i = 0; i < count; i += 1)
+            stat += (actual[i] - expected[i]) ** 2 / expected[i];
+        const tail = distFn("CHISQ.DIST", [stat, count - 1, true]);
+        return typeof tail === "number" ? 1 - tail : tail;
+    }
+    const values = numbers(args.slice(0, 1));
+    const probabilities = numbers(args.slice(1, 2));
+    const lower = asNumber(args[2] ?? 0);
+    const upper = args[3] === undefined ? lower : asNumber(args[3]);
+    if (lower instanceof FormulaError)
+        return lower;
+    if (upper instanceof FormulaError)
+        return upper;
+    const count = Math.min(values.length, probabilities.length);
+    if (!count)
+        return E.VALUE();
+    const total = probabilities.slice(0, count).reduce((sum, item) => sum + item, 0);
+    if (Math.abs(total - 1) > 1e-6 || probabilities.slice(0, count).some((item) => item < 0))
+        return E.NUM();
+    let sum = 0;
+    for (let i = 0; i < count; i += 1)
+        if (values[i] >= lower && values[i] <= upper)
+            sum += probabilities[i];
+    return sum;
+}
+/** Interest rate, amount received, and the price and yield of a security that pays at maturity. */
+function maturity(name, args) {
+    const values = [];
+    for (const arg of args) {
+        const value = asNumber(arg ?? 0);
+        if (value instanceof FormulaError)
+            return value;
+        values.push(value);
+    }
+    const at = (index) => values[index] ?? 0;
+    const [settlement, mature] = [at(0), at(1)];
+    const days = mature - settlement;
+    if (days <= 0)
+        return E.NUM();
+    const year = yearFrac(settlement, mature, 0);
+    if (typeof year !== "number" || year === 0)
+        return E.NUM();
+    if (name === "INTRATE")
+        return at(2) === 0 ? E.DIV0() : (at(3) - at(2)) / at(2) / year;
+    if (name === "RECEIVED")
+        return at(2) / (1 - at(3) * year);
+    const span = (from, to) => {
+        const fraction = yearFrac(from, to, 0);
+        return typeof fraction === "number" ? fraction : E.NUM();
+    };
+    const fromIssue = span(at(2), mature);
+    const accrued = span(at(2), settlement);
+    if (typeof fromIssue !== "number")
+        return fromIssue;
+    if (typeof accrued !== "number")
+        return accrued;
+    if (name === "PRICEMAT")
+        return (100 + at(4) * fromIssue) / (1 + at(3) * year) - at(4) * accrued;
+    const price = at(4);
+    const redemption = 100 + at(3) * fromIssue;
+    const paid = price + at(3) * accrued;
+    return paid === 0 ? E.DIV0() : (redemption - paid) / paid / year;
+}
+function parseComplex(text) {
+    const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)?([+-]?(?:\d+(?:\.\d*)?|\.\d+)?(?:e[+-]?\d+)?)[ij]$/i.exec(text.replace(/\s/g, ""));
+    if (!match) {
+        const real = Number(text);
+        return Number.isFinite(real) ? { real, imag: 0 } : undefined;
+    }
+    const real = match[1] === undefined || match[1] === "" || match[1] === "+" || match[1] === "-" ? 0 : Number(match[1]);
+    const imagText = match[2] ?? "1";
+    const imag = imagText === "" || imagText === "+" ? 1 : imagText === "-" ? -1 : Number(imagText);
+    return { real, imag };
+}
+function formatComplex(value) {
+    if (value.imag === 0)
+        return String(value.real);
+    const imag = Math.abs(value.imag) === 1 ? "" : String(Math.abs(value.imag));
+    const sign = value.imag < 0 ? "-" : "+";
+    return value.real === 0 ? `${value.imag < 0 ? "-" : ""}${imag}i` : `${value.real}${sign}${imag}i`;
+}
+/** Complex arithmetic. Every function reads and writes the text form Excel uses, such as "3+4i". */
+function complex(name, args) {
+    if (name === "COMPLEX") {
+        const real = asNumber(args[0] ?? 0);
+        const imag = asNumber(args[1] ?? 0);
+        if (real instanceof FormulaError)
+            return real;
+        if (imag instanceof FormulaError)
+            return imag;
+        return formatComplex({ real, imag });
+    }
+    const values = args.map((arg) => parseComplex(asText(arg ?? "0")));
+    if (values.some((item) => item === undefined))
+        return E.NUM();
+    const [first, second] = values;
+    if (name === "IMREAL")
+        return first.real;
+    if (name === "IMAGINARY")
+        return first.imag;
+    if (name === "IMABS")
+        return Math.hypot(first.real, first.imag);
+    if (name === "IMARGUMENT")
+        return first.real === 0 && first.imag === 0 ? E.DIV0() : Math.atan2(first.imag, first.real);
+    if (name === "IMCONJUGATE")
+        return formatComplex({ real: first.real, imag: -first.imag });
+    if (name === "IMSQRT") {
+        const magnitude = Math.sqrt(Math.hypot(first.real, first.imag));
+        const angle = Math.atan2(first.imag, first.real) / 2;
+        return formatComplex({ real: magnitude * Math.cos(angle), imag: magnitude * Math.sin(angle) });
+    }
+    if (name === "IMEXP" || name === "IMLN" || name === "IMLOG10" || name === "IMLOG2") {
+        const magnitude = Math.hypot(first.real, first.imag);
+        const angle = Math.atan2(first.imag, first.real);
+        if (name === "IMEXP")
+            return formatComplex({ real: Math.exp(first.real) * Math.cos(first.imag), imag: Math.exp(first.real) * Math.sin(first.imag) });
+        if (magnitude === 0)
+            return E.NUM();
+        const scale = name === "IMLOG10" ? Math.LN10 : name === "IMLOG2" ? Math.LN2 : 1;
+        return formatComplex({ real: Math.log(magnitude) / scale, imag: angle / scale });
+    }
+    if (name === "IMPOWER") {
+        const power = asNumber(args[1] ?? 0);
+        if (power instanceof FormulaError)
+            return power;
+        const magnitude = Math.hypot(first.real, first.imag) ** power;
+        const angle = Math.atan2(first.imag, first.real) * power;
+        return formatComplex({ real: magnitude * Math.cos(angle), imag: magnitude * Math.sin(angle) });
+    }
+    if (!second)
+        return E.VALUE();
+    if (name === "IMSUM")
+        return formatComplex({ real: first.real + second.real, imag: first.imag + second.imag });
+    if (name === "IMSUB")
+        return formatComplex({ real: first.real - second.real, imag: first.imag - second.imag });
+    if (name === "IMPRODUCT")
+        return formatComplex({ real: first.real * second.real - first.imag * second.imag, imag: first.real * second.imag + first.imag * second.real });
+    const denominator = second.real ** 2 + second.imag ** 2;
+    if (denominator === 0)
+        return E.NUM();
+    return formatComplex({ real: (first.real * second.real + first.imag * second.imag) / denominator, imag: (first.imag * second.real - first.real * second.imag) / denominator });
+}
+/** Bessel functions of the first and second kind, and the modified ones, for integer order. */
+function bessel(name, args) {
+    const x = asNumber(args[0] ?? 0);
+    const order = asNumber(args[1] ?? 0);
+    if (x instanceof FormulaError)
+        return x;
+    if (order instanceof FormulaError)
+        return order;
+    const n = Math.floor(order);
+    if (n < 0 || !Number.isInteger(order))
+        return E.NUM();
+    const modified = name === "BESSELI" || name === "BESSELK";
+    const rising = (sign) => {
+        const half = Math.abs(x) / 2;
+        let term = half ** n / factorial(n);
+        let sum = term;
+        for (let k = 1; k < 80; k += 1) {
+            term *= sign * (half * half) / (k * (k + n));
+            sum += term;
+            if (Math.abs(term) < 1e-15 * Math.abs(sum))
+                break;
+        }
+        return sum;
+    };
+    if (name === "BESSELJ")
+        return (x < 0 && n % 2 ? -1 : 1) * rising(-1);
+    if (name === "BESSELI")
+        return rising(1);
+    if (x <= 0)
+        return E.NUM();
+    if (n !== 0)
+        return E.NUM();
+    const euler = 0.5772156649015329;
+    const half = x / 2;
+    const base = rising(modified ? 1 : -1);
+    const scale = modified ? 1 : 2 / Math.PI;
+    let piece = 1;
+    let sum = (modified ? -1 : 1) * scale * (Math.log(half) + euler) * base;
+    for (let k = 1; k < 40; k += 1) {
+        piece *= (modified ? 1 : -1) * (half * half) / (k * k);
+        let harmonic = 0;
+        for (let i = 1; i <= k; i += 1)
+            harmonic += 1 / i;
+        sum += (modified ? 1 : -1) * scale * piece * harmonic;
+    }
+    return sum;
+}
+/** A power series with coefficients taken from a range, stepping the exponent by a fixed amount. */
+function seriesSum(args) {
+    const x = asNumber(args[0] ?? 0);
+    const start = asNumber(args[1] ?? 0);
+    const step = asNumber(args[2] ?? 0);
+    if (x instanceof FormulaError)
+        return x;
+    if (start instanceof FormulaError)
+        return start;
+    if (step instanceof FormulaError)
+        return step;
+    const coefficients = numbers(args.slice(3, 4));
+    if (!coefficients.length)
+        return E.VALUE();
+    return coefficients.reduce((sum, coefficient, index) => sum + coefficient * x ** (start + index * step), 0);
+}
+const BAHT_ONES = ["", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
+const BAHT_PLACES = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน"];
+/** Spells a number in Thai baht, the one currency Excel has a spelling function for. */
+function bahtText(args) {
+    const value = asNumber(args[0] ?? 0);
+    if (value instanceof FormulaError)
+        return value;
+    const rounded = Math.round(Math.abs(value) * 100);
+    const baht = Math.floor(rounded / 100);
+    const satang = rounded % 100;
+    const group = (amount) => {
+        const digits = String(amount).padStart(6, "0").slice(-6).split("").map(Number);
+        return digits.map((digit, index) => {
+            const place = 5 - index;
+            if (digit === 0)
+                return "";
+            if (place === 0 && digit === 1 && amount > 1)
+                return "เอ็ด";
+            if (place === 1 && digit === 2)
+                return "ยี่สิบ";
+            if (place === 1 && digit === 1)
+                return "สิบ";
+            return `${BAHT_ONES[digit]}${BAHT_PLACES[place]}`;
+        }).join("");
+    };
+    const millions = Math.floor(baht / 1_000_000);
+    const rest = baht % 1_000_000;
+    const words = `${millions ? `${group(millions)}ล้าน` : ""}${rest ? group(rest) : ""}` || "ศูนย์";
+    const body = `${value < 0 ? "ลบ" : ""}${words}บาท`;
+    return satang ? `${body}${group(satang)}สตางค์` : `${body}ถ้วน`;
+}
+/** CELL reads one fact about a reference: its address, row, column, or whether it holds a formula. */
+function cellInfo(name, args, ctx) {
+    const kind = asText(args[0] ?? "address").toLowerCase();
+    const origin = rangeOrigin(args[1]) ?? { sheetIndex: ctx.sheetIndex, r1: ctx.row, c1: ctx.col, r2: ctx.row, c2: ctx.col };
+    const sheet = ctx.workbook.sheets[origin.sheetIndex];
+    if (kind === "address")
+        return `$${columnName(origin.c1)}$${origin.r1 + 1}`;
+    if (kind === "row")
+        return origin.r1 + 1;
+    if (kind === "col")
+        return origin.c1 + 1;
+    if (kind === "contents")
+        return sheet?.cells[origin.r1]?.[origin.c1]?.value ?? "";
+    if (kind === "type") {
+        const value = sheet?.cells[origin.r1]?.[origin.c1]?.value ?? "";
+        return value === "" ? "b" : Number.isFinite(Number(value)) ? "v" : "l";
+    }
+    if (kind === "filename" || kind === "sheet")
+        return sheet?.name ?? "";
+    return E.VALUE();
 }
 function counting(name, args) {
     if (name === "CEILING.MATH" || name === "FLOOR.MATH") {
@@ -4607,7 +5115,8 @@ function yearFrac(start, end, basis) {
 }
 const BASE_DIGITS = "0123456789ABCDEF";
 function baseConvert(name, args) {
-    const [from, to] = name.split("2");
+    const split = name.indexOf("2");
+    const [from, to] = [name.slice(0, split), name.slice(split + 1)];
     const raw = asText(args[0] ?? "").trim().toUpperCase();
     const source = from === "DEC" ? 10 : from === "BIN" ? 2 : from === "OCT" ? 8 : 16;
     const target = to === "DEC" ? 10 : to === "BIN" ? 2 : to === "OCT" ? 8 : 16;
