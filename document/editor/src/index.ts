@@ -328,6 +328,16 @@ export interface DocumentView {
   rowHeight(twips: number): void;
   /** Drops the current paragraph's first letter by this many lines. Zero clears it. */
   dropCap(lines: number): void;
+  /** Starts the current paragraph on a new page, or clears that. */
+  pageBreakBefore(on: boolean): void;
+  /** Whether the current paragraph starts on a new page. */
+  pageBreakBeforeOn(): boolean;
+  /** Sets how the current paragraph's line sits on its baseline. An empty value clears it. */
+  baseline(align: "" | "top" | "center" | "baseline" | "bottom"): void;
+  /** Fits the selected runs into this width, in twips. Zero clears it. */
+  fitText(twips: number): void;
+  /** Sets the selected runs' east-asian layout. An empty mode clears it. */
+  eastAsian(mode: "" | "combine" | "vert" | "twoInOne"): void;
   /** Turns hyphenation on or off for the whole document. */
   hyphenate(on: boolean): void;
   /** Whether hyphenation is on. */
@@ -614,6 +624,11 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     cellAlignOn: () => currentCell()?.align,
     rowHeight,
     dropCap,
+    pageBreakBefore,
+    pageBreakBeforeOn: () => current()?.pageBreakBefore === true,
+    baseline,
+    fitText,
+    eastAsian,
     hyphenate,
     hyphenateOn: () => doc.hyphenation === true,
     readCaption,
@@ -995,6 +1010,8 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     if (item.widowControl) node.dataset.widow = "on";
     if (item.frame?.width) node.style.maxWidth = twips(item.frame.width);
     if (item.frame?.dropCap) node.dataset.dropCap = String(item.frame.dropCap.lines);
+    if (item.pageBreakBefore) node.dataset.breakBefore = "page";
+    if (item.textAlign) node.style.verticalAlign = item.textAlign;
     if (item.direction === "tb") node.style.writingMode = "vertical-rl";
     else if (item.direction === "rl") node.style.direction = "rtl";
     const indent = item.indent;
@@ -2481,6 +2498,48 @@ export function mountDocument(host: HTMLElement, doc: Document, options: Documen
     });
   }
 
+  /** Starts the current paragraph on a new page, or clears that. */
+  function pageBreakBefore(on: boolean): void {
+    const item = current();
+    if (!item) return;
+    if (!remember()) return;
+    if (on) item.pageBreakBefore = true;
+    else delete item.pageBreakBefore;
+    finish();
+  }
+
+  /** Sits the current paragraph's line on its baseline. An empty value clears it. */
+  function baseline(align: "" | "top" | "center" | "baseline" | "bottom"): void {
+    const item = current();
+    if (!item || (align !== "" && align !== "top" && align !== "center" && align !== "baseline" && align !== "bottom")) return;
+    if (!remember()) return;
+    if (align) item.textAlign = align;
+    else delete item.textAlign;
+    finish();
+  }
+
+  /** Fits the selected runs into this width, in twips. Zero clears it. */
+  function fitText(width: number): void {
+    if (!Number.isFinite(width) || width < 0) return;
+    applyToRuns((run) => {
+      if (width) run.fitText = Math.round(width);
+      else delete run.fitText;
+    });
+  }
+
+  /** Sets the selected runs' east-asian layout, keeping a layout id the file already carried. An empty mode clears it. */
+  function eastAsian(mode: "" | "combine" | "vert" | "twoInOne"): void {
+    if (mode !== "" && mode !== "combine" && mode !== "vert" && mode !== "twoInOne") return;
+    applyToRuns((run) => {
+      if (!mode) {
+        delete run.eastAsianLayout;
+        return;
+      }
+      const id = run.eastAsianLayout?.id;
+      run.eastAsianLayout = { ...(id ? { id } : {}), [mode]: true };
+    });
+  }
+
   /** Borders the selected runs, or clears the border when no color is given. The color goes on every side. */
   function runBorder(color: string): void {
     applyToRuns((run) => {
@@ -3074,6 +3133,7 @@ function runNode(run: DocRun): HTMLElement {
   if (run.fitText) span.style.maxWidth = twips(run.fitText);
   if (run.eastAsianLayout?.vert) span.style.writingMode = "vertical-rl";
   if (run.eastAsianLayout?.combine) span.style.letterSpacing = "-0.1em";
+  if (run.eastAsianLayout?.twoInOne) span.style.fontSize = "0.5em";
   if (run.scale && run.scale !== 100) span.style.transform = `scaleX(${run.scale / 100})`;
   if (run.spacing) span.style.letterSpacing = `${(run.spacing * 96) / 1440}px`;
   if (run.position) span.style.position = "relative";

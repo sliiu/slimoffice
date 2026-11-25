@@ -305,6 +305,16 @@ export interface DocumentView {
     rowHeight(twips: number): void;
     /** Drops the current paragraph's first letter by this many lines. Zero clears it. */
     dropCap(lines: number): void;
+    /** Starts the current paragraph on a new page, or clears that. */
+    pageBreakBefore(on: boolean): void;
+    /** Whether the current paragraph starts on a new page. */
+    pageBreakBeforeOn(): boolean;
+    /** Sets how the current paragraph's line sits on its baseline. An empty value clears it. */
+    baseline(align: "" | "top" | "center" | "baseline" | "bottom"): void;
+    /** Fits the selected runs into this width, in twips. Zero clears it. */
+    fitText(twips: number): void;
+    /** Sets the selected runs' east-asian layout. An empty mode clears it. */
+    eastAsian(mode: "" | "combine" | "vert" | "twoInOne"): void;
     /** Turns hyphenation on or off for the whole document. */
     hyphenate(on: boolean): void;
     /** Whether hyphenation is on. */
