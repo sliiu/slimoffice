@@ -255,6 +255,8 @@ function formatResult(value) {
         return value.code;
     if (Array.isArray(value))
         return value.map((item) => formatResult(item)).join(",");
+    if (isOmitted(value))
+        return "";
     if (typeof value === "boolean")
         return value ? "TRUE" : "FALSE";
     if (typeof value === "number") {
@@ -373,6 +375,16 @@ function tokenize(text) {
         }
         if (ch === "}") {
             out.push({ kind: "rb" });
+            i += 1;
+            continue;
+        }
+        if (ch === "[") {
+            out.push({ kind: "lsb" });
+            i += 1;
+            continue;
+        }
+        if (ch === "]") {
+            out.push({ kind: "rsb" });
             i += 1;
             continue;
         }
@@ -568,8 +580,24 @@ class Parser {
         if (name === "LET")
             return this.parseLet();
         const params = [];
+        const optional = [];
         while (this.peek()?.kind === "id" && this.tokens[this.i + 1]?.kind === "comma") {
             params.push(this.take().value);
+            this.take();
+        }
+        // A bracketed name is optional, and every optional name has to come last.
+        while (this.peek()?.kind === "lsb") {
+            this.take();
+            if (this.peek()?.kind !== "id")
+                throw exports.E.VALUE();
+            const id = this.take().value;
+            if (this.peek()?.kind !== "rsb")
+                throw exports.E.VALUE();
+            this.take();
+            params.push(id);
+            optional.push(id);
+            if (this.peek()?.kind !== "comma")
+                break;
             this.take();
         }
         const bodyStart = this.i;
@@ -587,7 +615,7 @@ class Parser {
             throw exports.E.VALUE();
         const body = this.tokens.slice(bodyStart, this.i);
         this.take();
-        const lambda = { params, body };
+        const lambda = { params, optional, body };
         if (this.peek()?.kind !== "lp")
             return lambda;
         this.take();
@@ -664,6 +692,8 @@ class Parser {
         if (first.kind === "id" && (first.value === "TRUE" || first.value === "FALSE")) {
             return first.value === "TRUE";
         }
+        if (first.kind === "id" && first.value === "\u0000OMITTED")
+            return { omitted: true };
         return this.parseRangeTail(undefined, first.value);
     }
     parseRangeTail(sheetName, startRef) {
@@ -744,7 +774,7 @@ function cellPrimitive(sheet, row, col, workbook, sheetIndex) {
             return nested.code;
         if (Array.isArray(nested))
             return nested[0] ?? "";
-        if (isLambda(nested) || isPending(nested))
+        if (isLambda(nested) || isPending(nested) || isOmitted(nested))
             return "";
         return nested;
     }
@@ -769,7 +799,7 @@ function flatten(args) {
     const out = [];
     for (const arg of args) {
         const value = collapse(arg);
-        if (isLambda(value) || isPending(value) || value instanceof FormulaError)
+        if (isLambda(value) || isPending(value) || isOmitted(value) || value instanceof FormulaError)
             continue;
         if (Array.isArray(value))
             out.push(...value);
@@ -784,19 +814,23 @@ function isPending(value) {
 function isLambda(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "params" in value && "body" in value;
 }
+function isOmitted(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "omitted" in value;
+}
 /** An array constant only holds scalars, so a nested range contributes its first value. */
 function scalarPrimitive(value) {
     if (Array.isArray(value))
         return scalarPrimitive(value[0] ?? "");
-    if (value instanceof FormulaError || isLambda(value) || isPending(value))
+    if (value instanceof FormulaError || isLambda(value) || isPending(value) || isOmitted(value))
         return "";
     return value;
 }
 /** Runs a LAMBDA body with each parameter bound to the matching argument. */
 function applyLambda(lambda, args, ctx) {
-    if (args.length !== lambda.params.length)
+    const required = lambda.params.length - lambda.optional.length;
+    if (args.length < required || args.length > lambda.params.length)
         return exports.E.VALUE();
-    const bound = new Map(lambda.params.map((param, index) => [param, args[index] ?? ""]));
+    const bound = new Map(lambda.params.map((param, index) => [param, args[index] ?? { omitted: true }]));
     return new Parser(rewrite(lambda.body, bound), ctx).parseExpression();
 }
 /** Replaces each bound name in the tokens, including names nested inside a LAMBDA body. */
@@ -805,6 +839,9 @@ function rewrite(tokens, names) {
 }
 /** Turns a computed value back into the tokens a LAMBDA body can carry. A range becomes an array constant. */
 function valueTokens(value) {
+    // A marker rather than a call, so the body's own ISOMITTED() is what reads it.
+    if (isOmitted(value))
+        return [{ kind: "id", value: "\u0000OMITTED" }];
     if (typeof value === "number")
         return [{ kind: "num", value }];
     if (typeof value === "boolean")
@@ -1150,6 +1187,8 @@ function callFunction(name, args, ctx) {
             return args[0] instanceof FormulaError && args[0].code !== "#N/A";
         case "ISNA":
             return args[0] instanceof FormulaError && args[0].code === "#N/A";
+        case "ISOMITTED":
+            return isOmitted(args[0]);
         case "ISLOGICAL": {
             const v = collapse(args[0] ?? "");
             return typeof v === "boolean";
@@ -4912,6 +4951,8 @@ function scalar(value) {
         return exports.E.NAME();
     if (isLambda(value))
         return exports.E.VALUE();
+    if (isOmitted(value))
+        return "";
     if (Array.isArray(value) && value.length === 1)
         return scalar(value[0] ?? "");
     if (value instanceof FormulaError)

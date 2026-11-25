@@ -30,18 +30,28 @@ type Token = {
 } | {
     kind: "rb";
 } | {
+    kind: "lsb";
+} | {
+    kind: "rsb";
+} | {
     kind: "semi";
 };
 /** A LAMBDA waiting for its arguments. It only becomes a value once it is called. */
 export interface Lambda {
     params: string[];
+    /** Names written in brackets. A call may leave them out, and ISOMITTED reports that. */
+    optional: string[];
     body: Token[];
+}
+/** A LAMBDA argument the caller left out. It is not a value, and only ISOMITTED can see it. */
+interface Omitted {
+    omitted: true;
 }
 /** A name with no definition yet. LET and LAMBDA fill these in before the result is used. */
 interface PendingName {
     name: string;
 }
-export type FormulaValue = FormulaPrimitive | FormulaError | FormulaPrimitive[] | Lambda | PendingName;
+export type FormulaValue = FormulaPrimitive | FormulaError | FormulaPrimitive[] | Lambda | PendingName | Omitted;
 export declare class FormulaError {
     readonly code: string;
     constructor(code: string);

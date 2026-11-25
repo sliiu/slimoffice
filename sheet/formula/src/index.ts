@@ -16,12 +16,21 @@ type Token =
   | { kind: "bang" }
   | { kind: "lb" }
   | { kind: "rb" }
+  | { kind: "lsb" }
+  | { kind: "rsb" }
   | { kind: "semi" };
 
 /** A LAMBDA waiting for its arguments. It only becomes a value once it is called. */
 export interface Lambda {
   params: string[];
+  /** Names written in brackets. A call may leave them out, and ISOMITTED reports that. */
+  optional: string[];
   body: Token[];
+}
+
+/** A LAMBDA argument the caller left out. It is not a value, and only ISOMITTED can see it. */
+interface Omitted {
+  omitted: true;
 }
 
 /** A name with no definition yet. LET and LAMBDA fill these in before the result is used. */
@@ -29,7 +38,7 @@ interface PendingName {
   name: string;
 }
 
-export type FormulaValue = FormulaPrimitive | FormulaError | FormulaPrimitive[] | Lambda | PendingName;
+export type FormulaValue = FormulaPrimitive | FormulaError | FormulaPrimitive[] | Lambda | PendingName | Omitted;
 
 export class FormulaError {
   constructor(readonly code: string) {}
@@ -292,6 +301,7 @@ export function formatResult(value: FormulaValue): string {
   if (Array.isArray(value) && value.length === 1) return formatResult(value[0] ?? "");
   if (value instanceof FormulaError) return value.code;
   if (Array.isArray(value)) return value.map((item) => formatResult(item)).join(",");
+  if (isOmitted(value)) return "";
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return E.NUM().code;
@@ -400,6 +410,16 @@ function tokenize(text: string): Token[] {
     }
     if (ch === "}") {
       out.push({ kind: "rb" });
+      i += 1;
+      continue;
+    }
+    if (ch === "[") {
+      out.push({ kind: "lsb" });
+      i += 1;
+      continue;
+    }
+    if (ch === "]") {
+      out.push({ kind: "rsb" });
       i += 1;
       continue;
     }
@@ -594,8 +614,21 @@ class Parser {
     this.take();
     if (name === "LET") return this.parseLet();
     const params: string[] = [];
+    const optional: string[] = [];
     while (this.peek()?.kind === "id" && this.tokens[this.i + 1]?.kind === "comma") {
       params.push((this.take() as { value: string }).value);
+      this.take();
+    }
+    // A bracketed name is optional, and every optional name has to come last.
+    while (this.peek()?.kind === "lsb") {
+      this.take();
+      if (this.peek()?.kind !== "id") throw E.VALUE();
+      const id = (this.take() as { value: string }).value;
+      if (this.peek()?.kind !== "rsb") throw E.VALUE();
+      this.take();
+      params.push(id);
+      optional.push(id);
+      if (this.peek()?.kind !== "comma") break;
       this.take();
     }
     const bodyStart = this.i;
@@ -609,7 +642,7 @@ class Parser {
     if (this.peek()?.kind !== "rp") throw E.VALUE();
     const body = this.tokens.slice(bodyStart, this.i);
     this.take();
-    const lambda: Lambda = { params, body };
+    const lambda: Lambda = { params, optional, body };
     if (this.peek()?.kind !== "lp") return lambda;
     this.take();
     const args = this.parseArgList();
@@ -684,6 +717,8 @@ class Parser {
     if (first.kind === "id" && (first.value === "TRUE" || first.value === "FALSE")) {
       return first.value === "TRUE";
     }
+
+    if (first.kind === "id" && first.value === "\u0000OMITTED") return { omitted: true };
 
     return this.parseRangeTail(undefined, first.value);
   }
@@ -774,7 +809,7 @@ function cellPrimitive(sheet: Worksheet, row: number, col: number, workbook: Wor
     const nested = evaluate(`=${cell.formula}`, { workbook, sheetIndex, row, col });
     if (nested instanceof FormulaError) return nested.code;
     if (Array.isArray(nested)) return nested[0] ?? "";
-    if (isLambda(nested) || isPending(nested)) return "";
+    if (isLambda(nested) || isPending(nested) || isOmitted(nested)) return "";
     return nested;
   }
   return coerceCellText(cell.value);
@@ -797,7 +832,7 @@ function flatten(args: FormulaValue[]): FormulaPrimitive[] {
   const out: FormulaPrimitive[] = [];
   for (const arg of args) {
     const value = collapse(arg);
-    if (isLambda(value) || isPending(value) || value instanceof FormulaError) continue;
+    if (isLambda(value) || isPending(value) || isOmitted(value) || value instanceof FormulaError) continue;
     if (Array.isArray(value)) out.push(...value);
     else out.push(value);
   }
@@ -812,17 +847,22 @@ function isLambda(value: FormulaValue | undefined): value is Lambda {
   return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "params" in value && "body" in value;
 }
 
+function isOmitted(value: FormulaValue | undefined): value is Omitted {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof FormulaError) && "omitted" in value;
+}
+
 /** An array constant only holds scalars, so a nested range contributes its first value. */
 function scalarPrimitive(value: FormulaValue): FormulaPrimitive {
   if (Array.isArray(value)) return scalarPrimitive(value[0] ?? "");
-  if (value instanceof FormulaError || isLambda(value) || isPending(value)) return "";
+  if (value instanceof FormulaError || isLambda(value) || isPending(value) || isOmitted(value)) return "";
   return value;
 }
 
 /** Runs a LAMBDA body with each parameter bound to the matching argument. */
 function applyLambda(lambda: Lambda, args: FormulaValue[], ctx: EvalContext): FormulaValue {
-  if (args.length !== lambda.params.length) return E.VALUE();
-  const bound = new Map<string, FormulaValue>(lambda.params.map((param, index) => [param, args[index] ?? ""]));
+  const required = lambda.params.length - lambda.optional.length;
+  if (args.length < required || args.length > lambda.params.length) return E.VALUE();
+  const bound = new Map<string, FormulaValue>(lambda.params.map((param, index) => [param, args[index] ?? { omitted: true }]));
   return new Parser(rewrite(lambda.body, bound), ctx).parseExpression();
 }
 
@@ -833,6 +873,8 @@ function rewrite(tokens: Token[], names: Map<string, FormulaValue>): Token[] {
 
 /** Turns a computed value back into the tokens a LAMBDA body can carry. A range becomes an array constant. */
 function valueTokens(value: FormulaValue): Token[] {
+  // A marker rather than a call, so the body's own ISOMITTED() is what reads it.
+  if (isOmitted(value)) return [{ kind: "id", value: "\u0000OMITTED" }];
   if (typeof value === "number") return [{ kind: "num", value }];
   if (typeof value === "boolean") return [{ kind: "id", value: value ? "TRUE" : "FALSE" }];
   if (typeof value === "string") return [{ kind: "str", value }];
@@ -1109,6 +1151,8 @@ function callFunction(name: string, args: FormulaValue[], ctx: EvalContext): For
       return args[0] instanceof FormulaError && args[0].code !== "#N/A";
     case "ISNA":
       return args[0] instanceof FormulaError && args[0].code === "#N/A";
+    case "ISOMITTED":
+      return isOmitted(args[0]);
     case "ISLOGICAL": {
       const v = collapse(args[0] ?? "");
       return typeof v === "boolean";
@@ -4285,6 +4329,7 @@ function indirectRange(ctx: EvalContext, args: FormulaValue[]): FormulaValue {
 function scalar(value: FormulaValue | undefined): FormulaPrimitive | FormulaError {
   if (isPending(value)) return E.NAME();
   if (isLambda(value)) return E.VALUE();
+  if (isOmitted(value)) return "";
   if (Array.isArray(value) && value.length === 1) return scalar(value[0] ?? "");
   if (value instanceof FormulaError) return value;
   if (Array.isArray(value)) return value[0] ?? "";
