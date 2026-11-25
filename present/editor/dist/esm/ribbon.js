@@ -2990,27 +2990,23 @@ export function buildRibbon(doc, a) {
         });
         viewRight.appendChild(b);
     }
-    // 底部命令行：分组切换器 + 当前分组命令（单行，溢出出滚动条）+ 右侧列表。默认「常用」。
+    // 命令行：上方 tab 切换分组，下方是当前分组命令（单行，溢出出滚动条）+ 右侧列表。默认「常用」。
     const commandBar = doc.createElement("div");
     commandBar.className = "ppt-command-bar";
     commandBar.dataset.pptCommandBar = "1";
     commandBar.setAttribute("role", "toolbar");
     commandBar.setAttribute("aria-label", t("toolbar.group.label"));
-    const groupPill = doc.createElement("button");
-    groupPill.type = "button";
-    groupPill.className = "ppt-group-pill";
-    groupPill.dataset.pptGroupPill = "1";
-    groupPill.setAttribute("aria-haspopup", "dialog");
-    groupPill.setAttribute("aria-expanded", "false");
-    groupPill.title = t("toolbar.group.switch");
-    const groupPillLabel = doc.createElement("span");
-    groupPillLabel.className = "ppt-group-pill-label";
-    groupPill.append(groupPillLabel, lucideSvg(doc, "chevrons-up-down", 12));
+    const tabRow = doc.createElement("div");
+    tabRow.className = "ppt-command-tabs";
+    tabRow.dataset.pptCommandTabs = "1";
+    tabRow.setAttribute("role", "tablist");
+    tabRow.setAttribute("aria-label", t("toolbar.group.label"));
+    enableWheelHorizontalScroll(tabRow);
     const commandStrip = doc.createElement("div");
     commandStrip.className = "ppt-command-strip";
     commandStrip.dataset.pptCommandStrip = "1";
     commandStrip.id = "ppt-command-strip";
-    commandStrip.setAttribute("role", "group");
+    commandStrip.setAttribute("role", "tabpanel");
     enableWheelHorizontalScroll(commandStrip);
     let commandStripFitFrame = 0;
     let commandStripFitAgain = false;
@@ -3049,7 +3045,10 @@ export function buildRibbon(doc, a) {
     listBtn.dataset.pptCommandList = "1";
     listBtn.setAttribute("aria-haspopup", "dialog");
     listBtn.setAttribute("aria-expanded", "false");
-    commandBar.append(groupPill, commandStrip, listBtn);
+    const commandRow = doc.createElement("div");
+    commandRow.className = "ppt-command-row";
+    commandRow.append(commandStrip, listBtn);
+    commandBar.append(tabRow, commandRow);
     const panelOf = (name) => {
         const panel = tabPanels.get(name);
         if (!panel || panel.children.length === 0)
@@ -3233,10 +3232,12 @@ export function buildRibbon(doc, a) {
         host.appendChild(group);
     };
     let currentGroup = "common";
+    const groupTabs = new Map();
     const mountGroup = (id) => {
         releaseStrip(commandStrip);
         commandStrip.dataset.group = id;
         commandStrip.setAttribute("aria-label", groupLabel(id));
+        commandStrip.setAttribute("aria-labelledby", `ppt-command-tab-${id}`);
         if (id === "common") {
             commandStrip.appendChild(commonRow);
         }
@@ -3262,8 +3263,12 @@ export function buildRibbon(doc, a) {
         if (!groups.includes(id))
             return;
         currentGroup = id;
-        groupPillLabel.textContent = groupLabel(id);
-        groupPill.dataset.group = id;
+        for (const [groupId, tab] of groupTabs) {
+            const on = groupId === id;
+            tab.classList.toggle("ppt-command-tab--active", on);
+            tab.setAttribute("aria-selected", on ? "true" : "false");
+            tab.tabIndex = on ? 0 : -1;
+        }
         mountGroup(id);
     }
     /** 真面板要进列表弹层。先在命令条原位留一张不接收指针的样子，关掉弹层再挂回真面板。 */
@@ -3305,48 +3310,32 @@ export function buildRibbon(doc, a) {
         }
         openFullGroup();
     });
-    const openGroupPicker = () => {
-        const pop = openChromePopover(groupPill, t("toolbar.group.switch"), "ppt-chrome-popover ppt-group-popover");
-        pop.dataset.chromeSurface = "groups";
-        const grid = doc.createElement("div");
-        grid.className = "ppt-group-grid";
-        grid.setAttribute("role", "listbox");
-        grid.setAttribute("aria-label", t("toolbar.group.label"));
-        const chips = [];
-        for (const id of groups) {
-            const chip = doc.createElement("button");
-            chip.type = "button";
-            chip.className = "ppt-group-chip";
-            chip.setAttribute("role", "option");
-            chip.dataset.group = id;
-            chip.setAttribute("aria-selected", id === currentGroup ? "true" : "false");
-            chip.tabIndex = id === currentGroup ? 0 : -1;
-            chip.textContent = groupLabel(id);
-            chip.addEventListener("click", () => {
-                closeToolbarPopover();
-                selectGroup(id);
-            });
-            chips.push(chip);
-            grid.appendChild(chip);
-        }
-        grid.addEventListener("keydown", (ev) => {
-            const step = ev.key === "ArrowRight" || ev.key === "ArrowDown" ? 1 : ev.key === "ArrowLeft" || ev.key === "ArrowUp" ? -1 : 0;
-            if (!step && ev.key !== "Home" && ev.key !== "End")
-                return;
-            ev.preventDefault();
-            const cur = chips.indexOf(doc.activeElement);
-            const next = ev.key === "Home" ? 0 : ev.key === "End" ? chips.length - 1 : (Math.max(cur, 0) + step + chips.length) % chips.length;
-            chips[next]?.focus();
-        });
-        pop.appendChild(grid);
-        (chips.find((chip) => chip.dataset.group === currentGroup) ?? chips[0])?.focus();
-    };
-    groupPill.addEventListener("click", () => {
-        if (openPopover && groupPill.getAttribute("aria-expanded") === "true") {
-            closeToolbarPopover();
+    const groupTabList = Array.from(groups, (id) => {
+        const tab = doc.createElement("button");
+        tab.type = "button";
+        tab.className = "ppt-command-tab";
+        tab.setAttribute("role", "tab");
+        tab.dataset.group = id;
+        tab.id = `ppt-command-tab-${id}`;
+        tab.setAttribute("aria-controls", "ppt-command-strip");
+        tab.textContent = groupLabel(id);
+        tab.addEventListener("click", () => selectGroup(id));
+        groupTabs.set(id, tab);
+        tabRow.appendChild(tab);
+        return tab;
+    });
+    tabRow.addEventListener("keydown", (ev) => {
+        const step = ev.key === "ArrowRight" || ev.key === "ArrowDown" ? 1 : ev.key === "ArrowLeft" || ev.key === "ArrowUp" ? -1 : 0;
+        if (!step && ev.key !== "Home" && ev.key !== "End")
             return;
-        }
-        openGroupPicker();
+        ev.preventDefault();
+        const cur = groupTabList.indexOf(doc.activeElement);
+        const next = ev.key === "Home" ? 0 : ev.key === "End" ? groupTabList.length - 1 : (Math.max(cur, 0) + step + groupTabList.length) % groupTabList.length;
+        const tab = groupTabList[next];
+        if (!tab)
+            return;
+        selectGroup(tab.dataset.group);
+        tab.focus();
     });
     // 状态栏两端：视图下拉 · 底栏（时间轴 / 备注）下拉。
     const statusStart = doc.createElement("div");

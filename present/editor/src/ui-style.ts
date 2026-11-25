@@ -126,12 +126,8 @@ const RIBBON_CSS = `
 /* View bar · command row · status bar. Density tokens live in @sliiu/present-ui. */
 .ppt-view-bar,
 .ppt-command-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 0 var(--space-2, 8px);
   box-sizing: border-box;
   background: var(--editor-ribbon, #181818);
   color: var(--foreground);
@@ -139,15 +135,72 @@ const RIBBON_CSS = `
   user-select: none;
 }
 .ppt-view-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 var(--space-2, 8px);
   justify-content: space-between;
   height: var(--chrome-view-bar-height, 40px);
   border-bottom: 1px solid var(--border, #3a3a3a);
 }
 .ppt-command-bar {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  min-height: var(--chrome-command-bar-height, 40px);
+  border-bottom: 1px solid var(--border, #3a3a3a);
+}
+.ppt-command-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--space-2, 8px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border, #3a3a3a);
+}
+.ppt-command-tabs::-webkit-scrollbar { height: 0; }
+.ppt-command-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 10px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ppt-command-tab:hover:not(.ppt-command-tab--active) { color: var(--foreground); }
+.ppt-command-tab--active {
+  color: var(--foreground);
+  font-weight: 600;
+  border-bottom-color: var(--primary);
+}
+.ppt-command-tab[data-group="experimental"],
+.ppt-command-tab[data-group="experimental"]:hover,
+.ppt-command-tab[data-group="experimental"].ppt-command-tab--active {
+  color: var(--warning, #d97706);
+}
+.ppt-command-tab[data-group="experimental"].ppt-command-tab--active { border-bottom-color: var(--warning, #d97706); }
+.ppt-command-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
   height: var(--chrome-command-bar-height, 40px);
   min-height: var(--chrome-command-bar-height, 40px);
-  /* 顶部分隔线画在内容盒里，内容盒保持 40px。28px 控件上下各余 6px，正好让出 6px 滚动条。 */
-  box-shadow: inset 0 1px 0 var(--border, #3a3a3a);
+  padding: 0 var(--space-2, 8px);
+  box-sizing: border-box;
 }
 .ppt-editor-root.ppt-reading .ppt-command-bar { display: none; }
 .ppt-view-bar-left,
@@ -284,30 +337,10 @@ const RIBBON_CSS = `
   color: var(--foreground);
 }
 .ppt-view-zoom-value[aria-pressed="true"] { color: var(--muted-foreground); }
-.ppt-group-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
-  box-sizing: border-box;
-  height: var(--chrome-control-height, 28px);
-  padding: 0 8px 0 12px;
-  border: 1px solid var(--editor-control-border, var(--border));
-  border-radius: 9999px;
-  background: var(--editor-control, var(--secondary));
-  color: var(--foreground);
-  font: 600 var(--chrome-bar-font, 12px)/1 var(--font-sans, inherit);
-  cursor: pointer;
-  transition: background-color 120ms ease, transform 120ms ease-out;
-}
-.ppt-group-pill svg { color: var(--muted-foreground); }
-.ppt-group-pill:hover,
-.ppt-group-pill[aria-expanded="true"] { background: var(--accent); }
-.ppt-group-pill:active { transform: scale(0.97); }
 .ppt-command-strip {
   display: flex;
   flex: 1 1 auto;
-  /* 顶对齐：经典滚动条会吃掉内容盒底部，居中会把按钮抬到分组胶囊之上。 */
+  /* 顶对齐：经典滚动条会吃掉内容盒底部，居中会把按钮抬到命令行之上。 */
   align-items: flex-start;
   min-width: 0;
   height: 100%;
@@ -440,7 +473,7 @@ const RIBBON_CSS = `
 .ppt-view-bar-btn:focus-visible,
 .ppt-view-zoom-value:focus-visible,
 .ppt-quick-bar-btn:focus-visible,
-.ppt-group-pill:focus-visible,
+.ppt-command-tab:focus-visible,
 .ppt-status-menu-btn:focus-visible,
 .ppt-status-action-btn:focus-visible,
 .ppt-command-strip .ppt-ribbon-btn:focus-visible,
@@ -477,26 +510,13 @@ const RIBBON_CSS = `
     max-width: none !important;
     overflow: hidden;
   }
-  .ppt-command-bar {
+  .ppt-command-row {
     padding-left: 4px;
     padding-right: 4px;
     gap: 4px;
   }
   .ppt-command-strip { padding-left: 4px; }
-}
-@media (max-width: 420px) {
-  .ppt-group-pill { position: relative; padding: 0 8px; }
-  .ppt-group-pill-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
+  .ppt-command-tab { padding: 0 8px; }
 }
 /* AI 点选模式：选区旁的 AI 输入框。 */
 .ppt-ai-inline {
@@ -725,66 +745,6 @@ const RIBBON_CSS = `
 }
 @media print {
   .ppt-selection-format { display: none !important; }
-}
-/* 分组切换弹层：常用 + 九组。完整命令由命令条右侧列表按钮展开。 */
-.ppt-chrome-popover.ppt-group-popover {
-  width: min(440px, 94vw);
-  min-width: min(320px, 94vw);
-  --ppt-chrome-pad: 8px;
-  gap: 4px;
-}
-.ppt-group-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 2px;
-}
-.ppt-group-chip {
-  height: 32px;
-  padding: 0 6px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted-foreground);
-  font: 13px/1 var(--font-sans, inherit);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease, transform 120ms ease-out;
-}
-.ppt-group-chip:hover { background: var(--accent); color: var(--popover-foreground); }
-.ppt-group-chip:active { transform: scale(0.97); }
-.ppt-group-chip[aria-selected="true"] {
-  background: var(--accent);
-  color: var(--popover-foreground);
-  font-weight: 600;
-  box-shadow: inset 0 0 0 1px var(--border);
-}
-.ppt-group-chip[data-group="experimental"],
-.ppt-group-chip[data-group="experimental"]:hover,
-.ppt-group-chip[data-group="experimental"][aria-selected="true"] {
-  color: var(--warning, #d97706);
-}
-.ppt-group-chip:focus-visible { outline: 2px solid #4F46E5; outline-offset: 1px; }
-@media (max-width: 720px) {
-  .ppt-chrome-popover.ppt-group-popover {
-    width: calc(100vw - 16px);
-    min-width: 0;
-    max-height: min(520px, calc(100dvh - 16px));
-  }
-  .ppt-group-grid {
-    grid-template-columns: 1fr 1fr;
-    min-height: 0;
-    overflow-y: auto;
-  }
-  .ppt-group-chip {
-    height: auto;
-    min-height: 40px;
-    padding: 8px 10px;
-    white-space: normal;
-    line-height: 1.25;
-    text-align: start;
-  }
 }
 @keyframes ppt-strip-in {
   from { opacity: 0; transform: translateY(2px); }

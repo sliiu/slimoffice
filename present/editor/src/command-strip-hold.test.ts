@@ -93,7 +93,6 @@ describe("command strip stays visible while the group list is open", () => {
   it("keeps edit-and-text commands on the strip and still runs them from the list", () => {
     const undos = { n: 0 };
     const ribbon = mount(undos);
-    doc.querySelector<HTMLButtonElement>(".ppt-group-pill")?.click();
     doc.querySelector<HTMLButtonElement>('[data-group="editText"]')?.click();
 
     const strip = doc.getElementById("ppt-command-strip");

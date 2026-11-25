@@ -168,13 +168,17 @@ describe("editor shell source locks", () => {
     assert.match(css, /\.ppt-editor-root\.ppt-reading \.ppt-command-bar \{ display: none; \}/);
   });
 
-  it("bottom is one command row: group pill + strip; no tab rail", () => {
+  it("command row sits above the view bar and switches groups with tabs", () => {
     const ribbon = load("ribbon.ts");
-    assert.match(ribbon, /ppt-group-pill/);
+    const editor = load("editor.ts");
+    assert.match(ribbon, /ppt-command-tabs/);
+    assert.match(ribbon, /ppt-command-tab/);
+    assert.match(ribbon, /role", "tablist"/);
+    assert.match(ribbon, /role", "tab"/);
     assert.match(ribbon, /ppt-command-strip/);
-    assert.match(ribbon, /ppt-group-popover/);
     assert.match(ribbon, /ppt-command-list-btn/);
     assert.match(ribbon, /toolbar\.group\.list/);
+    assert.doesNotMatch(ribbon, /ppt-group-pill|ppt-group-popover|ppt-group-chip/);
     assert.doesNotMatch(ribbon, /ppt-group-more|toolbar\.group\.more/);
     assert.match(ribbon, /listCommandGroups/);
     assert.doesNotMatch(ribbon, /ppt-task-rail|ppt-task-strip|ppt-task-tab/);
@@ -182,6 +186,10 @@ describe("editor shell source locks", () => {
     assert.match(ribbon, /insert: \["Insert"\]/);
     assert.match(ribbon, /focusTransitionsPanel/);
     assert.match(ribbon, /focusAnimationsPanel/);
+    assert.match(editor, /viewBarHost\.appendChild\(toolbar\.commandBar\)/);
+    assert.match(editor, /viewBarHost\.appendChild\(toolbar\.viewBar\)/);
+    assert.match(editor, /root\.insertBefore\(toolbar\.commandBar, toolbar\.viewBar\)/);
+    assert.doesNotMatch(editor, /commandGridRow = stageGridRow/);
   });
 
   it("command row regions never resurrect dead paths", () => {
@@ -205,14 +213,16 @@ describe("editor shell source locks", () => {
     }
     assert.match(css, /\.ppt-view-bar\s*\{[^}]*height:\s*var\(--chrome-view-bar-height/s);
     assert.match(css, /\.ppt-view-bar-center\[hidden\]\s*\{\s*display:\s*none/);
-    assert.match(css, /\.ppt-command-bar\s*\{[^}]*height:\s*var\(--chrome-command-bar-height/s);
+    assert.match(css, /\.ppt-command-row\s*\{[^}]*height:\s*var\(--chrome-command-bar-height/s);
+    assert.match(css, /\.ppt-command-tabs\s*\{[^}]*height:\s*32px/s);
+    assert.match(css, /\.ppt-command-tab--active\s*\{[^}]*border-bottom-color:\s*var\(--primary\)/s);
     assert.match(css, /\.ppt-command-strip::-webkit-scrollbar\s*\{[^}]*height:\s*6px/s);
     assert.doesNotMatch(css, /\.ppt-command-strip::-webkit-scrollbar\s*\{\s*display:\s*none/);
     const stripRule = css.match(/\.ppt-command-strip\s*\{[^}]*\}/s)?.[0] ?? "";
     assert.doesNotMatch(stripRule.replace(/\/\*[\s\S]*?\*\//g, ""), /scrollbar-width|scrollbar-color/);
     assert.match(css, /@supports not selector\(::-webkit-scrollbar\)/);
     assert.match(css, /\.ppt-command-strip\s*\{[^}]*align-items:\s*flex-start/s);
-    assert.match(css, /\.ppt-command-bar\s*\{[^}]*box-shadow:\s*inset 0 1px 0/s);
+    assert.match(css, /\.ppt-command-bar\s*\{[^}]*flex-direction:\s*column/s);
     assert.doesNotMatch(css, /\.ppt-command-common\s*\{[^}]*height:\s*100%/s);
     const stripPanel = css.match(/\.ppt-command-strip \.ppt-ribbon-panel\s*\{[^}]*\}/s)?.[0] ?? "";
     assert.match(stripPanel, /flex:\s*0 0 auto/);
@@ -371,22 +381,22 @@ describe("editor shell source locks", () => {
     assert.match(left, /id="open-main"[^>]*hidden/);
   });
 
-  it("group switcher and command list follow appearance tokens", () => {
+  it("command tabs and command list follow appearance tokens", () => {
     const css = load("ui-style.ts");
     const ribbon = load("ribbon.ts");
     assert.match(css, /\.ppt-chrome-popover,\s*\.ppt-chrome-menu\s*\{[^}]*background:\s*var\(--popover\)/s);
     assert.match(css, /\.ppt-topbar-popover,\s*\.ppt-topbar-menu\s*\{[^}]*background:\s*var\(--popover\)/s);
     assert.match(css, /\.ppt-topbar-popover,\s*\.ppt-topbar-menu\s*\{[^}]*color:\s*var\(--popover-foreground\)/s);
-    assert.match(css, /\.ppt-group-chip\s*\{[^}]*color:\s*var\(--muted-foreground\)/s);
+    assert.match(css, /\.ppt-command-tab\s*\{[^}]*color:\s*var\(--muted-foreground\)/s);
     assert.match(
       css,
-      /\.ppt-group-chip\[data-group="experimental"\][\s\S]*color:\s*var\(--warning, #d97706\)/,
+      /\.ppt-command-tab\[data-group="experimental"\][\s\S]*color:\s*var\(--warning, #d97706\)/,
     );
     assert.match(css, /\.ppt-command-host \.ppt-ribbon-group__label\s*\{[^}]*background:\s*var\(--popover\)/s);
     assert.match(css, /\.ppt-topbar-popover\.ppt-command-host\s*\{[^}]*overflow:\s*hidden/s);
     assert.match(css, /\.ppt-command-scroll\s*\{[^}]*overflow:\s*auto/s);
     assert.match(ribbon, /className = "ppt-command-scroll"/);
-    assert.doesNotMatch(css, /\.ppt-group-chip\s*\{[^}]*#171717/s);
+    assert.doesNotMatch(css, /\.ppt-command-tab\s*\{[^}]*#171717/s);
     assert.doesNotMatch(css, /\.ppt-command-host \.ppt-ribbon-group--menu \.ppt-ribbon-btn\s*\{[^}]*#171717/s);
     assert.match(css, /\.ppt-chrome-share-copy\s*\{[^}]*#4F46E5/s);
   });
