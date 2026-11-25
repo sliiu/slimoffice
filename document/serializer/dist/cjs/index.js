@@ -4,8 +4,8 @@ exports.blankDocument = void 0;
 exports.writeDocx = writeDocx;
 const document_core_1 = require("@sliiu/document-core");
 const fflate_1 = require("fflate");
-const body_1 = require("./body.js");
-var blank_1 = require("./blank.js");
+const body_1 = require("./body");
+var blank_1 = require("./blank");
 Object.defineProperty(exports, "blankDocument", { enumerable: true, get: function () { return blank_1.blankDocument; } });
 const RELS = "word/_rels/document.xml.rels";
 const NUMBERING = "word/numbering.xml";
@@ -132,7 +132,8 @@ function numberingPart(document, relationships) {
     if (!missing.length)
         return { override: false };
     const nextAbstract = Math.max(0, ...[...xml.matchAll(/<w:abstractNum\b[^>]*w:abstractNumId="(\d+)"/gi)].map((match) => Number(match[1]))) + 1;
-    const built = missing.map((id, index) => abstractXml(nextAbstract + index, document.numbering?.[id] ?? [])).join("");
+    const pictures = missing.flatMap((id, index) => pictureBulletsXml(nextAbstract + index, document.numbering?.[id] ?? []));
+    const built = `${pictures.map((item) => item.bullet).join("")}${missing.map((id, index) => abstractXml(nextAbstract + index, document.numbering?.[id] ?? [])).join("")}`;
     const nums = missing.map((id, index) => `<w:num w:numId="${id}"><w:abstractNumId w:val="${nextAbstract + index}"/></w:num>`).join("");
     const linked = relationships.some((item) => item.type === NUMBERING_REL);
     const relationship = linked ? undefined : { id: freshId(relationships), type: NUMBERING_REL, target: "numbering.xml", external: false };
@@ -155,10 +156,10 @@ function stylesPart(document, relationships) {
     const existing = document.source?.get(STYLES);
     const xml = existing ? (0, fflate_1.strFromU8)(existing) : "";
     const present = new Set([...xml.matchAll(/<w:style\b[^>]*w:styleId="([^"]*)"/gi)].map((match) => match[1]));
-    const missing = [...used].filter((id) => !present.has(id) && document.styles?.[id]);
+    const missing = [...used].filter((id) => !present.has(id) && document.styles?.styles?.[id]);
     if (!missing.length)
         return { override: false };
-    const built = missing.map((id) => styleXml(id, document.styles?.[id])).join("");
+    const built = missing.map((id) => styleXml(id, document.styles?.styles?.[id])).join("");
     const linked = relationships.some((item) => item.type === STYLES_REL);
     const relationship = linked ? undefined : { id: freshId(relationships), type: STYLES_REL, target: "styles.xml", external: false };
     if (/<\/w:styles>/i.test(xml))
@@ -182,7 +183,9 @@ function styleIds(document) {
 function styleXml(id, style) {
     if (!style)
         return "";
+    const type = style.type ?? "paragraph";
     const based = style.basedOn ? `<w:basedOn w:val="${escapeAttr(style.basedOn)}"/>` : "";
+    const link = style.link ? `<w:link w:val="${escapeAttr(style.link)}"/>` : "";
     const align = style.align && style.align !== "left" ? `<w:pPr><w:jc w:val="${style.align}"/></w:pPr>` : "";
     const run = [];
     if (style.bold)
@@ -196,7 +199,7 @@ function styleXml(id, style) {
     if (style.color)
         run.push(`<w:color w:val="${escapeAttr(style.color.replace(/^#/, ""))}"/>`);
     const runProps = run.length ? `<w:rPr>${run.join("")}</w:rPr>` : "";
-    return `<w:style w:type="paragraph" w:styleId="${escapeAttr(id)}"><w:name w:val="${escapeAttr(id)}"/>${based}${align}${runProps}</w:style>`;
+    return `<w:style w:type="${type}" w:styleId="${escapeAttr(id)}"><w:name w:val="${escapeAttr(id)}"/>${based}${link}${align}${runProps}</w:style>`;
 }
 function numberingIds(document) {
     const ids = new Set();
@@ -208,14 +211,24 @@ function numberingIds(document) {
     }
     return ids;
 }
+/** A picture bullet for each level that carries one, numbered from the abstract's own id. */
+function pictureBulletsXml(id, levels) {
+    return levels.flatMap((level, index) => {
+        if (!level?.picture)
+            return [];
+        const bullet = `<w:numPicBullet w:numPicBulletId="${id + index}"><w:pict><v:shape><v:imagedata r:id="${escapeAttr(level.picture.image)}"/></v:shape></w:pict></w:numPicBullet>`;
+        return [{ bullet }];
+    });
+}
 function abstractXml(id, levels) {
     const defined = levels.length ? levels : [{ text: "%1." }];
     const body = defined
         .map((level, index) => {
         const text = level?.text || "%1.";
-        const format = level?.format || (level?.bullet || !text.includes("%") ? "bullet" : "decimal");
+        const format = level?.format || (level?.bullet || level?.picture || !text.includes("%") ? "bullet" : "decimal");
         const start = level?.start && level.start !== 1 ? level.start : 1;
-        return `<w:lvl w:ilvl="${index}"><w:start w:val="${start}"/><w:numFmt w:val="${escapeAttr(format)}"/><w:lvlText w:val="${escapeAttr(text)}"/></w:lvl>`;
+        const picture = level?.picture ? `<w:lvlPicBulletId w:val="${id + index}"/>` : "";
+        return `<w:lvl w:ilvl="${index}">${picture}<w:start w:val="${start}"/><w:numFmt w:val="${escapeAttr(format)}"/><w:lvlText w:val="${escapeAttr(text)}"/></w:lvl>`;
     })
         .join("");
     return `<w:abstractNum w:abstractNumId="${id}">${body}</w:abstractNum>`;
@@ -377,7 +390,7 @@ function collectNotes(document) {
     const found = new Map();
     for (const section of document.sections) {
         for (const block of section.blocks) {
-            if (!(0, document_core_1.isDocParagraph)(block) || !block.note)
+            if (!(0, document_core_1.isDocParagraph)(block) || !block.note || block.noteSeparator)
                 continue;
             const bucket = found.get(block.note.kind) ?? new Map();
             bucket.set(block.note.id, block.runs.filter((run) => !run.deleted).map((run) => run.text).join(""));
@@ -390,6 +403,8 @@ function collectNotes(document) {
 function replaceNoteText(xml, kind, id, value) {
     const pattern = new RegExp(`(<w:${kind}\\b[^>]*w:id="${id}"[^>]*>)([\\s\\S]*?)(</w:${kind}>)`, "i");
     return xml.replace(pattern, (_match, open, body, close) => {
+        if (!value)
+            return `${open}${body}${close}`;
         const marker = new RegExp(`<w:${kind}Ref\\b[^>]*/>`, "i").exec(body)?.[0] ?? "";
         return `${open}<w:p>${marker}<w:r><w:t xml:space="preserve">${escapeXml(value)}</w:t></w:r></w:p>${close}`;
     });

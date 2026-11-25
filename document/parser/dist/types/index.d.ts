@@ -1,3 +1,3 @@
-export { parseDocx, DocxOpenError } from "./parse.js";
-export type { DocxOpenErrorCode } from "./parse.js";
+export { parseDocx, DocxOpenError } from "./parse";
+export type { DocxOpenErrorCode } from "./parse";
 //# sourceMappingURL=index.d.ts.map

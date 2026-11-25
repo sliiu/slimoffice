@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DocxOpenError = void 0;
 exports.parseDocx = parseDocx;
 const document_core_1 = require("@sliiu/document-core");
-const zip_1 = require("./zip.js");
-const xml_1 = require("./xml.js");
+const zip_1 = require("./zip");
+const xml_1 = require("./xml");
 class DocxOpenError extends Error {
     code;
     constructor(code, message) {
@@ -37,17 +37,8 @@ const UNDERLINES = new Set(["single", "double", "dotted", "dash", "wave"]);
 /** Paragraph switches the model keeps so a rewrite does not drop them. */
 const PARAGRAPH_MARKS = ["suppressLineNumbers", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
 /** Run switches the model keeps so a rewrite does not drop them. */
-const RUN_MARKS = ["bCs", "iCs", "outline", "shadow", "emboss", "imprint", "effect"];
-/** Paragraph elements kept as markup, written back unchanged. */
-const PARAGRAPH_KEPT = ["framePr", "textDirection", "textAlignment", "textboxTightWrap", "divId", "cnfStyle"];
-/** Run elements kept as markup, written back unchanged. */
-const RUN_KEPT = ["szCs", "bdr", "shd", "fitText", "eastAsianLayout"];
-/** The original markup of the named children, so a rewrite can put them back. */
-function keptXml(props, names) {
-    return (0, xml_1.ordered)(props)
-        .filter((item) => names.includes(item.name))
-        .map((item) => (0, xml_1.serialize)(item.name, item.node));
-}
+const RUN_MARKS = ["outline", "shadow", "emboss", "imprint", "effect"];
+const BORDER_SIDES = ["top", "left", "bottom", "right"];
 async function parseDocx(input) {
     const bytes = await toBytes(input);
     assertOpenXml(bytes);
@@ -71,7 +62,7 @@ async function parseDocx(input) {
     const mailMerge = mailMergeOf(archive);
     const comments = commentsFrom(archive);
     const notes = notesFrom(archive, context);
-    attachNotes(sections, notes);
+    attachNotes(sections, notes.notes, notes.separators);
     const hyphenation = hyphenates(archive);
     const view = viewOf(archive);
     const zoom = zoomOf(archive);
@@ -82,7 +73,7 @@ async function parseDocx(input) {
     return {
         sections,
         ...(Object.keys(context.numbering).length ? { numbering: context.numbering } : {}),
-        ...(Object.keys(context.styles).length ? { styles: context.styles } : {}),
+        ...(Object.keys(context.styles.styles).length || context.styles.defaults || context.styles.latent?.length ? { styles: context.styles } : {}),
         ...(theme ? { theme } : {}),
         ...(sources.length ? { sources } : {}),
         ...(recipients.length ? { recipients } : {}),
@@ -170,7 +161,8 @@ function hyphenates(archive) {
 }
 /** The body of each footnote and endnote, keyed by id, so a reference in the story can show it. */
 function notesFrom(archive, context) {
-    const found = new Map();
+    const notes = new Map();
+    const separators = [];
     const read = (path, kind, root, ref) => {
         const xml = archive.getText(path);
         if (!xml)
@@ -181,24 +173,29 @@ function notesFrom(archive, context) {
         for (const item of (0, xml_1.children)(body, kind)) {
             const id = (0, xml_1.attr)(item, "id");
             const type = (0, xml_1.attr)(item, "type");
-            if (!id || type === "separator" || type === "continuationSeparator")
+            if (!id)
                 continue;
+            if (type === "separator" || type === "continuationSeparator") {
+                separators.push({ runs: [], noteSeparator: { kind, type } });
+                continue;
+            }
             const paragraph = paragraphFrom((0, xml_1.children)(item, "p")[0] ?? item, context);
             paragraph.runs = paragraph.runs.filter((run) => !run.raw?.includes(`${ref}`));
             paragraph.note = { kind, id };
-            found.set(`${kind}:${id}`, paragraph);
+            notes.set(`${kind}:${id}`, paragraph);
         }
     };
     read("word/footnotes.xml", "footnote", "footnotes", "footnoteRef");
     read("word/endnotes.xml", "endnote", "endnotes", "endnoteRef");
-    return found;
+    return { notes, separators };
 }
-/** Puts each note's body right after the paragraph that references it, so the page can show it. */
-function attachNotes(sections, notes) {
-    if (!notes.size)
+/** Puts each note's body right after the paragraph that references it, with the separator line ahead of the first one. */
+function attachNotes(sections, notes, separators) {
+    if (!notes.size && !separators.length)
         return;
     for (const section of sections) {
         const blocks = [];
+        const drawn = new Set();
         for (const block of section.blocks) {
             blocks.push(block);
             if (!(0, document_core_1.isDocParagraph)(block))
@@ -206,8 +203,16 @@ function attachNotes(sections, notes) {
             for (const run of block.runs) {
                 const id = noteId(run.raw);
                 const note = id ? notes.get(id) : undefined;
-                if (note)
-                    blocks.push(note);
+                if (!note?.note)
+                    continue;
+                const kind = note.note.kind;
+                if (!drawn.has(kind)) {
+                    const line = separators.find((item) => item.noteSeparator?.kind === kind && item.noteSeparator.type === "separator");
+                    if (line)
+                        blocks.push(line);
+                    drawn.add(note.note.kind);
+                }
+                blocks.push(note);
             }
         }
         section.blocks = blocks;
@@ -237,8 +242,34 @@ function formulaOf(node) {
         else if (name === "sSup" || name === "sSub") {
             pieces.push({ kind: name === "sSup" ? "sup" : "sub", base: formulaOf((0, xml_1.child)(item.node, "e") ?? {}), script: formulaOf((0, xml_1.child)(item.node, name === "sSup" ? "sup" : "sub") ?? {}) });
         }
+        else if (name === "sSubSup") {
+            pieces.push({ kind: "subsup", base: formulaOf((0, xml_1.child)(item.node, "e") ?? {}), script: formulaOf((0, xml_1.child)(item.node, "sub") ?? {}), upper: formulaOf((0, xml_1.child)(item.node, "sup") ?? {}) });
+        }
         else if (name === "rad") {
             pieces.push({ kind: "root", body: formulaOf((0, xml_1.child)(item.node, "e") ?? {}), degree: formulaOf((0, xml_1.child)(item.node, "deg") ?? {}) });
+        }
+        else if (name === "d") {
+            const props = (0, xml_1.child)(item.node, "dPr");
+            const open = props ? (0, xml_1.child)(props, "begChr") : undefined;
+            const close = props ? (0, xml_1.child)(props, "endChr") : undefined;
+            pieces.push({ kind: "delim", open: (open ? (0, xml_1.attr)(open, "val") : undefined) ?? "(", close: (close ? (0, xml_1.attr)(close, "val") : undefined) ?? ")", body: formulaOf((0, xml_1.child)(item.node, "e") ?? {}) });
+        }
+        else if (name === "nary") {
+            const props = (0, xml_1.child)(item.node, "naryPr");
+            const sign = props ? (0, xml_1.child)(props, "chr") : undefined;
+            pieces.push({ kind: "nary", sign: (sign ? (0, xml_1.attr)(sign, "val") : undefined) ?? "∑", body: formulaOf((0, xml_1.child)(item.node, "e") ?? {}), sub: formulaOf((0, xml_1.child)(item.node, "sub") ?? {}), sup: formulaOf((0, xml_1.child)(item.node, "sup") ?? {}) });
+        }
+        else if (name === "func") {
+            pieces.push({ kind: "func", name: formulaOf((0, xml_1.child)(item.node, "fName") ?? {}), body: formulaOf((0, xml_1.child)(item.node, "e") ?? {}) });
+        }
+        else if (name === "bar" || name === "groupChr") {
+            const props = (0, xml_1.child)(item.node, `${name}Pr`);
+            const position = props ? (0, xml_1.child)(props, "pos") : undefined;
+            pieces.push({ kind: "bar", body: formulaOf((0, xml_1.child)(item.node, "e") ?? {}), ...(position && (0, xml_1.attr)(position, "val") === "bot" ? { under: true } : {}) });
+        }
+        else if (name === "m") {
+            const rows = (0, xml_1.children)(item.node, "mr").map((row) => (0, xml_1.children)(row, "e").map((cell) => formulaOf(cell)[0] ?? { text: "" }));
+            pieces.push({ kind: "matrix", rows });
         }
         else if (name === "t") {
             const value = (0, xml_1.text)(item.node);
@@ -460,8 +491,7 @@ function readPageExtras(node, margin) {
         extras.footerDistance = footerDistance;
     if ((0, xml_1.child)(node, "lnNumType"))
         extras.lineNumbers = true;
-    const borders = (0, xml_1.child)(node, "pgBorders");
-    const border = borders ? colorOf((0, xml_1.child)(borders, "top")) : undefined;
+    const border = borderOf((0, xml_1.child)(node, "pgBorders"));
     if (border)
         extras.border = border;
     const direction = (0, xml_1.child)(node, "textDirection");
@@ -476,7 +506,62 @@ function readPageExtras(node, margin) {
         extras.break = start;
     else if (start === "nextPage")
         extras.break = "nextPage";
+    const widths = columnWidths(columnsOf(node));
+    if (widths)
+        extras.columnWidths = widths;
+    const align = (0, xml_1.child)(node, "vAlign");
+    const aligned = align ? (0, xml_1.attr)(align, "val") : undefined;
+    if (aligned === "center" || aligned === "both" || aligned === "bottom" || aligned === "top")
+        extras.verticalAlign = aligned;
+    const grid = gridOf((0, xml_1.child)(node, "docGrid"));
+    if (grid)
+        extras.grid = grid;
+    const numbering = pageNumberOf((0, xml_1.child)(node, "pgNumType"));
+    if (numbering)
+        extras.pageNumber = numbering;
     return extras;
+}
+/** The columns element, read here so the width list does not depend on the count. */
+function columnsOf(node) {
+    return (0, xml_1.child)(node, "cols");
+}
+/** Each column's own width, when the columns are not equal. */
+function columnWidths(node) {
+    if (!node)
+        return undefined;
+    const widths = (0, xml_1.children)(node, "col")
+        .map((item) => positive((0, xml_1.attr)(item, "w")))
+        .filter((width) => width !== undefined);
+    return widths.length ? widths : undefined;
+}
+/** The document grid: the line pitch and the character space the page is ruled for. */
+function gridOf(node) {
+    if (!node)
+        return undefined;
+    const grid = {};
+    const type = (0, xml_1.attr)(node, "type");
+    const linePitch = positive((0, xml_1.attr)(node, "linePitch"));
+    const charSpace = Number((0, xml_1.attr)(node, "charSpace"));
+    if (type)
+        grid.type = type;
+    if (linePitch !== undefined)
+        grid.linePitch = linePitch;
+    if (Number.isFinite(charSpace) && charSpace !== 0)
+        grid.charSpace = charSpace;
+    return Object.keys(grid).length ? grid : undefined;
+}
+/** Where the page numbers start, and the format they are written in. */
+function pageNumberOf(node) {
+    if (!node)
+        return undefined;
+    const numbering = {};
+    const start = positive((0, xml_1.attr)(node, "start"));
+    const format = (0, xml_1.attr)(node, "fmt");
+    if (start !== undefined)
+        numbering.start = start;
+    if (format)
+        numbering.format = format;
+    return Object.keys(numbering).length ? numbering : undefined;
 }
 /** A header paragraph whose only text sits inside a watermark shape, such as Word's diagonal "DRAFT". */
 function watermarkFrom(node) {
@@ -532,9 +617,9 @@ function partPath(target) {
     const clean = target.replace(/^\.?\.\//, "");
     return clean.startsWith("word/") ? clean : `word/${clean}`;
 }
-function relationships(archive) {
+function relationships(archive, part = "word/_rels/document.xml.rels") {
     const map = new Map();
-    const xml = archive.getText("word/_rels/document.xml.rels");
+    const xml = archive.getText(part);
     if (!xml)
         return map;
     const root = (0, xml_1.child)((0, xml_1.parseXml)(xml), "Relationships");
@@ -593,24 +678,31 @@ function srgb(node) {
         return `#${fallback.toLowerCase()}`;
     return undefined;
 }
-/** Named paragraph styles, with the formatting they add on top of the one they are based on. */
+/** Named styles, the document defaults, and the latent styles, from styles.xml. */
 function styleTable(archive) {
     const xml = archive.getText("word/styles.xml");
     if (!xml)
-        return {};
+        return { styles: {} };
     const root = (0, xml_1.child)((0, xml_1.parseXml)(xml), "styles");
     if (!root)
-        return {};
-    const table = {};
+        return { styles: {} };
+    const styles = {};
     for (const item of (0, xml_1.children)(root, "style")) {
         const id = (0, xml_1.attr)(item, "styleId");
         if (!id)
             continue;
         const style = {};
+        const kind = (0, xml_1.attr)(item, "type");
+        if (kind === "character" || kind === "table")
+            style.type = kind;
         const based = (0, xml_1.child)(item, "basedOn");
         const basedOn = based ? (0, xml_1.attr)(based, "val") : undefined;
         if (basedOn)
             style.basedOn = basedOn;
+        const linked = (0, xml_1.child)(item, "link");
+        const link = linked ? (0, xml_1.attr)(linked, "val") : undefined;
+        if (link)
+            style.link = link;
         const props = (0, xml_1.child)(item, "pPr");
         const align = props ? (0, xml_1.child)(props, "jc") : undefined;
         const value = align ? (0, xml_1.attr)(align, "val") : undefined;
@@ -619,9 +711,71 @@ function styleTable(archive) {
         const run = (0, xml_1.child)(item, "rPr");
         if (run)
             Object.assign(style, runProps(run));
-        table[id] = style;
+        styles[id] = style;
     }
-    return table;
+    const defaults = defaultsOf((0, xml_1.child)(root, "docDefaults"));
+    const latent = latentOf((0, xml_1.child)(root, "latentStyles"));
+    return { styles, ...(defaults ? { defaults } : {}), ...(latent.length ? { latent } : {}) };
+}
+/** The formatting a run or a paragraph gets when it names no style. */
+function defaultsOf(node) {
+    if (!node)
+        return undefined;
+    const defaults_ = (0, xml_1.child)(node, "rPrDefault");
+    const run = defaults_ ? (0, xml_1.child)(defaults_, "rPr") : undefined;
+    const props = run ? runProps(run) : {};
+    const defaults = {};
+    if (props.font)
+        defaults.font = props.font;
+    if (props.fontSize)
+        defaults.fontSize = props.fontSize;
+    if (props.bold)
+        defaults.bold = true;
+    if (props.italic)
+        defaults.italic = true;
+    if (props.color)
+        defaults.color = props.color;
+    return Object.keys(defaults).length ? defaults : undefined;
+}
+/** Styles Word builds the first time they are used, named and counted. */
+function latentOf(node) {
+    if (!node)
+        return [];
+    const found = [];
+    for (const item of (0, xml_1.children)(node, "lsdException")) {
+        const name = (0, xml_1.attr)(item, "name");
+        if (!name)
+            continue;
+        const count = Number((0, xml_1.attr)(item, "count"));
+        found.push(Number.isFinite(count) && count > 0 ? { name, count } : { name });
+    }
+    return found;
+}
+/** A picture bullet, keyed by its `numPicBulletId`, with the image bytes it points at. */
+function pictureBullets(root, archive) {
+    const found = new Map();
+    for (const item of (0, xml_1.children)(root, "numPicBullet")) {
+        const id = (0, xml_1.attr)(item, "numPicBulletId");
+        if (!id)
+            continue;
+        const drawing = (0, xml_1.child)(item, "drawing");
+        const frame = drawing ? (0, xml_1.child)(drawing, "inline") ?? (0, xml_1.child)(drawing, "anchor") : undefined;
+        const graphic = frame ? (0, xml_1.child)(frame, "graphic") : undefined;
+        const data = graphic ? (0, xml_1.child)(graphic, "graphicData") : undefined;
+        const blip = data ? (0, xml_1.child)(data, "pic") : undefined;
+        const fill = blip ? (0, xml_1.child)(blip, "blipFill") : undefined;
+        const embed = fill ? (0, xml_1.attr)((0, xml_1.child)(fill, "blip") ?? {}, "embed") : undefined;
+        const shape = (0, xml_1.child)(item, "pict");
+        const outline = shape ? (0, xml_1.child)(shape, "shape") : undefined;
+        const imagedata = outline ? (0, xml_1.child)(outline, "imagedata") : undefined;
+        const rel = embed ?? (imagedata ? (0, xml_1.attr)(imagedata, "id") : undefined);
+        if (!rel)
+            continue;
+        const target = relationships(archive, "word/_rels/numbering.xml.rels").get(rel);
+        const bytes = target ? archive.files.get(partPath(target)) : undefined;
+        found.set(id, { image: rel, ...(bytes ? { imageBytes: bytes, imageType: imageType(target ?? "") } : {}) });
+    }
+    return found;
 }
 function numberingTable(archive) {
     const xml = archive.getText("word/numbering.xml");
@@ -630,6 +784,7 @@ function numberingTable(archive) {
     const root = (0, xml_1.child)((0, xml_1.parseXml)(xml), "numbering");
     if (!root)
         return {};
+    const pictures = pictureBullets(root, archive);
     const abstracts = new Map();
     for (const item of (0, xml_1.children)(root, "abstractNum")) {
         const id = (0, xml_1.attr)(item, "abstractNumId");
@@ -645,9 +800,12 @@ function numberingTable(archive) {
             const formatNode = (0, xml_1.child)(level, "numFmt");
             const startAt = Number(startNode ? (0, xml_1.attr)(startNode, "val") ?? "" : "");
             const format = formatNode ? (0, xml_1.attr)(formatNode, "val") : undefined;
+            const pictureId = (0, xml_1.child)(level, "lvlPicBulletId");
+            const picture = pictureId ? pictures.get((0, xml_1.attr)(pictureId, "val") ?? "") : undefined;
             levels[Number.isFinite(index) ? index : 0] = {
                 text: value,
                 ...(bullet ? { bullet } : {}),
+                ...(picture ? { picture } : {}),
                 ...(Number.isFinite(startAt) && startAt !== 1 ? { start: startAt } : {}),
                 ...(format && format !== "decimal" && format !== "bullet" ? { format } : {}),
             };
@@ -687,6 +845,9 @@ function paragraphFrom(node, context, verbatim = [], blockIndex = -1, carried) {
         }
         else if (item.name === "del" || item.name === "moveFrom") {
             paragraph.runs.push(...changedRuns(item.node, context, link, bookmark, "delete", markup));
+        }
+        else if (MOVE_RANGES.has(item.name)) {
+            paragraph.runs.push(moveRangeRun(item.name, item.node, markup));
         }
         else if (item.name === "r") {
             const runs = runsFrom(item.node, context, link, bookmark, verbatim, blockIndex, [[item.name, signatureOf(item.node), here]]);
@@ -805,10 +966,9 @@ function applyParagraphProps(paragraph, props, context) {
     const shading = colorOf((0, xml_1.child)(props, "shd"));
     if (shading)
         paragraph.shading = shading;
-    const border = (0, xml_1.child)(props, "pBdr");
-    const borderColor = border ? colorOf((0, xml_1.child)(border, "top")) : undefined;
-    if (borderColor)
-        paragraph.border = borderColor;
+    const border = borderOf((0, xml_1.child)(props, "pBdr"));
+    if (border)
+        paragraph.border = border;
     if ((0, xml_1.child)(props, "pageBreakBefore"))
         paragraph.pageBreakBefore = true;
     if (on((0, xml_1.child)(props, "keepNext")))
@@ -824,9 +984,28 @@ function applyParagraphProps(paragraph, props, context) {
     const kept = PARAGRAPH_MARKS.filter((name) => on((0, xml_1.child)(props, name)));
     if (kept.length)
         paragraph.marks = kept;
-    const keptMarkup = keptXml(props, PARAGRAPH_KEPT);
-    if (keptMarkup.length)
-        paragraph.kept = keptMarkup;
+    const frame = frameOf((0, xml_1.child)(props, "framePr"));
+    if (frame)
+        paragraph.frame = frame;
+    const direction = directionOf((0, xml_1.child)(props, "textDirection"));
+    if (direction)
+        paragraph.direction = direction;
+    const aligned = (0, xml_1.child)(props, "textAlignment");
+    const alignedValue = aligned ? (0, xml_1.attr)(aligned, "val") : undefined;
+    if (alignedValue)
+        paragraph.textAlign = alignedValue;
+    const wrap = (0, xml_1.child)(props, "textboxTightWrap");
+    const wrapValue = wrap ? (0, xml_1.attr)(wrap, "val") : undefined;
+    if (wrapValue)
+        paragraph.tightWrap = wrapValue;
+    const div = (0, xml_1.child)(props, "divId");
+    const divValue = div ? (0, xml_1.attr)(div, "val") : undefined;
+    if (divValue)
+        paragraph.divId = divValue;
+    const rowStyle = (0, xml_1.child)(props, "cnfStyle");
+    const rowStyleValue = rowStyle ? (0, xml_1.attr)(rowStyle, "val") : undefined;
+    if (rowStyleValue)
+        paragraph.rowStyle = rowStyleValue;
     const tabs = (0, xml_1.child)(props, "tabs");
     if (tabs) {
         const stops = [];
@@ -900,6 +1079,14 @@ function signatureOf(node) {
 }
 /** Inline markup kept verbatim: a footnote or endnote reference, a comment marker, ruby text, an embedded object. */
 const KEPT_INLINE = new Set(["footnoteReference", "endnoteReference", "ruby", "object", "pict", "fldSimple", "commentRangeStart", "commentRangeEnd", "bookmarkEnd", "smartTag"]);
+/** A move range marks where a tracked move begins and ends. The text between the marks is read with the move itself. */
+const MOVE_RANGES = new Set(["moveFromRangeStart", "moveFromRangeEnd", "moveToRangeStart", "moveToRangeEnd"]);
+/** One end of a move range, kept so writing puts the marker back where it was. */
+function moveRangeRun(name, node, markup) {
+    const kind = name.startsWith("moveFrom") ? "moveFrom" : "moveTo";
+    const edge = name.endsWith("Start") ? "start" : "end";
+    return { text: "", moveRange: { kind, edge, id: (0, xml_1.attr)(node, "id") ?? "0", raw: markup || (0, xml_1.serialize)(name, node) } };
+}
 /** Turns a field instruction into the run that shows its result. */
 function fieldRun(instruction, result, shared, bookmark) {
     const run = { ...shared, text: result, field: instruction, ...(bookmark ? { bookmark } : {}) };
@@ -1058,9 +1245,19 @@ function runProps(props) {
     const kept = RUN_MARKS.filter((name) => on((0, xml_1.child)(props, name)));
     if (kept.length)
         shared.marks = kept;
-    const keptMarkup = keptXml(props, RUN_KEPT);
-    if (keptMarkup.length)
-        shared.kept = keptMarkup;
+    const border = borderOf((0, xml_1.child)(props, "bdr"));
+    if (border)
+        shared.border = border;
+    const shading = colorOf((0, xml_1.child)(props, "shd"));
+    if (shading)
+        shared.shading = shading;
+    const fit = (0, xml_1.child)(props, "fitText");
+    const fitWidth = positive(fit ? (0, xml_1.attr)(fit, "val") : undefined);
+    if (fitWidth !== undefined)
+        shared.fitText = fitWidth;
+    const layout = eastAsianLayoutOf((0, xml_1.child)(props, "eastAsianLayout"));
+    if (layout)
+        shared.eastAsianLayout = layout;
     const vert = (0, xml_1.child)(props, "vertAlign");
     const vertValue = vert ? (0, xml_1.attr)(vert, "val") : undefined;
     if (vertValue === "superscript" || vertValue === "subscript")
@@ -1073,6 +1270,14 @@ function runProps(props) {
     const halfPoints = Number(size ? (0, xml_1.attr)(size, "val") : undefined);
     if (Number.isFinite(halfPoints) && halfPoints > 0)
         shared.fontSize = halfPoints / 2;
+    const sizeCs = (0, xml_1.child)(props, "szCs");
+    const halfPointsCs = Number(sizeCs ? (0, xml_1.attr)(sizeCs, "val") : undefined);
+    if (Number.isFinite(halfPointsCs) && halfPointsCs > 0)
+        shared.fontSizeCs = halfPointsCs / 2;
+    if (on((0, xml_1.child)(props, "bCs")))
+        shared.boldCs = true;
+    if (on((0, xml_1.child)(props, "iCs")))
+        shared.italicCs = true;
     const fonts = (0, xml_1.child)(props, "rFonts");
     const font = fonts ? (0, xml_1.attr)(fonts, "ascii") ?? (0, xml_1.attr)(fonts, "hAnsi") : undefined;
     const themeFont = fonts ? themeFace((0, xml_1.attr)(fonts, "asciiTheme") ?? (0, xml_1.attr)(fonts, "hAnsiTheme"), "latin") : undefined;
@@ -1083,9 +1288,13 @@ function runProps(props) {
     const resolvedEastAsia = eastAsia || themeEastAsia;
     if (resolvedEastAsia && resolvedEastAsia !== (font || themeFont))
         shared.fontEastAsia = resolvedEastAsia;
-    const color = colorOf((0, xml_1.child)(props, "color"));
-    if (color)
-        shared.color = color;
+    const color = themeColorOf((0, xml_1.child)(props, "color"));
+    if (color.color)
+        shared.color = color.color;
+    if (color.colorAuto)
+        shared.colorAuto = true;
+    if (color.themeColor)
+        shared.themeColor = color.themeColor;
     const scale = Number((0, xml_1.child)(props, "w") ? (0, xml_1.attr)((0, xml_1.child)(props, "w"), "val") : undefined);
     if (Number.isFinite(scale) && scale > 0 && scale !== 100)
         shared.scale = scale;
@@ -1118,16 +1327,121 @@ function on(node) {
     const value = (0, xml_1.attr)(node, "val");
     return value !== "0" && value !== "false" && value !== "off";
 }
+const BORDER_STYLES = new Set(["single", "double", "dotted", "dashed", "dash", "wave", "thick", "nil", "none"]);
+/** A border read one side at a time, keeping each side's line and width. */
+function borderOf(node) {
+    if (!node)
+        return undefined;
+    const border = {};
+    for (const side of BORDER_SIDES) {
+        const edge = borderSide((0, xml_1.child)(node, side));
+        if (edge)
+            border[side] = edge;
+    }
+    return Object.keys(border).length ? border : undefined;
+}
+function borderSide(node) {
+    if (!node)
+        return undefined;
+    const side = {};
+    const style = (0, xml_1.attr)(node, "val");
+    const size = positive((0, xml_1.attr)(node, "sz"));
+    if (style && BORDER_STYLES.has(style))
+        side.style = style;
+    else if (style && style !== "nil" && style !== "none")
+        side.style = "single";
+    if (size !== undefined)
+        side.size = size;
+    const color = hexColor((0, xml_1.attr)(node, "color"));
+    if (color)
+        side.color = color;
+    return Object.keys(side).length ? side : undefined;
+}
+/** A paragraph frame: its size, where it sits, and how text wraps it. */
+function frameOf(node) {
+    if (!node)
+        return undefined;
+    const frame = {};
+    const width = positive((0, xml_1.attr)(node, "w"));
+    const height = positive((0, xml_1.attr)(node, "h"));
+    const x = Number((0, xml_1.attr)(node, "x"));
+    const y = Number((0, xml_1.attr)(node, "y"));
+    if (width !== undefined)
+        frame.width = width;
+    if (height !== undefined)
+        frame.height = height;
+    if (Number.isFinite(x))
+        frame.x = x;
+    if (Number.isFinite(y))
+        frame.y = y;
+    const anchorX = (0, xml_1.attr)(node, "hAnchor");
+    const anchorY = (0, xml_1.attr)(node, "vAnchor");
+    const wrap = (0, xml_1.attr)(node, "wrap");
+    if (anchorX)
+        frame.anchorX = anchorX;
+    if (anchorY)
+        frame.anchorY = anchorY;
+    if (wrap)
+        frame.wrap = wrap;
+    const drop = (0, xml_1.attr)(node, "dropCap");
+    const lines = Number((0, xml_1.attr)(node, "lines"));
+    if ((drop === "drop" || drop === "margin") && Number.isFinite(lines) && lines > 0) {
+        const space = positive((0, xml_1.attr)(node, "hSpace"));
+        frame.dropCap = space !== undefined ? { lines, space } : { lines };
+    }
+    return Object.keys(frame).length ? frame : undefined;
+}
+/** A text direction, mapped onto the three directions the page already uses. */
+function directionOf(node) {
+    const flow = node ? (0, xml_1.attr)(node, "val") : undefined;
+    if (flow === "tbRl" || flow === "btLr")
+        return "tb";
+    if (flow === "rlTb" || flow === "lrTbV")
+        return "rl";
+    if (flow === "lrTb")
+        return "lr";
+    return undefined;
+}
+/** East-asian layout: characters combined into one cell, turned vertical, or squeezed onto one line. */
+function eastAsianLayoutOf(node) {
+    if (!node)
+        return undefined;
+    const layout = {};
+    const id = (0, xml_1.attr)(node, "id");
+    if (id)
+        layout.id = id;
+    if ((0, xml_1.attr)(node, "combine") === "1" || (0, xml_1.attr)(node, "combine") === "true")
+        layout.combine = true;
+    if ((0, xml_1.attr)(node, "vert") === "1" || (0, xml_1.attr)(node, "vert") === "true")
+        layout.vert = true;
+    if ((0, xml_1.attr)(node, "vertCompress") === "1" || (0, xml_1.attr)(node, "vertCompress") === "true")
+        layout.twoInOne = true;
+    return Object.keys(layout).length ? layout : undefined;
+}
 function colorOf(node) {
     if (!node)
         return undefined;
-    const hex = (0, xml_1.attr)(node, "color") ?? (0, xml_1.attr)(node, "val") ?? (0, xml_1.attr)(node, "fill");
+    return hexColor((0, xml_1.attr)(node, "fill") ?? (0, xml_1.attr)(node, "color") ?? (0, xml_1.attr)(node, "val"));
+}
+function hexColor(hex) {
     if (!hex || hex === "auto" || !/^[0-9a-fA-F]{6}$/.test(hex))
         return undefined;
+    return `#${hex.toLowerCase()}`;
+}
+/** A run color that names a theme slot or `auto`, which a plain color does not. */
+function themeColorOf(node) {
+    if (!node)
+        return {};
+    const found = {};
     const theme = (0, xml_1.attr)(node, "themeColor");
     if (theme)
-        return undefined;
-    return `#${hex.toLowerCase()}`;
+        found.themeColor = theme;
+    const hex = (0, xml_1.attr)(node, "val");
+    if (hex === "auto")
+        found.colorAuto = true;
+    else if (hex && /^[0-9a-fA-F]{6}$/.test(hex))
+        found.color = `#${hex.toLowerCase()}`;
+    return found;
 }
 /** A theme font slot, mapped onto the face this model stores. Only the two faces the theme reader fills are named. */
 function themeFace(slot, face) {
@@ -1196,18 +1510,36 @@ function imageType(path) {
     return "image/png";
 }
 function tableFrom(node, context) {
+    const lines = (0, xml_1.children)(node, "tr");
     const table = {
-        rows: (0, xml_1.children)(node, "tr").map((row) => (0, xml_1.children)(row, "tc").map((cell) => cellFrom(cell, context))),
+        rows: lines.map((row) => (0, xml_1.children)(row, "tc").map((cell) => cellFrom(cell, context))),
     };
     const grid = (0, xml_1.child)(node, "tblGrid");
     const widths = grid ? (0, xml_1.children)(grid, "gridCol").map((column) => Number((0, xml_1.attr)(column, "w"))).filter((width) => Number.isFinite(width) && width > 0) : [];
     if (widths.length)
         table.widths = widths;
-    const first = (0, xml_1.children)(node, "tr")[0];
-    const props = first ? (0, xml_1.child)(first, "trPr") : undefined;
+    const heights = lines.map(rowHeight);
+    if (heights.some((height) => height !== undefined))
+        table.rowHeights = heights.map((height) => height?.value ?? 0);
+    const rules = heights.map((height) => height?.rule);
+    if (rules.some((rule) => rule !== undefined))
+        table.rowRules = rules;
+    const props = lines[0] ? (0, xml_1.child)(lines[0], "trPr") : undefined;
     if (props && (0, xml_1.child)(props, "tblHeader"))
         table.header = true;
     return table;
+}
+/** A row's height in twips, and whether it is exact or a minimum. */
+function rowHeight(row) {
+    const props = (0, xml_1.child)(row, "trPr");
+    const height = props ? (0, xml_1.child)(props, "trHeight") : undefined;
+    if (!height)
+        return undefined;
+    const value = Number((0, xml_1.attr)(height, "val"));
+    if (!Number.isFinite(value) || value <= 0)
+        return undefined;
+    const rule = (0, xml_1.attr)(height, "hRule");
+    return rule === "exact" || rule === "atLeast" ? { value, rule } : { value };
 }
 /** Paragraphs a cell holds, including those nested in a content control or a formula. */
 function cellParagraphs(node, context) {
@@ -1236,10 +1568,13 @@ function cellFrom(node, context) {
     const shading = colorOf(props ? (0, xml_1.child)(props, "shd") : undefined);
     if (shading)
         cell.shading = shading;
-    const borders = props ? (0, xml_1.child)(props, "tcBorders") : undefined;
-    const border = borders ? colorOf((0, xml_1.child)(borders, "top")) : undefined;
+    const border = props ? borderOf((0, xml_1.child)(props, "tcBorders")) : undefined;
     if (border)
         cell.border = border;
+    const align = props ? (0, xml_1.child)(props, "vAlign") : undefined;
+    const aligned = align ? (0, xml_1.attr)(align, "val") : undefined;
+    if (aligned === "center" || aligned === "bottom" || aligned === "top")
+        cell.align = aligned;
     return cell;
 }
 function assertOpenXml(bytes) {

@@ -66,6 +66,14 @@ export interface DocumentView {
     columnSpace(twips: number): void;
     /** Draws a line between columns, or removes it. */
     columnSeparator(on: boolean): void;
+    /** Sets each column's own width, in twips. An empty list clears them. */
+    columnWidths(widths: number[]): void;
+    /** Sets where the section's text sits between the top and bottom margin. */
+    verticalAlign(align: "top" | "center" | "both" | "bottom"): void;
+    /** Sets the document grid's line pitch, in twips. Zero clears it. */
+    linePitch(twips: number): void;
+    /** Sets where page numbers start and the format they use. A blank format is decimal. */
+    pageNumberFormat(start: number, format?: string): void;
     /** Whether the current section draws a line between columns. */
     columnSeparatorOn(): boolean;
     pageColor(color: string): void;
@@ -129,8 +137,8 @@ export interface DocumentView {
     pageNumber(): void;
     /** Inserts a `=SUM(LEFT)` formula in the current cell. */
     formula(): void;
-    /** Inserts a formula after the caret: a fraction, a superscript, a subscript, or a root. Each word stays its own text node. */
-    equation(kind: "frac" | "sup" | "sub" | "root", words: string[]): void;
+    /** Inserts a formula after the caret. Each word stays its own text node. */
+    equation(kind: EquationKind, words: string[]): void;
     /** The theme's color scheme, so the page can paint a theme color. */
     themeColors(): Record<string, string>;
     /** The theme's latin face, or nothing when the document has no theme. */
@@ -285,6 +293,14 @@ export interface DocumentView {
     cellBorder(color: string): void;
     /** Shades the current cell. An empty color clears it. */
     cellShading(color: string): void;
+    /** Sits the current cell's text at the top, center, or bottom. Top clears it. */
+    cellAlign(align: "top" | "center" | "bottom"): void;
+    /** Where the current cell's text sits. */
+    cellAlignOn(): "top" | "center" | "bottom" | undefined;
+    /** Sets the current row's height in twips. Zero clears it. */
+    rowHeight(twips: number): void;
+    /** Drops the current paragraph's first letter by this many lines. Zero clears it. */
+    dropCap(lines: number): void;
     /** Turns hyphenation on or off for the whole document. */
     hyphenate(on: boolean): void;
     /** Whether hyphenation is on. */
@@ -322,4 +338,7 @@ export interface DocumentView {
 }
 /** Pages you can edit. Headers and footers stay as opened; the story is what gets written back. */
 export declare function mountDocument(host: HTMLElement, doc: Document, options?: DocumentEditOptions): DocumentView;
+/** The markup and the pieces of a new formula. The pieces follow the text nodes, which is the order writing them back reads. */
+type EquationKind = "frac" | "sup" | "sub" | "subsup" | "root" | "delim" | "nary" | "func" | "bar" | "matrix";
+export {};
 //# sourceMappingURL=index.d.ts.map

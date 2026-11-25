@@ -5,6 +5,9 @@ import {
   type DocAlign,
   type DocBlock,
   type DocCell,
+  type DocBorder,
+  type DocBorderSide,
+  type DocFrame,
   type DocPageSetup,
   type DocParagraph,
   type DocRawBlock,
@@ -99,7 +102,19 @@ function controlXml(block: DocRawBlock, links: LinkIds, added: Relationship[]): 
 
 /** The words of a formula, in the order its text nodes were read. */
 function formulaTexts(pieces: NonNullable<DocRawBlock["formula"]>): string[] {
-  return pieces.flatMap((piece) => ("text" in piece ? [piece.text] : formulaTexts("top" in piece ? [...piece.top, ...piece.bottom] : "degree" in piece ? [...piece.body, ...piece.degree] : [...piece.base, ...piece.script])));
+  return pieces.flatMap((piece) => ("text" in piece ? [piece.text] : formulaTexts(formulaParts(piece))));
+}
+
+/** The parts of a formula piece in the order its text nodes were read. */
+function formulaParts(piece: Exclude<NonNullable<DocRawBlock["formula"]>[number], { text: string }>): NonNullable<DocRawBlock["formula"]> {
+  if (piece.kind === "frac") return [...piece.top, ...piece.bottom];
+  if (piece.kind === "subsup") return [...piece.base, ...piece.script, ...(piece.upper ?? [])];
+  if (piece.kind === "sup" || piece.kind === "sub") return [...piece.base, ...piece.script];
+  if (piece.kind === "root") return [...piece.degree, ...piece.body];
+  if (piece.kind === "func") return [...piece.name, ...piece.body];
+  if (piece.kind === "nary") return [...(piece.sub ?? []), ...(piece.sup ?? []), ...piece.body];
+  if (piece.kind === "delim" || piece.kind === "bar") return piece.body;
+  return piece.kind === "matrix" ? piece.rows.flat() : [];
 }
 
 /** Puts each edited word back into its own text node, leaving the formula's structure alone. */
@@ -173,10 +188,14 @@ function mergeSection(original: string, page: DocPageSetup): string {
     .replace(/<w:pgSz\b[^/]*\/>/gi, "")
     .replace(/<w:pgMar\b[^/]*\/>/gi, "")
     .replace(/<w:cols\b[^/]*\/>/gi, "")
+    .replace(/<w:cols\b[\s\S]*?<\/w:cols>/gi, "")
     .replace(/<w:lnNumType\b[^/]*\/>/gi, "")
     .replace(/<w:pgBorders\b[\s\S]*?<\/w:pgBorders>/gi, "")
     .replace(/<w:textDirection\b[^/]*\/>/gi, "")
-    .replace(/<w:type\b[^/]*\/>/gi, "");
+    .replace(/<w:type\b[^/]*\/>/gi, "")
+    .replace(/<w:vAlign\b[^/]*\/>/gi, "")
+    .replace(/<w:docGrid\b[^/]*\/>/gi, "")
+    .replace(/<w:pgNumType\b[^/]*\/>/gi, "");
   return `<w:sectPr>${pageXml(page)}${kept}</w:sectPr>`;
 }
 
@@ -186,38 +205,87 @@ function sectionXml(page: DocPageSetup): string {
 
 function pageXml(page: DocPageSetup): string {
   const orient = page.landscape ? ` w:orient="landscape"` : "";
-  const columns = page.columns && page.columns > 1 ? `<w:cols w:num="${page.columns}"${page.columnSpace ? ` w:space="${Math.round(page.columnSpace)}"` : ""}${page.columnSeparator ? ` w:sep="1"` : ""}/>` : "";
+  const columns = columnsXml(page);
   const gutter = page.gutter ? ` w:gutter="${Math.round(page.gutter)}"` : "";
   const header = page.headerDistance !== undefined ? ` w:header="${Math.round(page.headerDistance)}"` : "";
   const footer = page.footerDistance !== undefined ? ` w:footer="${Math.round(page.footerDistance)}"` : "";
   const lines = page.lineNumbers ? `<w:lnNumType w:countBy="1"/>` : "";
-  const pageBorder = page.border ? `<w:pgBorders><w:top w:val="single" w:color="${attr(page.border.replace(/^#/, ""))}"/></w:pgBorders>` : "";
+  const pageBorder = page.border ? `<w:pgBorders>${borderSidesXml(page.border)}</w:pgBorders>` : "";
+  const aligned = page.verticalAlign && page.verticalAlign !== "top" ? `<w:vAlign w:val="${page.verticalAlign}"/>` : "";
+  const grid = gridXml(page.grid);
+  const numbering = pageNumberXml(page.pageNumber);
   const direction = page.direction === "tb" ? `<w:textDirection w:val="tbRl"/>` : page.direction === "rl" ? `<w:textDirection w:val="rlTb"/>` : "";
   const type = page.break && page.break !== "nextPage" ? `<w:type w:val="${page.break}"/>` : "";
-  return `<w:pgSz w:w="${Math.round(page.width)}" w:h="${Math.round(page.height)}"${orient}/><w:pgMar w:top="${Math.round(page.margin.top)}" w:bottom="${Math.round(page.margin.bottom)}" w:left="${Math.round(page.margin.left)}" w:right="${Math.round(page.margin.right)}"${gutter}${header}${footer}/>${columns}${lines}${pageBorder}${direction}${type}`;
+  return `<w:pgSz w:w="${Math.round(page.width)}" w:h="${Math.round(page.height)}"${orient}/><w:pgMar w:top="${Math.round(page.margin.top)}" w:bottom="${Math.round(page.margin.bottom)}" w:left="${Math.round(page.margin.left)}" w:right="${Math.round(page.margin.right)}"${gutter}${header}${footer}/>${columns}${lines}${pageBorder}${direction}${type}${aligned}${grid}${numbering}`;
+}
+
+/** Columns, with each column's own width when the section gives them. */
+function columnsXml(page: DocPageSetup): string {
+  const widths = page.columnWidths ?? [];
+  const count = Math.max(page.columns ?? 0, widths.length);
+  if (count <= 1 && !widths.length) return "";
+  const space = page.columnSpace ? ` w:space="${Math.round(page.columnSpace)}"` : "";
+  const separator = page.columnSeparator ? ` w:sep="1"` : "";
+  const equal = widths.length ? ` w:equalWidth="0"` : "";
+  const cols = widths.map((width) => `<w:col w:w="${Math.round(width)}"/>`).join("");
+  return `<w:cols w:num="${count}"${space}${separator}${equal}>${cols}</w:cols>`;
+}
+
+/** The document grid, written only for the parts the section sets. */
+function gridXml(grid: DocPageSetup["grid"]): string {
+  if (!grid) return "";
+  const type = grid.type ? ` w:type="${attr(grid.type)}"` : "";
+  const line = grid.linePitch !== undefined ? ` w:linePitch="${Math.round(grid.linePitch)}"` : "";
+  const char = grid.charSpace !== undefined ? ` w:charSpace="${Math.round(grid.charSpace)}"` : "";
+  return `<w:docGrid${type}${line}${char}/>`;
+}
+
+/** Where page numbers start and the format they use. */
+function pageNumberXml(numbering: DocPageSetup["pageNumber"]): string {
+  if (!numbering) return "";
+  const start = numbering.start !== undefined ? ` w:start="${Math.round(numbering.start)}"` : "";
+  const format = numbering.format ? ` w:fmt="${attr(numbering.format)}"` : "";
+  return `<w:pgNumType${start}${format}/>`;
+}
+
+const BORDER_SIDES = ["top", "left", "bottom", "right"] as const;
+
+/** One side of a border, with its own line and width. A side without a color keeps the line. */
+function borderSidesXml(border: DocBorder): string {
+  return BORDER_SIDES.filter((side) => border[side]).map((side) => borderSideXml(side, border[side]!)).join("");
+}
+
+function borderSideXml(side: (typeof BORDER_SIDES)[number], edge: DocBorderSide): string {
+  const style = edge.style ?? "single";
+  const size = edge.size !== undefined ? ` w:sz="${Math.round(edge.size)}"` : "";
+  const color = edge.color ? ` w:color="${attr(edge.color.replace(/^#/, ""))}"` : "";
+  return `<w:${side} w:val="${attr(style)}"${size}${color}/>`;
 }
 
 function tableXml(table: DocTable, links: LinkIds, added: Relationship[]): string {
   const rows = table.rows;
   const body = rows
-    .map((row) => {
+    .map((row, index) => {
+      const height = table.rowHeights?.[index];
+      const rule = table.rowRules?.[index];
+      const rowProps = height ? `<w:trPr>${table.header && index === 0 ? "<w:tblHeader/>" : ""}<w:trHeight w:val="${Math.round(height)}"${rule ? ` w:hRule="${rule}"` : ""}/></w:trPr>` : table.header && index === 0 ? "<w:trPr><w:tblHeader/></w:trPr>" : "";
       const cells = row
         .map((cell) => {
           const span = cell.span && cell.span > 1 ? `<w:gridSpan w:val="${cell.span}"/>` : "";
           const merge = cell.vMerge ? `<w:vMerge${cell.vMerge === "restart" ? ` w:val="restart"` : ""}/>` : "";
           const shading = cell.shading ? `<w:shd w:val="clear" w:fill="${attr(cell.shading.replace(/^#/, ""))}"/>` : "";
-          const border = cell.border ? `<w:tcBorders><w:top w:val="single" w:sz="4" w:color="${attr(cell.border.replace(/^#/, ""))}"/></w:tcBorders>` : "";
-          const props = span || merge || shading || border ? `<w:tcPr>${span}${merge}${shading}${border}</w:tcPr>` : "";
+          const border = cell.border ? `<w:tcBorders>${borderSidesXml(cell.border)}</w:tcBorders>` : "";
+          const align = cell.align && cell.align !== "top" ? `<w:vAlign w:val="${cell.align}"/>` : "";
+          const props = span || merge || shading || border || align ? `<w:tcPr>${span}${merge}${shading}${border}${align}</w:tcPr>` : "";
           const content = cell.paragraphs.map((paragraph) => paragraphXml(paragraph, undefined, links, added)).join("") || paragraphXml({ runs: [] }, undefined, links, added);
           return `<w:tc>${props}${content}</w:tc>`;
         })
         .join("");
-      return `<w:tr>${cells}</w:tr>`;
+      return `<w:tr>${rowProps}${cells}</w:tr>`;
     })
     .join("");
   const grid = table.widths?.length ? `<w:tblGrid>${table.widths.map((width) => `<w:gridCol w:w="${Math.round(width)}"/>`).join("")}</w:tblGrid>` : "";
-  const header = table.header ? body.replace("<w:tr>", "<w:tr><w:trPr><w:tblHeader/></w:trPr>") : body;
-  return `<w:tbl>${grid}${header}</w:tbl>`;
+  return `<w:tbl>${grid}${body}</w:tbl>`;
 }
 
 function paragraphXml(paragraph: DocParagraph, section: string | undefined, links: LinkIds, added: Relationship[]): string {
@@ -230,19 +298,39 @@ function paragraphXml(paragraph: DocParagraph, section: string | undefined, link
   if (paragraph.spacing) props.push(spacingXml(paragraph.spacing));
   if (paragraph.indent) props.push(indentXml(paragraph.indent));
   if (paragraph.shading) props.push(`<w:shd w:val="clear" w:fill="${attr(paragraph.shading.replace(/^#/, ""))}"/>`);
-  if (paragraph.border) props.push(`<w:pBdr><w:top w:val="single" w:sz="4" w:color="${attr(paragraph.border.replace(/^#/, ""))}"/></w:pBdr>`);
+  if (paragraph.border) props.push(`<w:pBdr>${borderSidesXml(paragraph.border)}</w:pBdr>`);
   if (paragraph.pageBreakBefore) props.push("<w:pageBreakBefore/>");
   if (paragraph.keepNext) props.push("<w:keepNext/>");
   if (paragraph.keepLines) props.push("<w:keepLines/>");
   if (paragraph.widowControl) props.push("<w:widowControl/>");
   if (paragraph.outline !== undefined) props.push(`<w:outlineLvl w:val="${Math.round(paragraph.outline)}"/>`);
   for (const mark of paragraph.marks ?? []) if (/^[a-zA-Z]+$/.test(mark)) props.push(`<w:${mark}/>`);
-  for (const markup of paragraph.kept ?? []) props.push(withPrefix(markup));
+  if (paragraph.frame) props.push(frameXml(paragraph.frame));
+  if (paragraph.direction === "tb") props.push(`<w:textDirection w:val="tbRl"/>`);
+  else if (paragraph.direction === "rl") props.push(`<w:textDirection w:val="rlTb"/>`);
+  if (paragraph.textAlign) props.push(`<w:textAlignment w:val="${attr(paragraph.textAlign)}"/>`);
+  if (paragraph.tightWrap) props.push(`<w:textboxTightWrap w:val="${attr(paragraph.tightWrap)}"/>`);
+  if (paragraph.divId) props.push(`<w:divId w:val="${attr(paragraph.divId)}"/>`);
+  if (paragraph.rowStyle) props.push(`<w:cnfStyle w:val="${attr(paragraph.rowStyle)}"/>`);
   if (paragraph.tabs?.length) props.push(tabsXml(paragraph.tabs));
   if (paragraph.caption) props.push(`<w:pStyle w:val="${attr(`Caption${paragraph.caption}`)}"/>`);
   if (section) props.push(section);
   const head = props.length ? `<w:pPr>${props.join("")}</w:pPr>` : "";
   return `<w:p>${head}${runsXml(paragraph.runs, links, added)}</w:p>`;
+}
+
+/** A paragraph frame, written with the parts the paragraph sets. */
+function frameXml(frame: DocFrame): string {
+  const width = frame.width !== undefined ? ` w:w="${Math.round(frame.width)}"` : "";
+  const height = frame.height !== undefined ? ` w:h="${Math.round(frame.height)}"` : "";
+  const x = frame.x !== undefined ? ` w:x="${Math.round(frame.x)}"` : "";
+  const y = frame.y !== undefined ? ` w:y="${Math.round(frame.y)}"` : "";
+  const anchorX = frame.anchorX ? ` w:hAnchor="${attr(frame.anchorX)}"` : "";
+  const anchorY = frame.anchorY ? ` w:vAnchor="${attr(frame.anchorY)}"` : "";
+  const wrap = frame.wrap ? ` w:wrap="${attr(frame.wrap)}"` : "";
+  const drop = frame.dropCap ? ` w:dropCap="drop" w:lines="${Math.round(frame.dropCap.lines)}"` : "";
+  const space = frame.dropCap?.space ? ` w:hSpace="${Math.round(frame.dropCap.space)}"` : "";
+  return `<w:framePr${width}${height}${x}${y}${anchorX}${anchorY}${wrap}${drop}${space}/>`;
 }
 
 function tabsXml(tabs: NonNullable<DocParagraph["tabs"]>): string {
@@ -276,6 +364,7 @@ function runsXml(runs: DocRun[], links: LinkIds, added: Relationship[]): string 
       if (openLink) out += linkXml(openLink, links, added);
     }
     if (run.bookmark) out += `<w:bookmarkStart w:id="0" w:name="${attr(run.bookmark)}"/>`;
+    if (run.moveRange) out += withPrefix(run.moveRange.raw);
     if (run.field) out += fieldXml(run);
     else if (run.raw) out += run.raw.startsWith("<w:r") || run.raw.startsWith("<r") || run.raw.startsWith("<w:ins") || run.raw.startsWith("<w:del") || run.raw.startsWith("<w:bookmarkEnd") || run.raw.startsWith("<w:commentRange") || run.raw.startsWith("<w:smartTag") || run.raw.startsWith("<w:fldSimple") || run.raw.startsWith("<w:pict") ? run.raw : `<w:r>${run.raw}</w:r>`;
     else out += runXml(run);
@@ -316,6 +405,15 @@ function runXml(run: DocRun): string {
   return `<w:r>${props}${lead}<w:t xml:space="preserve">${text(run.text)}</w:t>${comment}</w:r>`;
 }
 
+/** East-asian layout: combined characters, vertical text, or a two-in-one line. */
+function eastAsianLayoutXml(layout: NonNullable<DocRun["eastAsianLayout"]>): string {
+  const id = layout.id ? ` w:id="${attr(layout.id)}"` : "";
+  const combine = layout.combine ? ` w:combine="1"` : "";
+  const vert = layout.vert ? ` w:vert="1"` : "";
+  const two = layout.twoInOne ? ` w:vertCompress="1"` : "";
+  return `<w:eastAsianLayout${id}${combine}${vert}${two}/>`;
+}
+
 /** The markup was read without its prefix, so writing it back puts the wordprocessing prefix on every element. */
 function withPrefix(markup: string): string {
   return markup.replace(/<(\/?)([A-Za-z][\w.]*)/g, "<$1w:$2");
@@ -330,7 +428,9 @@ function runPropsXml(run: DocRun): string {
   }
   if (run.runStyle) parts.push(`<w:rStyle w:val="${attr(run.runStyle)}"/>`);
   if (run.bold) parts.push("<w:b/>");
+  if (run.boldCs) parts.push("<w:bCs/>");
   if (run.italic) parts.push("<w:i/>");
+  if (run.italicCs) parts.push("<w:iCs/>");
   if (run.caps) parts.push("<w:caps/>");
   if (run.smallCaps) parts.push("<w:smallCaps/>");
   if (run.underline) parts.push(`<w:u w:val="${run.underline}"/>`);
@@ -341,10 +441,18 @@ function runPropsXml(run: DocRun): string {
   if (run.lang) parts.push(`<w:lang w:val="${attr(run.lang)}"/>`);
   if (run.kern) parts.push(`<w:kern w:val="${Math.round(run.kern)}"/>`);
   for (const mark of run.marks ?? []) if (/^[a-zA-Z]+$/.test(mark)) parts.push(`<w:${mark}/>`);
-  for (const markup of run.kept ?? []) parts.push(withPrefix(markup));
+  if (run.border) parts.push(`<w:bdr>${borderSidesXml(run.border)}</w:bdr>`);
+  if (run.shading) parts.push(`<w:shd w:val="clear" w:fill="${attr(run.shading.replace(/^#/, ""))}"/>`);
+  if (run.fitText) parts.push(`<w:fitText w:val="${Math.round(run.fitText)}"/>`);
+  if (run.eastAsianLayout) parts.push(eastAsianLayoutXml(run.eastAsianLayout));
   if (run.vertAlign) parts.push(`<w:vertAlign w:val="${run.vertAlign}"/>`);
   if (run.fontSize) parts.push(`<w:sz w:val="${Math.round(run.fontSize * 2)}"/>`);
-  if (run.color) parts.push(`<w:color w:val="${attr(run.color.replace(/^#/, ""))}"/>`);
+  if (run.fontSizeCs) parts.push(`<w:szCs w:val="${Math.round(run.fontSizeCs * 2)}"/>`);
+  if (run.color || run.colorAuto || run.themeColor) {
+    const value = run.colorAuto && !run.color ? "auto" : attr((run.color ?? "").replace(/^#/, ""));
+    const theme = run.themeColor ? ` w:themeColor="${attr(run.themeColor)}"` : "";
+    if (value) parts.push(`<w:color w:val="${value}"${theme}/>`);
+  }
   if (run.highlight) parts.push(`<w:highlight w:val="${highlightName(run.highlight)}"/>`);
   if (run.scale && run.scale !== 100) parts.push(`<w:w w:val="${Math.round(run.scale)}"/>`);
   if (run.spacing) parts.push(`<w:spacing w:val="${Math.round(run.spacing)}"/>`);

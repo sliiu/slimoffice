@@ -16,8 +16,14 @@ export interface DocPage {
     /** Which header of the section this page shows, so an edit lands in the right one. */
     headerKind: StoryKind;
     footerKind: StoryKind;
-    /** A border around the page, #rrggbb. */
-    border?: string;
+    /** A border around the page, one side at a time. */
+    border?: DocPageSetup["border"];
+    /** Each column's width, in pixels, when the columns are not equal. */
+    columnWidths?: number[];
+    /** Where the page's text sits between the margins. */
+    verticalAlign?: DocPageSetup["verticalAlign"];
+    /** The document grid's line pitch, in pixels. */
+    linePitch?: number;
     /** Text direction for the section this page belongs to. */
     direction?: "lr" | "tb" | "rl";
     /** The section numbers its lines. */

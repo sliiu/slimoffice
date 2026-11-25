@@ -14,6 +14,7 @@ exports.tableOfContents = tableOfContents;
 exports.headingLevel = headingLevel;
 exports.indexLines = indexLines;
 exports.pageNumber = pageNumber;
+exports.formatPageNumber = formatPageNumber;
 exports.resolvePageFields = resolvePageFields;
 exports.formulaResult = formulaResult;
 exports.misspellings = misspellings;
@@ -171,42 +172,81 @@ function indexLines(document, pages) {
 function pageNumber(pages, index) {
     return pages[index] ?? 1;
 }
+/** A page number written in the format the section asks for. Decimal is the plain number. */
+function formatPageNumber(value, format) {
+    if (format === "lowerRoman" || format === "upperRoman") {
+        const roman = toRoman(value);
+        return format === "lowerRoman" ? roman.toLowerCase() : roman;
+    }
+    if (format === "lowerLetter" || format === "upperLetter") {
+        const letter = value > 0 && value <= 26 ? String.fromCharCode(96 + value) : String(value);
+        return format === "upperLetter" ? letter.toUpperCase() : letter;
+    }
+    return String(value);
+}
+function toRoman(value) {
+    const numerals = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+    let rest = Math.max(0, Math.floor(value));
+    let out = "";
+    for (const [amount, numeral] of numerals)
+        while (rest >= amount) {
+            out += numeral;
+            rest -= amount;
+        }
+    return out || String(value);
+}
 /** Fills PAGE and NUMPAGES fields with the page they fall on and the page count. Other fields keep the text they already show. */
 function resolvePageFields(document, pages) {
     const total = Math.max(1, ...pages, 0);
     let seen = 0;
     for (const section of document.sections) {
+        const start = section.page.pageNumber?.start;
+        const format = section.page.pageNumber?.format;
         for (const block of section.blocks) {
-            const page = pages[seen] ?? 1;
+            const page = (pages[seen] ?? 1) + (start !== undefined ? start - 1 : 0);
             if (isDocParagraph(block))
-                fillPage(block, page, total);
+                fillPage(block, page, total, format);
             else if (isDocTable(block)) {
                 for (const row of block.rows)
                     for (const cell of row)
                         for (const paragraph of cell.paragraphs)
-                            fillPage(paragraph, page, total);
+                            fillPage(paragraph, page, total, format);
             }
             seen += 1;
         }
     }
 }
-function fillPage(paragraph, page, total) {
+function fillPage(paragraph, page, total, format) {
     for (const run of paragraph.runs) {
         const field = run.field?.trim().toUpperCase();
         if (field === "PAGE")
-            run.text = String(page);
+            run.text = formatPageNumber(page, format);
         else if (field === "NUMPAGES")
             run.text = String(total);
     }
 }
-/** What a table formula shows. `=SUM(LEFT)` and `=SUM(ABOVE)` add the numbers in that direction; anything else stays as written. */
+/** What a table formula shows. SUM, AVERAGE, MIN, MAX, and COUNT each take LEFT, RIGHT, ABOVE, or BELOW; anything else stays as written. */
 function formulaResult(rows, row, col, instruction) {
-    const formula = /^\s*=\s*SUM\s*\(\s*(LEFT|ABOVE)\s*\)/i.exec(instruction);
-    if (!formula?.[1])
+    const formula = /^\s*=\s*(SUM|AVERAGE|MIN|MAX|COUNT)\s*\(\s*(LEFT|RIGHT|ABOVE|BELOW)\s*\)/i.exec(instruction);
+    if (!formula?.[1] || !formula[2])
         return "";
-    const cells = formula[1].toUpperCase() === "LEFT" ? (rows[row]?.slice(0, col) ?? []) : rows.slice(0, row).map((line) => line[col]).filter((cell) => cell !== undefined);
-    const total = cells.reduce((sum, cell) => sum + cellValue(cell), 0);
-    return String(total);
+    const direction = formula[2].toUpperCase();
+    const cells = direction === "LEFT" ? (rows[row]?.slice(0, col) ?? [])
+        : direction === "RIGHT" ? (rows[row]?.slice(col + 1) ?? [])
+            : direction === "ABOVE" ? rows.slice(0, row).map((line) => line[col]).filter((cell) => cell !== undefined)
+                : rows.slice(row + 1).map((line) => line[col]).filter((cell) => cell !== undefined);
+    const values = cells.map(cellValue);
+    const name = formula[1].toUpperCase();
+    if (name === "COUNT")
+        return String(values.filter((value) => value !== 0).length);
+    if (!values.length)
+        return "0";
+    if (name === "MIN")
+        return String(Math.min(...values));
+    if (name === "MAX")
+        return String(Math.max(...values));
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return name === "AVERAGE" ? String(total / values.length) : String(total);
 }
 /** The words a spell check would flag: tokens that are not in the dictionary. */
 function misspellings(text, dictionary) {
@@ -223,15 +263,26 @@ function cellValue(cell) {
     const value = Number(cell.paragraphs.flatMap((paragraph) => paragraph.runs.filter((run) => !run.deleted).map((run) => run.text)).join("").trim());
     return Number.isFinite(value) ? value : 0;
 }
-/** The formatting a style contributes, following `basedOn` so the named style wins over the one it inherits. */
+/** The formatting a style contributes, following `basedOn` so the named style wins over the one it inherits. Document defaults sit underneath. */
 function styleOf(styles, name) {
     const merged = {};
-    if (!styles || !name)
+    const defaults = styles?.defaults;
+    if (defaults?.bold)
+        merged.bold = true;
+    if (defaults?.italic)
+        merged.italic = true;
+    if (defaults?.fontSize)
+        merged.fontSize = defaults.fontSize;
+    if (defaults?.font)
+        merged.font = defaults.font;
+    if (defaults?.color)
+        merged.color = defaults.color;
+    if (!styles?.styles || !name)
         return merged;
     const chain = [];
     const seen = new Set();
     for (let current = name; current && !seen.has(current);) {
-        const style = styles[current];
+        const style = styles.styles[current];
         if (!style)
             break;
         seen.add(current);

@@ -7,7 +7,7 @@ const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72];
 const INDENT_STEP = 720;
 const INDENT_EDGES = ["left", "right", "firstLine", "hanging"];
 const SECTION_STARTS = ["nextPage", "continuous", "evenPage", "oddPage", "nextColumn"];
-const RUN_SWITCHES = ["bCs", "iCs", "outline", "shadow", "emboss", "imprint", "effect"];
+const RUN_SWITCHES = ["outline", "shadow", "emboss", "imprint", "effect"];
 const PARAGRAPH_SWITCHES = ["suppressLineNumbers", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid", "contextualSpacing", "mirrorIndents", "suppressOverlap"];
 /** Changes the letters without touching anything that is not a letter. */
 function cased(text, mode) {
@@ -37,8 +37,7 @@ function mountDocument(host, doc, options = {}) {
     const zh = locale === "zh-CN";
     if (!doc.sections[0])
         doc.sections.push({ page: { ...document_core_1.DEFAULT_PAGE }, header: [], footer: [], blocks: [] });
-    const undoStack = [];
-    const redoStack = [];
+    const history = { undo: [], redo: [] };
     let selected = { section: 0, block: 0 };
     let armed = false;
     let root = el("div", "doc-view");
@@ -47,16 +46,15 @@ function mountDocument(host, doc, options = {}) {
     /** Formatting the painter copied, waiting for the next call to apply it. */
     let painted;
     /** The ruler and the heading navigation are drawn beside the pages. Both start hidden. */
-    let rulerOn = false;
-    let navigationOn = false;
+    const viewState = { ruler: false, navigation: false };
     /** The current paragraph's runs, kept so a cut and paste carries the formatting with the text. */
     let clipped = [];
     const view = {
         destroy: () => root.remove(),
         undo,
         redo,
-        canUndo: () => undoStack.length > 0,
-        canRedo: () => redoStack.length > 0,
+        canUndo: () => history.undo.length > 0,
+        canRedo: () => history.redo.length > 0,
         bold: () => toggleMark("bold"),
         boldOn: () => markOn("bold"),
         italic: () => toggleMark("italic"),
@@ -108,6 +106,10 @@ function mountDocument(host, doc, options = {}) {
         columnSpace,
         columnSeparator,
         columnSeparatorOn: () => currentSection().page.columnSeparator === true,
+        columnWidths,
+        verticalAlign,
+        linePitch,
+        pageNumberFormat,
         pageColor,
         pageColorOn: () => currentSection().page.background,
         find,
@@ -146,15 +148,15 @@ function mountDocument(host, doc, options = {}) {
         setView,
         zoom: () => doc.zoom ?? 100,
         setZoom,
-        ruler: () => rulerOn,
+        ruler: () => viewState.ruler,
         toggleRuler,
-        navigation: () => navigationOn,
+        navigation: () => viewState.navigation,
         toggleNavigation,
         headings,
         goToHeading,
         macros: () => doc.macros === true,
         style: applyStyle,
-        styles: () => Object.keys(doc.styles ?? {}),
+        styles: () => Object.keys(doc.styles?.styles ?? {}),
         track: (on) => {
             doc.tracking = on;
             touch();
@@ -222,6 +224,10 @@ function mountDocument(host, doc, options = {}) {
         headerRow,
         cellBorder,
         cellShading,
+        cellAlign,
+        cellAlignOn: () => currentCell()?.align,
+        rowHeight,
+        dropCap,
         hyphenate,
         hyphenateOn: () => doc.hyphenation === true,
         readCaption,
@@ -245,6 +251,7 @@ function mountDocument(host, doc, options = {}) {
     render();
     return view;
     function render() {
+        const span = captureSpan(root);
         applyTheme();
         const laid = (0, document_renderer_1.paginate)(doc);
         const numbers = pageNumbers(laid);
@@ -257,9 +264,9 @@ function mountDocument(host, doc, options = {}) {
             root.dataset.view = mode;
         if (doc.zoom && doc.zoom !== 100)
             root.style.zoom = String(doc.zoom / 100);
-        if (rulerOn)
+        if (viewState.ruler)
             root.append(rulerNode());
-        if (navigationOn)
+        if (viewState.navigation)
             root.append(navigationNode());
         const shown = mode === "outline" ? laid.map((page) => ({ ...page, blocks: page.blocks.filter(outlined) })) : laid;
         shown.forEach((page, pageIndex) => {
@@ -269,8 +276,13 @@ function mountDocument(host, doc, options = {}) {
             paper.style.padding = mode === "print" ? sides(page.margin) : "12px";
             if (page.background)
                 paper.style.background = page.background;
-            if (page.border)
-                paper.style.outline = `1px solid ${page.border}`;
+            paintBorder(paper, page.border);
+            if (page.columnWidths?.length)
+                paper.dataset.columnWidths = page.columnWidths.join(" ");
+            if (page.verticalAlign && page.verticalAlign !== "top")
+                paper.style.alignContent = page.verticalAlign === "both" ? "space-between" : page.verticalAlign;
+            if (page.linePitch)
+                paper.style.setProperty("--doc-line-pitch", `${page.linePitch}px`);
             if (page.direction === "tb")
                 paper.style.writingMode = "vertical-rl";
             if (page.lineNumbers)
@@ -287,15 +299,18 @@ function mountDocument(host, doc, options = {}) {
             }
             const sectionIndex = sectionIndexFor(page.blocks);
             const notes = [];
+            let separator;
             for (const block of page.blocks) {
-                if ((0, document_core_1.isDocParagraph)(block) && block.note)
+                if ((0, document_core_1.isDocParagraph)(block) && block.noteSeparator)
+                    separator = block;
+                else if ((0, document_core_1.isDocParagraph)(block) && block.note)
                     notes.push(block);
                 else
                     body.append(renderBlock(block, sectionIndex));
             }
             paper.append(body);
             if (notes.length)
-                paper.append(noteList(notes, sectionIndex));
+                paper.append(noteList(notes, sectionIndex, separator));
             if (mode === "print" && page.footer.length)
                 paper.append(story("footer", page.footer, page.footerKind, sectionIndexFor(page.blocks), pageIndex + 1, laid.length));
             paper.dataset.page = String(pageIndex);
@@ -303,6 +318,7 @@ function mountDocument(host, doc, options = {}) {
         });
         const bar = host.querySelector(":scope > .office-toolbar");
         host.replaceChildren(...(bar ? [bar, root] : [root]));
+        restoreSpan(root, span);
     }
     function sectionIndexFor(blocks) {
         const first = blocks[0];
@@ -329,6 +345,12 @@ function mountDocument(host, doc, options = {}) {
             const tr = document.createElement("tr");
             if (rowIndex === 0 && (origin ? origin.table.header : block.header))
                 tr.dataset.header = "on";
+            const rowHeight = block.rowHeights?.[sliceIndex];
+            if (rowHeight) {
+                tr.style.height = twips(rowHeight);
+                if (block.rowRules?.[sliceIndex] === "exact")
+                    tr.style.maxHeight = twips(rowHeight);
+            }
             row.forEach((cell, colIndex) => {
                 if (cell.vMerge === "continue")
                     return;
@@ -340,8 +362,9 @@ function mountDocument(host, doc, options = {}) {
                     td.rowSpan = continued;
                 if (cell.shading)
                     td.style.background = cell.shading;
-                if (cell.border)
-                    td.style.border = `1px solid ${cell.border}`;
+                paintBorder(td, cell.border);
+                if (cell.align && cell.align !== "top")
+                    td.style.verticalAlign = cell.align;
                 const width = block.widths?.[colIndex];
                 if (width)
                     td.style.width = twips(width);
@@ -366,8 +389,10 @@ function mountDocument(host, doc, options = {}) {
                 if (field !== "PAGE" && field !== "NUMPAGES")
                     continue;
                 const rendered = para.querySelector(`[data-run="${item.runs.indexOf(run)}"]`);
+                const numbering = doc.sections[sectionIndex]?.page.pageNumber;
+                const shown = page + (numbering?.start !== undefined ? numbering.start - 1 : 0);
                 if (rendered)
-                    rendered.textContent = field === "PAGE" ? String(page) : String(total);
+                    rendered.textContent = field === "PAGE" ? (0, document_core_1.formatPageNumber)(shown, numbering?.format) : String(total);
             }
             node.append(para);
         });
@@ -432,11 +457,11 @@ function mountDocument(host, doc, options = {}) {
         finish();
     }
     function toggleRuler() {
-        rulerOn = !rulerOn;
+        viewState.ruler = !viewState.ruler;
         render();
     }
     function toggleNavigation() {
-        navigationOn = !navigationOn;
+        viewState.navigation = !viewState.navigation;
         render();
     }
     /** A block an outline keeps: a heading, or a paragraph with an outline level. */
@@ -498,22 +523,26 @@ function mountDocument(host, doc, options = {}) {
         const ink = theme.colors.dk1;
         for (const section of doc.sections) {
             for (const block of section.blocks) {
-                if (!(0, document_core_1.isDocParagraph)(block))
-                    continue;
-                for (const run of block.runs) {
-                    if (face && run.font === "theme:latin")
-                        run.font = face;
-                    if (eastAsia && run.fontEastAsia === "theme:eastAsia")
-                        run.fontEastAsia = eastAsia;
-                    if (ink && !run.color)
-                        run.color = ink;
+                const paragraphs = (0, document_core_1.isDocParagraph)(block) ? [block] : (0, document_core_1.isDocTable)(block) ? block.rows.flatMap((row) => row.flatMap((cell) => cell.paragraphs)) : [];
+                for (const paragraph of paragraphs) {
+                    for (const run of paragraph.runs) {
+                        if (face && run.font === "theme:latin")
+                            run.font = face;
+                        if (eastAsia && run.fontEastAsia === "theme:eastAsia")
+                            run.fontEastAsia = eastAsia;
+                        const themed = run.themeColor ? theme.colors[run.themeColor] : undefined;
+                        if (themed)
+                            run.color = themed;
+                        else if (ink && !run.color && !run.colorAuto)
+                            run.color = ink;
+                    }
                 }
             }
         }
     }
     /** The words of a formula, in the order its text nodes were read. */
     function formulaPlain(pieces) {
-        return (pieces ?? []).map((piece) => ("text" in piece ? piece.text : formulaPlain("top" in piece ? [...piece.top, ...piece.bottom] : "degree" in piece ? [...piece.body, ...piece.degree] : [...piece.base, ...piece.script]))).join("");
+        return (pieces ?? []).map((piece) => ("text" in piece ? piece.text : formulaPlain(formulaChildren(piece)))).join("");
     }
     /** A formula laid out: a fraction stacks over a bar, a script shifts, a radical roots. Its words can be edited; the structure stays. */
     function formulaNode(pieces, edited, place) {
@@ -546,17 +575,57 @@ function mountDocument(host, doc, options = {}) {
                 root.append(document.createTextNode("√"), formulaNode(piece.body, edited, place));
                 node.append(root);
             }
+            else if (piece.kind === "delim") {
+                const wrapped = el("span", "doc-delim");
+                wrapped.append(document.createTextNode(piece.open), formulaNode(piece.body, edited, place), document.createTextNode(piece.close));
+                node.append(wrapped);
+            }
+            else if (piece.kind === "nary") {
+                const nary = el("span", "doc-nary");
+                const sign = el("span", "doc-nary-sign");
+                sign.append(document.createTextNode(piece.sign), formulaNode(piece.sub ?? [], edited, place), formulaNode(piece.sup ?? [], edited, place));
+                nary.append(sign, formulaNode(piece.body, edited, place));
+                node.append(nary);
+            }
+            else if (piece.kind === "func") {
+                const named = el("span", "doc-func");
+                named.append(formulaNode(piece.name, edited, place), formulaNode(piece.body, edited, place));
+                node.append(named);
+            }
+            else if (piece.kind === "bar") {
+                const barred = el("span", piece.under ? "doc-under" : "doc-bar");
+                barred.append(formulaNode(piece.body, edited, place));
+                node.append(barred);
+            }
+            else if (piece.kind === "matrix") {
+                const grid = el("span", "doc-matrix");
+                for (const row of piece.rows) {
+                    const line = el("span", "doc-matrix-row");
+                    for (const cell of row)
+                        line.append(formulaNode([cell], edited, place));
+                    grid.append(line);
+                }
+                node.append(grid);
+            }
             else {
-                const script = el("span", piece.kind === "sup" ? "doc-sup" : "doc-sub");
+                const script = el("span", piece.kind === "sup" ? "doc-sup" : piece.kind === "subsup" ? "doc-subsup" : "doc-sub");
                 script.append(formulaNode(piece.base, edited, place), formulaNode(piece.script, edited, place));
+                if (piece.upper)
+                    script.append(formulaNode(piece.upper, edited, place));
                 node.append(script);
             }
         }
         return node;
     }
-    /** Footnotes and endnotes for one page, under a rule, each editable. */
-    function noteList(notes, sectionIndex) {
+    /** Footnotes and endnotes for one page, under the separator the document carries, each editable. */
+    function noteList(notes, sectionIndex, separator) {
         const list = el("ol", "doc-notes");
+        if (separator?.noteSeparator) {
+            list.dataset.separator = separator.noteSeparator.type;
+            list.style.borderTop = "1px solid currentColor";
+            if (separator.noteSeparator.type === "continuationSeparator")
+                list.style.borderTopStyle = "dashed";
+        }
         for (const note of notes) {
             const item = document.createElement("li");
             item.dataset.note = `${note.note?.kind ?? "footnote"}:${note.note?.id ?? ""}`;
@@ -573,13 +642,25 @@ function mountDocument(host, doc, options = {}) {
         if (sameSpot(spot, selected))
             node.classList.add("is-selected");
         const style = (0, document_core_1.styleOf)(doc.styles, item.style);
+        const linked = doc.styles?.styles?.[style.link ?? ""];
         const align = item.align ?? style.align;
         if (align)
             node.style.textAlign = align === "both" ? "justify" : align;
         if (item.shading)
             node.style.background = item.shading;
-        if (item.border)
-            node.style.borderTop = `1px solid ${item.border}`;
+        paintBorder(node, item.border);
+        if (item.outline !== undefined && item.outline > 0)
+            node.style.paddingLeft = twips(item.outline * 360);
+        if (item.widowControl)
+            node.dataset.widow = "on";
+        if (item.frame?.width)
+            node.style.maxWidth = twips(item.frame.width);
+        if (item.frame?.dropCap)
+            node.dataset.dropCap = String(item.frame.dropCap.lines);
+        if (item.direction === "tb")
+            node.style.writingMode = "vertical-rl";
+        else if (item.direction === "rl")
+            node.style.direction = "rtl";
         const indent = item.indent;
         if (indent?.left)
             node.style.marginLeft = twips(indent.left);
@@ -599,14 +680,24 @@ function mountDocument(host, doc, options = {}) {
         if (line !== undefined)
             node.style.lineHeight = item.spacing?.lineRule === "auto" ? String(line / 240) : twips(line);
         const marker = (0, document_core_1.listMarker)(doc.numbering, item, listCounts(spot));
-        if (marker) {
+        const picture = item.numbering ? doc.numbering?.[item.numbering.id]?.[item.numbering.level]?.picture : undefined;
+        if (picture?.imageBytes) {
+            const bullet = document.createElement("img");
+            bullet.className = "doc-marker";
+            bullet.alt = "";
+            bullet.src = `data:${picture.imageType ?? "image/png"};base64,${base64(picture.imageBytes)}`;
+            bullet.style.height = "1em";
+            bullet.contentEditable = "false";
+            node.append(bullet);
+        }
+        else if (marker) {
             const bullet = el("span", "doc-marker");
             bullet.textContent = marker;
             bullet.contentEditable = "false";
             node.append(bullet);
         }
         item.runs.forEach((run, runIndex) => {
-            const rendered = runNode(styled(run, style));
+            const rendered = runNode(styled(run, run.runStyle ? (0, document_core_1.styleOf)(doc.styles, run.runStyle) : linked?.type === "character" ? linked : style));
             if (editable && !run.image) {
                 rendered.contentEditable = "true";
                 rendered.dataset.run = String(runIndex);
@@ -676,17 +767,17 @@ function mountDocument(host, doc, options = {}) {
         return counts.length ? counts : [1];
     }
     function undo() {
-        const prev = undoStack.pop();
+        const prev = history.undo.pop();
         if (!prev)
             return;
-        redoStack.push(snapshot());
+        history.redo.push(snapshot());
         restore(prev);
     }
     function redo() {
-        const next = redoStack.pop();
+        const next = history.redo.pop();
         if (!next)
             return;
-        undoStack.push(snapshot());
+        history.undo.push(snapshot());
         restore(next);
     }
     function restore(saved) {
@@ -896,87 +987,140 @@ function mountDocument(host, doc, options = {}) {
         });
     }
     function clearFormat() {
-        const item = current();
-        if (!item)
+        const items = chosenParagraphs();
+        if (!items.length)
             return;
         if (!remember())
             return;
-        delete item.align;
-        delete item.spacing;
-        delete item.indent;
-        delete item.shading;
-        delete item.numbering;
-        for (const run of textRuns(item)) {
-            const text = run.text;
-            const image = run.image;
-            const bytes = run.imageBytes;
-            const type = run.imageType;
-            for (const key of Object.keys(run))
-                delete run[key];
-            run.text = text;
-            if (image) {
-                run.image = image;
-                if (bytes)
-                    run.imageBytes = bytes;
-                if (type)
-                    run.imageType = type;
+        for (const item of items) {
+            delete item.align;
+            delete item.spacing;
+            delete item.indent;
+            delete item.shading;
+            delete item.numbering;
+            for (const run of textRuns(item)) {
+                const text = run.text;
+                const image = run.image;
+                const bytes = run.imageBytes;
+                const type = run.imageType;
+                for (const key of Object.keys(run))
+                    delete run[key];
+                run.text = text;
+                if (image) {
+                    run.image = image;
+                    if (bytes)
+                        run.imageBytes = bytes;
+                    if (type)
+                        run.imageType = type;
+                }
             }
         }
         finish();
     }
     function align(value) {
-        const item = current();
-        if (!item)
+        const items = chosenParagraphs();
+        if (!items.length)
             return;
         if (!remember())
             return;
-        if (value === "left")
-            delete item.align;
-        else
-            item.align = value;
+        for (const item of items) {
+            if (value === "left")
+                delete item.align;
+            else
+                item.align = value;
+        }
         finish();
     }
     function alignOn(value) {
         return (current()?.align ?? "left") === value;
     }
     function indent(direction) {
-        const item = current();
-        if (!item)
+        const items = chosenParagraphs();
+        if (!items.length)
             return;
         if (!remember())
             return;
-        const left = Math.max(0, (item.indent?.left ?? 0) + direction * INDENT_STEP);
-        item.indent = { ...item.indent, ...(left ? { left } : {}) };
-        if (!left)
-            delete item.indent.left;
-        if (!item.indent.left && item.indent.right === undefined && item.indent.firstLine === undefined && item.indent.hanging === undefined) {
-            delete item.indent;
+        for (const item of items) {
+            const left = Math.max(0, (item.indent?.left ?? 0) + direction * INDENT_STEP);
+            item.indent = { ...item.indent, ...(left ? { left } : {}) };
+            if (!left)
+                delete item.indent.left;
+            if (!item.indent.left && item.indent.right === undefined && item.indent.firstLine === undefined && item.indent.hanging === undefined) {
+                delete item.indent;
+            }
         }
         finish();
     }
-    /** Sets one edge of the current paragraph's indent. A first line and a hanging indent cannot both stand. */
+    /** Sets one edge of the indent on every paragraph in the selection. A first line and a hanging indent cannot both stand. */
     function indentEdge(edge, twips) {
         if (!INDENT_EDGES.includes(edge) || !Number.isFinite(twips) || twips < 0)
             return;
-        const item = current();
-        if (!item)
+        const items = chosenParagraphs();
+        if (!items.length)
             return;
         if (!remember())
             return;
-        const kept = { ...item.indent };
-        if (edge === "firstLine")
-            delete kept.hanging;
-        if (edge === "hanging")
-            delete kept.firstLine;
-        if (twips)
-            kept[edge] = Math.floor(twips);
-        else
-            delete kept[edge];
-        if (kept.left !== undefined || kept.right !== undefined || kept.firstLine !== undefined || kept.hanging !== undefined)
-            item.indent = kept;
-        else
-            delete item.indent;
+        for (const item of items) {
+            const kept = { ...item.indent };
+            if (edge === "firstLine")
+                delete kept.hanging;
+            if (edge === "hanging")
+                delete kept.firstLine;
+            if (twips)
+                kept[edge] = Math.floor(twips);
+            else
+                delete kept[edge];
+            if (kept.left !== undefined || kept.right !== undefined || kept.firstLine !== undefined || kept.hanging !== undefined)
+                item.indent = kept;
+            else
+                delete item.indent;
+        }
         finish();
+    }
+    /** The paragraphs the selection covers, or the one holding the caret when nothing is selected. */
+    function chosenParagraphs() {
+        const spanned = spannedParagraphs();
+        if (spanned.length)
+            return spanned;
+        const item = current();
+        return item ? [item] : [];
+    }
+    /** Paragraphs the browser selection crosses, in document order. One paragraph, or none, leaves it empty. */
+    function spannedParagraphs() {
+        const selection = root.ownerDocument.defaultView?.getSelection();
+        if (!selection || selection.isCollapsed || selection.rangeCount === 0)
+            return [];
+        const range = selection.getRangeAt(0);
+        const found = [];
+        for (const node of root.querySelectorAll(".doc-paragraph")) {
+            if (!range.intersectsNode(node))
+                continue;
+            const spot = spotFrom(node);
+            const item = spot ? paragraphAt(spot) : undefined;
+            if (item && !found.includes(item))
+                found.push(item);
+        }
+        if (found.length < 2)
+            return [];
+        return found.map((item) => liveParagraph(item) ?? item);
+    }
+    /** The paragraph as the document holds it now. A redraw can move a block into an older page, so the node may point at a copy. */
+    function liveParagraph(item) {
+        for (const section of doc.sections) {
+            for (const block of section.blocks) {
+                if (!(0, document_core_1.isDocTable)(block) && (0, document_core_1.isDocParagraph)(block) && block.runs === item.runs)
+                    return block;
+                if ((0, document_core_1.isDocTable)(block)) {
+                    for (const row of block.rows)
+                        for (const cell of row) {
+                            const match = cell.paragraphs.find((paragraph) => paragraph.runs === item.runs);
+                            if (match)
+                                return match;
+                        }
+                }
+            }
+        }
+        return undefined;
     }
     function bullet() {
         toggleList([
@@ -1217,6 +1361,58 @@ function mountDocument(host, doc, options = {}) {
             delete section.page.columnSpace;
         finish();
     }
+    /** Gives each column its own width. Fewer widths than columns leaves the rest equal. */
+    function columnWidths(widths) {
+        const section = currentSection();
+        if (!widths.every((width) => Number.isFinite(width) && width > 0))
+            return;
+        if (!remember())
+            return;
+        if (widths.length) {
+            section.page.columnWidths = widths.map((width) => Math.round(width));
+            section.page.columns = Math.max(section.page.columns ?? 0, widths.length);
+        }
+        else {
+            delete section.page.columnWidths;
+        }
+        finish();
+    }
+    /** Sets where the section's text sits. Top is the default and clears the setting. */
+    function verticalAlign(align) {
+        const section = currentSection();
+        if (align !== "top" && align !== "center" && align !== "both" && align !== "bottom")
+            return;
+        if (!remember())
+            return;
+        if (align === "top")
+            delete section.page.verticalAlign;
+        else
+            section.page.verticalAlign = align;
+        finish();
+    }
+    /** Sets the document grid's line pitch. Zero clears the grid. */
+    function linePitch(pitch) {
+        const section = currentSection();
+        if (!Number.isFinite(pitch) || pitch < 0)
+            return;
+        if (!remember())
+            return;
+        if (pitch)
+            section.page.grid = { ...section.page.grid, linePitch: Math.round(pitch) };
+        else
+            delete section.page.grid;
+        finish();
+    }
+    /** Sets where the section's page numbers start and the format they use. */
+    function pageNumberFormat(start, format) {
+        const section = currentSection();
+        if (!Number.isFinite(start) || start < 1)
+            return;
+        if (!remember())
+            return;
+        section.page.pageNumber = { start: Math.round(start), ...(format ? { format } : {}) };
+        finish();
+    }
     /** Draws a line between the current section's columns. A single column has none. */
     function columnSeparator(on) {
         const section = currentSection();
@@ -1364,27 +1560,40 @@ function mountDocument(host, doc, options = {}) {
         options.onStatus?.(zh ? "正在朗读" : "Reading");
     }
     async function copy() {
-        const item = current();
-        if (!item)
+        const runs = copiedRuns();
+        if (!runs.length)
             return;
-        clipped = textRuns(item).map((run) => ({ ...run }));
-        await writeClipboard(clipped.map((run) => run.text).join(""));
+        clipped = runs.map((run) => ({ ...run }));
+        await writeClipboard(root.ownerDocument.defaultView, clipped.map((run) => run.text).join(""), clipHtml(clipped));
     }
     async function cut() {
         const item = current();
-        if (!item)
+        const runs = copiedRuns();
+        if (!item || !runs.length)
             return;
-        await copy();
+        clipped = runs.map((run) => ({ ...run }));
+        const range = selectedRange();
+        await writeClipboard(root.ownerDocument.defaultView, clipped.map((run) => run.text).join(""), clipHtml(clipped));
         if (!remember())
             return;
-        item.runs = [{ text: "" }];
+        if (range && selected.run !== undefined) {
+            const run = item.runs[selected.run];
+            if (run)
+                run.text = run.text.slice(0, range.start) + run.text.slice(range.end);
+        }
+        else {
+            item.runs = [{ text: "" }];
+        }
         finish();
     }
     async function paste() {
         const item = current();
         if (!item)
             return;
-        const runs = clipped.length ? clipped.map((run) => ({ ...run })) : [{ text: await readClipboard() }];
+        const view = root.ownerDocument.defaultView;
+        const fromClip = clipped.length ? clipped.map((run) => ({ ...run })) : undefined;
+        const html = fromClip ? undefined : await readClipboardHtml(view);
+        const runs = fromClip ?? (html ? clipRuns(html) : [{ text: await readClipboard(view) }]);
         if (runs.every((run) => !run.text))
             return;
         if (!remember())
@@ -1392,6 +1601,19 @@ function mountDocument(host, doc, options = {}) {
         const empty = item.runs.length === 1 && !item.runs[0]?.text;
         item.runs = empty ? runs : [...item.runs, ...runs];
         finish();
+    }
+    /** The runs a copy takes: the characters selected inside one run, or every text run of the current paragraph. */
+    function copiedRuns() {
+        const item = current();
+        if (!item)
+            return [];
+        const range = selectedRange();
+        if (!range || selected.run === undefined)
+            return textRuns(item).map((run) => ({ ...run }));
+        const run = item.runs[selected.run];
+        if (!run)
+            return [];
+        return [{ ...run, text: run.text.slice(range.start, range.end) }];
     }
     function applyToRuns(change) {
         const item = current();
@@ -1534,10 +1756,10 @@ function mountDocument(host, doc, options = {}) {
     function remember() {
         if (doc.readOnly)
             return false;
-        undoStack.push(snapshot());
-        if (undoStack.length > 50)
-            undoStack.shift();
-        redoStack.length = 0;
+        history.undo.push(snapshot());
+        if (history.undo.length > 50)
+            history.undo.shift();
+        history.redo.length = 0;
         return true;
     }
     function snapshot() {
@@ -1597,7 +1819,7 @@ function mountDocument(host, doc, options = {}) {
                 paragraph.runs.push({ text: "" });
         }
         if (!count)
-            undoStack.pop();
+            history.undo.pop();
         else
             finish();
         return count;
@@ -1618,7 +1840,7 @@ function mountDocument(host, doc, options = {}) {
         return lines;
     }
     function openedText() {
-        const saved = undoStack[0];
+        const saved = history.undo[0];
         if (!saved)
             return storyText();
         const sections = JSON.parse(saved.sections);
@@ -2051,7 +2273,7 @@ function mountDocument(host, doc, options = {}) {
             delete item.shading;
         finish();
     }
-    /** Borders the current paragraph, or clears it when no color is given. */
+    /** Borders the current paragraph, or clears it when no color is given. The color goes on every side. */
     function border(color) {
         const item = current();
         if (!item)
@@ -2059,7 +2281,7 @@ function mountDocument(host, doc, options = {}) {
         if (!remember())
             return;
         if (color)
-            item.border = color;
+            item.border = solidBorder(color);
         else
             delete item.border;
         finish();
@@ -2123,13 +2345,13 @@ function mountDocument(host, doc, options = {}) {
             delete section.page.lineNumbers;
         finish();
     }
-    /** Borders the page, or clears it when no color is given. */
+    /** Borders the page, or clears it when no color is given. The color goes on every side. */
     function pageBorder(color) {
         const section = currentSection();
         if (!remember())
             return;
         if (color)
-            section.page.border = color;
+            section.page.border = solidBorder(color);
         else
             delete section.page.border;
         finish();
@@ -2210,7 +2432,7 @@ function mountDocument(host, doc, options = {}) {
             delete table.header;
         finish();
     }
-    /** Borders the current cell, or clears it when no color is given. */
+    /** Borders the current cell, or clears it when no color is given. The color goes on every side. */
     function cellBorder(color) {
         const cell = currentCell();
         if (!cell)
@@ -2218,7 +2440,7 @@ function mountDocument(host, doc, options = {}) {
         if (!remember())
             return;
         if (color)
-            cell.border = color;
+            cell.border = solidBorder(color);
         else
             delete cell.border;
         finish();
@@ -2234,6 +2456,57 @@ function mountDocument(host, doc, options = {}) {
             cell.shading = color;
         else
             delete cell.shading;
+        finish();
+    }
+    /** Sits the current cell's text between its top and bottom. Top is the default, so it clears the mark. */
+    function cellAlign(align) {
+        const cell = currentCell();
+        if (!cell || (align !== "top" && align !== "center" && align !== "bottom"))
+            return;
+        if (!remember())
+            return;
+        if (align === "top")
+            delete cell.align;
+        else
+            cell.align = align;
+        finish();
+    }
+    /** Sets the current row's height in twips, as an exact height. Zero clears it. */
+    function rowHeight(height) {
+        const table = currentTable();
+        if (!table || selected.row === undefined || !Number.isFinite(height) || height < 0)
+            return;
+        if (!remember())
+            return;
+        const count = table.rows.length;
+        const heights = table.rowHeights ? [...table.rowHeights] : Array.from({ length: count }, () => 0);
+        const rules = table.rowRules ? [...table.rowRules] : Array.from({ length: count }, () => undefined);
+        heights[selected.row] = height;
+        rules[selected.row] = height > 0 ? "exact" : undefined;
+        if (heights.some((value) => value > 0)) {
+            table.rowHeights = heights;
+            table.rowRules = rules;
+        }
+        else {
+            delete table.rowHeights;
+            delete table.rowRules;
+        }
+        finish();
+    }
+    /** Drops the current paragraph's first letter by this many lines. Zero clears the drop cap. */
+    function dropCap(lines) {
+        const item = current();
+        if (!item || !Number.isFinite(lines) || lines < 0)
+            return;
+        if (!remember())
+            return;
+        if (lines > 0)
+            item.frame = { ...item.frame, dropCap: { lines: Math.round(lines) } };
+        else if (item.frame) {
+            delete item.frame.dropCap;
+            if (!Object.keys(item.frame).length)
+                delete item.frame;
+        }
         finish();
     }
     /** The cell the caret is in. */
@@ -2448,13 +2721,13 @@ function paragraphsOf(blocks) {
     return found;
 }
 const MATH = "xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\"";
-/** The markup and the pieces of a new formula. The pieces follow the text nodes, which is the order writing them back reads. */
 function formulaMarkup(kind, parts) {
     const word = (value) => `<m:r><m:t>${escapeXml(value)}</m:t></m:r>`;
     const piece = (value) => ({ text: value });
     const first = parts[0] ?? "";
     const second = parts[1] ?? first;
-    const rest = parts.slice(2);
+    const third = parts[2] ?? "";
+    const rest = parts.slice(kind === "subsup" || kind === "nary" || kind === "func" ? 3 : 2);
     if (kind === "frac") {
         return {
             raw: `<m:oMath ${MATH}><m:f><m:num>${word(first)}</m:num><m:den>${word(second)}</m:den></m:f>${rest.map(word).join("")}</m:oMath>`,
@@ -2467,12 +2740,70 @@ function formulaMarkup(kind, parts) {
             pieces: [{ kind: "root", body: [piece(first)], degree: [piece(second)] }, ...rest.map(piece)],
         };
     }
+    if (kind === "subsup") {
+        return {
+            raw: `<m:oMath ${MATH}><m:sSubSup><m:e>${word(first)}</m:e><m:sub>${word(second)}</m:sub><m:sup>${word(third)}</m:sup></m:sSubSup>${rest.map(word).join("")}</m:oMath>`,
+            pieces: [{ kind, base: [piece(first)], script: [piece(second)], upper: [piece(third)] }, ...rest.map(piece)],
+        };
+    }
+    if (kind === "delim") {
+        return {
+            raw: `<m:oMath ${MATH}><m:d><m:dPr><m:begChr m:val="("/><m:endChr m:val=")"/></m:dPr><m:e>${word(first)}</m:e></m:d>${rest.map(word).join("")}</m:oMath>`,
+            pieces: [{ kind, open: "(", close: ")", body: [piece(first)] }, ...rest.map(piece)],
+        };
+    }
+    if (kind === "nary") {
+        return {
+            raw: `<m:oMath ${MATH}><m:nary><m:naryPr><m:chr m:val="∑"/></m:naryPr><m:sub>${word(second)}</m:sub><m:sup>${word(third)}</m:sup><m:e>${word(first)}</m:e></m:nary>${rest.map(word).join("")}</m:oMath>`,
+            pieces: [{ kind, sign: "∑", body: [piece(first)], sub: [piece(second)], sup: [piece(third)] }, ...rest.map(piece)],
+        };
+    }
+    if (kind === "func") {
+        return {
+            raw: `<m:oMath ${MATH}><m:func><m:fName>${word(first)}</m:fName><m:e>${word(second)}</m:e></m:func>${rest.map(word).join("")}</m:oMath>`,
+            pieces: [{ kind, name: [piece(first)], body: [piece(second)] }, ...rest.map(piece)],
+        };
+    }
+    if (kind === "bar") {
+        return {
+            raw: `<m:oMath ${MATH}><m:bar><m:e>${word(first)}</m:e></m:bar>${rest.map(word).join("")}</m:oMath>`,
+            pieces: [{ kind, body: [piece(first)] }, ...rest.map(piece)],
+        };
+    }
+    if (kind === "matrix") {
+        const cells = parts.slice(0, 4);
+        while (cells.length < 4)
+            cells.push("");
+        const row = (values) => `<m:mr>${values.map((value) => `<m:e>${word(value)}</m:e>`).join("")}</m:mr>`;
+        return {
+            raw: `<m:oMath ${MATH}><m:m>${row(cells.slice(0, 2))}${row(cells.slice(2))}</m:m></m:oMath>`,
+            pieces: [{ kind, rows: [cells.slice(0, 2).map(piece), cells.slice(2).map(piece)] }],
+        };
+    }
     const tag = kind === "sup" ? "sSup" : "sSub";
     const script = kind === "sup" ? "sup" : "sub";
     return {
         raw: `<m:oMath ${MATH}><m:${tag}><m:e>${word(first)}</m:e><m:${script}>${word(second)}</m:${script}></m:${tag}>${rest.map(word).join("")}</m:oMath>`,
         pieces: [{ kind, base: [piece(first)], script: [piece(second)] }, ...rest.map(piece)],
     };
+}
+/** The nested pieces of a formula, in the order its text nodes were read. */
+function formulaChildren(piece) {
+    if (piece.kind === "frac")
+        return [...piece.top, ...piece.bottom];
+    if (piece.kind === "subsup")
+        return [...piece.base, ...piece.script, ...(piece.upper ?? [])];
+    if (piece.kind === "sup" || piece.kind === "sub")
+        return [...piece.base, ...piece.script];
+    if (piece.kind === "nary")
+        return [...(piece.sub ?? []), ...(piece.sup ?? []), ...piece.body];
+    if (piece.kind === "matrix")
+        return piece.rows.flat();
+    if (piece.kind === "root")
+        return [...piece.degree, ...piece.body];
+    if (piece.kind === "func")
+        return [...piece.name, ...piece.body];
+    return "body" in piece ? piece.body : [];
 }
 const MERGE_KINDS = ["formLetters", "mailingLabels", "envelopes", "catalog", "email"];
 const MERGE_DATA = ["textFile", "database", "spreadsheet", "native", "odso"];
@@ -2582,7 +2913,8 @@ function runNode(run) {
     if (run.tabBefore)
         span.append(document.createTextNode(" "));
     span.append(document.createTextNode(run.caps ? run.text.toUpperCase() : run.text));
-    if (run.bold)
+    const complex = holdsComplex(run.text);
+    if (run.bold || (complex && run.boldCs))
         span.style.fontWeight = "700";
     if (run.smallCaps)
         span.style.fontVariant = "small-caps";
@@ -2590,7 +2922,7 @@ function runNode(run) {
         span.style.display = "none";
     if (run.emphasis)
         span.style.textEmphasis = "dot";
-    if (run.italic)
+    if (run.italic || (complex && run.italicCs))
         span.style.fontStyle = "italic";
     if (run.underline)
         span.style.textDecoration = underlineOf(run.underline);
@@ -2606,13 +2938,23 @@ function runNode(run) {
         span.style.fontSize = "0.75em";
     if (run.highlight)
         span.style.background = run.highlight;
-    if (run.fontSize)
-        span.style.fontSize = `${run.fontSize}px`;
+    const size = complex && run.fontSizeCs ? run.fontSizeCs : run.fontSize;
+    if (size)
+        span.style.fontSize = `${size}px`;
     const face = run.fontEastAsia ? (run.font ? `"${run.fontEastAsia}", "${run.font}"` : run.fontEastAsia) : run.font;
     if (face)
         span.style.fontFamily = face;
     if (run.color)
         span.style.color = run.color;
+    if (run.shading)
+        span.style.background = run.shading;
+    paintBorder(span, run.border);
+    if (run.fitText)
+        span.style.maxWidth = twips(run.fitText);
+    if (run.eastAsianLayout?.vert)
+        span.style.writingMode = "vertical-rl";
+    if (run.eastAsianLayout?.combine)
+        span.style.letterSpacing = "-0.1em";
     if (run.scale && run.scale !== 100)
         span.style.transform = `scaleX(${run.scale / 100})`;
     if (run.spacing)
@@ -2683,6 +3025,32 @@ function cropClip(crop) {
     const edge = (value) => Math.max(0, Math.min(value ?? 0, 100));
     return `inset(${edge(crop.top)}% ${edge(crop.right)}% ${edge(crop.bottom)}% ${edge(crop.left)}%)`;
 }
+/** Whether the text holds a character that takes the complex-script size: CJK, or Arabic and Hebrew. */
+function holdsComplex(text) {
+    return /[֐-ࣿᄀ-ᇿ⺀-鿿가-힯豈-﫿︰-﹏＀-￯]/.test(text);
+}
+const BORDER_EDGES = ["top", "left", "bottom", "right"];
+/** A solid border of one color on every side, which is what the toolbar's border button sets. */
+function solidBorder(color) {
+    const side = { style: "single", size: 4, color };
+    return { top: { ...side }, left: { ...side }, bottom: { ...side }, right: { ...side } };
+}
+/** Paints each side of a border with its own line and width. */
+function paintBorder(node, border) {
+    if (!border)
+        return;
+    for (const edge of BORDER_EDGES) {
+        const side = border[edge];
+        if (!side)
+            continue;
+        const width = side.size ? Math.max(1, Math.round(side.size / 8)) : 1;
+        const line = side.style === "double" ? "double" : side.style === "dotted" ? "dotted" : side.style === "dashed" || side.style === "dash" ? "dashed" : side.style === "wave" ? "wavy" : "solid";
+        node.style.setProperty(`border-${edge}`, `${width}px ${line} ${colorOf(side.color)}`);
+    }
+}
+function colorOf(color) {
+    return color ?? "currentColor";
+}
 function underlineOf(value) {
     if (value === "double")
         return "underline double";
@@ -2702,7 +3070,7 @@ function styled(run, style) {
         ...(style.italic && !run.italic ? { italic: true } : {}),
         ...(style.fontSize && !run.fontSize ? { fontSize: style.fontSize } : {}),
         ...(style.font && !run.font ? { font: style.font } : {}),
-        ...(style.color && !run.color ? { color: style.color } : {}),
+        ...(style.color && !run.color && !run.colorAuto && !run.themeColor ? { color: style.color } : {}),
     };
 }
 /** The page each block falls on, counted the same way the pages were laid out. */
@@ -2806,14 +3174,138 @@ function base64(bytes) {
         binary += String.fromCharCode(byte);
     return btoa(binary);
 }
-async function writeClipboard(text) {
-    const clip = navigator.clipboard;
-    if (clip)
-        await clip.writeText(text);
+/** A selection that crosses paragraphs, so a redraw can put it back. One paragraph is left to the caret. */
+function captureSpan(root) {
+    const selection = root.ownerDocument.defaultView?.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0)
+        return undefined;
+    const range = selection.getRangeAt(0);
+    const spots = [];
+    for (const node of root.querySelectorAll(".doc-paragraph")) {
+        if (!range.intersectsNode(node))
+            continue;
+        const spot = spotFrom(node);
+        if (spot && !spots.some((known) => sameSpot(known, spot)))
+            spots.push(spot);
+    }
+    const start = spots[0];
+    const end = spots.at(-1);
+    if (!start || !end || spots.length < 2)
+        return undefined;
+    return { start, end };
 }
-async function readClipboard() {
-    const clip = navigator.clipboard;
+/** Puts a cross-paragraph selection back after the pages were drawn again. */
+function restoreSpan(root, span) {
+    if (!span)
+        return;
+    const selection = root.ownerDocument.defaultView?.getSelection();
+    const startText = edgeText(paragraphNode(root, span.start), false);
+    const endText = edgeText(paragraphNode(root, span.end), true);
+    if (!selection || !startText || !endText)
+        return;
+    selection.setBaseAndExtent(startText, 0, endText, endText.length);
+}
+function paragraphNode(root, spot) {
+    const story = spot.story ? `[data-story="${spot.story}"]` : ":not([data-story])";
+    const kind = spot.storyKind ? `[data-story-kind="${spot.storyKind}"]` : "";
+    const row = spot.row === undefined ? ":not([data-row])" : `[data-row="${spot.row}"]`;
+    const col = spot.col === undefined ? ":not([data-col])" : `[data-col="${spot.col}"]`;
+    const para = spot.para === undefined ? ":not([data-para])" : `[data-para="${spot.para}"]`;
+    const control = spot.control === undefined ? "" : `[data-control="${spot.control}"]`;
+    return root.querySelector(`.doc-paragraph[data-section="${spot.section}"][data-block="${spot.block}"]${row}${col}${para}${control}${story}${kind}`) ?? undefined;
+}
+function edgeText(node, end) {
+    if (!node)
+        return undefined;
+    const runs = [...node.querySelectorAll("[data-run]")];
+    const run = end ? runs.at(-1) : runs[0];
+    if (!run)
+        return undefined;
+    const texts = [...run.childNodes].filter((child) => child.nodeType === 3);
+    return end ? texts.at(-1) : texts[0];
+}
+async function writeClipboard(view, text, html) {
+    const clip = view?.navigator.clipboard;
+    const Item = view?.ClipboardItem;
+    if (!clip)
+        return;
+    if (Item && clip.write) {
+        await clip.write([new Item({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([text], { type: "text/plain" }) })]);
+        return;
+    }
+    await clip.writeText(text);
+}
+async function readClipboard(view) {
+    const clip = view?.navigator.clipboard;
     return clip ? clip.readText() : "";
+}
+async function readClipboardHtml(view) {
+    const clip = view?.navigator.clipboard;
+    if (!clip?.read)
+        return "";
+    const items = await clip.read();
+    for (const item of items) {
+        if (item.types.includes("text/html"))
+            return await (await item.getType("text/html")).text();
+    }
+    return "";
+}
+/** The copied runs as HTML, so another app pastes the bold, italic, size, and color. */
+function clipHtml(runs) {
+    return `<meta charset="utf-8">${runs.map(clipRun).join("")}`;
+}
+function clipRun(run) {
+    const style = [];
+    if (run.bold)
+        style.push("font-weight:700");
+    if (run.italic)
+        style.push("font-style:italic");
+    if (run.underline)
+        style.push("text-decoration:underline");
+    if (run.fontSize)
+        style.push(`font-size:${run.fontSize}px`);
+    if (run.font)
+        style.push(`font-family:${run.font}`);
+    if (run.color)
+        style.push(`color:${run.color}`);
+    const body = escapeHtml(run.text);
+    return style.length ? `<span style="${style.join(";")}">${body}</span>` : body;
+}
+/** Runs read back from pasted HTML. Only the marks this editor writes are recovered; the rest stays text. */
+function clipRuns(html) {
+    const body = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html)?.[1] ?? html;
+    const runs = [];
+    const pattern = /<span style="([^"]*)">([\s\S]*?)<\/span>|([^<]+)/g;
+    for (const match of body.matchAll(pattern)) {
+        const text = decodeHtml(match[2] ?? match[3] ?? "");
+        if (!text)
+            continue;
+        const style = match[1] ?? "";
+        const run = { text };
+        if (/font-weight:\s*700/.test(style))
+            run.bold = true;
+        if (/font-style:\s*italic/.test(style))
+            run.italic = true;
+        if (/text-decoration:[^;"]*underline/.test(style))
+            run.underline = "single";
+        const size = /font-size:\s*(\d+(?:\.\d+)?)px/.exec(style);
+        if (size)
+            run.fontSize = Number(size[1]);
+        const face = /font-family:\s*([^;"]+)/.exec(style);
+        if (face?.[1])
+            run.font = face[1].trim();
+        const color = /(?:^|;)\s*color:\s*(#[0-9a-fA-F]{6})/.exec(style);
+        if (color?.[1])
+            run.color = color[1].toLowerCase();
+        runs.push(run);
+    }
+    return runs;
+}
+function escapeHtml(value) {
+    return value.replace(/[&<>]/g, (char) => (char === "&" ? "&amp;" : char === "<" ? "&lt;" : "&gt;"));
+}
+function decodeHtml(value) {
+    return value.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 }
 function el(tag, className) {
     const node = document.createElement(tag);

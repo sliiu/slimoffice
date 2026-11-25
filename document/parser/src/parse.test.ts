@@ -167,7 +167,8 @@ test("reads the theme's colors and fonts, and resolves a theme font and a theme 
   if (isDocParagraph(block)) {
     assert.equal(block.runs[0]?.font, "theme:latin");
     assert.equal(block.runs[0]?.fontEastAsia, "theme:eastAsia");
-    assert.equal(block.runs[0]?.color, undefined);
+    assert.equal(block.runs[0]?.themeColor, "accent1");
+    assert.equal(block.runs[0]?.color, "#5b9bd5");
   }
 });
 
@@ -190,4 +191,117 @@ test("a view Word does not use here falls back to print, and no macro project me
   assert.equal(parsed.view, undefined);
   assert.equal(parsed.zoom, 100);
   assert.equal(parsed.macros, undefined);
+});
+
+test("reads the complex-script size, bold, and italic as their own fields", async () => {
+  const parsed = await parseDocx(docx({
+    "word/document.xml": `<w:document><w:body>
+      <w:p><w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="32"/><w:bCs/><w:iCs/></w:rPr><w:t>季报</w:t></w:r></w:p>
+    </w:body></w:document>`,
+  }));
+  const block = parsed.sections[0]!.blocks[0]!;
+  if (isDocParagraph(block)) {
+    assert.equal(block.runs[0]?.fontSize, 12);
+    assert.equal(block.runs[0]?.fontSizeCs, 16);
+    assert.equal(block.runs[0]?.boldCs, true);
+    assert.equal(block.runs[0]?.italicCs, true);
+    assert.equal(block.runs[0]?.fitText, undefined);
+  }
+});
+
+test("reads each side of a border, a column width, a page number format, a frame, and a run's fit width", async () => {
+  const parsed = await parseDocx(docx({
+    "word/document.xml": `<w:document><w:body>
+      <w:p><w:pPr>
+        <w:pBdr><w:top w:val="double" w:sz="12" w:color="FF0000"/><w:bottom w:val="dotted" w:sz="4" w:color="0000FF"/></w:pBdr>
+        <w:framePr w:w="2880" w:hAnchor="page" w:wrap="around" w:dropCap="drop" w:lines="3" w:hSpace="120"/>
+        <w:textDirection w:val="tbRl"/><w:textAlignment w:val="center"/><w:divId w:val="3"/>
+      </w:pPr><w:r><w:rPr><w:bdr><w:top w:val="single" w:sz="8" w:color="00AA00"/></w:bdr><w:shd w:val="clear" w:fill="FFFF00"/><w:fitText w:val="1440"/><w:eastAsianLayout w:combine="1" w:id="2"/></w:rPr><w:t>Boxed</w:t></w:r></w:p>
+      <w:sectPr>
+        <w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:bottom="1440" w:left="1440" w:right="1440"/>
+        <w:cols w:num="2" w:equalWidth="0"><w:col w:w="4320"/><w:col w:w="2880"/></w:cols>
+        <w:pgBorders><w:top w:val="single" w:sz="24" w:color="000000"/><w:left w:val="dashed" w:sz="6" w:color="888888"/></w:pgBorders>
+        <w:vAlign w:val="center"/><w:docGrid w:linePitch="360"/><w:pgNumType w:start="3" w:fmt="lowerRoman"/>
+      </w:sectPr>
+    </w:body></w:document>`,
+  }));
+  const block = parsed.sections[0]!.blocks[0]!;
+  if (isDocParagraph(block)) {
+    assert.equal(block.border?.top?.style, "double");
+    assert.equal(block.border?.top?.size, 12);
+    assert.equal(block.border?.top?.color, "#ff0000");
+    assert.equal(block.border?.bottom?.style, "dotted");
+    assert.equal(block.border?.left, undefined);
+    assert.equal(block.frame?.width, 2880);
+    assert.equal(block.frame?.anchorX, "page");
+    assert.equal(block.frame?.dropCap?.lines, 3);
+    assert.equal(block.frame?.dropCap?.space, 120);
+    assert.equal(block.direction, "tb");
+    assert.equal(block.textAlign, "center");
+    assert.equal(block.divId, "3");
+    assert.equal(block.runs[0]?.border?.top?.style, "single");
+    assert.equal(block.runs[0]?.shading, "#ffff00");
+    assert.equal(block.runs[0]?.fitText, 1440);
+    assert.equal(block.runs[0]?.eastAsianLayout?.combine, true);
+  }
+  const page = parsed.sections[0]!.page;
+  assert.deepEqual(page.columnWidths, [4320, 2880]);
+  assert.equal(page.border?.top?.size, 24);
+  assert.equal(page.border?.left?.style, "dashed");
+  assert.equal(page.verticalAlign, "center");
+  assert.equal(page.grid?.linePitch, 360);
+  assert.equal(page.pageNumber?.start, 3);
+  assert.equal(page.pageNumber?.format, "lowerRoman");
+});
+
+test("reads a row height, a note separator, a move range, an automatic color, and a picture bullet", async () => {
+  const parsed = await parseDocx(docx({
+    "word/document.xml": `<w:document><w:body>
+      <w:tbl><w:tr><w:trPr><w:trHeight w:val="600" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:vAlign w:val="center"/></w:tcPr><w:p><w:r><w:t>Tall</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+      <w:p><w:moveFromRangeStart w:id="7"/><w:r><w:rPr><w:color w:val="auto"/></w:rPr><w:t>Moved</w:t></w:r><w:moveFromRangeEnd w:id="7"/></w:p>
+      <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>Item</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r></w:p>
+    </w:body></w:document>`,
+    "word/footnotes.xml": `<w:footnotes><w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote><w:footnote w:id="1"><w:p><w:r><w:t>Note</w:t></w:r></w:p></w:footnote></w:footnotes>`,
+    "word/numbering.xml": `<w:numbering><w:numPicBullet w:numPicBulletId="0"><w:drawing><wp:inline><a:graphic><a:graphicData><pic:pic><pic:blipFill><a:blip r:embed="rBullet"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:numPicBullet><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/><w:lvlPicBulletId w:val="0"/><w:lvlText w:val=""/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>`,
+    "word/_rels/numbering.xml.rels": `<Relationships><Relationship Id="rBullet" Type="image" Target="media/bullet.png"/></Relationships>`,
+    "word/media/bullet.png": "PNG",
+  }));
+  const table = parsed.sections[0]!.blocks[0]!;
+  assert.equal(isDocTable(table) ? table.rowHeights?.[0] : 0, 600);
+  assert.equal(isDocTable(table) ? table.rowRules?.[0] : "", "exact");
+  assert.equal(isDocTable(table) ? table.rows[0]?.[0]?.align : "", "center");
+  const moved = parsed.sections[0]!.blocks[1]!;
+  if (isDocParagraph(moved)) {
+    assert.equal(moved.runs[0]?.moveRange?.kind, "moveFrom");
+    assert.equal(moved.runs[0]?.moveRange?.edge, "start");
+    assert.equal(moved.runs[1]?.colorAuto, true);
+    assert.equal(moved.runs[2]?.moveRange?.edge, "end");
+  }
+  const listed = parsed.sections[0]!.blocks[2]!;
+  if (isDocParagraph(listed)) {
+    assert.equal(parsed.numbering?.["1"]?.[0]?.picture?.image, "rBullet");
+    assert.ok((parsed.numbering?.["1"]?.[0]?.picture?.imageBytes?.length ?? 0) > 0);
+  }
+  const separator = parsed.sections[0]!.blocks.find((block) => isDocParagraph(block) && block.noteSeparator);
+  assert.equal(isDocParagraph(separator!) && separator.noteSeparator?.type, "separator");
+});
+
+test("reads the document defaults, a linked character style, a table style, and the latent styles", async () => {
+  const parsed = await parseDocx(docx({
+    "word/document.xml": `<w:document><w:body><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:body></w:document>`,
+    "word/styles.xml": `<w:styles>
+      <w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults>
+      <w:latentStyles><w:lsdException w:name="heading 1" w:count="1"/></w:latentStyles>
+      <w:style w:type="paragraph" w:styleId="Heading1"><w:link w:val="Heading1Char"/></w:style>
+      <w:style w:type="character" w:styleId="Heading1Char"><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>
+      <w:style w:type="table" w:styleId="TableGrid"><w:rPr><w:sz w:val="20"/></w:rPr></w:style>
+    </w:styles>`,
+  }));
+  assert.equal(parsed.styles?.defaults?.font, "Calibri");
+  assert.equal(parsed.styles?.defaults?.fontSize, 11);
+  assert.equal(parsed.styles?.styles.Heading1?.link, "Heading1Char");
+  assert.equal(parsed.styles?.styles.Heading1Char?.type, "character");
+  assert.equal(parsed.styles?.styles.Heading1Char?.bold, true);
+  assert.equal(parsed.styles?.styles.TableGrid?.type, "table");
+  assert.deepEqual(parsed.styles?.latent, [{ name: "heading 1", count: 1 }]);
 });

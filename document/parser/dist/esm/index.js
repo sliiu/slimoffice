@@ -1,1 +1,1 @@
-export { parseDocx, DocxOpenError } from "./parse.js";
+export { parseDocx, DocxOpenError } from "./parse";

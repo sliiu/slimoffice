@@ -22,7 +22,7 @@ export function paginate(document) {
         const laid = pagesFor(section);
         const last = pages.at(-1);
         const first = laid[0];
-        if (section.page.break === "continuous" && last && first && last.blocks.length && first.blocks.length) {
+        if (section.page.break === "continuous" && last && first?.blocks.length && last.blocks.length) {
             const room = contentHeight(section.page) - last.blocks.reduce((sum, block) => sum + blockHeight(block), 0);
             const carry = [];
             let taken = 0;
@@ -75,7 +75,7 @@ function pagesFor(section) {
                     flush();
             }
         }
-        if (isDocTable(block) && rowHeights(block.rows).reduce((sum, height) => sum + height, 0) > content - used) {
+        if (isDocTable(block) && tableHeight(block) > content - used) {
             for (const slice of splitTable(block, content, used)) {
                 const height = blockHeight(slice);
                 if (blocks.length && used + height > content)
@@ -87,7 +87,9 @@ function pagesFor(section) {
         }
         const height = blockHeight(block);
         const staysWithNext = isDocParagraph(block) && block.keepNext && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
-        if (blocks.length && (used + height > content || staysWithNext))
+        const keepsItsLines = isDocParagraph(block) && block.keepLines && height <= content && used + height > content;
+        const orphan = isDocParagraph(block) && block.widowControl === true && linesOf(block) === 1 && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
+        if (blocks.length && (used + height > content || staysWithNext || keepsItsLines || orphan))
             flush();
         blocks.push(block);
         used += height;
@@ -112,6 +114,9 @@ function pageFrom(section, blocks, pageIndex) {
         headerKind: stories.headerKind,
         footerKind: stories.footerKind,
         ...(section.page.border ? { border: section.page.border } : {}),
+        ...(section.page.columnWidths?.length ? { columnWidths: section.page.columnWidths.map((width) => width * TWIP) } : {}),
+        ...(section.page.verticalAlign ? { verticalAlign: section.page.verticalAlign } : {}),
+        ...(section.page.grid?.linePitch ? { linePitch: section.page.grid.linePitch * TWIP } : {}),
         ...(section.page.direction ? { direction: section.page.direction } : {}),
         ...(section.page.lineNumbers ? { lineNumbers: true } : {}),
         blocks,
@@ -128,26 +133,46 @@ function nextHeight(blocks, current) {
 }
 function blockHeight(block) {
     if (isDocTable(block))
-        return tableHeight(block.rows);
+        return tableHeight(block);
     if (!isDocParagraph(block))
         return LINE;
     return paragraphHeight(block);
 }
-function paragraphHeight(paragraph) {
+function linesOf(paragraph) {
+    return Math.max(1, paragraph.runs.filter((run) => run.breakBefore === "line").length + 1);
+}
+function lineHeightOf(paragraph) {
     const size = Math.max(LINE, ...paragraph.runs.map((run) => (run.fontSize ?? 11) * 1.4), 0);
-    const lines = Math.max(1, paragraph.runs.filter((run) => run.breakBefore === "line").length + 1);
     const rule = paragraph.spacing?.lineRule ?? "auto";
     const line = paragraph.spacing?.line;
-    const lineHeight = line === undefined ? size : rule === "auto" ? size * (line / 240) : line * TWIP;
+    return line === undefined ? size : rule === "auto" ? size * (line / 240) : line * TWIP;
+}
+function paragraphHeight(paragraph) {
+    const lines = linesOf(paragraph);
+    const lineHeight = lineHeightOf(paragraph);
     const before = (paragraph.spacing?.before ?? 0) * TWIP;
     const after = (paragraph.spacing?.after ?? 0) * TWIP;
     return Math.max(LINE, lineHeight * lines + before + after);
 }
-function rowHeights(rows) {
-    return rows.map((row) => Math.max(TABLE_ROW, ...row.map((cell) => cell.paragraphs.reduce((sum, item) => sum + paragraphHeight(item), 0))));
+/** A row is as tall as its content, unless the table gives it a height. An exact height wins; a minimum only raises it. */
+function rowHeights(table) {
+    return table.rows.map((row, index) => {
+        const content = Math.max(TABLE_ROW, ...row.map((cell) => cell.paragraphs.reduce((sum, item) => sum + paragraphHeight(item), 0)));
+        const stated = (table.rowHeights?.[index] ?? 0) * TWIP;
+        if (!stated)
+            return content;
+        return table.rowRules?.[index] === "exact" ? stated : Math.max(content, stated);
+    });
 }
-function tableHeight(rows) {
-    return rowHeights(rows).reduce((sum, height) => sum + height, 0);
+function tableHeight(table) {
+    return rowHeights(table).reduce((sum, height) => sum + height, 0);
+}
+/** The stated heights of the rows a slice shows, so a split page keeps each row's own height. */
+function heightsFor(table, from, count) {
+    if (!table.rowHeights)
+        return undefined;
+    const repeated = from > 0 && table.header ? [table.rowHeights[0] ?? 0] : [];
+    return [...repeated, ...table.rowHeights.slice(from, from + count - repeated.length)];
 }
 /** A fresh copy of a row, so editing the repeated header on a later page does not rewrite the first page. */
 function copyRow(row) {
@@ -155,7 +180,7 @@ function copyRow(row) {
 }
 /** Splits a table between rows so each piece fits the room left on its page. The header row repeats. */
 function splitTable(table, content, firstRoom) {
-    const heights = rowHeights(table.rows);
+    const heights = rowHeights(table);
     const pieces = [];
     let rows = [];
     let from = 0;
@@ -165,7 +190,7 @@ function splitTable(table, content, firstRoom) {
     const cut = () => {
         if (!rows.length)
             return;
-        pieces.push({ ...table, rows, source: { table, from } });
+        pieces.push({ ...table, rows, rowHeights: heightsFor(table, from, rows.length), source: { table, from } });
         from += rows.length - (from > 0 && header ? 1 : 0);
         rows = header ? [copyRow(header)] : [];
         used = rows.length ? (heights[0] ?? TABLE_ROW) : 0;
@@ -179,7 +204,7 @@ function splitTable(table, content, firstRoom) {
         used += height;
     });
     if (rows.length)
-        pieces.push({ ...table, rows, source: { table, from } });
+        pieces.push({ ...table, rows, rowHeights: heightsFor(table, from, rows.length), source: { table, from } });
     return pieces.length ? pieces : [table];
 }
 function emptyPage() {

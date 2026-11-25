@@ -13,12 +13,22 @@ export interface DocRun {
     highlight?: string;
     /** CSS pixels. */
     fontSize?: number;
+    /** CSS pixels for complex-script text, from `szCs`. The latin size is used where this is absent. */
+    fontSizeCs?: number;
+    /** Bold for complex-script text, from `bCs`. */
+    boldCs?: boolean;
+    /** Italic for complex-script text, from `iCs`. */
+    italicCs?: boolean;
     /** Font family name from rFonts, the ascii face. */
     font?: string;
     /** The east-asian face from rFonts, used when the run holds CJK text. */
     fontEastAsia?: string;
     /** #rrggbb. */
     color?: string;
+    /** The color follows the window text, from `w:val="auto"`. It paints as the page's text color. */
+    colorAuto?: boolean;
+    /** The theme color scheme slot this color came from, such as "accent1". The color itself is the slot resolved. */
+    themeColor?: string;
     /** Character style name from rStyle. */
     runStyle?: string;
     /** Shown in capitals. */
@@ -37,8 +47,19 @@ export interface DocRun {
     kern?: number;
     /** Switches Word stores on the run and this model only keeps: outline, shadow, emboss, imprint, effect. */
     marks?: string[];
-    /** Markup this model does not edit, kept so a rewrite puts it back: a border, shading, fit text, east-asian layout. */
-    kept?: string[];
+    /** A border around the run, one side at a time. */
+    border?: DocBorder;
+    /** Shading behind the run, #rrggbb. */
+    shading?: string;
+    /** Fit the run into this width, in twips, from `fitText`. */
+    fitText?: number;
+    /** East-asian layout: combined characters, vertical text, or a two-in-one line. */
+    eastAsianLayout?: {
+        id?: string;
+        combine?: boolean;
+        vert?: boolean;
+        twoInOne?: boolean;
+    };
     /** Character scale in percent. 100 is unchanged. */
     scale?: number;
     /** Extra space between characters, in twips. */
@@ -77,6 +98,13 @@ export interface DocRun {
     inserted?: boolean;
     /** This run came from a tracked deletion. The text is kept so it can be read; writing puts the original markup back. */
     deleted?: boolean;
+    /** A move range starts or ends at this run. The id ties the start to its end, and the markup is what gets written back. */
+    moveRange?: {
+        kind: "moveFrom" | "moveTo";
+        edge: "start" | "end";
+        id: string;
+        raw: string;
+    };
     /** A field instruction, such as " TOC \\o "1-3" \\h " or " REF Heading1 \\h ". The run's text is the result Word would show. */
     field?: string;
     /** This run is a watermark, painted faintly behind the page. */
@@ -103,7 +131,7 @@ export interface DocRun {
     caption?: string;
 }
 /** A block kept as markup: a content control, a formula, or tracked changes. Editing the story leaves it where it was. */
-/** One piece of a formula laid out for the page: stacked for a fraction, shifted for a script, rooted for a radical. */
+/** One piece of a formula laid out for the page: stacked, shifted, rooted, delimited, or set in a matrix. */
 export type DocFormula = {
     text: string;
 } | {
@@ -111,13 +139,36 @@ export type DocFormula = {
     top: DocFormula[];
     bottom: DocFormula[];
 } | {
-    kind: "sup" | "sub";
+    kind: "sup" | "sub" | "subsup";
     base: DocFormula[];
     script: DocFormula[];
+    upper?: DocFormula[];
 } | {
     kind: "root";
     body: DocFormula[];
     degree: DocFormula[];
+} | {
+    kind: "delim";
+    open: string;
+    close: string;
+    body: DocFormula[];
+} | {
+    kind: "nary";
+    sign: string;
+    body: DocFormula[];
+    sub?: DocFormula[];
+    sup?: DocFormula[];
+} | {
+    kind: "func";
+    name: DocFormula[];
+    body: DocFormula[];
+} | {
+    kind: "bar";
+    body: DocFormula[];
+    under?: boolean;
+} | {
+    kind: "matrix";
+    rows: DocFormula[][];
 };
 export interface DocRawBlock {
     raw: string;
@@ -161,8 +212,8 @@ export interface DocParagraph {
     indent?: DocIndent;
     /** Paragraph shading, #rrggbb. */
     shading?: string;
-    /** A border around the paragraph, #rrggbb. */
-    border?: string;
+    /** A border around the paragraph, one side at a time. */
+    border?: DocBorder;
     /** A page break sits before this paragraph. */
     pageBreakBefore?: boolean;
     /** Kept on the same page as the paragraph after it. */
@@ -175,14 +226,29 @@ export interface DocParagraph {
     outline?: number;
     /** Switches Word stores on the paragraph and this model only keeps, such as wordWrap, bidi, snapToGrid. */
     marks?: string[];
-    /** Markup this model does not edit, kept so a rewrite puts it back: frame properties, text direction, a div id. */
-    kept?: string[];
+    /** A frame this paragraph sits in, from `framePr`: where it is and how wide. */
+    frame?: DocFrame;
+    /** Text direction inside the paragraph. */
+    direction?: "lr" | "tb" | "rl";
+    /** How the line of text sits on its baseline, from `textAlignment`. */
+    textAlign?: string;
+    /** How tightly text wraps a shape this paragraph belongs to. */
+    tightWrap?: string;
+    /** The div this paragraph belongs to. */
+    divId?: string;
+    /** Conditional formatting of a table style, from `cnfStyle`. */
+    rowStyle?: string;
     /** This paragraph is a caption, numbered per kind ("Figure 1"). */
     caption?: string;
     /** This paragraph is the body of a footnote or an endnote, shown at the bottom of the page. */
     note?: {
         kind: "footnote" | "endnote";
         id: string;
+    };
+    /** This paragraph is the separator Word draws above the notes, or the one it draws when a note continues onto the next page. */
+    noteSeparator?: {
+        kind: "footnote" | "endnote";
+        type: "separator" | "continuationSeparator";
     };
     /** Tab stops, in twips from the left margin. */
     tabs?: Array<{
@@ -198,13 +264,19 @@ export interface DocCell {
     /** "restart" begins a vertical merge, "continue" extends the one above. */
     vMerge?: "restart" | "continue";
     shading?: string;
-    /** A border around the cell, #rrggbb. */
-    border?: string;
+    /** A border around the cell, one side at a time. */
+    border?: DocBorder;
+    /** Where the cell's text sits between its top and bottom. */
+    align?: "top" | "center" | "bottom";
 }
 export interface DocTable {
     rows: DocCell[][];
     /** Column widths, in twips, one per column. */
     widths?: number[];
+    /** Row heights, in twips, one per row, from `trHeight`. Absent means the row is as tall as its content. */
+    rowHeights?: number[];
+    /** "exact" keeps the row at its height; "atLeast" lets it grow past it. One per row, beside `rowHeights`. */
+    rowRules?: Array<"exact" | "atLeast" | undefined>;
     /** The first row repeats as a header on each page. */
     header?: boolean;
     /** Set when pagination splits the table across pages: the table it was cut from, and the first row's index there. */
@@ -242,12 +314,55 @@ export interface DocPageSetup {
     footerDistance?: number;
     /** Line numbers restart each page. */
     lineNumbers?: boolean;
-    /** A border around the page, #rrggbb. */
-    border?: string;
+    /** A border around the page, one side at a time. */
+    border?: DocBorder;
     /** Text direction for the section. */
     direction?: "lr" | "tb" | "rl";
     /** How this section starts: a new page, a new column, or on the same page. */
     break?: "nextPage" | "continuous" | "evenPage" | "oddPage" | "nextColumn";
+    /** Each column's width, in twips, when the columns are not equal. */
+    columnWidths?: number[];
+    /** Where the page's text sits between the margins. */
+    verticalAlign?: "top" | "center" | "both" | "bottom";
+    /** The document grid: how many lines and characters the page is ruled for. */
+    grid?: {
+        type?: string;
+        linePitch?: number;
+        charSpace?: number;
+    };
+    /** Page numbering: where it starts, and how it is written. */
+    pageNumber?: {
+        start?: number;
+        format?: string;
+    };
+}
+/** One side of a border. `style` is the line, `size` its width in eighths of a point, `color` #rrggbb. */
+export interface DocBorderSide {
+    style?: string;
+    size?: number;
+    color?: string;
+}
+/** A border read one side at a time, so each side keeps its own line and width. */
+export interface DocBorder {
+    top?: DocBorderSide;
+    left?: DocBorderSide;
+    bottom?: DocBorderSide;
+    right?: DocBorderSide;
+}
+/** A paragraph frame, from `framePr`. Distances are in twips. */
+export interface DocFrame {
+    width?: number;
+    height?: number;
+    x?: number;
+    y?: number;
+    anchorX?: string;
+    anchorY?: string;
+    wrap?: string;
+    /** A drop cap: how many lines it drops, and how far it sits from the text. */
+    dropCap?: {
+        lines: number;
+        space?: number;
+    };
 }
 export interface DocSection {
     page: DocPageSetup;
@@ -279,6 +394,10 @@ export interface DocComment {
 /** Formatting a named style contributes. A paragraph's own formatting wins. */
 export interface DocStyle {
     basedOn?: string;
+    /** The character style linked to this paragraph style, from `w:link`. */
+    link?: string;
+    /** "paragraph", "character", or "table". A paragraph style is the default. */
+    type?: "character" | "table";
     align?: DocAlign;
     bold?: boolean;
     italic?: boolean;
@@ -286,8 +405,26 @@ export interface DocStyle {
     font?: string;
     color?: string;
 }
-/** Named styles from styles.xml, keyed by styleId. */
-export type DocStyleTable = Record<string, DocStyle>;
+/** What styles.xml says to use when a paragraph or a run names nothing. */
+export interface DocDefaults {
+    font?: string;
+    fontSize?: number;
+    bold?: boolean;
+    italic?: boolean;
+    color?: string;
+}
+/** One latent style: a style Word knows about and builds the first time it is used. */
+export interface DocLatentStyle {
+    name: string;
+    /** How many of them are built in. */
+    count?: number;
+}
+/** Named styles from styles.xml, keyed by styleId, plus the defaults and the latent styles beside them. */
+export interface DocStyleTable {
+    styles: Record<string, DocStyle>;
+    defaults?: DocDefaults;
+    latent?: DocLatentStyle[];
+}
 /** One work a citation can point at. */
 export interface DocSource {
     /** The tag a citation uses, for example "Smith2020". */
@@ -371,6 +508,12 @@ export interface DocNumberingLevel {
     text: string;
     /** Bullet glyph when there is no number text. */
     bullet?: string;
+    /** A picture used as the bullet, from `numPicBullet`. `image` is its relationship id. */
+    picture?: {
+        image: string;
+        imageBytes?: Uint8Array;
+        imageType?: string;
+    };
     /** First value at this level. Defaults to 1. */
     start?: number;
     /** Number format: decimal, lowerLetter, upperRoman, and the rest Word stores. */
@@ -409,12 +552,14 @@ export declare function indexLines(document: Document, pages: number[]): Array<{
 }>;
 /** The number a page field shows. Word numbers pages from 1 through the whole document. */
 export declare function pageNumber(pages: number[], index: number): number;
+/** A page number written in the format the section asks for. Decimal is the plain number. */
+export declare function formatPageNumber(value: number, format: string | undefined): string;
 /** Fills PAGE and NUMPAGES fields with the page they fall on and the page count. Other fields keep the text they already show. */
 export declare function resolvePageFields(document: Document, pages: number[]): void;
-/** What a table formula shows. `=SUM(LEFT)` and `=SUM(ABOVE)` add the numbers in that direction; anything else stays as written. */
+/** What a table formula shows. SUM, AVERAGE, MIN, MAX, and COUNT each take LEFT, RIGHT, ABOVE, or BELOW; anything else stays as written. */
 export declare function formulaResult(rows: DocCell[][], row: number, col: number, instruction: string): string;
 /** The words a spell check would flag: tokens that are not in the dictionary. */
 export declare function misspellings(text: string, dictionary: ReadonlySet<string>): string[];
-/** The formatting a style contributes, following `basedOn` so the named style wins over the one it inherits. */
+/** The formatting a style contributes, following `basedOn` so the named style wins over the one it inherits. Document defaults sit underneath. */
 export declare function styleOf(styles: DocStyleTable | undefined, name: string | undefined): DocStyle;
 //# sourceMappingURL=index.d.ts.map

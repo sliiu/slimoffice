@@ -32,8 +32,14 @@ export interface DocPage {
   /** Which header of the section this page shows, so an edit lands in the right one. */
   headerKind: StoryKind;
   footerKind: StoryKind;
-  /** A border around the page, #rrggbb. */
-  border?: string;
+  /** A border around the page, one side at a time. */
+  border?: DocPageSetup["border"];
+  /** Each column's width, in pixels, when the columns are not equal. */
+  columnWidths?: number[];
+  /** Where the page's text sits between the margins. */
+  verticalAlign?: DocPageSetup["verticalAlign"];
+  /** The document grid's line pitch, in pixels. */
+  linePitch?: number;
   /** Text direction for the section this page belongs to. */
   direction?: "lr" | "tb" | "rl";
   /** The section numbers its lines. */
@@ -64,7 +70,7 @@ export function paginate(document: Document): DocPage[] {
     const laid = pagesFor(section);
     const last = pages.at(-1);
     const first = laid[0];
-    if (section.page.break === "continuous" && last && first && last.blocks.length && first.blocks.length) {
+    if (section.page.break === "continuous" && last && first?.blocks.length && last.blocks.length) {
       const room = contentHeight(section.page) - last.blocks.reduce((sum, block) => sum + blockHeight(block), 0);
       const carry: DocBlock[] = [];
       let taken = 0;
@@ -113,7 +119,7 @@ function pagesFor(section: DocSection): DocPage[] {
         if (column >= columns) flush();
       }
     }
-    if (isDocTable(block) && rowHeights(block.rows).reduce((sum, height) => sum + height, 0) > content - used) {
+    if (isDocTable(block) && tableHeight(block) > content - used) {
       for (const slice of splitTable(block, content, used)) {
         const height = blockHeight(slice);
         if (blocks.length && used + height > content) flush();
@@ -124,7 +130,9 @@ function pagesFor(section: DocSection): DocPage[] {
     }
     const height = blockHeight(block);
     const staysWithNext = isDocParagraph(block) && block.keepNext && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
-    if (blocks.length && (used + height > content || staysWithNext)) flush();
+    const keepsItsLines = isDocParagraph(block) && block.keepLines && height <= content && used + height > content;
+    const orphan = isDocParagraph(block) && block.widowControl === true && linesOf(block) === 1 && used + height <= content && nextHeight(section.blocks, block) > content - used - height;
+    if (blocks.length && (used + height > content || staysWithNext || keepsItsLines || orphan)) flush();
     blocks.push(block);
     used += height;
   }
@@ -148,6 +156,9 @@ function pageFrom(section: DocSection, blocks: DocBlock[], pageIndex: number): D
     headerKind: stories.headerKind,
     footerKind: stories.footerKind,
     ...(section.page.border ? { border: section.page.border } : {}),
+    ...(section.page.columnWidths?.length ? { columnWidths: section.page.columnWidths.map((width) => width * TWIP) } : {}),
+    ...(section.page.verticalAlign ? { verticalAlign: section.page.verticalAlign } : {}),
+    ...(section.page.grid?.linePitch ? { linePitch: section.page.grid.linePitch * TWIP } : {}),
     ...(section.page.direction ? { direction: section.page.direction } : {}),
     ...(section.page.lineNumbers ? { lineNumbers: true } : {}),
     blocks,
@@ -166,28 +177,49 @@ function nextHeight(blocks: DocBlock[], current: DocBlock): number {
 }
 
 function blockHeight(block: DocBlock): number {
-  if (isDocTable(block)) return tableHeight(block.rows);
+  if (isDocTable(block)) return tableHeight(block);
   if (!isDocParagraph(block)) return LINE;
   return paragraphHeight(block);
 }
 
-function paragraphHeight(paragraph: DocParagraph): number {
+function linesOf(paragraph: DocParagraph): number {
+  return Math.max(1, paragraph.runs.filter((run) => run.breakBefore === "line").length + 1);
+}
+
+function lineHeightOf(paragraph: DocParagraph): number {
   const size = Math.max(LINE, ...paragraph.runs.map((run) => (run.fontSize ?? 11) * 1.4), 0);
-  const lines = Math.max(1, paragraph.runs.filter((run) => run.breakBefore === "line").length + 1);
   const rule = paragraph.spacing?.lineRule ?? "auto";
   const line = paragraph.spacing?.line;
-  const lineHeight = line === undefined ? size : rule === "auto" ? size * (line / 240) : line * TWIP;
+  return line === undefined ? size : rule === "auto" ? size * (line / 240) : line * TWIP;
+}
+
+function paragraphHeight(paragraph: DocParagraph): number {
+  const lines = linesOf(paragraph);
+  const lineHeight = lineHeightOf(paragraph);
   const before = (paragraph.spacing?.before ?? 0) * TWIP;
   const after = (paragraph.spacing?.after ?? 0) * TWIP;
   return Math.max(LINE, lineHeight * lines + before + after);
 }
 
-function rowHeights(rows: DocCell[][]): number[] {
-  return rows.map((row) => Math.max(TABLE_ROW, ...row.map((cell) => cell.paragraphs.reduce((sum, item) => sum + paragraphHeight(item), 0))));
+/** A row is as tall as its content, unless the table gives it a height. An exact height wins; a minimum only raises it. */
+function rowHeights(table: DocTable): number[] {
+  return table.rows.map((row, index) => {
+    const content = Math.max(TABLE_ROW, ...row.map((cell) => cell.paragraphs.reduce((sum, item) => sum + paragraphHeight(item), 0)));
+    const stated = (table.rowHeights?.[index] ?? 0) * TWIP;
+    if (!stated) return content;
+    return table.rowRules?.[index] === "exact" ? stated : Math.max(content, stated);
+  });
 }
 
-function tableHeight(rows: DocCell[][]): number {
-  return rowHeights(rows).reduce((sum, height) => sum + height, 0);
+function tableHeight(table: DocTable): number {
+  return rowHeights(table).reduce((sum, height) => sum + height, 0);
+}
+
+/** The stated heights of the rows a slice shows, so a split page keeps each row's own height. */
+function heightsFor(table: DocTable, from: number, count: number): number[] | undefined {
+  if (!table.rowHeights) return undefined;
+  const repeated = from > 0 && table.header ? [table.rowHeights[0] ?? 0] : [];
+  return [...repeated, ...table.rowHeights.slice(from, from + count - repeated.length)];
 }
 
 /** A fresh copy of a row, so editing the repeated header on a later page does not rewrite the first page. */
@@ -197,7 +229,7 @@ function copyRow(row: DocCell[]): DocCell[] {
 
 /** Splits a table between rows so each piece fits the room left on its page. The header row repeats. */
 function splitTable(table: DocTable, content: number, firstRoom: number): DocTable[] {
-  const heights = rowHeights(table.rows);
+  const heights = rowHeights(table);
   const pieces: DocTable[] = [];
   let rows: DocCell[][] = [];
   let from = 0;
@@ -206,7 +238,7 @@ function splitTable(table: DocTable, content: number, firstRoom: number): DocTab
   const header = table.header ? table.rows[0] : undefined;
   const cut = () => {
     if (!rows.length) return;
-    pieces.push({ ...table, rows, source: { table, from } });
+    pieces.push({ ...table, rows, rowHeights: heightsFor(table, from, rows.length), source: { table, from } });
     from += rows.length - (from > 0 && header ? 1 : 0);
     rows = header ? [copyRow(header)] : [];
     used = rows.length ? (heights[0] ?? TABLE_ROW) : 0;
@@ -218,7 +250,7 @@ function splitTable(table: DocTable, content: number, firstRoom: number): DocTab
     rows.push(row);
     used += height;
   });
-  if (rows.length) pieces.push({ ...table, rows, source: { table, from } });
+  if (rows.length) pieces.push({ ...table, rows, rowHeights: heightsFor(table, from, rows.length), source: { table, from } });
   return pieces.length ? pieces : [table];
 }
 
