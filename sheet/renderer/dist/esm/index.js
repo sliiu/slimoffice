@@ -369,6 +369,13 @@ export function mountWorkbook(host, workbook, options = {}) {
         });
         td.addEventListener("input", () => {
             const next = td.textContent ?? "";
+            const rule = validationAt(sheet, row, column);
+            if (rule && !acceptsValidation(rule, next)) {
+                td.classList.add("is-invalid");
+                td.title = rule.error || (zh ? "输入不符合数据验证" : "The value breaks the data validation.");
+                return;
+            }
+            td.classList.remove("is-invalid");
             const cell = ensure(row, column);
             if (next.startsWith("=")) {
                 cell.formula = next.slice(1);
@@ -431,6 +438,25 @@ export function mountWorkbook(host, workbook, options = {}) {
     }
     function validationAt(sheet, row, column) {
         return sheet.validations?.find((item) => row >= item.r1 && row <= item.r2 && column >= item.c1 && column <= item.c2);
+    }
+    /** A typed value passes the rule, or the cell is left untouched and marked invalid. */
+    function acceptsValidation(rule, text) {
+        if (text === "")
+            return rule.allowBlank !== false;
+        if (rule.type === "list") {
+            const options = (rule.formula1 ?? "").split(",").map((item) => item.trim());
+            return options.includes(text);
+        }
+        const value = Number(text);
+        if (rule.type === "whole")
+            return Number.isInteger(value);
+        if (rule.type === "decimal")
+            return Number.isFinite(value);
+        if (rule.type === "textLength") {
+            const limit = Number(rule.formula1 ?? "");
+            return Number.isFinite(limit) && text.length <= limit;
+        }
+        return true;
     }
     function validationHint(sheet, row, column) {
         const rule = validationAt(sheet, row, column);

@@ -62,19 +62,32 @@ test("shows a data validation list and an outline level", () => {
   const dom = new JSDOM("<!doctype html><body></body>");
   globalThis.document = dom.window.document;
   const host = document.createElement("div");
-  mountWorkbook(host, {
-    calcMode: "manual",
+  const workbook = {
+    calcMode: "manual" as const,
     sheets: [{
       name: "销售",
       cells: [[{ value: "甲" }]],
-      validations: [{ id: "dv1", r1: 0, c1: 0, r2: 0, c2: 0, type: "list", formula1: "甲,乙" }],
+      validations: [{ id: "dv1", r1: 0, c1: 0, r2: 0, c2: 0, type: "list" as const, formula1: "甲,乙" }],
       outline: { rows: [0], summaryBelow: true },
     }],
-  });
+  };
+  mountWorkbook(host, workbook);
   const cell = host.querySelector("td");
   assert.equal(cell?.dataset.validation, "list");
   assert.equal(cell?.title, "甲,乙");
   assert.equal(cell?.dataset.outline, "row");
+  // A value outside the list is rejected: the cell is marked and the stored value stays "甲".
+  const InputEvent = (dom.window as unknown as Record<string, new (type: string, init?: { bubbles?: boolean }) => Event>)["Event"];
+  if (!InputEvent) throw new Error("missing Event");
+  cell!.textContent = "丙";
+  cell!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.equal(cell?.classList.contains("is-invalid"), true);
+  assert.equal(workbook.sheets[0]?.cells[0]?.[0]?.value, "甲");
+  // A value on the list is stored.
+  cell!.textContent = "乙";
+  cell!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.equal(cell?.classList.contains("is-invalid"), false);
+  assert.equal(workbook.sheets[0]?.cells[0]?.[0]?.value, "乙");
 });
 
 test("marks page breaks and what-if data tables", () => {
