@@ -73,6 +73,12 @@ function summarizePivot(pivot) {
 function reducePivot(values, agg) {
     if (!values.length)
         return 0;
+    if (agg === "max")
+        return Math.max(...values);
+    if (agg === "min")
+        return Math.min(...values);
+    if (agg === "product")
+        return values.reduce((product, value) => product * value, 1);
     const total = values.reduce((sum, value) => sum + value, 0);
     return agg === "average" ? total / values.length : total;
 }

@@ -346,10 +346,18 @@ function pivotList(archive, path) {
         const cache = pivotCache(archive, attr(table, "cacheId"));
         const fields = children(child(table, "pivotFields"), "pivotField");
         const names = cache.fields.length ? cache.fields : fields.map((_, at) => `F${at + 1}`);
-        const picked = (tag) => children(child(table, tag), "field").flatMap((field) => {
-            const name = names[Number(attr(field, "x"))];
+        const fieldsOf = (tag) => {
+            const parent = child(table, tag);
+            const data = children(parent, "dataField");
+            return data.length ? data : children(parent, "field");
+        };
+        const picked = (tag) => fieldsOf(tag).flatMap((field) => {
+            const name = names[Number(attr(field, "x") ?? attr(field, "fld"))];
             return name ? [name] : [];
         });
+        // dataFields carries the aggregation on subtotal. Anything else falls back to a sum.
+        const subtotal = attr(fieldsOf("dataFields")[0], "subtotal");
+        const agg = subtotal === "count" || subtotal === "average" || subtotal === "max" || subtotal === "min" || subtotal === "product" ? subtotal : undefined;
         return [{
                 id: attr(table, "name") ?? `pivot${index + 1}`,
                 name: attr(table, "name") ?? `Pivot${index + 1}`,
@@ -357,6 +365,7 @@ function pivotList(archive, path) {
                 rows: picked("rowFields"),
                 columns: picked("colFields"),
                 values: picked("dataFields"),
+                ...(agg ? { agg } : {}),
                 fields: cache.fields,
                 cache: cache.rows,
             }];

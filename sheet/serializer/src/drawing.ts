@@ -209,7 +209,8 @@ function pivotTableXml(pivot: SheetPivot, cacheId: number): string {
   const list = (names: string[] | undefined): string => (names ?? []).map((name) => `<field x="${fieldIndex(name)}"/>`).join("");
   const rows = list(pivot.rows);
   const cols = list(pivot.columns);
-  const values = list(pivot.values);
+  const subtotal = pivot.agg && pivot.agg !== "sum" ? ` subtotal="${pivot.agg}"` : "";
+  const values = (pivot.values ?? []).map((name) => `<dataField fld="${fieldIndex(name)}"${subtotal}/>`).join("");
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotTableDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="${escapeXml(pivot.name)}" cacheId="${cacheId}"><pivotFields count="${fields.length}">${fields.map(() => "<pivotField/>").join("")}</pivotFields>${rows ? `<rowFields count="${pivot.rows!.length}">${rows}</rowFields>` : ""}${cols ? `<colFields count="${pivot.columns!.length}">${cols}</colFields>` : ""}${values ? `<dataFields count="${pivot.values!.length}">${values}</dataFields>` : ""}</pivotTableDefinition>`;
 }
 

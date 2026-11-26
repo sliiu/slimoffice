@@ -384,10 +384,18 @@ function pivotList(archive, path) {
         const cache = pivotCache(archive, (0, xml_1.attr)(table, "cacheId"));
         const fields = (0, xml_1.children)((0, xml_1.child)(table, "pivotFields"), "pivotField");
         const names = cache.fields.length ? cache.fields : fields.map((_, at) => `F${at + 1}`);
-        const picked = (tag) => (0, xml_1.children)((0, xml_1.child)(table, tag), "field").flatMap((field) => {
-            const name = names[Number((0, xml_1.attr)(field, "x"))];
+        const fieldsOf = (tag) => {
+            const parent = (0, xml_1.child)(table, tag);
+            const data = (0, xml_1.children)(parent, "dataField");
+            return data.length ? data : (0, xml_1.children)(parent, "field");
+        };
+        const picked = (tag) => fieldsOf(tag).flatMap((field) => {
+            const name = names[Number((0, xml_1.attr)(field, "x") ?? (0, xml_1.attr)(field, "fld"))];
             return name ? [name] : [];
         });
+        // dataFields carries the aggregation on subtotal. Anything else falls back to a sum.
+        const subtotal = (0, xml_1.attr)(fieldsOf("dataFields")[0], "subtotal");
+        const agg = subtotal === "count" || subtotal === "average" || subtotal === "max" || subtotal === "min" || subtotal === "product" ? subtotal : undefined;
         return [{
                 id: (0, xml_1.attr)(table, "name") ?? `pivot${index + 1}`,
                 name: (0, xml_1.attr)(table, "name") ?? `Pivot${index + 1}`,
@@ -395,6 +403,7 @@ function pivotList(archive, path) {
                 rows: picked("rowFields"),
                 columns: picked("colFields"),
                 values: picked("dataFields"),
+                ...(agg ? { agg } : {}),
                 fields: cache.fields,
                 cache: cache.rows,
             }];

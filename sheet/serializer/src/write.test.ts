@@ -161,6 +161,7 @@ test("writes the pivot cache, sheet protection, and the header", () => {
     values: ["数量"],
     fields: ["品类", "数量"],
     cache: [["甲", "10"], ["乙", "5"]],
+    agg: "max",
   }];
   made.workbook.edited = true;
   const out = unzipSync(writeXlsx(made.workbook));
@@ -172,6 +173,7 @@ test("writes the pivot cache, sheet protection, and the header", () => {
   assert.match(table, /name="销量透视"/);
   assert.match(table, /cacheId="1"/);
   assert.match(table, /<rowFields count="1"><field x="0"\/><\/rowFields>/);
+  assert.match(table, /<dataField fld="1" subtotal="max"\/>/);
   const cache = new TextDecoder().decode(out["xl/pivotCache/pivotCacheDefinition1.xml"] ?? new Uint8Array());
   assert.match(cache, /<worksheetSource ref="A1:B2"\/>/);
   const records = new TextDecoder().decode(out["xl/pivotCache/pivotCacheRecords1.xml"] ?? new Uint8Array());

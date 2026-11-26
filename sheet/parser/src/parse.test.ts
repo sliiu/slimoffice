@@ -191,7 +191,7 @@ test("reads theme colors, comments, and the pivot cache", async () => {
       `</Relationships>`,
     "xl/comments1.xml": `<comments><commentList><comment ref="A1" authorId="0"><text><r><t>核对</t></r></text></comment></commentList></comments>`,
     "xl/pivotTables/pivotTable1.xml": `<pivotTableDefinition name="销量透视" cacheId="1"><pivotFields count="2"><pivotField/><pivotField/></pivotFields>` +
-      `<rowFields count="1"><field x="0"/></rowFields><dataFields count="1"><field x="1"/></dataFields></pivotTableDefinition>`,
+      `<rowFields count="1"><field x="0"/></rowFields><dataFields count="1"><dataField fld="1" subtotal="max"/></dataFields></pivotTableDefinition>`,
     "xl/pivotCache/pivotCacheDefinition1.xml": `<pivotCacheDefinition><cacheSource><worksheetSource ref="A1:B2"/></cacheSource>` +
       `<cacheFields count="2"><cacheField name="品类"/><cacheField name="数量"/></cacheFields></pivotCacheDefinition>`,
     "xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels": `<Relationships><Relationship Id="rIdRecords" Type="records" Target="pivotCacheRecords1.xml"/></Relationships>`,
@@ -208,6 +208,7 @@ test("reads theme colors, comments, and the pivot cache", async () => {
   assert.deepEqual(opened?.pivots?.[0]?.rows, ["品类"]);
   assert.deepEqual(opened?.pivots?.[0]?.values, ["数量"]);
   assert.deepEqual(opened?.pivots?.[0]?.cache, [["甲", "10"]]);
+  assert.equal(opened?.pivots?.[0]?.agg, "max");
 });
 
 test("reads array formulas, named styles, outline, and the print area", async () => {

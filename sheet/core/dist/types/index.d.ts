@@ -98,7 +98,7 @@ export interface SheetPivot {
     columns?: string[];
     values?: string[];
     /** How the value field is reduced. Defaults to a sum. */
-    agg?: "sum" | "count" | "average";
+    agg?: "sum" | "count" | "average" | "max" | "min" | "product";
     /** Cache field names, in the same order as each cache row. */
     fields?: string[];
     /** Flattened cache rows used for a minimal pivot preview. */

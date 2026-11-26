@@ -53,6 +53,9 @@ test("sums a pivot cache by its row field", () => {
   assert.match(host.querySelector(".sheet-pivot")?.textContent ?? "", /甲17/);
   const counted = { ...pivot, agg: "count" as const, columns: ["地区"], fields: ["品类", "数量", "地区"], cache: [["甲", "10", "东"], ["甲", "7", "西"], ["甲", "3", "东"]] };
   assert.deepEqual(summarizePivot(counted), { columns: ["东", "西"], rows: [{ label: "甲", values: [2, 1] }] });
+  assert.deepEqual(summarizePivot({ ...pivot, agg: "max" }).rows.map((row) => row.values), [[10], [5]]);
+  assert.deepEqual(summarizePivot({ ...pivot, agg: "min" }).rows.map((row) => row.values), [[7], [5]]);
+  assert.deepEqual(summarizePivot({ ...pivot, agg: "product" }).rows.map((row) => row.values), [[70], [5]]);
 });
 
 test("shows a data validation list and an outline level", () => {
