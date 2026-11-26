@@ -1,4 +1,5 @@
 import type { SheetCell, SheetConditionalFormat, Worksheet } from "@sliiu/sheet-core";
+import { evaluate } from "@sliiu/sheet-formula";
 
 /** Resolve conditional-format look for one cell. Later rules override earlier ones for fill/color. */
 export function cfLook(sheet: Worksheet, row: number, column: number, cell: SheetCell | undefined): { fill?: string; color?: string; bar?: number; icon?: string } {
@@ -40,22 +41,10 @@ function matchRule(
     return ok ? { fill: rule.fill, color: rule.color } : null;
   }
   if (rule.type === "expression") {
-    // Minimal: treat formula as "cell>N" or "cell=text".
-    const text = rule.formula.replace(/^=/, "");
-    const cmp = /^(?:A1|CELL)?\s*(>=|<=|<>|=|>|<)\s*(.+)$/i.exec(text);
-    if (!cmp) return null;
-    const op = cmp[1]!;
-    const rhs = cmp[2]!.trim().replace(/^"|"$/g, "");
-    const num = Number(rhs);
-    const left = Number.isFinite(num) ? value : (cell?.value ?? "");
-    const right: string | number = Number.isFinite(num) ? num : rhs;
-    const ok =
-      op === ">" ? left > right :
-      op === ">=" ? left >= right :
-      op === "<" ? left < right :
-      op === "<=" ? left <= right :
-      op === "<>" ? left !== right :
-      left === right;
+    // The formula is evaluated against the sheet, so AND, OR, and cell references all work.
+    const formula = rule.formula.startsWith("=") ? rule.formula : `=${rule.formula}`;
+    const result = evaluate(formula, { workbook: { sheets: [sheet] }, sheetIndex: 0, row, col: column });
+    const ok = result === true || (typeof result === "number" && result !== 0);
     return ok ? { fill: rule.fill, color: rule.color } : null;
   }
   if (rule.type === "colorScale") {

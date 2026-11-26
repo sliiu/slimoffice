@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { summarizePivot } from "./charts";
+import { cfLook } from "./cf";
 import { mountWorkbook } from "./index";
 
 test("shows the named sheet and its cells", () => {
@@ -88,6 +89,17 @@ test("shows a data validation list and an outline level", () => {
   cell!.dispatchEvent(new InputEvent("input", { bubbles: true }));
   assert.equal(cell?.classList.contains("is-invalid"), false);
   assert.equal(workbook.sheets[0]?.cells[0]?.[0]?.value, "乙");
+});
+
+test("evaluates a conditional format formula", () => {
+  const sheet = {
+    name: "销售",
+    cells: [[{ value: "8" }, { value: "3" }]],
+    conditionalFormats: [{ id: "cf1", r1: 0, c1: 0, r2: 0, c2: 0, rule: { type: "expression" as const, formula: "AND(A1>5,B1<4)", fill: "#ff0" } }],
+  };
+  assert.equal(cfLook(sheet, 0, 0, sheet.cells[0]?.[0])?.fill, "#ff0");
+  sheet.cells[0]![1]!.value = "9";
+  assert.equal(cfLook(sheet, 0, 0, sheet.cells[0]?.[0])?.fill, undefined);
 });
 
 test("marks page breaks and what-if data tables", () => {

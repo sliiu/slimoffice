@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cfLook = cfLook;
+const sheet_formula_1 = require("@sliiu/sheet-formula");
 /** Resolve conditional-format look for one cell. Later rules override earlier ones for fill/color. */
 function cfLook(sheet, row, column, cell) {
     const rules = sheet.conditionalFormats ?? [];
@@ -38,22 +39,10 @@ function matchRule(cf, sheet, row, column, cell, value) {
         return ok ? { fill: rule.fill, color: rule.color } : null;
     }
     if (rule.type === "expression") {
-        // Minimal: treat formula as "cell>N" or "cell=text".
-        const text = rule.formula.replace(/^=/, "");
-        const cmp = /^(?:A1|CELL)?\s*(>=|<=|<>|=|>|<)\s*(.+)$/i.exec(text);
-        if (!cmp)
-            return null;
-        const op = cmp[1];
-        const rhs = cmp[2].trim().replace(/^"|"$/g, "");
-        const num = Number(rhs);
-        const left = Number.isFinite(num) ? value : (cell?.value ?? "");
-        const right = Number.isFinite(num) ? num : rhs;
-        const ok = op === ">" ? left > right :
-            op === ">=" ? left >= right :
-                op === "<" ? left < right :
-                    op === "<=" ? left <= right :
-                        op === "<>" ? left !== right :
-                            left === right;
+        // The formula is evaluated against the sheet, so AND, OR, and cell references all work.
+        const formula = rule.formula.startsWith("=") ? rule.formula : `=${rule.formula}`;
+        const result = (0, sheet_formula_1.evaluate)(formula, { workbook: { sheets: [sheet] }, sheetIndex: 0, row, col: column });
+        const ok = result === true || (typeof result === "number" && result !== 0);
         return ok ? { fill: rule.fill, color: rule.color } : null;
     }
     if (rule.type === "colorScale") {
