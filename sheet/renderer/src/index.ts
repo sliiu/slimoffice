@@ -112,7 +112,7 @@ export interface SheetGrid {
   decreaseDecimals(): void;
   thousandSeparator(): void;
   defineName(name?: string, refersTo?: string): void;
-  goToSpecial(kind?: "blanks" | "formulas" | "constants"): number;
+  goToSpecial(kind?: "blanks" | "formulas" | "constants" | "comments" | "validation" | "conditional"): number;
   border(style?: "thin" | "medium" | "thick" | "dashed" | "dotted", color?: string): void;
   copyCell(): void;
   cutCell(): void;
@@ -1154,7 +1154,7 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     options.onStatus?.(zh ? `已定义 ${label}` : `Defined ${label}`);
   }
 
-  function goToSpecial(kind: "blanks" | "formulas" | "constants" = "blanks"): number {
+  function goToSpecial(kind: "blanks" | "formulas" | "constants" | "comments" | "validation" | "conditional" = "blanks"): number {
     let count = 0;
     let first: { row: number; col: number } | undefined;
     const sheet = currentSheet();
@@ -1163,9 +1163,14 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     for (let r = 0; r < rows; r += 1) {
       for (let c = 0; c < cols; c += 1) {
         const cell = sheet.cells[r]?.[c];
+        const covered = (ranges: { r1: number; c1: number; r2: number; c2: number }[] | undefined): boolean =>
+          (ranges ?? []).some((item) => r >= item.r1 && r <= item.r2 && c >= item.c1 && c <= item.c2);
         const hit =
           kind === "blanks" ? !cell || cell.value === "" :
           kind === "formulas" ? !!cell?.formula :
+          kind === "comments" ? !!cell?.comment :
+          kind === "validation" ? covered(sheet.validations) :
+          kind === "conditional" ? covered(sheet.conditionalFormats) :
           !!cell && !cell.formula && cell.value !== "";
         if (!hit) continue;
         count += 1;

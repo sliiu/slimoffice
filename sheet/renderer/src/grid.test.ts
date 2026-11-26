@@ -91,6 +91,23 @@ test("shows a data validation list and an outline level", () => {
   assert.equal(workbook.sheets[0]?.cells[0]?.[0]?.value, "乙");
 });
 
+test("finds comments and validated cells", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const grid = mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "甲" }], [{ value: "乙", comment: "核对" }]],
+      validations: [{ id: "dv1", r1: 0, c1: 0, r2: 0, c2: 0, type: "list", formula1: "甲,乙" }],
+    }],
+  });
+  assert.equal(grid.goToSpecial("comments"), 1);
+  assert.equal(grid.goToSpecial("validation"), 1);
+  assert.equal(grid.goToSpecial("conditional"), 0);
+});
+
 test("evaluates a conditional format formula", () => {
   const sheet = {
     name: "销售",

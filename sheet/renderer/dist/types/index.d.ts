@@ -95,7 +95,7 @@ export interface SheetGrid {
     decreaseDecimals(): void;
     thousandSeparator(): void;
     defineName(name?: string, refersTo?: string): void;
-    goToSpecial(kind?: "blanks" | "formulas" | "constants"): number;
+    goToSpecial(kind?: "blanks" | "formulas" | "constants" | "comments" | "validation" | "conditional"): number;
     border(style?: "thin" | "medium" | "thick" | "dashed" | "dotted", color?: string): void;
     copyCell(): void;
     cutCell(): void;

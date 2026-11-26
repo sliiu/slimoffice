@@ -1060,9 +1060,13 @@ function mountWorkbook(host, workbook, options = {}) {
         for (let r = 0; r < rows; r += 1) {
             for (let c = 0; c < cols; c += 1) {
                 const cell = sheet.cells[r]?.[c];
+                const covered = (ranges) => (ranges ?? []).some((item) => r >= item.r1 && r <= item.r2 && c >= item.c1 && c <= item.c2);
                 const hit = kind === "blanks" ? !cell || cell.value === "" :
                     kind === "formulas" ? !!cell?.formula :
-                        !!cell && !cell.formula && cell.value !== "";
+                        kind === "comments" ? !!cell?.comment :
+                            kind === "validation" ? covered(sheet.validations) :
+                                kind === "conditional" ? covered(sheet.conditionalFormats) :
+                                    !!cell && !cell.formula && cell.value !== "";
                 if (!hit)
                     continue;
                 count += 1;
