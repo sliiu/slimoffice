@@ -38,15 +38,23 @@ const BUILTIN_FMT: Record<number, string> = {
 const ALIGN: Record<string, SheetAlign> = { left: "left", center: "center", right: "right", justify: "justify" };
 const VALIGN: Record<string, SheetVAlign> = { top: "top", center: "middle", bottom: "bottom" };
 
+/** The fill and font color a conditional format paints, from one `dxfs` entry. */
+export interface DxfLook {
+  fill?: string;
+  color?: string;
+}
+
 export interface StyleBook {
   looks: CellLook[];
   /** Named style per `cellXfs` index, when the cell uses one. */
   names: (string | undefined)[];
+  /** One entry per `dxfs` child, so a `cfRule` can find its fill by `dxfId`. */
+  dxfs: DxfLook[];
 }
 
 /** One look per `cellXfs` entry. Index 0 is the sheet default and is usually empty. Theme colors resolve against the workbook palette. */
 export function readCellStyles(stylesXml: string | undefined, themeColors: string[] = []): StyleBook {
-  if (!stylesXml) return { looks: [], names: [] };
+  if (!stylesXml) return { looks: [], names: [], dxfs: [] };
   const root = child(parseXml(stylesXml), "styleSheet");
   const formats = new Map<number, string>(Object.entries(BUILTIN_FMT).map(([id, code]) => [Number(id), code]));
   for (const fmt of children(child(root, "numFmts"), "numFmt")) {
@@ -82,7 +90,18 @@ export function readCellStyles(stylesXml: string | undefined, themeColors: strin
     const xfId = Number(attr(xf, "xfId"));
     return Number.isInteger(xfId) ? styleNames.get(xfId) : undefined;
   });
-  return { looks, names };
+  const dxfs = children(child(root, "dxfs"), "dxf").map((dxf) => readDxf(dxf, themeColors));
+  return { looks, names, dxfs };
+}
+
+/** A differential style only carries what the rule changes: the solid fill and the font color. */
+function readDxf(dxf: XmlNode, themeColors: string[]): DxfLook {
+  const look: DxfLook = {};
+  const fill = readFill(child(dxf, "fill") ?? { name: "fill", attrs: {}, children: [], text: "" }, themeColors).fill;
+  const color = readFont(child(dxf, "font") ?? { name: "font", attrs: {}, children: [], text: "" }, themeColors).color;
+  if (fill) look.fill = fill;
+  if (color) look.color = color;
+  return look;
 }
 
 export function hasLook(look: CellLook | undefined): boolean {

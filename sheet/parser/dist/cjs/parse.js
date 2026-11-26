@@ -77,7 +77,7 @@ async function parseXlsx(input, options = {}) {
     const names = definedNames(archive);
     const vbaModules = (0, vba_1.vbaModuleNames)(archive.files.get("xl/vbaProject.bin") ?? archive.files.get("xl/vbaproject.bin"));
     return {
-        sheets: sheetsFrom(archive, shared, styles, styleBook.names),
+        sheets: sheetsFrom(archive, shared, styles, styleBook.names, styleBook.dxfs),
         ...(names.length ? { names } : {}),
         ...(vbaModules.length ? { vbaModules } : {}),
         ...(theme.present ? { theme: { ...(theme.name ? { name: theme.name } : {}), colors: (theme.colors ?? []).filter((color) => color !== ""), fonts: theme.fonts } } : {}),
@@ -87,15 +87,15 @@ async function parseXlsx(input, options = {}) {
 function isOle(bytes) {
     return bytes.length >= OLE_MAGIC.length && OLE_MAGIC.every((byte, index) => bytes[index] === byte);
 }
-function sheetsFrom(archive, shared, styles, styleNames) {
+function sheetsFrom(archive, shared, styles, styleNames, dxfs) {
     const workbook = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText("xl/workbook.xml") ?? ""), "workbook");
     const named = (0, xml_1.children)((0, xml_1.child)(workbook, "sheets"), "sheet").map((sheet) => (0, xml_1.attr)(sheet, "name") ?? "");
     const paths = [...archive.files.keys()]
         .filter((path) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(path))
         .sort((a, b) => sheetNumber(a) - sheetNumber(b));
-    return paths.map((path, index) => sheetFrom(archive, path, named[index] || `Sheet${index + 1}`, shared, styles, styleNames));
+    return paths.map((path, index) => sheetFrom(archive, path, named[index] || `Sheet${index + 1}`, shared, styles, styleNames, dxfs));
 }
-function sheetFrom(archive, path, name, shared, styles, styleNames) {
+function sheetFrom(archive, path, name, shared, styles, styleNames, dxfs) {
     const root = (0, xml_1.child)((0, xml_1.parseXml)(archive.getText(path) ?? ""), "worksheet") ?? { name: "worksheet", attrs: {}, children: [], text: "" };
     const cells = [];
     const dataTables = [];
@@ -137,12 +137,12 @@ function sheetFrom(archive, path, name, shared, styles, styleNames) {
             cells[where.row] = line;
         }
     }
-    const sheet = { name, cells, ...sheetShape(root, archive, path) };
+    const sheet = { name, cells, ...sheetShape(root, archive, path, dxfs) };
     if (dataTables.length)
         sheet.dataTables = dataTables;
     return sheet;
 }
-function sheetShape(root, archive, path) {
+function sheetShape(root, archive, path, dxfs) {
     const shape = {};
     const merges = (0, xml_1.children)((0, xml_1.child)(root, "mergeCells"), "mergeCell")
         .map((item) => rangeOf((0, xml_1.attr)(item, "ref") ?? ""))
@@ -208,7 +208,7 @@ function sheetShape(root, archive, path) {
     const drawn = shapeList(archive, path);
     if (drawn.length)
         shape.shapes = drawn;
-    const formats = conditionalFormats(root);
+    const formats = conditionalFormats(root, dxfs);
     if (formats.length)
         shape.conditionalFormats = formats;
     const checks = validations(root);
@@ -435,31 +435,39 @@ function hyperlinkOf(root, ref) {
     }
     return undefined;
 }
-function conditionalFormats(root) {
+function conditionalFormats(root, dxfs) {
     const out = [];
     for (const block of (0, xml_1.children)(root, "conditionalFormatting")) {
         const range = rangeOf((0, xml_1.attr)(block, "sqref")?.split(/\s+/)[0] ?? "");
         if (!range)
             continue;
         (0, xml_1.children)(block, "cfRule").forEach((rule, index) => {
-            const parsed = cfRule(rule);
+            const parsed = cfRule(rule, dxfs);
             if (parsed)
                 out.push({ id: `cf${out.length + index + 1}`, ...range, rule: parsed });
         });
     }
     return out;
 }
-function cfRule(rule) {
+/** The fill and font color live in `styles.xml`, pointed at by `dxfId`. Only rules that paint a cell take them. */
+function dxfLook(rule, dxfs) {
+    const id = Number((0, xml_1.attr)(rule, "dxfId"));
+    const look = dxfs[id];
+    if (!look)
+        return {};
+    return { ...(look.fill ? { fill: look.fill } : {}), ...(look.color ? { color: look.color } : {}) };
+}
+function cfRule(rule, dxfs) {
     const type = (0, xml_1.attr)(rule, "type");
     const formulas = (0, xml_1.children)(rule, "formula").map((item) => item.text.trim());
     if (type === "cellIs") {
         const op = cellOp((0, xml_1.attr)(rule, "operator") ?? "");
         if (!op || !formulas[0])
             return undefined;
-        return { type: "cellValue", op, formula1: formulas[0], ...(formulas[1] ? { formula2: formulas[1] } : {}) };
+        return { type: "cellValue", op, formula1: formulas[0], ...(formulas[1] ? { formula2: formulas[1] } : {}), ...dxfLook(rule, dxfs) };
     }
     if (type === "expression" && formulas[0])
-        return { type: "expression", formula: formulas[0] };
+        return { type: "expression", formula: formulas[0], ...dxfLook(rule, dxfs) };
     if (type === "colorScale") {
         const colors = (0, xml_1.children)((0, xml_1.child)(rule, "colorScale"), "color").map(colorOf).filter((item) => !!item);
         const [first, second, third] = colors;

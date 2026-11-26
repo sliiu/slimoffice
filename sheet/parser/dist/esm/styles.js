@@ -31,7 +31,7 @@ const VALIGN = { top: "top", center: "middle", bottom: "bottom" };
 /** One look per `cellXfs` entry. Index 0 is the sheet default and is usually empty. Theme colors resolve against the workbook palette. */
 export function readCellStyles(stylesXml, themeColors = []) {
     if (!stylesXml)
-        return { looks: [], names: [] };
+        return { looks: [], names: [], dxfs: [] };
     const root = child(parseXml(stylesXml), "styleSheet");
     const formats = new Map(Object.entries(BUILTIN_FMT).map(([id, code]) => [Number(id), code]));
     for (const fmt of children(child(root, "numFmts"), "numFmt")) {
@@ -70,7 +70,19 @@ export function readCellStyles(stylesXml, themeColors = []) {
         const xfId = Number(attr(xf, "xfId"));
         return Number.isInteger(xfId) ? styleNames.get(xfId) : undefined;
     });
-    return { looks, names };
+    const dxfs = children(child(root, "dxfs"), "dxf").map((dxf) => readDxf(dxf, themeColors));
+    return { looks, names, dxfs };
+}
+/** A differential style only carries what the rule changes: the solid fill and the font color. */
+function readDxf(dxf, themeColors) {
+    const look = {};
+    const fill = readFill(child(dxf, "fill") ?? { name: "fill", attrs: {}, children: [], text: "" }, themeColors).fill;
+    const color = readFont(child(dxf, "font") ?? { name: "font", attrs: {}, children: [], text: "" }, themeColors).color;
+    if (fill)
+        look.fill = fill;
+    if (color)
+        look.color = color;
+    return look;
 }
 export function hasLook(look) {
     return !!look && Object.keys(look).length > 0;

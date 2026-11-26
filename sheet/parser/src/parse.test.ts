@@ -168,6 +168,20 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
   assert.deepEqual(opened?.sparklines?.[0], { id: "spark1", kind: "column", data: "A1:A2", location: "C1" });
 });
 
+test("reads the fill and font color a conditional format points at", async () => {
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/styles.xml": `<styleSheet><fonts count="1"><font/></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellXfs count="1"><xf/></cellXfs>` +
+      `<dxfs count="1"><dxf><font><color rgb="FFFF0000"/></font><fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/></patternFill></fill></dxf></dxfs></styleSheet>`,
+    "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet>` +
+      `<sheetData><row r="1"><c r="A1"><v>12</v></c></row></sheetData>` +
+      `<conditionalFormatting sqref="A1:A1"><cfRule type="cellIs" dxfId="0" operator="greaterThan" priority="1"><formula>10</formula></cfRule></conditionalFormatting>` +
+      `</worksheet>`,
+  });
+  const workbook = await parseXlsx(bytes);
+  assert.deepEqual(workbook.sheets[0]?.conditionalFormats?.[0]?.rule, { type: "cellValue", op: "gt", formula1: "10", fill: "#ffff00", color: "#ff0000" });
+});
+
 test("reads theme colors, comments, and the pivot cache", async () => {
   const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet>` +
     `<fonts count="2"><font/><font><color theme="4"/></font></fonts>` +
