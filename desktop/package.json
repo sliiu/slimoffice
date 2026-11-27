@@ -2,7 +2,7 @@
   "name": "slim-office-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "SlimPPT desktop. Presentations open from files on this computer.",
+  "description": "Slim Office desktop. Presentations open from files on this computer.",
   "author": "Sliiu Inc",
   "license": "Apache-2.0",
   "type": "module",

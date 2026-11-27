@@ -37,7 +37,7 @@ function waitForSlimppt(port, child) {
       }
       try {
         const html = await fetch(url).then((res) => res.text());
-        if (html.includes("SlimPPT") && html.includes('id="home"')) {
+        if (html.includes("Slim Office") && html.includes('id="home"')) {
           resolve(url);
           return;
         }
@@ -112,7 +112,7 @@ watch(here, (_event, filename) => {
   if (!filename || !/\.(mjs|cjs)$/.test(filename)) return;
   clearTimeout(restartTimer);
   restartTimer = setTimeout(() => {
-    console.log(`restarting SlimPPT after ${filename}`);
+    console.log(`restarting Slim Office after ${filename}`);
     restartElectron();
   }, 200);
 });
