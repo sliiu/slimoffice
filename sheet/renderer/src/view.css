@@ -216,6 +216,15 @@
   font-weight: 600;
 }
 
+.sheet-grid td.is-table-total {
+  font-weight: 600;
+  box-shadow: inset 0 2px 0 #a1a1aa;
+}
+
+.sheet-grid td.is-table-stripe {
+  background: #eef2ff;
+}
+
 .sheet-grid td[data-consolidation] {
   background: #ecfdf5;
 }

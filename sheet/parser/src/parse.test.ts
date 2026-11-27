@@ -137,7 +137,7 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
       `<definedNames><definedName name="税率">Sheet1!$B$1</definedName></definedNames></workbook>`,
     ),
     "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet>` +
-      `<sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1" t="s"><v>0</v></c></row><row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>20</v></c></row></sheetData>` +
+      `<sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1" t="s"><v>0</v></c></row><row r="2"><c r="A2"><v>2</v></c><c r="B2"><f>SUM([数量])+1</f><v>20</v></c></row></sheetData>` +
       `<hyperlinks><hyperlink ref="B1" location="Sheet2!A1" display="明细"/></hyperlinks>` +
       `<conditionalFormatting sqref="A1:A2"><cfRule type="cellIs" operator="greaterThan"><formula>10</formula></cfRule></conditionalFormatting>` +
       `<dataValidations count="2"><dataValidation type="list" sqref="B1:B2" allowBlank="1"><formula1>"甲,乙"</formula1></dataValidation>` +
@@ -150,7 +150,7 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
       `<Relationship Id="rIdTable1" Type="table" Target="../tables/table1.xml"/>` +
       `<Relationship Id="rIdDrawing1" Type="drawing" Target="../drawings/drawing1.xml"/>` +
       `</Relationships>`,
-    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B2" headerRowCount="1" totalsRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类"/><tableColumn id="2" name="数量"/></tableColumns></table>`,
+    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B2" headerRowCount="1" totalsRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类"/><tableColumn id="2" name="数量" totalsRowFunction="average"><calculatedColumnFormula>SUM([数量])</calculatedColumnFormula></tableColumn></tableColumns><tableStyleInfo name="TableStyleMedium2" showRowStripes="1"/></table>`,
     "xl/drawings/drawing1.xml": `<wsDr><graphicFrame><cNvPr id="1" name="Chart 1"/></graphicFrame></wsDr>`,
     "xl/drawings/_rels/drawing1.xml.rels": `<Relationships><Relationship Id="rIdChart1" Type="chart" Target="../charts/chart1.xml"/></Relationships>`,
     "xl/charts/chart1.xml": `<chartSpace><chart><plotArea><barChart><ser><val><numRef><f>Sheet1!$B$1:$B$2</f></numRef></val></ser><ser><val><numRef><f>Sheet1!$C$1:$C$2</f></numRef></val></ser></barChart></plotArea></chart></chartSpace>`,
@@ -169,8 +169,62 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
   assert.equal(opened?.tables?.[0]?.name, "Table1");
   assert.deepEqual(opened?.tables?.[0]?.columns, ["品类", "数量"]);
   assert.equal(opened?.tables?.[0]?.totalsRow, true);
+  assert.equal(opened?.tables?.[0]?.rowStripes, true);
+  // A calculated column keeps the formula it shares, and a column without one keeps none.
+  assert.deepEqual(opened?.tables?.[0]?.formulas, ["", "SUM([数量])"]);
+  // A cell that already has its own formula keeps it.
+  assert.equal(opened?.cells[1]?.[1]?.formula, "SUM([数量])+1");
+  // The totals function comes back per column. A column that names none stays a sum.
+  assert.deepEqual(opened?.tables?.[0]?.totals, ["sum", "average"]);
   assert.deepEqual(opened?.charts?.[0], { id: "chart1", kind: "column", range: "$B$1:$B$2", series: ["$B$1:$B$2", "$C$1:$C$2"] });
   assert.deepEqual(opened?.sparklines?.[0], { id: "spark1", kind: "column", data: "A1:A2", location: "C1" });
+});
+
+test("a calculated column fills the data cells that have no formula", async () => {
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet>` +
+      `<sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>品类</t></is></c><c r="B1" t="inlineStr"><is><t>数量</t></is></c></row>` +
+      `<row r="2"><c r="A2" t="inlineStr"><is><t>甲</t></is></c><c r="B2"><v>10</v></c></row>` +
+      `<row r="3"><c r="A3" t="inlineStr"><is><t>乙</t></is></c><c r="B3"><v>5</v></c></row>` +
+      `<row r="4"><c r="A4" t="inlineStr"><is><t>合计</t></is></c></row></sheetData>` +
+      `<tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts></worksheet>`,
+    "xl/worksheets/_rels/sheet1.xml.rels": `<Relationships><Relationship Id="rIdTable1" Type="table" Target="../tables/table1.xml"/></Relationships>`,
+    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B4" headerRowCount="1" totalsRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类" width="18" hidden="1"/><tableColumn id="2" name="数量"><calculatedColumnFormula>[数量]*2</calculatedColumnFormula><totalsRowFormula>SUBTOTAL(109,[数量])</totalsRowFormula></tableColumn></tableColumns></table>`,
+  });
+  const opened = (await parseXlsx(bytes)).sheets[0];
+  // Both data rows take the column's formula, and the cached number stays visible.
+  assert.equal(opened?.cells[1]?.[1]?.formula, "[数量]*2");
+  assert.equal(opened?.cells[1]?.[1]?.value, "10");
+  assert.equal(opened?.cells[2]?.[1]?.formula, "[数量]*2");
+  // The header is not data, so the column formula never reaches it.
+  assert.equal(opened?.cells[0]?.[1]?.formula, undefined);
+  // A column keeps its width and whether the table hides it. One that names neither keeps none.
+  assert.equal(opened?.tables?.[0]?.widths?.[0], 18);
+  assert.deepEqual(opened?.tables?.[0]?.hidden, [true, false]);
+  // The totals formula fills the totals cell, which the column formula leaves alone.
+  assert.equal(opened?.tables?.[0]?.totalsFormulas?.[1], "SUBTOTAL(109,[数量])");
+  assert.equal(opened?.cells[3]?.[1]?.formula, "SUBTOTAL(109,[数量])");
+});
+
+test("a table column carries a number format", async () => {
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/styles.xml": `<styleSheet><numFmts count="1"><numFmt numFmtId="164" formatCode="0.00"/></numFmts><dxfs count="1"><dxf><numFmt numFmtId="164" formatCode="0.00"/></dxf></dxfs></styleSheet>`,
+    "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet>` +
+      `<sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>数量</t></is></c></row>` +
+      `<row r="2"><c r="A2"><v>10</v></c></row>` +
+      `<row r="3"><c r="A3"><v>5</v></c></row></sheetData>` +
+      `<tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts></worksheet>`,
+    "xl/worksheets/_rels/sheet1.xml.rels": `<Relationships><Relationship Id="rIdTable1" Type="table" Target="../tables/table1.xml"/></Relationships>`,
+    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:A3" headerRowCount="1"><tableColumns count="1"><tableColumn id="1" name="数量" dataDxfId="0"/></tableColumns></table>`,
+  });
+  const opened = (await parseXlsx(bytes)).sheets[0];
+  // The format comes back on the column and reaches the data cells. The header keeps none.
+  assert.deepEqual(opened?.tables?.[0]?.formats, ["0.00"]);
+  assert.equal(opened?.cells[1]?.[0]?.numFmt, "0.00");
+  assert.equal(opened?.cells[2]?.[0]?.numFmt, "0.00");
+  assert.equal(opened?.cells[0]?.[0]?.numFmt, undefined);
 });
 
 test("reads the fill and font color a conditional format points at", async () => {

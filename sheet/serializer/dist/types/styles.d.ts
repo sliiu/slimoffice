@@ -2,6 +2,8 @@ import type { SheetCell, Worksheet } from "@sliiu/sheet-core";
 export interface StyleBook {
     xml: string;
     indexFor(cell: SheetCell): string | undefined;
+    /** The dxf index of a number format, added when the table column names one. */
+    dxfForFormat(format: string): number;
 }
 /** Build or extend styles.xml so edited fonts/fills/numFmts round-trip. */
 export declare function styleBook(stylesXml: string | undefined, sheets: Worksheet[]): StyleBook;

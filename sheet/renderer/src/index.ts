@@ -104,6 +104,10 @@ export interface SheetGrid {
   addSparkline(kind?: SheetSparklineKind, data?: string): void;
   addConditionalFormat(rule: SheetCfRule, rows?: number, cols?: number): void;
   addTable(name?: string): void;
+  /** Add a totals row to the table under the selection, or take it off. Returns whether it is on. */
+  toggleTotals(): boolean;
+  /** How the totals row reduces the column under the selection. A sum is the default. */
+  totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean;
   addPivot(name?: string): void;
   pageSetup(patch: SheetPageSetup): void;
   pageSetupOn(): SheetPageSetup | undefined;
@@ -308,6 +312,8 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     addSparkline,
     addConditionalFormat,
     addTable,
+    toggleTotals,
+    totalsFunction,
     addPivot,
     pageSetup: (patch) => {
       remember();
@@ -411,9 +417,10 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     const head = document.createElement("tr");
     head.append(cell("th", ""));
     for (let column = 0; column < columns; column += 1) {
-      if (sheet.hiddenCols?.includes(column)) continue;
+      if (sheet.hiddenCols?.includes(column) || columnHiddenByTable(sheet, column)) continue;
       const th = cell("th", columnName(column));
-      if (sheet.colWidths?.[column]) th.style.width = `${sheet.colWidths[column]! * 8}px`;
+      const width = sheet.colWidths?.[column] ?? columnWidthFromTable(sheet, column);
+      if (width) th.style.width = `${width * 8}px`;
       head.append(th);
     }
     table.append(head);
@@ -424,7 +431,7 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
       if (sheet.rowHeights?.[row]) line.style.height = `${sheet.rowHeights[row]}pt`;
       line.append(cell("th", String(row + 1)));
       for (let column = 0; column < columns; column += 1) {
-        if (sheet.hiddenCols?.includes(column)) continue;
+        if (sheet.hiddenCols?.includes(column) || columnHiddenByTable(sheet, column)) continue;
         if (coveredByMerge(sheet, row, column)) continue;
         line.append(dataCell(sheet, row, column));
       }
@@ -464,7 +471,7 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
   function dataCell(sheet: Worksheet, row: number, column: number): HTMLTableCellElement {
     const item = sheet.cells[row]?.[column];
     const td = document.createElement("td");
-    td.textContent = shown(item);
+    td.textContent = shown(item, sheet, row, column);
     td.dataset.row = String(row);
     td.dataset.col = String(column);
     applyLook(td, item, row, column);
@@ -496,6 +503,13 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     if (tableRange) {
       td.dataset.table = tableRange.name;
       if (tableRange.headerRow && row === tableRange.r1) td.classList.add("is-table-header");
+      if (tableRange.totalsRow && row === tableRange.r2) td.classList.add("is-table-total");
+      // Data rows alternate their shading. The header and the totals row stay out of the count.
+      const stripeTop = tableRange.headerRow === false ? tableRange.r1 : tableRange.r1 + 1;
+      const stripeBottom = tableRange.totalsRow ? tableRange.r2 - 1 : tableRange.r2;
+      if (tableRange.rowStripes !== false && row >= stripeTop && row <= stripeBottom && (row - stripeTop) % 2 === 1) {
+        td.classList.add("is-table-stripe");
+      }
     }
     if (inPrintArea(sheet, row, column)) td.dataset.printArea = "1";
     const consolidation = sheet.consolidation;
@@ -506,7 +520,9 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     if (sheet.pageBreaks?.cols?.includes(column + 1)) td.dataset.pageBreak = "col";
     const table = dataTableAt(sheet, row, column);
     if (table) td.dataset.dataTable = [table.rowInput, table.colInput].filter((part) => part).join(" ");
-    if (sheet.filter && row === sheet.filter.r1 && column >= sheet.filter.c1 && column <= sheet.filter.c2) {
+    // A table carries its own filter on the header row, separate from the sheet's one filter.
+    const tableHeader = tableRange?.headerRow && row === tableRange.r1;
+    if (tableHeader || (sheet.filter && row === sheet.filter.r1 && column >= sheet.filter.c1 && column <= sheet.filter.c2)) {
       td.classList.add("is-filter-header");
     }
     if (item?.hyperlink) {
@@ -549,13 +565,56 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
         delete cell.formula;
         cell.value = next;
       }
+      // Renaming a header renames the column, so Table1[数量] follows the text the user typed.
+      const table = tableRangeAt(sheet, row, column);
+      if (table?.headerRow && row === table.r1 && table.columns) {
+        const at = column - table.c1;
+        table.columns[at] = columnTitle(next, column, table.columns.filter((_, index) => index !== at));
+      }
+      // A formula typed into a data cell becomes the column's formula and fills the other data rows.
+      if (cell.formula && table && fillColumnFormula(table, row, column, cell.formula)) paint();
       touch();
     });
     return td;
   }
 
+  /** A table column marked hidden drops out of the grid. */
+  function columnHiddenByTable(sheet: Worksheet, column: number): boolean {
+    return (sheet.tables ?? []).some((item) => column >= item.c1 && column <= item.c2 && item.hidden?.[column - item.c1] === true);
+  }
+
+  /** The width a table gives one column, in characters. Nothing when the table leaves it to the sheet. */
+  function columnWidthFromTable(sheet: Worksheet, column: number): number | undefined {
+    for (const item of sheet.tables ?? []) {
+      if (column < item.c1 || column > item.c2) continue;
+      const width = item.widths?.[column - item.c1];
+      if (width && width > 0) return width;
+    }
+    return undefined;
+  }
+
   function tableRangeAt(sheet: Worksheet, row: number, column: number): NonNullable<Worksheet["tables"]>[number] | undefined {
     return sheet.tables?.find((item) => row >= item.r1 && row <= item.r2 && column >= item.c1 && column <= item.c2);
+  }
+
+  /** A formula typed into a data cell becomes the column's formula and fills the other data rows. */
+  function fillColumnFormula(table: NonNullable<Worksheet["tables"]>[number], row: number, column: number, formula: string): boolean {
+    const dataTop = table.headerRow === false ? table.r1 : table.r1 + 1;
+    const dataBottom = table.totalsRow ? table.r2 - 1 : table.r2;
+    if (row < dataTop || row > dataBottom) return false;
+    const at = column - table.c1;
+    const formulas = table.formulas ?? [];
+    table.formulas = formulas;
+    formulas[at] = formula;
+    for (let line = dataTop; line <= dataBottom; line += 1) {
+      if (line === row) continue;
+      const item = ensure(line, column);
+      item.formula = formula;
+      item.value = `=${formula}`;
+      // The cell now holds the column's formula, so a spill no longer owns it.
+      delete item.spill;
+    }
+    return true;
   }
 
   function editRangeAt(sheet: Worksheet, row: number, column: number): boolean {
@@ -656,10 +715,25 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     return [rule.type, rule.formula1, rule.formula2].filter((part) => part).join(" ");
   }
 
-  function shown(item: SheetCell | undefined): string {
+  function shown(item: SheetCell | undefined, sheet?: Worksheet, row = 0, column = 0): string {
     const value = item?.value ?? "";
-    if (!item?.numFmt || item.numFmt === "@" || !/^-?\d+(?:\.\d+)?$/.test(value)) return value;
-    return formatNumber(Number(value), item.numFmt);
+    // A cell's own format wins. Otherwise a table column's format covers its data cells.
+    const format = item?.numFmt || (sheet ? columnFormat(sheet, row, column) : "");
+    if (!format || format === "@" || !/^-?\d+(?:\.\d+)?$/.test(value)) return value;
+    return formatNumber(Number(value), format);
+  }
+
+  /** The number format a table column gives one data cell. Empty outside the data rows. */
+  function columnFormat(sheet: Worksheet, row: number, column: number): string {
+    for (const table of sheet.tables ?? []) {
+      if (column < table.c1 || column > table.c2) continue;
+      const dataTop = table.headerRow === false ? table.r1 : table.r1 + 1;
+      const dataBottom = table.totalsRow ? table.r2 - 1 : table.r2;
+      if (row < dataTop || row > dataBottom) continue;
+      const format = table.formats?.[column - table.c1];
+      if (format) return format;
+    }
+    return "";
   }
 
   function applyLook(td: HTMLTableCellElement, item: SheetCell | undefined, row = selected.row, column = selected.col): void {
@@ -727,42 +801,73 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
   function insertRow(): void {
     remember();
     currentSheet().cells.splice(selected.row, 0, []);
-    shiftMerges(1, 0);
+    shiftRanges(1, 0);
+    // The selected cell moved down with the row, so the selection follows it.
+    selected = { row: selected.row + 1, col: selected.col };
     finish();
   }
 
   function insertColumn(): void {
     remember();
     for (const row of currentSheet().cells) row?.splice(selected.col, 0, undefined as unknown as SheetCell);
-    shiftMerges(0, 1);
+    shiftRanges(0, 1);
+    selected = { row: selected.row, col: selected.col + 1 };
     finish();
   }
 
   function deleteRow(): void {
     remember();
     currentSheet().cells.splice(selected.row, 1);
+    shiftRanges(-1, 0);
     finish();
   }
 
   function deleteColumn(): void {
     remember();
     for (const row of currentSheet().cells) row?.splice(selected.col, 1);
+    shiftRanges(0, -1);
     finish();
   }
 
-  function shiftMerges(rowDelta: number, colDelta: number): void {
+  /**
+   * Move every range with the inserted or deleted row or column.
+   * A range that starts at the change or below it moves as a whole. One that contains the change
+   * grows when a row is inserted and shrinks when a row is deleted. A range emptied by a deletion is dropped.
+   */
+  function shiftRanges(rowDelta: number, colDelta: number): void {
     const sheet = currentSheet();
-    if (!sheet.merges) return;
-    for (const merge of sheet.merges) {
-      if (rowDelta && merge.r1 >= selected.row) {
-        merge.r1 += rowDelta;
-        merge.r2 += rowDelta;
+    const at = rowDelta ? selected.row : selected.col;
+    const delta = rowDelta || colDelta;
+    const move = (range: { r1: number; c1: number; r2: number; c2: number }): boolean => {
+      const start = rowDelta ? range.r1 : range.c1;
+      const end = rowDelta ? range.r2 : range.c2;
+      // A change above the range moves it. A change on its first row or inside it grows or shrinks it,
+      // so inserting at the header keeps the header and the rows below it together.
+      if (start > at) {
+        if (rowDelta) {
+          range.r1 += delta;
+          range.r2 += delta;
+        } else {
+          range.c1 += delta;
+          range.c2 += delta;
+        }
+      } else if (end >= at) {
+        if (rowDelta) range.r2 += delta;
+        else range.c2 += delta;
       }
-      if (colDelta && merge.c1 >= selected.col) {
-        merge.c1 += colDelta;
-        merge.c2 += colDelta;
+      return (rowDelta ? range.r1 : range.c1) <= (rowDelta ? range.r2 : range.c2);
+    };
+    sheet.merges = (sheet.merges ?? []).filter(move);
+    sheet.tables = (sheet.tables ?? []).filter((table) => {
+      // The name comes off before the range shrinks, so the index still matches the deleted column.
+      if (colDelta < 0 && table.columns && selected.col >= table.c1 && selected.col <= table.c2) {
+        table.columns.splice(selected.col - table.c1, 1);
       }
-    }
+      return move(table);
+    });
+    sheet.conditionalFormats = (sheet.conditionalFormats ?? []).filter(move);
+    sheet.validations = (sheet.validations ?? []).filter(move);
+    if (sheet.filter && !move(sheet.filter)) sheet.filter = null;
   }
 
   function find(query: string): number {
@@ -1095,6 +1200,11 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     const tables = sheet.tables ?? [];
     const r2 = Math.max(selected.row, sheet.cells.length - 1);
     const c2 = Math.max(selected.col, (sheet.cells[selected.row]?.length ?? 1) - 1);
+    // The header row names the columns, so a formula can say Table1[数量] about a table just made.
+    const columns: string[] = [];
+    for (let col = selected.col; col <= c2; col += 1) {
+      columns.push(columnTitle(sheet.cells[selected.row]?.[col]?.value ?? "", col, columns));
+    }
     tables.push({
       id: `table${tables.length + 1}`,
       name: name ?? `Table${tables.length + 1}`,
@@ -1103,10 +1213,73 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
       r2,
       c2,
       headerRow: true,
+      columns,
     });
     sheet.tables = tables;
-    sheet.filter = { r1: selected.row, c1: selected.col, r2, c2 };
     finish();
+  }
+
+  /** The table's last row becomes a totals row, or stops being one. The row below is pulled in when there is none yet. */
+  function toggleTotals(): boolean {
+    const sheet = currentSheet();
+    const table = tableRangeAt(sheet, selected.row, selected.col);
+    if (!table) return false;
+    remember();
+    if (table.totalsRow) {
+      table.totalsRow = false;
+      finish();
+      return false;
+    }
+    table.r2 += 1;
+    table.totalsRow = true;
+    const corner = ensure(table.r2, table.c1);
+    if (!corner.value) corner.value = zh ? "汇总" : "Total";
+    // Each column that holds a number sums itself. SUBTOTAL skips the header and this totals row.
+    const top = (table.headerRow === false ? table.r1 : table.r1 + 1) + 1;
+    const bottom = table.r2;
+    for (let col = table.c1 + 1; col <= table.c2; col += 1) {
+      const numeric = sheet.cells.slice(top - 1, bottom).some((line) => line?.[col]?.value && !Number.isNaN(Number(line[col]!.value)));
+      if (!numeric) continue;
+      const cell = ensure(table.r2, col);
+      if (cell.value || cell.formula) continue;
+      cell.formula = totalsFormula("sum", col, top, bottom);
+      cell.value = `=${cell.formula}`;
+    }
+    finish();
+    return true;
+  }
+
+  /** The totals cell of the column under the selection reduces the way asked. A column with no totals row cannot. */
+  function totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean {
+    const sheet = currentSheet();
+    const table = tableRangeAt(sheet, selected.row, selected.col);
+    if (!table?.totalsRow) return false;
+    remember();
+    const at = selected.col - table.c1;
+    const totals = table.totals ?? [];
+    table.totals = totals;
+    totals[at] = fn;
+    const top = (table.headerRow === false ? table.r1 : table.r1 + 1) + 1;
+    const cell = ensure(table.r2, selected.col);
+    const totalsFormulas = table.totalsFormulas ?? [];
+    table.totalsFormulas = totalsFormulas;
+    if (fn === "none") {
+      delete cell.formula;
+      cell.value = "";
+      totalsFormulas[at] = "";
+    } else {
+      cell.formula = totalsFormula(fn, selected.col, top, table.r2);
+      cell.value = `=${cell.formula}`;
+      totalsFormulas[at] = cell.formula;
+    }
+    finish();
+    return true;
+  }
+
+  /** The SUBTOTAL call for one totals function. The range stops above the totals row. */
+  function totalsFormula(fn: "sum" | "count" | "average" | "max" | "min", column: number, top: number, bottom: number): string {
+    const code = fn === "count" ? 103 : fn === "average" ? 101 : fn === "max" ? 104 : fn === "min" ? 105 : 109;
+    return `SUBTOTAL(${code},${columnName(column)}${top}:${columnName(column)}${bottom})`;
   }
 
   function addPivot(name?: string): void {
@@ -1763,6 +1936,13 @@ function textOfSource(source: Map<string, Uint8Array>, path: string): string | u
 
 function bytesOf(text: string): Uint8Array {
   return new TextEncoder().encode(text);
+}
+
+/** A column's name, taken from its header. A blank header uses the column letter, and a repeat gains a suffix. */
+function columnTitle(text: string, column: number, taken: string[]): string {
+  let name = text.trim() || columnName(column);
+  while (taken.some((item) => item.toUpperCase() === name.toUpperCase())) name = `${name}_`;
+  return name;
 }
 
 function columnName(index: number): string {

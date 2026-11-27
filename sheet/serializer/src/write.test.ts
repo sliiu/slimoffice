@@ -120,7 +120,7 @@ test("writes a cell comment back", () => {
 test("writes table drawing and validation parts", () => {
   const made = blankWorkbook("销售", [[{ value: "a" }, { value: "1" }], [{ value: "b" }, { value: "2" }]]);
   const sheet = made.workbook.sheets[0]!;
-  sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }];
+  sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"], formulas: ["", "SUM([数量])"], totals: ["sum", "average"], totalsFormulas: ["", "SUBTOTAL(101,[数量])"], widths: [18, 0], hidden: [true, false], formats: ["", "0.00"] }];
   sheet.charts = [{ id: "chart1", kind: "column", title: "销量", range: "B1:B2" }];
   sheet.validations = [{ id: "dv1", r1: 0, c1: 0, r2: 1, c2: 0, type: "list", op: "eq", formula1: "a,b" }];
   made.workbook.theme = { name: "Office", colors: ["#4472C4"], fonts: { major: "Calibri", minor: "Calibri" } };
@@ -130,7 +130,9 @@ test("writes table drawing and validation parts", () => {
   assert.match(sheetXml, /<drawing r:id="rIdDrawing1"\/>/);
   assert.match(sheetXml, /<dataValidations count="1">/);
   assert.match(sheetXml, /<dataValidation type="list" allowBlank="1" operator="equal" sqref="A1:A2"><formula1>a,b<\/formula1><\/dataValidation>/);
-  assert.match(new TextDecoder().decode(out["xl/tables/table1_1.xml"]), /totalsRowCount="1".*<tableColumn id="1" name="品类"\/><tableColumn id="2" name="数量"\/>/);
+  assert.match(new TextDecoder().decode(out["xl/tables/table1_1.xml"]), /totalsRowCount="1".*<tableColumn id="1" name="品类" width="18" hidden="1"><\/tableColumn><tableColumn id="2" name="数量" dataDxfId="\d+" totalsRowFunction="average"><calculatedColumnFormula>SUM\(\[数量\]\)<\/calculatedColumnFormula><totalsRowFormula>SUBTOTAL\(101,\[数量\]\)<\/totalsRowFormula><\/tableColumn>/);
+  // The number format lands in the styles, and the column points at that entry.
+  assert.match(new TextDecoder().decode(out["xl/styles.xml"]), /<dxf><numFmt numFmtId="\d+" formatCode="0.00"\/><\/dxf>/);
   assert.ok(out["xl/drawings/drawing1.xml"]);
   assert.ok(out["xl/theme/theme1.xml"]);
 });

@@ -38,10 +38,11 @@ const BUILTIN_FMT: Record<number, string> = {
 const ALIGN: Record<string, SheetAlign> = { left: "left", center: "center", right: "right", justify: "justify" };
 const VALIGN: Record<string, SheetVAlign> = { top: "top", center: "middle", bottom: "bottom" };
 
-/** The fill and font color a conditional format paints, from one `dxfs` entry. */
+/** The fill, font color, and number format a differential style carries, from one `dxfs` entry. */
 export interface DxfLook {
   fill?: string;
   color?: string;
+  numFmt?: string;
 }
 
 export interface StyleBook {
@@ -90,17 +91,19 @@ export function readCellStyles(stylesXml: string | undefined, themeColors: strin
     const xfId = Number(attr(xf, "xfId"));
     return Number.isInteger(xfId) ? styleNames.get(xfId) : undefined;
   });
-  const dxfs = children(child(root, "dxfs"), "dxf").map((dxf) => readDxf(dxf, themeColors));
+  const dxfs = children(child(root, "dxfs"), "dxf").map((dxf) => readDxf(dxf, themeColors, formats));
   return { looks, names, dxfs };
 }
 
-/** A differential style only carries what the rule changes: the solid fill and the font color. */
-function readDxf(dxf: XmlNode, themeColors: string[]): DxfLook {
+/** A differential style only carries what it changes: the solid fill, the font color, and the number format. */
+function readDxf(dxf: XmlNode, themeColors: string[], formats: Map<number, string>): DxfLook {
   const look: DxfLook = {};
   const fill = readFill(child(dxf, "fill") ?? { name: "fill", attrs: {}, children: [], text: "" }, themeColors).fill;
   const color = readFont(child(dxf, "font") ?? { name: "font", attrs: {}, children: [], text: "" }, themeColors).color;
+  const format = formats.get(Number(attr(child(dxf, "numFmt"), "numFmtId")));
   if (fill) look.fill = fill;
   if (color) look.color = color;
+  if (format) look.numFmt = format;
   return look;
 }
 

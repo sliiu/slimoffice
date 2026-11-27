@@ -87,6 +87,10 @@ export interface SheetGrid {
     addSparkline(kind?: SheetSparklineKind, data?: string): void;
     addConditionalFormat(rule: SheetCfRule, rows?: number, cols?: number): void;
     addTable(name?: string): void;
+    /** Add a totals row to the table under the selection, or take it off. Returns whether it is on. */
+    toggleTotals(): boolean;
+    /** How the totals row reduces the column under the selection. A sum is the default. */
+    totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean;
     addPivot(name?: string): void;
     pageSetup(patch: SheetPageSetup): void;
     pageSetupOn(): SheetPageSetup | undefined;

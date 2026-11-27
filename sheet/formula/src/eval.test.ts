@@ -116,6 +116,62 @@ test("a table reference picks the header, the totals row, or the current row", (
   assert.equal(evaluate("=Table1[[#Totals],[数量]]", ctx(workbook)) instanceof FormulaError, true);
 });
 
+test("a table reference covers the whole column or the whole table", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "数量" }],
+    [{ value: "甲" }, { value: "10" }],
+    [{ value: "乙" }, { value: "5" }],
+    [{ value: "合计" }, { value: "15" }],
+  ]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }];
+  // #All takes the header and the totals row along with the data, so the sum counts the 15.
+  assert.equal(evaluate("=SUM(Table1[[#All],[数量]])", ctx(workbook)), 30);
+  // #Data on its own covers both columns and stops above the totals row.
+  assert.equal(evaluate("=SUM(Table1[[#Data]])", ctx(workbook)), 15);
+  assert.equal(evaluate("=COUNTA(Table1[[#Data]])", ctx(workbook)), 4);
+});
+
+test("a table reference spans from one column to another", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "数量" }, { value: "单价" }],
+    [{ value: "甲" }, { value: "10" }, { value: "2" }],
+    [{ value: "乙" }, { value: "5" }, { value: "4" }],
+  ]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 2, c2: 2, headerRow: true, columns: ["品类", "数量", "单价"] }];
+  // The colon takes every column from the first named one through the second, either way around.
+  assert.equal(evaluate("=SUM(Table1[[数量]:[单价]])", ctx(workbook)), 21);
+  assert.equal(evaluate("=SUM(Table1[[单价]:[数量]])", ctx(workbook)), 21);
+  // The text column is inside the span, so it counts too.
+  assert.equal(evaluate("=COUNTA(Table1[[品类]:[数量]])", ctx(workbook)), 4);
+  // The same span on the formula's own row reads one cell of each column.
+  assert.equal(evaluate("=SUM(Table1[@[数量]:[单价]])", ctx(workbook, 1, 0)), 12);
+  assert.equal(evaluate("=SUM(Table1[[#This Row],[数量]:[单价]])", ctx(workbook, 2, 0)), 9);
+  // A column the table does not have is a reference error. A sum would swallow it into zero.
+  assert.equal(evaluate("=Table1[[数量]:[没有]]", ctx(workbook)) instanceof FormulaError, true);
+});
+
+test("a bare table name and a bare specifier cover the whole table", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "数量" }],
+    [{ value: "甲" }, { value: "10" }],
+    [{ value: "乙" }, { value: "5" }],
+    [{ value: "合计" }, { value: "15" }],
+  ]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }];
+  // The name on its own is the data, so the header and the totals row stay out.
+  assert.equal(evaluate("=SUM(Table1)", ctx(workbook)), 15);
+  assert.equal(evaluate("=COUNTA(Table1)", ctx(workbook)), 4);
+  // A specifier without a column names every column of that one row.
+  assert.equal(evaluate("=COUNTA(Table1[[#Headers]])", ctx(workbook)), 2);
+  assert.equal(evaluate("=SUM(Table1[[#Totals]])", ctx(workbook)), 15);
+  assert.equal(evaluate("=SUM(Table1[[#This Row]])", ctx(workbook, 1, 0)), 10);
+  assert.equal(evaluate("=SUM(Table1[@])", ctx(workbook, 2, 0)), 5);
+  // A defined name still wins when no table has it, and a name nothing owns stays a name.
+  workbook.names = [{ name: "Rate", refersTo: "=2" }];
+  assert.equal(evaluate("=Rate*3", ctx(workbook)), 6);
+  assert.equal(evaluate("=ISREF(Missing)", ctx(workbook)), false);
+});
+
 test("IF and text functions", () => {
   const workbook = book([[{ value: "hello" }]]);
   assert.equal(evaluate("=IF(1=1,\"yes\",\"no\")", ctx(workbook)), "yes");

@@ -86,8 +86,22 @@ export interface SheetTable {
   /** The last row holds totals, so a data reference stops above it. */
   totalsRow?: boolean;
   style?: string;
+  /** Data rows alternate their shading. Defaults to on. */
+  rowStripes?: boolean;
   /** Header text of each column, in order. Empty when the table has no header row. */
   columns?: string[];
+  /** The formula shared by every data cell of a column, one per column. Empty entries have none. */
+  formulas?: string[];
+  /** How the totals row reduces each column. A missing entry sums. */
+  totals?: ("sum" | "count" | "average" | "max" | "min" | "none")[];
+  /** The formula the totals row shows for each column. Empty entries have none. */
+  totalsFormulas?: string[];
+  /** A column's width in characters, one per column. Missing entries keep the sheet's width. */
+  widths?: number[];
+  /** A column the table hides, one per column. */
+  hidden?: boolean[];
+  /** The number format a column applies to its data cells. Empty entries have none. */
+  formats?: string[];
 }
 
 export interface SheetPivot {

@@ -1,7 +1,7 @@
 import type { SheetChart, SheetConsolidation, SheetPivot, SheetShape, SheetTable, Worksheet } from "@sliiu/sheet-core";
 
 /** Minimal chart/table/shape fragments written beside sheetData. */
-export function drawingFragments(sheet: Worksheet, sheetIndex: number): {
+export function drawingFragments(sheet: Worksheet, sheetIndex: number, dxfForFormat?: (format: string) => number): {
   sheetExtras: string;
   parts: Map<string, string>;
   contentTypes: string[];
@@ -19,7 +19,7 @@ export function drawingFragments(sheet: Worksheet, sheetIndex: number): {
 
   (sheet.tables ?? []).forEach((table, index) => {
     const path = `xl/tables/table${sheetIndex + 1}_${index + 1}.xml`;
-    parts.set(path, tableXml(table));
+    parts.set(path, tableXml(table, dxfForFormat));
     contentTypes.push(`<Override PartName="/${path}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>`);
     const rid = `rIdT${index + 1}`;
     rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${sheetIndex + 1}_${index + 1}.xml"/>`);
@@ -94,14 +94,26 @@ export function drawingFragments(sheet: Worksheet, sheetIndex: number): {
   return { sheetExtras: extras.join(""), parts, contentTypes, rels, workbookRels, pivotCacheRefs };
 }
 
-function tableXml(table: SheetTable): string {
+function tableXml(table: SheetTable, dxfForFormat?: (format: string) => number): string {
   const ref = `${colName(table.c1)}${table.r1 + 1}:${colName(table.c2)}${table.r2 + 1}`;
   const columns = table.columns ?? [];
   const cols = columns.length
-    ? `<tableColumns count="${columns.length}">${columns.map((name, index) => `<tableColumn id="${index + 1}" name="${escapeXml(name)}"/>`).join("")}</tableColumns>`
+    ? `<tableColumns count="${columns.length}">${columns.map((name, index) => {
+        const formula = table.formulas?.[index];
+        const fn = table.totals?.[index];
+        const totalsFn = fn && fn !== "sum" ? ` totalsRowFunction="${fn === "average" ? "average" : fn === "count" ? "count" : fn === "max" ? "max" : fn === "min" ? "min" : "none"}"` : "";
+        const totalsFormula = table.totalsFormulas?.[index];
+        const width = table.widths?.[index];
+        const widthAttr = width && width > 0 ? ` width="${width}"` : "";
+        const hiddenAttr = table.hidden?.[index] ? ` hidden="1"` : "";
+        const format = table.formats?.[index];
+        const dxfAttr = format && dxfForFormat ? ` dataDxfId="${dxfForFormat(format)}"` : "";
+        const body = `${formula ? `<calculatedColumnFormula>${escapeXml(formula)}</calculatedColumnFormula>` : ""}${totalsFormula ? `<totalsRowFormula>${escapeXml(totalsFormula)}</totalsRowFormula>` : ""}`;
+        return `<tableColumn id="${index + 1}" name="${escapeXml(name)}"${widthAttr}${hiddenAttr}${dxfAttr}${totalsFn}>${body}</tableColumn>`;
+      }).join("")}</tableColumns>`
     : "";
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow ? 'headerRowCount="1"' : ""}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}<autoFilter ref="${ref}"/><tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`;
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow ? 'headerRowCount="1"' : ""}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}<autoFilter ref="${ref}"/><tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="0" showLastColumn="0" showRowStripes="${table.rowStripes === false ? "0" : "1"}" showColumnStripes="0"/></table>`;
 }
 
 function chartAnchor(chart: SheetChart, index: number): string {

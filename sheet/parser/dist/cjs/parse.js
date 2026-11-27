@@ -150,6 +150,8 @@ function sheetFrom(archive, path, name, shared, styles, styleNames, dxfs) {
     const sheet = { name, cells, ...sheetShape(root, archive, path, dxfs) };
     if (dataTables.length)
         sheet.dataTables = dataTables;
+    // A calculated column's formula fills the data cells that do not already hold one.
+    fillColumnFormulas(sheet);
     return sheet;
 }
 function sheetShape(root, archive, path, dxfs) {
@@ -224,7 +226,7 @@ function sheetShape(root, archive, path, dxfs) {
     const checks = validations(root);
     if (checks.length)
         shape.validations = checks;
-    const lists = tables(root, archive, path);
+    const lists = tables(root, archive, path, dxfs);
     if (lists.length)
         shape.tables = lists;
     const charts = chartList(archive, path);
@@ -573,7 +575,7 @@ function validations(root) {
             }];
     });
 }
-function tables(root, archive, path) {
+function tables(root, archive, path, dxfs) {
     const rels = relTargets(archive, path);
     return (0, xml_1.children)((0, xml_1.child)(root, "tableParts"), "tablePart").flatMap((part, index) => {
         const target = rels.get((0, xml_1.attr)(part, "id") ?? "");
@@ -584,14 +586,30 @@ function tables(root, archive, path) {
         const range = rangeOf((0, xml_1.attr)(table, "ref") ?? "");
         if (!table || !range)
             return [];
-        const columns = (0, xml_1.children)((0, xml_1.child)(table, "tableColumns"), "tableColumn").map((column) => (0, xml_1.attr)(column, "name") ?? "");
+        const columnNodes = (0, xml_1.children)((0, xml_1.child)(table, "tableColumns"), "tableColumn");
+        const columns = columnNodes.map((column) => (0, xml_1.attr)(column, "name") ?? "");
+        const formulas = columnNodes.map((column) => (0, xml_1.child)(column, "calculatedColumnFormula")?.text.trim().replace(/^=/, "") ?? "");
+        const totals = columnNodes.map((column) => totalsFunction((0, xml_1.attr)(column, "totalsRowFunction")));
+        const totalsFormulas = columnNodes.map((column) => (0, xml_1.child)(column, "totalsRowFormula")?.text.trim().replace(/^=/, "") ?? "");
+        const widths = columnNodes.map((column) => Number((0, xml_1.attr)(column, "width")));
+        const hidden = columnNodes.map((column) => (0, xml_1.attr)(column, "hidden") === "1");
+        const formats = columnNodes.map((column) => dxfs[Number((0, xml_1.attr)(column, "dataDxfId"))]?.numFmt ?? "");
+        const style = (0, xml_1.child)(table, "tableStyleInfo");
         return [{
                 id: (0, xml_1.attr)(table, "id") ?? `table${index + 1}`,
                 name: (0, xml_1.attr)(table, "displayName") ?? (0, xml_1.attr)(table, "name") ?? `Table${index + 1}`,
                 ...range,
                 headerRow: (0, xml_1.attr)(table, "headerRowCount") !== "0",
                 ...((0, xml_1.attr)(table, "totalsRowCount") === "1" ? { totalsRow: true } : {}),
+                ...((0, xml_1.attr)(style, "name") ? { style: (0, xml_1.attr)(style, "name") } : {}),
+                rowStripes: (0, xml_1.attr)(style, "showRowStripes") !== "0",
                 ...(columns.length ? { columns } : {}),
+                ...(formulas.some((formula) => formula) ? { formulas } : {}),
+                ...(totals.some((fn) => fn !== "sum") ? { totals } : {}),
+                ...(totalsFormulas.some((formula) => formula) ? { totalsFormulas } : {}),
+                ...(widths.some((width) => width > 0) ? { widths } : {}),
+                ...(hidden.some((flag) => flag) ? { hidden } : {}),
+                ...(formats.some((format) => format) ? { formats } : {}),
             }];
     });
 }
@@ -904,6 +922,71 @@ function a1(row, column) {
         rest = Math.floor(rest / 26);
     }
     return `${name}${row + 1}`;
+}
+/** The totals function a column names. Anything not listed, including the default sum, stays a sum. */
+function totalsFunction(name) {
+    if (name === "count" || name === "average" || name === "max" || name === "min" || name === "none")
+        return name;
+    return "sum";
+}
+/** A column's formula fills its data cells, leaving the header, the totals row, and anything already typed. */
+function fillColumnFormulas(sheet) {
+    for (const table of sheet.tables ?? []) {
+        const formulas = table.formulas ?? [];
+        const dataTop = table.headerRow === false ? table.r1 : table.r1 + 1;
+        const dataBottom = table.totalsRow ? table.r2 - 1 : table.r2;
+        formulas.forEach((formula, index) => {
+            if (!formula)
+                return;
+            for (let row = dataTop; row <= dataBottom; row += 1) {
+                const column = table.c1 + index;
+                const line = sheet.cells[row] ?? [];
+                const cell = line[column];
+                if (cell?.formula)
+                    continue;
+                const item = cell ?? { value: "" };
+                item.formula = formula;
+                if (!item.value)
+                    item.value = `=${formula}`;
+                line[column] = item;
+                sheet.cells[row] = line;
+            }
+        });
+        // A column's number format reaches the data cells that do not name one of their own.
+        (table.formats ?? []).forEach((format, index) => {
+            if (!format)
+                return;
+            for (let row = dataTop; row <= dataBottom; row += 1) {
+                const column = table.c1 + index;
+                const line = sheet.cells[row] ?? [];
+                const cell = line[column];
+                if (cell?.numFmt)
+                    continue;
+                const item = cell ?? { value: "" };
+                item.numFmt = format;
+                line[column] = item;
+                sheet.cells[row] = line;
+            }
+        });
+        // The totals formula fills the totals cell when that cell does not already hold one.
+        if (!table.totalsRow)
+            continue;
+        (table.totalsFormulas ?? []).forEach((formula, index) => {
+            if (!formula)
+                return;
+            const column = table.c1 + index;
+            const line = sheet.cells[table.r2] ?? [];
+            const cell = line[column];
+            if (cell?.formula)
+                return;
+            const item = cell ?? { value: "" };
+            item.formula = formula;
+            if (!item.value)
+                item.value = `=${formula}`;
+            line[column] = item;
+            sheet.cells[table.r2] = line;
+        });
+    }
 }
 function cellRef(ref) {
     const match = /^([A-Z]+)(\d+)$/.exec(ref);

@@ -1,5 +1,5 @@
 /** Minimal chart/table/shape fragments written beside sheetData. */
-export function drawingFragments(sheet, sheetIndex) {
+export function drawingFragments(sheet, sheetIndex, dxfForFormat) {
     const parts = new Map();
     const contentTypes = [];
     const rels = [];
@@ -9,7 +9,7 @@ export function drawingFragments(sheet, sheetIndex) {
     const drawings = [];
     (sheet.tables ?? []).forEach((table, index) => {
         const path = `xl/tables/table${sheetIndex + 1}_${index + 1}.xml`;
-        parts.set(path, tableXml(table));
+        parts.set(path, tableXml(table, dxfForFormat));
         contentTypes.push(`<Override PartName="/${path}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>`);
         const rid = `rIdT${index + 1}`;
         rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${sheetIndex + 1}_${index + 1}.xml"/>`);
@@ -72,14 +72,26 @@ export function drawingFragments(sheet, sheetIndex) {
     // 切片器是 x14 扩展，不在 ECMA-376 里，不写。
     return { sheetExtras: extras.join(""), parts, contentTypes, rels, workbookRels, pivotCacheRefs };
 }
-function tableXml(table) {
+function tableXml(table, dxfForFormat) {
     const ref = `${colName(table.c1)}${table.r1 + 1}:${colName(table.c2)}${table.r2 + 1}`;
     const columns = table.columns ?? [];
     const cols = columns.length
-        ? `<tableColumns count="${columns.length}">${columns.map((name, index) => `<tableColumn id="${index + 1}" name="${escapeXml(name)}"/>`).join("")}</tableColumns>`
+        ? `<tableColumns count="${columns.length}">${columns.map((name, index) => {
+            const formula = table.formulas?.[index];
+            const fn = table.totals?.[index];
+            const totalsFn = fn && fn !== "sum" ? ` totalsRowFunction="${fn === "average" ? "average" : fn === "count" ? "count" : fn === "max" ? "max" : fn === "min" ? "min" : "none"}"` : "";
+            const totalsFormula = table.totalsFormulas?.[index];
+            const width = table.widths?.[index];
+            const widthAttr = width && width > 0 ? ` width="${width}"` : "";
+            const hiddenAttr = table.hidden?.[index] ? ` hidden="1"` : "";
+            const format = table.formats?.[index];
+            const dxfAttr = format && dxfForFormat ? ` dataDxfId="${dxfForFormat(format)}"` : "";
+            const body = `${formula ? `<calculatedColumnFormula>${escapeXml(formula)}</calculatedColumnFormula>` : ""}${totalsFormula ? `<totalsRowFormula>${escapeXml(totalsFormula)}</totalsRowFormula>` : ""}`;
+            return `<tableColumn id="${index + 1}" name="${escapeXml(name)}"${widthAttr}${hiddenAttr}${dxfAttr}${totalsFn}>${body}</tableColumn>`;
+        }).join("")}</tableColumns>`
         : "";
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow ? 'headerRowCount="1"' : ""}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}<autoFilter ref="${ref}"/><tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`;
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow ? 'headerRowCount="1"' : ""}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}<autoFilter ref="${ref}"/><tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="0" showLastColumn="0" showRowStripes="${table.rowStripes === false ? "0" : "1"}" showColumnStripes="0"/></table>`;
 }
 function chartAnchor(chart, index) {
     return `<xdr:twoCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${index * 12}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>6</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${index * 12 + 10}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:graphicFrame><xdr:nvGraphicFramePr><xdr:cNvPr id="${index + 1}" name="${escapeXml(chart.title ?? chart.id)}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rIdChart${index + 1}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor><!-- range ${escapeXml(chart.range)} kind ${chart.kind} -->`;

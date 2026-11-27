@@ -1,10 +1,11 @@
 import type { SheetCell } from "@sliiu/sheet-core";
 /** Style fields copied onto a cell. Empty means the cell keeps its value only. */
 export type CellLook = Pick<SheetCell, "bold" | "italic" | "underline" | "strike" | "font" | "fontSize" | "color" | "fill" | "numFmt" | "align" | "valign" | "wrap" | "indent" | "border">;
-/** The fill and font color a conditional format paints, from one `dxfs` entry. */
+/** The fill, font color, and number format a differential style carries, from one `dxfs` entry. */
 export interface DxfLook {
     fill?: string;
     color?: string;
+    numFmt?: string;
 }
 export interface StyleBook {
     looks: CellLook[];

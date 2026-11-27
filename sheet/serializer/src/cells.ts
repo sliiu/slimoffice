@@ -114,7 +114,7 @@ export function applyWorkbookEdits(
     }
     const next = applySheetEdits(xml, sheet, shared, styles);
     shared = next.shared;
-    const drawing = drawingFragments(sheet, index);
+    const drawing = drawingFragments(sheet, index, (format) => styles.dxfForFormat(format));
     let sheetXml = ensureWorksheetNs(next.xml);
     if (drawing.sheetExtras) sheetXml = upsertBeforeClose(sheetXml, drawing.sheetExtras);
     if (sheetXml !== xml) {

@@ -105,7 +105,7 @@ function applyWorkbookEdits(parts, workbook, decode, encode) {
         }
         const next = applySheetEdits(xml, sheet, shared, styles);
         shared = next.shared;
-        const drawing = (0, drawing_1.drawingFragments)(sheet, index);
+        const drawing = (0, drawing_1.drawingFragments)(sheet, index, (format) => styles.dxfForFormat(format));
         let sheetXml = ensureWorksheetNs(next.xml);
         if (drawing.sheetExtras)
             sheetXml = upsertBeforeClose(sheetXml, drawing.sheetExtras);

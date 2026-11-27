@@ -70,18 +70,21 @@ export function readCellStyles(stylesXml, themeColors = []) {
         const xfId = Number(attr(xf, "xfId"));
         return Number.isInteger(xfId) ? styleNames.get(xfId) : undefined;
     });
-    const dxfs = children(child(root, "dxfs"), "dxf").map((dxf) => readDxf(dxf, themeColors));
+    const dxfs = children(child(root, "dxfs"), "dxf").map((dxf) => readDxf(dxf, themeColors, formats));
     return { looks, names, dxfs };
 }
-/** A differential style only carries what the rule changes: the solid fill and the font color. */
-function readDxf(dxf, themeColors) {
+/** A differential style only carries what it changes: the solid fill, the font color, and the number format. */
+function readDxf(dxf, themeColors, formats) {
     const look = {};
     const fill = readFill(child(dxf, "fill") ?? { name: "fill", attrs: {}, children: [], text: "" }, themeColors).fill;
     const color = readFont(child(dxf, "font") ?? { name: "font", attrs: {}, children: [], text: "" }, themeColors).color;
+    const format = formats.get(Number(attr(child(dxf, "numFmt"), "numFmtId")));
     if (fill)
         look.fill = fill;
     if (color)
         look.color = color;
+    if (format)
+        look.numFmt = format;
     return look;
 }
 export function hasLook(look) {

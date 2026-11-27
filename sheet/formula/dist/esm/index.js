@@ -858,6 +858,10 @@ class Parser {
             return E.REF();
         if (!start || !end || start.whole !== end.whole) {
             if (!sheetName && startRef === endRef) {
+                // A table name on its own is the data, the same cells as Table[#Data]. A defined name still wins when no table has it.
+                const data = this.tableData(startRef);
+                if (data)
+                    return data;
                 const named = this.ctx.workbook.names?.find((item) => item.name.toUpperCase() === startRef);
                 if (named)
                     return evaluate(named.refersTo.startsWith("=") ? named.refersTo : `=${named.refersTo}`, this.ctx);
@@ -876,7 +880,10 @@ class Parser {
     /**
      * One column of a table, or the row the formula sits on.
      * `Table1[列]` is the data, `Table1[[#Headers],[列]]` the header, `Table1[[#Totals],[列]]` the totals row,
-     * and `Table1[[#This Row],[列]]` (also written `Table1[@列]`) the cell on the formula's own row.
+     * `Table1[[#All],[列]]` the whole column and `Table1[[#Data]]` every data row. A bare `Table1` is that data too.
+     * `Table1[[#Headers]]`, `Table1[[#Totals]]`, `Table1[[#This Row]]` and `Table1[@]` name the whole row of that part.
+     * `Table1[[#This Row],[列]]` (also written `Table1[@列]`) is one cell on the formula's own row. `Table1[[列1]:[列2]]`
+     * runs from one column to the other, and `Table1[@[列1]:[列2]]` does the same on the formula's own row.
      */
     tableRef(name) {
         const spec = this.tableSpec();
@@ -886,60 +893,125 @@ class Parser {
             const table = (sheet.tables ?? []).find((item) => item.name.toUpperCase() === name);
             if (!table)
                 continue;
-            const at = (table.columns ?? []).findIndex((item) => item.toUpperCase() === spec.column);
-            if (at < 0)
+            // A specifier on its own covers every column. A colon names the column it runs to, either way around.
+            const names = table.columns ?? [];
+            const indexOf = (column) => names.findIndex((item) => item.toUpperCase() === column);
+            const at = spec.column ? indexOf(spec.column) : 0;
+            const at2 = spec.column2 ? indexOf(spec.column2) : at;
+            if (at < 0 || at2 < 0)
                 return E.REF();
-            const col = table.c1 + at;
+            const col = spec.column ? table.c1 + Math.min(at, at2) : table.c1;
+            const lastCol = spec.column ? table.c1 + Math.max(at, at2) : table.c2;
             const dataTop = table.headerRow === false ? table.r1 : table.r1 + 1;
             const dataBottom = table.totalsRow ? table.r2 - 1 : table.r2;
+            const span = (row, end = row) => readRange(this.ctx.workbook, sheetIndex, { row, col }, { row: end, col: lastCol });
             if (spec.part === "this") {
                 if (this.ctx.row < dataTop || this.ctx.row > dataBottom)
                     return E.VALUE();
-                return readRange(this.ctx.workbook, sheetIndex, { row: this.ctx.row, col }, { row: this.ctx.row, col });
+                return span(this.ctx.row);
             }
             if (spec.part === "headers") {
                 if (table.headerRow === false)
                     return E.REF();
-                return readRange(this.ctx.workbook, sheetIndex, { row: table.r1, col }, { row: table.r1, col });
+                return span(table.r1);
             }
             if (spec.part === "totals") {
                 if (!table.totalsRow)
                     return E.REF();
-                return readRange(this.ctx.workbook, sheetIndex, { row: table.r2, col }, { row: table.r2, col });
+                return span(table.r2);
             }
+            if (spec.part === "all")
+                return span(table.r1, table.r2);
             if (dataBottom < dataTop)
                 return [];
-            return readRange(this.ctx.workbook, sheetIndex, { row: dataTop, col }, { row: dataBottom, col });
+            return span(dataTop, dataBottom);
         }
         return E.NAME();
     }
-    /** The part and the column inside the brackets. A bare column means the data rows. */
+    /** The data rows of a table, every column. Nothing when no table has this name. */
+    tableData(name) {
+        for (const [sheetIndex, sheet] of this.ctx.workbook.sheets.entries()) {
+            const table = (sheet.tables ?? []).find((item) => item.name.toUpperCase() === name);
+            if (!table)
+                continue;
+            const dataTop = table.headerRow === false ? table.r1 : table.r1 + 1;
+            const dataBottom = table.totalsRow ? table.r2 - 1 : table.r2;
+            if (dataBottom < dataTop)
+                return [];
+            return readRange(this.ctx.workbook, sheetIndex, { row: dataTop, col: table.c1 }, { row: dataBottom, col: table.c2 });
+        }
+        return undefined;
+    }
+    /** The part and the column inside the brackets. A bare column means the data rows. A colon spans columns. */
     tableSpec() {
         this.take();
         const item = this.tableItem();
         if (item instanceof FormulaError)
             return item;
-        if (this.peek()?.kind !== "comma") {
+        const next = this.peek()?.kind;
+        // [[列1]:[列2]] covers the data rows from the first named column through the second.
+        if (next === "colon") {
+            if (item.part !== "data" || !item.column)
+                return E.REF();
+            const column2 = this.columnSpanEnd();
+            if (column2 instanceof FormulaError)
+                return column2;
             if (this.peek()?.kind !== "rsb")
                 return E.REF();
             this.take();
-            // `[@列]` names the current row of that column. Any other bare specifier needs its column beside it.
-            if (item.part === "this" && item.column)
-                return item;
-            if (item.part !== "data")
+            return { part: "data", column: item.column, column2 };
+        }
+        // [@[列]] and [@[列1]:[列2]] name the current row after a bare @.
+        if (item.part === "this" && !item.column && next === "lsb") {
+            const column = this.tableItem();
+            if (column instanceof FormulaError)
+                return column;
+            if (column.part !== "data" || !column.column)
                 return E.REF();
+            const spanned = this.optionalColumnSpan();
+            if (spanned instanceof FormulaError)
+                return spanned;
+            if (this.peek()?.kind !== "rsb")
+                return E.REF();
+            this.take();
+            return { part: "this", column: column.column, ...(spanned ? { column2: spanned } : {}) };
+        }
+        if (next !== "comma") {
+            if (next !== "rsb")
+                return E.REF();
+            this.take();
+            // A column, or a specifier on its own: [#Headers], [#Totals], [#This Row] and @ cover every column of that row.
             return item;
         }
         this.take();
         const column = this.tableItem();
         if (column instanceof FormulaError)
             return column;
+        if (item.part === "data" || column.part !== "data" || !column.column)
+            return E.REF();
+        const spanned = this.optionalColumnSpan();
+        if (spanned instanceof FormulaError)
+            return spanned;
         if (this.peek()?.kind !== "rsb")
             return E.REF();
         this.take();
-        if (item.part === "data" || column.part !== "data")
+        return { part: item.part, column: column.column, ...(spanned ? { column2: spanned } : {}) };
+    }
+    /** The column after `:`, when one is there. Empty when the reference names a single column. */
+    optionalColumnSpan() {
+        if (this.peek()?.kind !== "colon")
+            return "";
+        return this.columnSpanEnd();
+    }
+    /** The column named on the right of `:` inside a table reference. */
+    columnSpanEnd() {
+        this.take();
+        const end = this.tableItem();
+        if (end instanceof FormulaError)
+            return end;
+        if (end.part !== "data" || !end.column)
             return E.REF();
-        return { part: item.part, column: column.column };
+        return end.column;
     }
     /** One bracket item: a column name, or a specifier such as `#This Row` or `@`. */
     tableItem() {
@@ -1083,6 +1155,10 @@ function tablePart(raw) {
         return "headers";
     if (raw === "#TOTALS" || raw === "#汇总")
         return "totals";
+    if (raw === "#ALL" || raw === "#全部")
+        return "all";
+    if (raw === "#DATA" || raw === "#数据")
+        return "data";
     if (raw === "#THIS ROW" || raw === "#此行")
         return "this";
     return undefined;

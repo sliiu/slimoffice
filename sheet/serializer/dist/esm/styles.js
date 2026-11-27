@@ -47,15 +47,28 @@ export function styleBook(stylesXml, sheets) {
         borders.push(xml);
         return borders.length - 1;
     }
-    function ensureNumFmt(cell) {
-        if (!cell.numFmt)
-            return 0;
-        const existing = numFmts.findIndex((item) => item.includes(`formatCode="${escapeXml(cell.numFmt)}"`));
+    function numFmtId(code) {
+        const existing = numFmts.findIndex((item) => item.includes(`formatCode="${escapeXml(code)}"`));
         if (existing >= 0)
             return Number(/numFmtId="(\d+)"/i.exec(numFmts[existing])?.[1] ?? 164 + existing);
         const id = 164 + numFmts.length;
-        numFmts.push(`<numFmt numFmtId="${id}" formatCode="${escapeXml(cell.numFmt)}"/>`);
+        numFmts.push(`<numFmt numFmtId="${id}" formatCode="${escapeXml(code)}"/>`);
         return id;
+    }
+    function ensureNumFmt(cell) {
+        if (!cell.numFmt)
+            return 0;
+        return numFmtId(cell.numFmt);
+    }
+    /** A differential style holding just a number format, so a table column can point at it. */
+    function dxfForFormat(format) {
+        const id = numFmtId(format);
+        const xml = `<dxf><numFmt numFmtId="${id}" formatCode="${escapeXml(format)}"/></dxf>`;
+        const found = dxfs.indexOf(xml);
+        if (found >= 0)
+            return found;
+        dxfs.push(xml);
+        return dxfs.length - 1;
     }
     function indexFor(cell) {
         if (!hasStyle(cell))
@@ -93,9 +106,17 @@ export function styleBook(stylesXml, sheets) {
         for (const cf of sheet.conditionalFormats ?? [])
             ensureDxf(cf, dxfs);
     }
+    // A table column's number format lives in a differential style the column points at.
+    for (const sheet of sheets) {
+        for (const table of sheet.tables ?? []) {
+            for (const format of table.formats ?? [])
+                if (format)
+                    dxfForFormat(format);
+        }
+    }
     const numFmtBlock = numFmts.length ? `<numFmts count="${numFmts.length}">${numFmts.join("")}</numFmts>` : "";
     const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${numFmtBlock}<fonts count="${fonts.length}">${fonts.join("")}</fonts><fills count="${fills.length}">${fills.join("")}</fills><borders count="${borders.length}">${borders.join("")}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${cellXfs.length}">${cellXfs.join("")}</cellXfs><dxfs count="${dxfs.length}">${dxfs.join("")}</dxfs></styleSheet>`;
-    return { xml, indexFor };
+    return { xml, indexFor, dxfForFormat };
 }
 export function sheetFrameXml(sheet) {
     const cols = colXml(sheet);

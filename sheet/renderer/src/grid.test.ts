@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
+import type { Workbook } from "@sliiu/sheet-core";
 import { summarizePivot } from "./charts";
 import { cfLook } from "./cf";
 import { mountWorkbook } from "./index";
@@ -358,12 +359,270 @@ test("marks a table header, an array formula, the print area, and the theme", ()
   const cells = host.querySelectorAll("td");
   assert.equal(cells[0]?.classList.contains("is-table-header"), true);
   assert.equal(cells[0]?.dataset.table, "Table1");
+  assert.equal(cells[2]?.classList.contains("is-table-total"), false);
   assert.equal(cells[1]?.dataset.array, "1");
   assert.equal(cells[0]?.dataset.printArea, "1");
   assert.equal(cells[2]?.dataset.printArea, undefined);
   const frame = host.querySelector(".sheet-frame") as HTMLElement;
   assert.equal(frame.style.fontFamily, "Calibri");
   assert.equal(frame.dataset.scale, "80");
+});
+
+test("a new table takes its column names from the header row", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook = {
+    calcMode: "manual" as const,
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "" }], [{ value: "甲" }, { value: "10" }], [{ value: "合计" }, { value: "10" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 2, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const cells = host.querySelectorAll("td");
+  // The last row of a table with totals is marked, and it is not the header.
+  assert.equal(cells[4]?.classList.contains("is-table-total"), true);
+  assert.equal(cells[4]?.classList.contains("is-table-header"), false);
+  // A blank header falls back to its column letter, so the reference still has a name.
+  grid.addTable();
+  assert.deepEqual(workbook.sheets[0]?.tables?.[1]?.columns, ["品类", "B"]);
+});
+
+test("data rows of a table alternate their shading", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }], [{ value: "甲" }], [{ value: "乙" }], [{ value: "丙" }], [{ value: "汇总" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 4, c2: 0, headerRow: true, totalsRow: true, columns: ["品类"] }],
+    }],
+  });
+  const cells = [...host.querySelectorAll("td")];
+  // The header and the totals row stay plain. The data rows alternate, starting with the first unshaded.
+  assert.equal(cells[0]?.classList.contains("is-table-stripe"), false);
+  assert.equal(cells[1]?.classList.contains("is-table-stripe"), false);
+  assert.equal(cells[2]?.classList.contains("is-table-stripe"), true);
+  assert.equal(cells[3]?.classList.contains("is-table-stripe"), false);
+  assert.equal(cells[4]?.classList.contains("is-table-stripe"), false);
+});
+
+test("a totals row sums the numeric columns", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "乙" }, { value: "5" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 2, c2: 1, headerRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  host.querySelector("td")!.dispatchEvent(new FocusEvent("focus"));
+  // The totals row lands below the data, labels the first column, and sums the numeric one.
+  assert.equal(grid.toggleTotals(), true);
+  const table = workbook.sheets[0]!.tables![0]!;
+  assert.equal(table.totalsRow, true);
+  assert.equal(table.r2, 3);
+  assert.equal(workbook.sheets[0]!.cells[3]?.[0]?.value, "Total");
+  assert.equal(workbook.sheets[0]!.cells[3]?.[1]?.formula, "SUBTOTAL(109,B2:B3)");
+  // Switching it off keeps the row and drops the totals marker.
+  assert.equal(grid.toggleTotals(), false);
+  assert.equal(table.totalsRow, false);
+  assert.equal(table.r2, 3);
+});
+
+test("a totals column can count, average, or stop", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "乙" }, { value: "5" }], [{ value: "合计" }, { value: "" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  // The function follows the column under the selection, and the range stops above the totals row.
+  const cells = [...host.querySelectorAll("td")];
+  cells[3]!.dispatchEvent(new FocusEvent("focus"));
+  assert.equal(grid.totalsFunction("average"), true);
+  const sheet = workbook.sheets[0]!;
+  assert.equal(sheet.tables![0]!.totals?.[1], "average");
+  assert.equal(sheet.cells[3]?.[1]?.formula, "SUBTOTAL(101,B2:B3)");
+  // The formula is kept on the column, so saving can write it back.
+  assert.equal(sheet.tables![0]!.totalsFormulas?.[1], "SUBTOTAL(101,B2:B3)");
+  // None clears the cell, and a table without a totals row has nothing to change.
+  assert.equal(grid.totalsFunction("none"), true);
+  assert.equal(sheet.cells[3]?.[1]?.formula, undefined);
+  assert.equal(sheet.cells[3]?.[1]?.value, "");
+  sheet.tables![0]!.totalsRow = false;
+  assert.equal(grid.totalsFunction("count"), false);
+});
+
+test("a table header shows a filter without taking the sheet's filter", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook = {
+    calcMode: "manual" as const,
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }]],
+      filter: { r1: 5, c1: 0, r2: 9, c2: 1 },
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  grid.addTable();
+  // The sheet's own filter stays where it was.
+  assert.equal(workbook.sheets[0]!.filter?.r1, 5);
+  // The table's header carries the filter marker, and the row below it does not.
+  const cells = [...host.querySelectorAll("td")];
+  assert.equal(cells.filter((cell) => cell.classList.contains("is-filter-header")).length, 2);
+  assert.equal(cells[2]?.classList.contains("is-filter-header"), false);
+});
+
+test("a table column keeps its width and can hide", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["品类", "数量"], widths: [18, 0], hidden: [false, true] }],
+    }],
+  };
+  mountWorkbook(host, workbook);
+  const heads = [...host.querySelector("tr")!.querySelectorAll("th")].map((cell) => cell.textContent);
+  // The hidden column drops out of the grid, and the one with a width uses it.
+  assert.deepEqual(heads, ["", "A"]);
+  assert.equal((host.querySelectorAll("th")[1] as HTMLElement).style.width, "144px");
+});
+
+test("a table column formats its data cells", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "数量" }], [{ value: "10" }], [{ value: "5" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 2, c2: 0, headerRow: true, columns: ["数量"], formats: ["0.00"] }],
+    }],
+  };
+  mountWorkbook(host, workbook);
+  const cells = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  // The data cells pick up the column's format. The header stays as typed.
+  assert.deepEqual(cells, ["数量", "10.00", "5.00"]);
+});
+
+test("renaming a header renames the column", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook = {
+    calcMode: "manual" as const,
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  mountWorkbook(host, workbook);
+  const InputEvent = (dom.window as unknown as Record<string, new (type: string, init?: { bubbles?: boolean }) => Event>)["Event"];
+  if (!InputEvent) throw new Error("missing Event");
+  const headers = [...host.querySelectorAll("td")].filter((cell) => cell.classList.contains("is-table-header"));
+  // The column name follows the header the user typed.
+  headers[1]!.textContent = "金额";
+  headers[1]!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.deepEqual(workbook.sheets[0]!.tables![0]!.columns, ["品类", "金额"]);
+  // A blank header falls back to its column letter, and a repeat gets a suffix so the names stay distinct.
+  headers[1]!.textContent = "品类";
+  headers[1]!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.deepEqual(workbook.sheets[0]!.tables![0]!.columns, ["品类", "品类_"]);
+  headers[1]!.textContent = "";
+  headers[1]!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.deepEqual(workbook.sheets[0]!.tables![0]!.columns, ["品类", "B"]);
+});
+
+test("a formula typed into a table fills the whole column", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "乙" }, { value: "5" }], [{ value: "合计" }, { value: "" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  mountWorkbook(host, workbook);
+  const InputEvent = (dom.window as unknown as Record<string, new (type: string, init?: { bubbles?: boolean }) => Event>)["Event"];
+  if (!InputEvent) throw new Error("missing Event");
+  const cells = [...host.querySelectorAll("td")];
+  // One formula in a data cell becomes the column's formula and fills the other data row.
+  cells[3]!.textContent = "=[数量]*2";
+  cells[3]!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  const sheet = workbook.sheets[0]!;
+  assert.equal(sheet.tables![0]!.formulas?.[1], "[数量]*2");
+  assert.equal(sheet.cells[2]?.[1]?.formula, "[数量]*2");
+  // The totals row keeps what it had, and the header stays a header.
+  assert.equal(sheet.cells[3]?.[1]?.formula, undefined);
+  assert.equal(sheet.cells[0]?.[1]?.formula, undefined);
+});
+
+test("inserting and deleting a row keeps the table over the same cells", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook = {
+    calcMode: "manual" as const,
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }], [{ value: "甲" }], [{ value: "乙" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 1, c1: 0, r2: 2, c2: 1, headerRow: true, columns: ["品类", "数量"] }],
+      merges: [{ r1: 1, c1: 0, r2: 1, c2: 1 }],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const table = () => workbook.sheets[0]!.tables![0]!;
+  // A row inserted above the table pushes it down, and the merge moves with it.
+  grid.insertRow();
+  assert.deepEqual([table().r1, table().r2], [2, 3]);
+  assert.equal(workbook.sheets[0]!.merges![0]!.r1, 2);
+  // A row inserted inside the table grows it instead of leaving the last row behind.
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  const inside = [...host.querySelectorAll("td")].find((cell) => cell.textContent === "甲")!;
+  inside.dispatchEvent(new FocusEvent("focus"));
+  grid.insertRow();
+  // 甲 is the table's first row, so the table grows downward and its header stays put.
+  assert.deepEqual([table().r1, table().r2], [2, 4]);
+  // Deleting that row shrinks it back.
+  grid.deleteRow();
+  assert.deepEqual([table().r1, table().r2], [2, 3]);
+  // Deleting the second column drops its name and keeps the first, so the names stay lined up.
+  const second = [...host.querySelectorAll("td")].find((cell) => cell.dataset.col === "1")!;
+  second.dispatchEvent(new FocusEvent("focus"));
+  grid.deleteColumn();
+  assert.deepEqual([table().c1, table().c2], [0, 0]);
+  assert.deepEqual(table().columns, ["品类"]);
 });
 
 test("marks the cells a consolidation wrote", () => {
