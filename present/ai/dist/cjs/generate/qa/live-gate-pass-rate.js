@@ -252,7 +252,7 @@ async function runLiveGatePassRateHarness(opts = {}) {
     const resolved = resolveLiveGateConfig(env);
     if (!resolved.ok) {
         return {
-            brief: "SlimPPT 16-page dark-launch wizard (cover + 14 bullets + closing) — live generate",
+            brief: "Parchon 16-page dark-launch wizard (cover + 14 bullets + closing) — live generate",
             seeds,
             skipped: true,
             skipReason: resolved.reason,
@@ -278,7 +278,7 @@ async function runLiveGatePassRateHarness(opts = {}) {
     const livePass = live.filter(liveSeedEvidencedPass).length;
     const providerFailed = live.some((r) => r.modelCalls <= 0 || isLiveGateAuthOrProviderError(r.error));
     return {
-        brief: "SlimPPT 16-page dark-launch wizard (cover + 14 bullets + closing) — live generate",
+        brief: "Parchon 16-page dark-launch wizard (cover + 14 bullets + closing) — live generate",
         seeds,
         skipped: false,
         live,

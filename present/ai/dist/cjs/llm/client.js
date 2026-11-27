@@ -68,7 +68,7 @@ function createLlm(text) {
 }
 function mergeProviderHeaders(kind, user) {
     const defaults = kind === "openrouter"
-        ? { "HTTP-Referer": "https://slimppt.app", "X-Title": "SlimPPT" }
+        ? { "HTTP-Referer": "https://parchon.sliiu.com", "X-Title": "Parchon" }
         : {};
     const merged = { ...defaults, ...user };
     return Object.keys(merged).length > 0 ? merged : undefined;

@@ -1,5 +1,5 @@
 /**
- * Emit an editable SlimPPT Presentation IR (same object model tools mutate).
+ * Emit an editable Parchon Presentation IR (same object model tools mutate).
  */
 import { type Presentation } from "@sliiu/present-core";
 import type { ColorTheme } from "./color-theme.js";

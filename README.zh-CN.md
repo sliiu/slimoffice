@@ -6,7 +6,7 @@
 
 文档和表格正在计划中。这个仓库现在只有演示部分。
 
-**[编辑器](https://edit.slimppt.com)** · **[文档](https://docs.slimppt.com/zh-cn/guide/getting-started)** · **[开源说明](https://docs.slimppt.com/zh-cn/guide/open-source)**
+**[编辑器](https://parchon.sliiu.com)** · **[文档](https://docs.parchon.sliiu.com/zh-cn/guide/getting-started)** · **[开源说明](https://docs.parchon.sliiu.com/zh-cn/guide/open-source)**
 
 [English](./README.md) · 中文
 
@@ -22,11 +22,11 @@
 - **编辑**：改这个文件，或导出视频。
 - **交给 Agent**：改一个文件夹里的 `.pptx`。保存会写回这个文件。
 
-只用[编辑器](https://edit.slimppt.com)就够时，不必装这些包。账号、在线分享、在线存储、直播放映、协作和系统模型仍在编辑器里。
+只用[编辑器](https://parchon.sliiu.com)就够时，不必装这些包。账号、在线分享、在线存储、直播放映、协作和系统模型仍在编辑器里。
 
 ## 从这里开始
 
-安装、读一份文件、放映、再写回去，看[开源说明](https://docs.slimppt.com/zh-cn/guide/open-source)。那一页列出每个包和其他入口。
+安装、读一份文件、放映、再写回去，看[开源说明](https://docs.parchon.sliiu.com/zh-cn/guide/open-source)。那一页列出每个包和其他入口。
 
 ## 这台电脑上
 
@@ -36,7 +36,7 @@
 
 ## 生成
 
-点名 Ink Board 或 Folio，整次生成都会停在这一套：瓷纸配近黑墨，或冷白纸加一笔国际克莱因蓝。自备密钥调用模型见[开源说明](https://docs.slimppt.com/zh-cn/guide/open-source)。
+点名 Ink Board 或 Folio，整次生成都会停在这一套：瓷纸配近黑墨，或冷白纸加一笔国际克莱因蓝。自备密钥调用模型见[开源说明](https://docs.parchon.sliiu.com/zh-cn/guide/open-source)。
 
 ## 许可证
 

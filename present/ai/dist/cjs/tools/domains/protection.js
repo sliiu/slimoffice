@@ -69,7 +69,7 @@ exports.protectionTools = [
     }),
     (0, types_1.defineTool)({
         name: "unprotectPresentation",
-        description: "Remove presentation protection. If listProtectionStatus.passwordRequired is true, password must match (SlimPPT hash or Office modifyVerifier). Other edit tools stay blocked until this succeeds. Does not return the password.",
+        description: "Remove presentation protection. If listProtectionStatus.passwordRequired is true, password must match (Parchon hash or Office modifyVerifier). Other edit tools stay blocked until this succeeds. Does not return the password.",
         inputSchema: zod_1.z.object({
             password: zod_1.z.string().optional().describe("Required when passwordRequired is true. Compared against the stored verifier; never stored or returned."),
         }),

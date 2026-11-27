@@ -1,6 +1,6 @@
 "use strict";
 /**
- * Emit an editable SlimPPT Presentation IR (same object model tools mutate).
+ * Emit an editable Parchon Presentation IR (same object model tools mutate).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.animUnitOf = animUnitOf;

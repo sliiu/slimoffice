@@ -35,7 +35,7 @@ const AGENTS = [
 export function repoRootFromHere(here = fileURLToPath(new URL(".", import.meta.url))) {
     const root = path.resolve(here, "../../../../..");
     if (!existsSync(path.join(root, "pnpm-workspace.yaml"))) {
-        throw new InstallConfigError(`SlimPPT repo root not found from ${here}`);
+        throw new InstallConfigError(`Parchon repo root not found from ${here}`);
     }
     return root;
 }

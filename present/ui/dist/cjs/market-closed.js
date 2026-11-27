@@ -11,10 +11,10 @@ function marketStatusUrl(explicitBase) {
     if (typeof window === "undefined")
         return null;
     const host = window.location.hostname;
-    if (host === "slimppt.cn" || host.endsWith(".slimppt.cn"))
-        return "https://api.slimppt.cn/api/market";
-    if (host === "slimppt.com" || host.endsWith(".slimppt.com"))
-        return "https://api.slimppt.com/api/market";
+    if (host === "parchon.sliiu.cn" || host.endsWith(".parchon.sliiu.cn"))
+        return "https://api.parchon.sliiu.cn/api/market";
+    if (host === "parchon.sliiu.com" || host.endsWith(".parchon.sliiu.com"))
+        return "https://api.parchon.sliiu.com/api/market";
     return null;
 }
 async function marketIsOpen(explicitBase) {

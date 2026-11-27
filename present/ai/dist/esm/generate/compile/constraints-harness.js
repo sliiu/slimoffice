@@ -3,7 +3,7 @@ import { formatGatePassMarkdown, reportGateResult } from "../qa/gates-report.js"
 import { buildBadDeckFixture } from "../qa/fixtures.js";
 import { runP0Gates } from "../qa/gates.js";
 export const DARK_LAUNCH_WIZARD_GUIDANCE = {
-    topic: "SlimPPT 暗色发布",
+    topic: "Parchon 暗色发布",
     audience: "产品与设计评审",
     scenario: "cinematic keynote dark launch",
     goals: "讲清产品、节奏与差异化",
@@ -49,11 +49,11 @@ const BODY_LAYOUT_HINTS = [
 ];
 export function darkLaunchWizardOutline() {
     return {
-        title: "SlimPPT 暗色发布",
+        title: "Parchon 暗色发布",
         subtitle: "Cinematic dark-launch keynote",
         themeId: "ai",
         slides: [
-            { title: "SlimPPT", layoutHint: "cover", bullets: ["暗色发布会"] },
+            { title: "Parchon", layoutHint: "cover", bullets: ["暗色发布会"] },
             ...BODY_TITLES.map((title, i) => {
                 const layoutHint = BODY_LAYOUT_HINTS[i] ?? "content";
                 let bullets = [`${title}要点一`, `${title}要点二`, `${title}要点三`];
@@ -102,7 +102,7 @@ export function runGatePassRateHarness(seeds = GATE_PASS_RATE_SEEDS) {
     const badResult = runP0Gates(badPres);
     const badDeck = reportGateResult("bad-deck fixture", badPres, badResult, 0);
     return {
-        brief: "SlimPPT 16-page dark-launch wizard (cover + 14 bullets + closing)",
+        brief: "Parchon 16-page dark-launch wizard (cover + 14 bullets + closing)",
         seeds,
         before,
         after,

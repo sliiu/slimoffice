@@ -77,7 +77,7 @@ export interface ExportHtmlOptions {
    */
   viewOnlyIndicator?: string;
   /**
-   * 结束屏「首页」打开的产品站。只接受 `https://slimppt.com` 或 `https://slimppt.cn`。
+   * 结束屏「首页」打开的产品站。只接受 `https://parchon.sliiu.com` 或 `https://parchon.sliiu.cn`。
    * 有这个地址时，结束屏是从头播放和首页，黑底单击没有动作。
    */
   endHomeHref?: string;

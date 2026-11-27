@@ -31,7 +31,7 @@ function pushState(ws, ctx, startedAt) {
         notes: notesFor(ctx, visibleIndex),
     }));
 }
-/** Bridge SlimPPT playback to the PassPad companion / AI Passport remote. */
+/** Bridge Parchon playback to the PassPad companion / AI Passport remote. */
 exports.passpadPlugin = {
     id: "official:passpad",
     name: "PassPad Remote",

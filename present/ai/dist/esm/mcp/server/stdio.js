@@ -29,7 +29,7 @@ function monorepoRoot(start) {
     }
     return undefined;
 }
-/** Headless-Chromium slide renderer from the SlimPPT checkout, or undefined in the published package. */
+/** Headless-Chromium slide renderer from the Parchon checkout, or undefined in the published package. */
 function localSlideRenderer() {
     const repo = monorepoRoot(path.dirname(fileURLToPath(import.meta.url)));
     if (!repo)

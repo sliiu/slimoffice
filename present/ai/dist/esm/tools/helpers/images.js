@@ -220,8 +220,8 @@ async function callOpenRouterImages(args) {
         headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${args.apiKey}`,
-            "HTTP-Referer": "https://slimppt.app",
-            "X-Title": "SlimPPT",
+            "HTTP-Referer": "https://parchon.sliiu.com",
+            "X-Title": "Parchon",
         },
         body: JSON.stringify(body),
         signal: args.signal,

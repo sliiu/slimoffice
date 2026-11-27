@@ -17,7 +17,7 @@ export const defaultPageFetcher = async (url, signal) => {
     const res = await fetch(url, {
         redirect: "follow",
         ...(signal ? { signal } : {}),
-        headers: { "user-agent": "Mozilla/5.0 (compatible; SlimPPT/1.0; +https://slimppt.com)", accept: "text/html,application/xhtml+xml" },
+        headers: { "user-agent": "Mozilla/5.0 (compatible; Parchon/1.0; +https://parchon.sliiu.com)", accept: "text/html,application/xhtml+xml" },
     });
     if (!res.ok)
         throw new SourceFileError(`${url} 打不开（HTTP ${res.status}）`);

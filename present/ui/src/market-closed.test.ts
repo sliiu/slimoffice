@@ -4,7 +4,7 @@ import { marketStatusUrl } from "./market-closed.js";
 
 describe("marketStatusUrl", () => {
   it("uses an explicit API base and otherwise stays closed only on known hosts", () => {
-    assert.equal(marketStatusUrl("https://api.slimppt.cn/api/"), "https://api.slimppt.cn/api/market");
+    assert.equal(marketStatusUrl("https://api.parchon.sliiu.cn/api/"), "https://api.parchon.sliiu.cn/api/market");
     assert.equal(marketStatusUrl(""), null);
   });
 });
