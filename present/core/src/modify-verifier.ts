@@ -3,7 +3,7 @@ import type { PresentationProtection } from "./protection";
 import { getPresentationProtection, setPresentationProtectionMeta } from "./protection";
 import { isOfficePasswordVerifier } from "./office-password";
 
-/** SlimPPT-encoded protection payload in `modifyVerifier/@algorithmName`. */
+/** Pavera-encoded protection payload in `modifyVerifier/@algorithmName`. */
 export const SLIMPPT_MODIFY_VERIFIER_ALG = "SlimPPT-Protection-v1";
 
 interface SlimPptMvPayloadV1 {
@@ -17,7 +17,7 @@ function deepCloneModifyVerifier(mv: ModifyVerifier | undefined): ModifyVerifier
   return mv ? { ...mv } : undefined;
 }
 
-/** Encode SlimPPT protection into OOXML `modifyVerifier` for presentation.xml round-trip. */
+/** Encode Pavera protection into OOXML `modifyVerifier` for presentation.xml round-trip. */
 export function encodeProtectionInModifyVerifier(p: PresentationProtection): ModifyVerifier {
   const payload: SlimPptMvPayloadV1 = { v: 1, kind: p.kind, setAt: p.setAt };
   if (p.passwordHash) payload.ph = p.passwordHash;
@@ -28,7 +28,7 @@ export function encodeProtectionInModifyVerifier(p: PresentationProtection): Mod
   };
 }
 
-/** Decode SlimPPT or infer Office-native protection from `modifyVerifier`. */
+/** Decode Pavera or infer Office-native protection from `modifyVerifier`. */
 export function decodeProtectionFromModifyVerifier(
   mv: ModifyVerifier | undefined,
 ): PresentationProtection | undefined {

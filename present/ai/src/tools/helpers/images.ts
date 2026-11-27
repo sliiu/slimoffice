@@ -273,7 +273,7 @@ async function callOpenRouterImages(args: GenerateAiImageArgs): Promise<Generate
       "Content-Type": "application/json",
       Authorization: `Bearer ${args.apiKey}`,
       "HTTP-Referer": "https://slimppt.app",
-      "X-Title": "SlimPPT",
+      "X-Title": "Pavera",
     },
     body: JSON.stringify(body),
     signal: args.signal,

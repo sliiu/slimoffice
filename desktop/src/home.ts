@@ -57,7 +57,7 @@ export function mountFileHome(
 
   const title = document.createElement("h1");
   title.className = "home-title";
-  title.textContent = "Slim Office";
+  title.textContent = "Pavera";
 
   const lead = document.createElement("p");
   lead.className = "home-lead";

@@ -169,7 +169,7 @@ const TAIL_RULES: ReadonlyArray<readonly [RegExp, SmartArtLayoutKind]> = [
   [/list/, "list"],
 ];
 
-/** Office `layoutDef@uniqueId` tail, or a SlimPPT urn, → layout kind. */
+/** Office `layoutDef@uniqueId` tail, or a Pavera urn, → layout kind. */
 export function smartArtLayoutFromUniqueId(uniqueId: string | undefined): SmartArtLayoutKind | undefined {
   if (!uniqueId) return undefined;
   const slim = /^urn:slimppt:smartart\/([A-Za-z]+)$/.exec(uniqueId);

@@ -1,6 +1,6 @@
 <div align="center">
 
-# Slim Office
+# Pavera
 
 Open a `.pptx` you already have. Edit and present it in the browser, then write the file back.
 
@@ -12,7 +12,7 @@ English · [中文](./README.zh-CN.md)
 
 <br>
 
-<img src="./editor.png" width="900" alt="The Slim Office desktop app after opening a presentation.">
+<img src="./editor.png" width="900" alt="The Pavera desktop app after opening a presentation.">
 
 </div>
 
@@ -32,7 +32,7 @@ How to install, read a file, present it, and write it back is in the [open-sourc
 
 The desktop app is in `desktop/`. It opens files on this computer. The file home lists recent files; a presentation opens in the editor.
 
-![The Slim Office desktop app on the file home.](./file-home.png)
+![The Pavera desktop app on the file home.](./file-home.png)
 
 ## Generate
 

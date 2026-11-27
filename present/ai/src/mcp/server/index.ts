@@ -295,7 +295,7 @@ export function createPptMcpServer(opts: CreatePptMcpServerOptions): McpServer {
       "generate_presentation",
       {
         description:
-          "Generate a complete designed presentation from a topic with SlimPPT's own pipeline (outline → research → per-page layout → layout gates → repair → visual review), and open it in this session as a new deck. Prefer this over building a deck shape by shape. Takes one to a few minutes. Then inspect with getPresentationSummary / render_slide, refine with edit tools, and call save_presentation to write it.",
+          "Generate a complete designed presentation from a topic with Pavera's own pipeline (outline → research → per-page layout → layout gates → repair → visual review), and open it in this session as a new deck. Prefer this over building a deck shape by shape. Takes one to a few minutes. Then inspect with getPresentationSummary / render_slide, refine with edit tools, and call save_presentation to write it.",
         inputSchema: {
           topic: z.string().min(2).describe("What the deck is about."),
           deckId: z.string().min(1).describe("Id for the new deck. For a local folder, a new file name such as \"talk.pptx\"."),

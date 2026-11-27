@@ -32,12 +32,12 @@ function waitForSlimppt(port, child) {
         return;
       }
       if (Date.now() > deadline) {
-        reject(new Error("SlimPPT dev server did not become ready"));
+        reject(new Error("Pavera dev server did not become ready"));
         return;
       }
       try {
         const html = await fetch(url).then((res) => res.text());
-        if (html.includes("Slim Office") && html.includes('id="home"')) {
+        if (html.includes("Pavera") && html.includes('id="home"')) {
           resolve(url);
           return;
         }
@@ -71,7 +71,7 @@ try {
   vite.kill("SIGTERM");
   throw err;
 }
-console.log(`SlimPPT desktop ${devUrl}`);
+console.log(`Pavera desktop ${devUrl}`);
 
 const electronPath = require("electron");
 let electron = null;
@@ -112,7 +112,7 @@ watch(here, (_event, filename) => {
   if (!filename || !/\.(mjs|cjs)$/.test(filename)) return;
   clearTimeout(restartTimer);
   restartTimer = setTimeout(() => {
-    console.log(`restarting Slim Office after ${filename}`);
+    console.log(`restarting Pavera after ${filename}`);
     restartElectron();
   }, 200);
 });

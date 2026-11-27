@@ -1,6 +1,6 @@
 <div align="center">
 
-# Slim Office
+# Pavera
 
 打开已有的 `.pptx`，在浏览器里改、放映，再写回文件。
 
@@ -12,7 +12,7 @@
 
 <br>
 
-<img src="./editor.png" width="900" alt="打开演示文稿后的 Slim Office 桌面窗口。">
+<img src="./editor.png" width="900" alt="打开演示文稿后的 Pavera 桌面窗口。">
 
 </div>
 
@@ -32,7 +32,7 @@
 
 桌面应用在 `desktop/`。它打开这台电脑上的文件。文件首页列出最近文件；演示文稿会进入编辑器。
 
-![停在文件首页的 Slim Office 桌面窗口。](./file-home.png)
+![停在文件首页的 Pavera 桌面窗口。](./file-home.png)
 
 ## 生成
 

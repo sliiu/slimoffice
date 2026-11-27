@@ -1,6 +1,6 @@
 # deckgen
 
-Product generate compiles an editable SlimPPT `Presentation` — the same IR chat tools mutate (text, shapes, charts, tables, image backgrounds). That IR already serializes to OOXML; there is no separate SVG toolchain.
+Product generate compiles an editable Pavera `Presentation` — the same IR chat tools mutate (text, shapes, charts, tables, image backgrounds). That IR already serializes to OOXML; there is no separate SVG toolchain.
 
 Emit writes a real slide master (`pres.masters[]`) with theme background, type styles, standard placeholders, and one layout per catalog id (plus any extra canvas names and Blank). Slides get `layoutRef`. Solid pages inherit `master.background` so Master View / new-slide / theme bg stay linked. Photo canvases keep their image background and set `showMasterSp: false` so master chrome does not sit on the photo. Canvas art stays on the slide — layouts are placeholder skeletons, not a stamp of unique page shapes.
 

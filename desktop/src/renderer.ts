@@ -115,14 +115,14 @@ function setDirty(next: boolean): void {
 
 function setTitle(): void {
   const mark = dirty ? " •" : "";
-  const title = `${fileName}${mark} — Slim Office`;
+  const title = `${fileName}${mark} — Pavera`;
   document.title = title;
   window.desktop.setTitle(title);
 }
 
 function setHomeTitle(): void {
-  document.title = "Slim Office";
-  window.desktop.setTitle("Slim Office");
+  document.title = "Pavera";
+  window.desktop.setTitle("Pavera");
 }
 
 function showPresent(): void {
@@ -444,8 +444,8 @@ window.__slimpptSave = async () => {
 async function boot(): Promise<void> {
   if (!window.desktop) {
     host.textContent = locale === "zh-CN"
-      ? "这是 SlimPPT 应用的开发页，请关掉这个浏览器标签，使用应用窗口。"
-      : "This is the SlimPPT app dev page. Close this browser tab and use the app window.";
+      ? "这是 Pavera 应用的开发页，请关掉这个浏览器标签，使用应用窗口。"
+      : "This is the Pavera app dev page. Close this browser tab and use the app window.";
     return;
   }
   home = mountFileHome(homeEl, locale, {

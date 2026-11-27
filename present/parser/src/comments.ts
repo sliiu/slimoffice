@@ -19,7 +19,7 @@ function unescapeXmlAttr(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
-/** 从 presentation tags part 读取指定 SlimPPT 侧车键（绕过超大 tagLst 的常规解析限制）。 */
+/** 从 presentation tags part 读取指定 Pavera 侧车键（绕过超大 tagLst 的常规解析限制）。 */
 export function loadMetaTagFromArchive(
   archive: PptxArchive,
   presRels: RelMap,
@@ -39,7 +39,7 @@ export function loadMetaTagFromArchive(
   return unescapeXmlAttr(xml.slice(start, end));
 }
 
-/** 从 presentation tags part 读取 SlimPPT 批注元数据。 */
+/** 从 presentation tags part 读取 Pavera 批注元数据。 */
 export function loadCommentMetaFromArchive(
   archive: PptxArchive,
   presRels: RelMap,

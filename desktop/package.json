@@ -2,7 +2,7 @@
   "name": "slim-office-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Slim Office desktop. Presentations open from files on this computer.",
+  "description": "Pavera desktop. Presentations open from files on this computer.",
   "author": "Sliiu Inc",
   "license": "Apache-2.0",
   "type": "module",
@@ -31,8 +31,8 @@
   },
   "build": {
     "appId": "com.sliiu.slimppt",
-    "productName": "SlimPPT",
-    "executableName": "SlimPPT",
+    "productName": "Pavera",
+    "executableName": "Pavera",
     "copyright": "Copyright © Sliiu Inc",
     "asar": true,
     "npmRebuild": false,
@@ -86,7 +86,7 @@
     },
     "linux": {
       "category": "Office",
-      "artifactName": "SlimPPT-${version}-linux-${arch}.${ext}",
+      "artifactName": "Pavera-${version}-linux-${arch}.${ext}",
       "target": [
         {
           "target": "AppImage",

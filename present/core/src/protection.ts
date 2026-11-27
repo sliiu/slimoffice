@@ -6,7 +6,7 @@ import {
 
 export const PROTECTION_META_KEY = "protection";
 
-/** presentation tags part 中 SlimPPT 保护元数据键名。 */
+/** presentation tags part 中 Pavera 保护元数据键名。 */
 export const PROTECTION_META_TAG = "SlimPPT.Protection.v1";
 
 interface ProtectionMetaV1 {

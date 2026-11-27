@@ -55,7 +55,7 @@ export function officeModifyVerifierSpinCount(mv: ModifyVerifier): number {
   return typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 }
 
-/** True when `modifyVerifier` carries an Office-native password hash (not SlimPPT JSON). */
+/** True when `modifyVerifier` carries an Office-native password hash (not Pavera JSON). */
 export function isOfficePasswordVerifier(mv: ModifyVerifier | undefined): boolean {
   if (!mv) return false;
   if (mv.algorithmName === SLIMPPT_MODIFY_VERIFIER_ALG) return false;

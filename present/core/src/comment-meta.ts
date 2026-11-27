@@ -1,6 +1,6 @@
 import type { DeckComment } from "./slide";
 
-/** presentation tags part 中 SlimPPT 批注元数据键名。 */
+/** presentation tags part 中 Pavera 批注元数据键名。 */
 export const COMMENT_META_TAG = "SlimPPT.Comments.v1";
 
 export interface CommentMetaKey {

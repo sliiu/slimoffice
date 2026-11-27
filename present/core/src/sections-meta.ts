@@ -1,6 +1,6 @@
 import type { DeckSection, Presentation } from "./slide";
 
-/** presentation tags part 中 SlimPPT 幻灯片节元数据键名。 */
+/** presentation tags part 中 Pavera 幻灯片节元数据键名。 */
 export const SECTIONS_META_TAG = "SlimPPT.Sections.v1";
 
 interface DeckSectionsMetaV1 {

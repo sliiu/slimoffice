@@ -39,7 +39,7 @@ function pushState(
   );
 }
 
-/** Bridge SlimPPT playback to the PassPad companion / AI Passport remote. */
+/** Bridge Pavera playback to the PassPad companion / AI Passport remote. */
 export const passpadPlugin: Plugin = {
   id: "official:passpad",
   name: "PassPad Remote",

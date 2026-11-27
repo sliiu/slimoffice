@@ -203,7 +203,7 @@ function readSidecarTags(
   return readTagsFromPart(strFromU8(archive.files.get(tagsPath)!));
 }
 
-/** 把 SlimPPT 扩展元数据 + 用户 `customData.tags` 写入 presentation tags 部件。 */
+/** 把 Pavera 扩展元数据 + 用户 `customData.tags` 写入 presentation tags 部件。 */
 export function patchSlimPptSidecarTags(
   pres: Presentation,
   archive: MutableArchive,
@@ -281,7 +281,7 @@ export function patchSlimPptSidecarTags(
 }
 
 /**
- * from-scratch：把 presentation tags（用户 tagLst + SlimPPT 侧车）写进文本部件表。
+ * from-scratch：把 presentation tags（用户 tagLst + Pavera 侧车）写进文本部件表。
  * 缓存恢复丢掉 `__source` 后走这条路径，否则保护 / 插件 / 批注元数据会丢。
  */
 export function injectScratchPresentationTags(pres: Presentation, files: Record<string, string>): void {

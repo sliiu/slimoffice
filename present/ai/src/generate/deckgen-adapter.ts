@@ -1,6 +1,6 @@
 /**
  * Adapter: live generate entry (topic / outline) → canvas author (or no-key fill)
- * → polish (research/organize/images/QA/art director) → editable SlimPPT Presentation.
+ * → polish (research/organize/images/QA/art director) → editable Pavera Presentation.
  *
  * Does not reimplement the catalog. Pairing / layout / variant ids are
  * imported from `packages/ai/src/deckgen` and re-asserted at this boundary.

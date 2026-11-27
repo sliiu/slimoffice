@@ -32,7 +32,7 @@ function downloadBytes(doc: Document, bytes: Uint8Array | string, fileName: stri
   URL.revokeObjectURL(url);
 }
 
-/** Read-only VBA project summary — macros are never executed in SlimPPT. */
+/** Read-only VBA project summary — macros are never executed in Pavera. */
 export function openVbaInfoDialog(doc: Document, pres: Presentation): void {
   if (!presentationHasVbaProject(pres)) return;
   const meta = pres.vbaProject;

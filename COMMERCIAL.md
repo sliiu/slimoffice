@@ -2,7 +2,7 @@
 
 公开包的开源许可证是 Apache-2.0，版权人是 Sliiu Inc。Apache-2.0 已经允许商用和闭源嵌入，不再另卖代码许可。发票、支持和服务等级另签合同，联系 support@slimppt.com。上海轻柚信息科技有限公司不签这份合同。
 
-合同只覆盖 SlimPPT 自有代码。Sliiu Inc 一侧签名，不用公章：
+合同只覆盖 Pavera 自有代码。Sliiu Inc 一侧签名，不用公章：
 
 ```
 Sliiu Inc

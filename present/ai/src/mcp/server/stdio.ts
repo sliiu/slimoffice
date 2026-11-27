@@ -33,7 +33,7 @@ function monorepoRoot(start: string): string | undefined {
   return undefined;
 }
 
-/** Headless-Chromium slide renderer from the SlimPPT checkout, or undefined in the published package. */
+/** Headless-Chromium slide renderer from the Pavera checkout, or undefined in the published package. */
 function localSlideRenderer(): ((pres: Presentation, slideIdx: number, opts: { width: number }) => Promise<Uint8Array>) | undefined {
   const repo = monorepoRoot(path.dirname(fileURLToPath(import.meta.url)));
   if (!repo) return undefined;
