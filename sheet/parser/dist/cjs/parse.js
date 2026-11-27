@@ -603,6 +603,11 @@ function tables(root, archive, path, dxfs) {
                 ...((0, xml_1.attr)(table, "totalsRowCount") === "1" ? { totalsRow: true } : {}),
                 ...((0, xml_1.attr)(style, "name") ? { style: (0, xml_1.attr)(style, "name") } : {}),
                 rowStripes: (0, xml_1.attr)(style, "showRowStripes") !== "0",
+                ...((0, xml_1.attr)(style, "showColumnStripes") === "1" ? { colStripes: true } : {}),
+                ...((0, xml_1.attr)(style, "showFirstColumn") === "1" ? { firstColumn: true } : {}),
+                ...((0, xml_1.attr)(style, "showLastColumn") === "1" ? { lastColumn: true } : {}),
+                filter: (0, xml_1.child)(table, "autoFilter") !== undefined,
+                ...tableFilterColumns((0, xml_1.child)(table, "autoFilter")),
                 ...(columns.length ? { columns } : {}),
                 ...(formulas.some((formula) => formula) ? { formulas } : {}),
                 ...(totals.some((fn) => fn !== "sum") ? { totals } : {}),
@@ -848,6 +853,17 @@ function pageSetup(root) {
         page.headings = (0, xml_1.attr)(options, "headings") === "1";
     }
     return page;
+}
+/** The values a table column still shows. Nothing when every column shows everything. */
+function tableFilterColumns(node) {
+    const columns = (0, xml_1.children)(node, "filterColumn").flatMap((column) => {
+        const col = Number((0, xml_1.attr)(column, "colId"));
+        const values = (0, xml_1.children)((0, xml_1.child)(column, "filters"), "filter").map((item) => (0, xml_1.attr)(item, "val")).filter((value) => value != null);
+        if (!Number.isInteger(col) || col < 0 || !values.length)
+            return [];
+        return [{ col, values }];
+    });
+    return columns.length ? { filterColumns: columns } : undefined;
 }
 /** A column filter lists the values that stay visible. A column without one shows everything. */
 function filterOf(root) {

@@ -120,7 +120,7 @@ test("writes a cell comment back", () => {
 test("writes table drawing and validation parts", () => {
   const made = blankWorkbook("销售", [[{ value: "a" }, { value: "1" }], [{ value: "b" }, { value: "2" }]]);
   const sheet = made.workbook.sheets[0]!;
-  sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"], formulas: ["", "SUM([数量])"], totals: ["sum", "average"], totalsFormulas: ["", "SUBTOTAL(101,[数量])"], widths: [18, 0], hidden: [true, false], formats: ["", "0.00"] }];
+  sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: false, totalsRow: true, colStripes: true, firstColumn: true, lastColumn: true, filterColumns: [{ col: 0, values: ["甲"] }], columns: ["品类", "数量"], formulas: ["", "SUM([数量])"], totals: ["sum", "average"], totalsFormulas: ["", "SUBTOTAL(101,[数量])"], widths: [18, 0], hidden: [true, false], formats: ["", "0.00"] }];
   sheet.charts = [{ id: "chart1", kind: "column", title: "销量", range: "B1:B2" }];
   sheet.validations = [{ id: "dv1", r1: 0, c1: 0, r2: 1, c2: 0, type: "list", op: "eq", formula1: "a,b" }];
   made.workbook.theme = { name: "Office", colors: ["#4472C4"], fonts: { major: "Calibri", minor: "Calibri" } };
@@ -130,7 +130,13 @@ test("writes table drawing and validation parts", () => {
   assert.match(sheetXml, /<drawing r:id="rIdDrawing1"\/>/);
   assert.match(sheetXml, /<dataValidations count="1">/);
   assert.match(sheetXml, /<dataValidation type="list" allowBlank="1" operator="equal" sqref="A1:A2"><formula1>a,b<\/formula1><\/dataValidation>/);
-  assert.match(new TextDecoder().decode(out["xl/tables/table1_1.xml"]), /totalsRowCount="1".*<tableColumn id="1" name="品类" width="18" hidden="1"><\/tableColumn><tableColumn id="2" name="数量" dataDxfId="\d+" totalsRowFunction="average"><calculatedColumnFormula>SUM\(\[数量\]\)<\/calculatedColumnFormula><totalsRowFormula>SUBTOTAL\(101,\[数量\]\)<\/totalsRowFormula><\/tableColumn>/);
+  const tableXml = new TextDecoder().decode(out["xl/tables/table1_1.xml"]);
+  assert.match(tableXml, /headerRowCount="0" totalsRowCount="1".*<tableColumn id="1" name="品类" width="18" hidden="1"><\/tableColumn><tableColumn id="2" name="数量" dataDxfId="\d+" totalsRowFunction="average"><calculatedColumnFormula>SUM\(\[数量\]\)<\/calculatedColumnFormula><totalsRowFormula>SUBTOTAL\(101,\[数量\]\)<\/totalsRowFormula><\/tableColumn>/);
+  // Column stripes and the emphasized columns are off unless the table asks for them.
+  assert.match(tableXml, /showColumnStripes="1"/);
+  assert.match(tableXml, /showFirstColumn="1" showLastColumn="1"/);
+  // A column keeps the values it still shows inside the table's own autoFilter.
+  assert.match(tableXml, /<autoFilter ref="A1:B2"><filterColumn colId="0"><filters><filter val="甲"\/><\/filters><\/filterColumn><\/autoFilter>/);
   // The number format lands in the styles, and the column points at that entry.
   assert.match(new TextDecoder().decode(out["xl/styles.xml"]), /<dxf><numFmt numFmtId="\d+" formatCode="0.00"\/><\/dxf>/);
   assert.ok(out["xl/drawings/drawing1.xml"]);

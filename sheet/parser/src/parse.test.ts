@@ -150,7 +150,7 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
       `<Relationship Id="rIdTable1" Type="table" Target="../tables/table1.xml"/>` +
       `<Relationship Id="rIdDrawing1" Type="drawing" Target="../drawings/drawing1.xml"/>` +
       `</Relationships>`,
-    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B2" headerRowCount="1" totalsRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类"/><tableColumn id="2" name="数量" totalsRowFunction="average"><calculatedColumnFormula>SUM([数量])</calculatedColumnFormula></tableColumn></tableColumns><tableStyleInfo name="TableStyleMedium2" showRowStripes="1"/></table>`,
+    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B2" headerRowCount="1" totalsRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类"/><tableColumn id="2" name="数量" totalsRowFunction="average"><calculatedColumnFormula>SUM([数量])</calculatedColumnFormula></tableColumn></tableColumns><tableStyleInfo name="TableStyleMedium2" showRowStripes="1" showColumnStripes="1" showFirstColumn="1" showLastColumn="1"/></table>`,
     "xl/drawings/drawing1.xml": `<wsDr><graphicFrame><cNvPr id="1" name="Chart 1"/></graphicFrame></wsDr>`,
     "xl/drawings/_rels/drawing1.xml.rels": `<Relationships><Relationship Id="rIdChart1" Type="chart" Target="../charts/chart1.xml"/></Relationships>`,
     "xl/charts/chart1.xml": `<chartSpace><chart><plotArea><barChart><ser><val><numRef><f>Sheet1!$B$1:$B$2</f></numRef></val></ser><ser><val><numRef><f>Sheet1!$C$1:$C$2</f></numRef></val></ser></barChart></plotArea></chart></chartSpace>`,
@@ -170,6 +170,11 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
   assert.deepEqual(opened?.tables?.[0]?.columns, ["品类", "数量"]);
   assert.equal(opened?.tables?.[0]?.totalsRow, true);
   assert.equal(opened?.tables?.[0]?.rowStripes, true);
+  assert.equal(opened?.tables?.[0]?.colStripes, true);
+  assert.equal(opened?.tables?.[0]?.firstColumn, true);
+  assert.equal(opened?.tables?.[0]?.lastColumn, true);
+  // This table writes no autoFilter, so its filter buttons are off.
+  assert.equal(opened?.tables?.[0]?.filter, false);
   // A calculated column keeps the formula it shares, and a column without one keeps none.
   assert.deepEqual(opened?.tables?.[0]?.formulas, ["", "SUM([数量])"]);
   // A cell that already has its own formula keeps it.
@@ -190,7 +195,7 @@ test("a calculated column fills the data cells that have no formula", async () =
       `<row r="4"><c r="A4" t="inlineStr"><is><t>合计</t></is></c></row></sheetData>` +
       `<tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts></worksheet>`,
     "xl/worksheets/_rels/sheet1.xml.rels": `<Relationships><Relationship Id="rIdTable1" Type="table" Target="../tables/table1.xml"/></Relationships>`,
-    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B4" headerRowCount="1" totalsRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类" width="18" hidden="1"/><tableColumn id="2" name="数量"><calculatedColumnFormula>[数量]*2</calculatedColumnFormula><totalsRowFormula>SUBTOTAL(109,[数量])</totalsRowFormula></tableColumn></tableColumns></table>`,
+    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B4" headerRowCount="1" totalsRowCount="1"><autoFilter ref="A1:B4"><filterColumn colId="0"><filters><filter val="甲"/></filters></filterColumn></autoFilter><tableColumns count="2"><tableColumn id="1" name="品类" width="18" hidden="1"/><tableColumn id="2" name="数量"><calculatedColumnFormula>[数量]*2</calculatedColumnFormula><totalsRowFormula>SUBTOTAL(109,[数量])</totalsRowFormula></tableColumn></tableColumns></table>`,
   });
   const opened = (await parseXlsx(bytes)).sheets[0];
   // Both data rows take the column's formula, and the cached number stays visible.
@@ -201,6 +206,8 @@ test("a calculated column fills the data cells that have no formula", async () =
   assert.equal(opened?.cells[0]?.[1]?.formula, undefined);
   // A column keeps its width and whether the table hides it. One that names neither keeps none.
   assert.equal(opened?.tables?.[0]?.widths?.[0], 18);
+  // The filter lists the values the first column still shows.
+  assert.deepEqual(opened?.tables?.[0]?.filterColumns, [{ col: 0, values: ["甲"] }]);
   assert.deepEqual(opened?.tables?.[0]?.hidden, [true, false]);
   // The totals formula fills the totals cell, which the column formula leaves alone.
   assert.equal(opened?.tables?.[0]?.totalsFormulas?.[1], "SUBTOTAL(109,[数量])");

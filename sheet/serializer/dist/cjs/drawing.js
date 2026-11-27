@@ -93,8 +93,13 @@ function tableXml(table, dxfForFormat) {
             return `<tableColumn id="${index + 1}" name="${escapeXml(name)}"${widthAttr}${hiddenAttr}${dxfAttr}${totalsFn}>${body}</tableColumn>`;
         }).join("")}</tableColumns>`
         : "";
+    // A table without filter buttons writes no autoFilter. The default keeps them, and a column keeps the values it still shows.
+    const kept = (table.filterColumns ?? [])
+        .map((column) => `<filterColumn colId="${column.col}"><filters>${column.values.map((value) => `<filter val="${escapeXml(value)}"/>`).join("")}</filters></filterColumn>`)
+        .join("");
+    const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}</autoFilter>`;
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow ? 'headerRowCount="1"' : ""}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}<autoFilter ref="${ref}"/><tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="0" showLastColumn="0" showRowStripes="${table.rowStripes === false ? "0" : "1"}" showColumnStripes="0"/></table>`;
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow === false ? 'headerRowCount="0"' : 'headerRowCount="1"'}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}${filter}<tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="${table.firstColumn ? "1" : "0"}" showLastColumn="${table.lastColumn ? "1" : "0"}" showRowStripes="${table.rowStripes === false ? "0" : "1"}" showColumnStripes="${table.colStripes ? "1" : "0"}"/></table>`;
 }
 function chartAnchor(chart, index) {
     return `<xdr:twoCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${index * 12}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>6</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${index * 12 + 10}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:graphicFrame><xdr:nvGraphicFramePr><xdr:cNvPr id="${index + 1}" name="${escapeXml(chart.title ?? chart.id)}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rIdChart${index + 1}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor><!-- range ${escapeXml(chart.range)} kind ${chart.kind} -->`;

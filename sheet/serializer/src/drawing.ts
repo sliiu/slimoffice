@@ -112,8 +112,13 @@ function tableXml(table: SheetTable, dxfForFormat?: (format: string) => number):
         return `<tableColumn id="${index + 1}" name="${escapeXml(name)}"${widthAttr}${hiddenAttr}${dxfAttr}${totalsFn}>${body}</tableColumn>`;
       }).join("")}</tableColumns>`
     : "";
+  // A table without filter buttons writes no autoFilter. The default keeps them, and a column keeps the values it still shows.
+  const kept = (table.filterColumns ?? [])
+    .map((column) => `<filterColumn colId="${column.col}"><filters>${column.values.map((value) => `<filter val="${escapeXml(value)}"/>`).join("")}</filters></filterColumn>`)
+    .join("");
+  const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}</autoFilter>`;
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow ? 'headerRowCount="1"' : ""}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}<autoFilter ref="${ref}"/><tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="0" showLastColumn="0" showRowStripes="${table.rowStripes === false ? "0" : "1"}" showColumnStripes="0"/></table>`;
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow === false ? 'headerRowCount="0"' : 'headerRowCount="1"'}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}${filter}<tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="${table.firstColumn ? "1" : "0"}" showLastColumn="${table.lastColumn ? "1" : "0"}" showRowStripes="${table.rowStripes === false ? "0" : "1"}" showColumnStripes="${table.colStripes ? "1" : "0"}"/></table>`;
 }
 
 function chartAnchor(chart: SheetChart, index: number): string {

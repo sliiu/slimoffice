@@ -448,6 +448,28 @@ function tokenize(text) {
             i += 1;
             continue;
         }
+        // A quoted column name, as in ['销售 额'] or ['a''b']. A doubled quote is one quote. Only inside the brackets.
+        if (ch === "'" && out.at(-1)?.kind === "lsb") {
+            let j = i + 1;
+            let value = "";
+            while (j < text.length) {
+                const c = text[j];
+                if (c === "'" && text[j + 1] === "'") {
+                    value += "'";
+                    j += 2;
+                    continue;
+                }
+                if (c === "'")
+                    break;
+                value += c;
+                j += 1;
+            }
+            if (text[j] !== "'")
+                throw E.REF();
+            out.push({ kind: "id", value: value.toUpperCase() });
+            i = j + 1;
+            continue;
+        }
         // The # or @ of a table specifier, as in [#This Row] or [@数量]. Elsewhere both stay errors.
         if ((ch === "#" || ch === "@") && out.at(-1)?.kind === "lsb") {
             let j = i + 1;
@@ -884,11 +906,40 @@ class Parser {
      * `Table1[[#Headers]]`, `Table1[[#Totals]]`, `Table1[[#This Row]]` and `Table1[@]` name the whole row of that part.
      * `Table1[[#This Row],[列]]` (also written `Table1[@列]`) is one cell on the formula's own row. `Table1[[列1]:[列2]]`
      * runs from one column to the other, and `Table1[@[列1]:[列2]]` does the same on the formula's own row.
+     * A space between two references of the same table is their overlap, as in `Table1[[#All],[数量]] Table1[[#Data],[数量]]`.
      */
     tableRef(name) {
         const spec = this.tableSpec();
         if (spec instanceof FormulaError)
             return spec;
+        const first = this.tableRange(name, spec);
+        // The space that separates the two references was skipped while tokenizing, so the next table name is the overlap.
+        const next = this.peek();
+        if (first instanceof FormulaError || next?.kind !== "id" || next.value !== name || this.tokens[this.i + 1]?.kind !== "lsb")
+            return first;
+        this.take();
+        const rest = this.tableRef(name);
+        return this.tableOverlap(first, rest);
+    }
+    /** The cells two references of one table share. The overlap is read from the table, so a part without a cell origin still counts. */
+    tableOverlap(left, right) {
+        if (left instanceof FormulaError)
+            return left;
+        if (right instanceof FormulaError)
+            return right;
+        const a = rangeOrigin(left);
+        const b = rangeOrigin(right);
+        if (a && b)
+            return intersectRanges(this.ctx.workbook, left, right);
+        // One side names a whole part of the table, so the other side already sits inside it.
+        if (a)
+            return left;
+        if (b)
+            return right;
+        return E.VALUE();
+    }
+    /** The cells one table reference names. A table with another name is a name error. */
+    tableRange(name, spec) {
         for (const [sheetIndex, sheet] of this.ctx.workbook.sheets.entries()) {
             const table = (sheet.tables ?? []).find((item) => item.name.toUpperCase() === name);
             if (!table)
@@ -987,7 +1038,8 @@ class Parser {
         const column = this.tableItem();
         if (column instanceof FormulaError)
             return column;
-        if (item.part === "data" || column.part !== "data" || !column.column)
+        // [#Data] names the data rows, so it takes a column the same way [#All] does. A bare column does not.
+        if (item.column || column.part !== "data" || !column.column)
             return E.REF();
         const spanned = this.optionalColumnSpan();
         if (spanned instanceof FormulaError)

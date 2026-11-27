@@ -150,6 +150,34 @@ test("a table reference spans from one column to another", () => {
   assert.equal(evaluate("=Table1[[数量]:[没有]]", ctx(workbook)) instanceof FormulaError, true);
 });
 
+test("a table column with a space or a quote needs quotes", () => {
+  const workbook = book([[{ value: "销售 额" }, { value: "a'b" }], [{ value: "10" }, { value: "5" }]]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["销售 额", "a'b"] }];
+  // The quotes let the name hold a space, and a doubled quote is the quote itself.
+  assert.equal(evaluate("=SUM(Table1['销售 额'])", ctx(workbook)), 10);
+  assert.equal(evaluate("=SUM(Table1['a''b'])", ctx(workbook)), 5);
+  // The same name reaches the current row.
+  assert.equal(evaluate("=Table1[@['销售 额']]", ctx(workbook, 1, 0)), 10);
+  // A quote that never closes is a reference error.
+  assert.equal(evaluate("=SUM(Table1['销售 额])", ctx(workbook)) instanceof FormulaError, true);
+});
+
+test("a space between two table references keeps their overlap", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "数量" }],
+    [{ value: "甲" }, { value: "10" }],
+    [{ value: "乙" }, { value: "5" }],
+    [{ value: "合计" }, { value: "15" }],
+  ]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }];
+  // The whole column and the data share only the data cells, so the header and the totals row drop out.
+  assert.equal(evaluate("=SUM(Table1[[#All],[数量]] Table1[[#Data],[数量]])", ctx(workbook)), 15);
+  // One data cell against the whole column leaves that one cell.
+  assert.equal(evaluate("=Table1[[#This Row],[数量]] Table1[[#All],[数量]]", ctx(workbook, 1, 0)), 10);
+  // Two parts of the table that share no cell are a null error. A sum would swallow it into zero.
+  assert.equal(evaluate("=Table1[[#Headers],[数量]] Table1[[#Totals],[数量]]", ctx(workbook)) instanceof FormulaError, true);
+});
+
 test("a bare table name and a bare specifier cover the whole table", () => {
   const workbook = book([
     [{ value: "品类" }, { value: "数量" }],

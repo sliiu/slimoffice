@@ -106,6 +106,16 @@ export interface SheetGrid {
   addTable(name?: string): void;
   /** Add a totals row to the table under the selection, or take it off. Returns whether it is on. */
   toggleTotals(): boolean;
+  /** Show or hide the header row of the table under the selection. Returns whether it is on. */
+  toggleHeader(): boolean;
+  /** Rename the table under the selection. A blank name leaves it, and a taken name gains a suffix. */
+  renameTable(name: string): boolean;
+  /** Move the table under the selection to a new range. The range must cover at least one cell. */
+  resizeTable(range: { r1: number; c1: number; r2: number; c2: number }): boolean;
+  /** Remove the table under the selection. The cells stay. */
+  deleteTable(): boolean;
+  /** Keep the rows whose cell in the selected column is one of these values. Omit to show them all. */
+  tableFilter(values?: string[]): boolean;
   /** How the totals row reduces the column under the selection. A sum is the default. */
   totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean;
   addPivot(name?: string): void;
@@ -313,6 +323,11 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     addConditionalFormat,
     addTable,
     toggleTotals,
+    toggleHeader,
+    renameTable,
+    resizeTable,
+    deleteTable,
+    tableFilter,
     totalsFunction,
     addPivot,
     pageSetup: (patch) => {
@@ -444,10 +459,23 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
   function filteredOut(sheet: Worksheet, row: number): boolean {
     if (row === 0) return false;
     if ((sheet.slicers ?? []).some((slicer) => slicerHides(sheet, slicer, row))) return true;
+    if ((sheet.tables ?? []).some((table) => tableHides(sheet, table, row))) return true;
     const filter = sheet.filter;
     if (!filter?.columns?.length || row === filter.r1 || row < filter.r1 || row > filter.r2) return false;
     return filter.columns.some((column) => {
       const value = sheet.cells[row]?.[filter.c1 + column.col]?.value ?? "";
+      return !column.values.includes(value);
+    });
+  }
+
+  /** A table column with no filter shows everything. The header and the totals row always stay. */
+  function tableHides(sheet: Worksheet, table: NonNullable<Worksheet["tables"]>[number], row: number): boolean {
+    const columns = table.filterColumns;
+    if (!columns?.length || row < table.r1 || row > table.r2) return false;
+    if (table.headerRow !== false && row === table.r1) return false;
+    if (table.totalsRow && row === table.r2) return false;
+    return columns.some((column) => {
+      const value = sheet.cells[row]?.[table.c1 + column.col]?.value ?? "";
       return !column.values.includes(value);
     });
   }
@@ -510,6 +538,13 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
       if (tableRange.rowStripes !== false && row >= stripeTop && row <= stripeBottom && (row - stripeTop) % 2 === 1) {
         td.classList.add("is-table-stripe");
       }
+      // Data columns alternate the same way, starting from the table's first column.
+      if (tableRange.colStripes && row >= stripeTop && row <= stripeBottom && (column - tableRange.c1) % 2 === 1) {
+        td.classList.add("is-table-col-stripe");
+      }
+      // The first and last column stand out, including the header and the totals row.
+      if (tableRange.firstColumn && column === tableRange.c1) td.classList.add("is-table-first-col");
+      if (tableRange.lastColumn && column === tableRange.c2) td.classList.add("is-table-last-col");
     }
     if (inPrintArea(sheet, row, column)) td.dataset.printArea = "1";
     const consolidation = sheet.consolidation;
@@ -520,8 +555,8 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     if (sheet.pageBreaks?.cols?.includes(column + 1)) td.dataset.pageBreak = "col";
     const table = dataTableAt(sheet, row, column);
     if (table) td.dataset.dataTable = [table.rowInput, table.colInput].filter((part) => part).join(" ");
-    // A table carries its own filter on the header row, separate from the sheet's one filter.
-    const tableHeader = tableRange?.headerRow && row === tableRange.r1;
+    // A table carries its own filter on the header row, separate from the sheet's one filter. It can be switched off.
+    const tableHeader = tableRange?.headerRow && tableRange.filter !== false && row === tableRange.r1;
     if (tableHeader || (sheet.filter && row === sheet.filter.r1 && column >= sheet.filter.c1 && column <= sheet.filter.c2)) {
       td.classList.add("is-filter-header");
     }
@@ -573,6 +608,8 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
       }
       // A formula typed into a data cell becomes the column's formula and fills the other data rows.
       if (cell.formula && table && fillColumnFormula(table, row, column, cell.formula)) paint();
+      // Typing into the row just below a table pulls that row in. A totals row stays last.
+      if (!table && next.trim() && growTable(sheet, row, column)) paint();
       touch();
     });
     return td;
@@ -591,6 +628,19 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
       if (width && width > 0) return width;
     }
     return undefined;
+  }
+
+  /** The row just under a table becomes part of it. A totals row moves down so the new row stays data. */
+  function growTable(sheet: Worksheet, row: number, column: number): boolean {
+    const table = (sheet.tables ?? []).find((item) => row === item.r2 + 1 && column >= item.c1 && column <= item.c2);
+    if (!table) return false;
+    if (table.totalsRow) {
+      const totals = sheet.cells[table.r2];
+      sheet.cells.splice(table.r2, 0, []);
+      if (totals) sheet.cells[table.r2 + 1] = totals;
+    }
+    table.r2 += 1;
+    return true;
   }
 
   function tableRangeAt(sheet: Worksheet, row: number, column: number): NonNullable<Worksheet["tables"]>[number] | undefined {
@@ -1217,6 +1267,104 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     });
     sheet.tables = tables;
     finish();
+  }
+
+  /** The table under the selection gains or loses its header row. The row stays; only the marker moves. */
+  function toggleHeader(): boolean {
+    const sheet = currentSheet();
+    const table = tableRangeAt(sheet, selected.row, selected.col);
+    if (!table) return false;
+    remember();
+    table.headerRow = table.headerRow === false;
+    finish();
+    return table.headerRow !== false;
+  }
+
+  /** The table under the selection takes a new name. A blank name leaves it, and a name another table holds gains a suffix. */
+  function renameTable(name: string): boolean {
+    const sheet = currentSheet();
+    const table = tableRangeAt(sheet, selected.row, selected.col);
+    const label = name.trim();
+    if (!table || !label) return false;
+    remember();
+    const taken = new Set<string>();
+    for (const item of workbook.sheets) {
+      for (const other of item.tables ?? []) {
+        if (other !== table) taken.add(other.name.toUpperCase());
+      }
+    }
+    let next = label;
+    while (taken.has(next.toUpperCase())) next = `${next}_`;
+    table.name = next;
+    finish();
+    return true;
+  }
+
+  /** The table under the selection covers a new range. A column it gains takes its name from the header. */
+  function resizeTable(range: { r1: number; c1: number; r2: number; c2: number }): boolean {
+    const sheet = currentSheet();
+    const table = tableRangeAt(sheet, selected.row, selected.col);
+    const r1 = Math.min(range.r1, range.r2);
+    const r2 = Math.max(range.r1, range.r2);
+    const c1 = Math.min(range.c1, range.c2);
+    const c2 = Math.max(range.c1, range.c2);
+    if (!table || r1 < 0 || c1 < 0) return false;
+    remember();
+    const shift = c1 - table.c1;
+    const columns = table.columns ?? [];
+    const next: string[] = [];
+    for (let col = c1; col <= c2; col += 1) {
+      const kept = columns[col - table.c1];
+      const header = table.headerRow === false ? "" : sheet.cells[r1]?.[col]?.value ?? "";
+      next.push(kept ?? columnTitle(header, col, next));
+    }
+    const realign = <T>(list: T[] | undefined): T[] | undefined => {
+      if (!list) return undefined;
+      const out: T[] = [];
+      for (let col = c1; col <= c2; col += 1) {
+        const value = list[col - c1 + shift];
+        if (value !== undefined) out[col - c1] = value;
+      }
+      return out;
+    };
+    table.r1 = r1;
+    table.r2 = r2;
+    table.c1 = c1;
+    table.c2 = c2;
+    table.columns = next;
+    table.formulas = realign(table.formulas);
+    table.totals = realign(table.totals);
+    table.totalsFormulas = realign(table.totalsFormulas);
+    table.widths = realign(table.widths);
+    table.hidden = realign(table.hidden);
+    table.formats = realign(table.formats);
+    finish();
+    return true;
+  }
+
+  /** The column under the selection keeps the rows holding one of these values. Omit them to show every row again. */
+  function tableFilter(values?: string[]): boolean {
+    const sheet = currentSheet();
+    const table = tableRangeAt(sheet, selected.row, selected.col);
+    if (!table || table.filter === false) return false;
+    remember();
+    const at = selected.col - table.c1;
+    const columns = (table.filterColumns ?? []).filter((column) => column.col !== at);
+    if (values) columns.push({ col: at, values });
+    table.filterColumns = columns.length ? columns : undefined;
+    finish();
+    return true;
+  }
+
+  /** The table under the selection goes away. The cells it covered stay as they are. */
+  function deleteTable(): boolean {
+    const sheet = currentSheet();
+    const table = tableRangeAt(sheet, selected.row, selected.col);
+    if (!table || !sheet.tables) return false;
+    remember();
+    sheet.tables = sheet.tables.filter((item) => item !== table);
+    finish();
+    return true;
   }
 
   /** The table's last row becomes a totals row, or stops being one. The row below is pulled in when there is none yet. */

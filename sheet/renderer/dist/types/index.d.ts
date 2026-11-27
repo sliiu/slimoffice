@@ -89,6 +89,21 @@ export interface SheetGrid {
     addTable(name?: string): void;
     /** Add a totals row to the table under the selection, or take it off. Returns whether it is on. */
     toggleTotals(): boolean;
+    /** Show or hide the header row of the table under the selection. Returns whether it is on. */
+    toggleHeader(): boolean;
+    /** Rename the table under the selection. A blank name leaves it, and a taken name gains a suffix. */
+    renameTable(name: string): boolean;
+    /** Move the table under the selection to a new range. The range must cover at least one cell. */
+    resizeTable(range: {
+        r1: number;
+        c1: number;
+        r2: number;
+        c2: number;
+    }): boolean;
+    /** Remove the table under the selection. The cells stay. */
+    deleteTable(): boolean;
+    /** Keep the rows whose cell in the selected column is one of these values. Omit to show them all. */
+    tableFilter(values?: string[]): boolean;
     /** How the totals row reduces the column under the selection. A sum is the default. */
     totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean;
     addPivot(name?: string): void;

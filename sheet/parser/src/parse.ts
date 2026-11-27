@@ -542,6 +542,11 @@ function tables(root: XmlNode, archive: OfficeArchive, path: string, dxfs: DxfLo
       ...(attr(table, "totalsRowCount") === "1" ? { totalsRow: true } : {}),
       ...(attr(style, "name") ? { style: attr(style, "name") } : {}),
       rowStripes: attr(style, "showRowStripes") !== "0",
+      ...(attr(style, "showColumnStripes") === "1" ? { colStripes: true } : {}),
+      ...(attr(style, "showFirstColumn") === "1" ? { firstColumn: true } : {}),
+      ...(attr(style, "showLastColumn") === "1" ? { lastColumn: true } : {}),
+      filter: child(table, "autoFilter") !== undefined,
+      ...tableFilterColumns(child(table, "autoFilter")),
       ...(columns.length ? { columns } : {}),
       ...(formulas.some((formula) => formula) ? { formulas } : {}),
       ...(totals.some((fn) => fn !== "sum") ? { totals } : {}),
@@ -782,6 +787,17 @@ function pageSetup(root: XmlNode): SheetPageSetup | undefined {
     page.headings = attr(options, "headings") === "1";
   }
   return page;
+}
+
+/** The values a table column still shows. Nothing when every column shows everything. */
+function tableFilterColumns(node: XmlNode | undefined): { filterColumns: { col: number; values: string[] }[] } | undefined {
+  const columns = children(node, "filterColumn").flatMap((column) => {
+    const col = Number(attr(column, "colId"));
+    const values = children(child(column, "filters"), "filter").map((item) => attr(item, "val")).filter((value): value is string => value != null);
+    if (!Number.isInteger(col) || col < 0 || !values.length) return [];
+    return [{ col, values }];
+  });
+  return columns.length ? { filterColumns: columns } : undefined;
 }
 
 /** A column filter lists the values that stay visible. A column without one shows everything. */

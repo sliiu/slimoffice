@@ -411,6 +411,50 @@ test("data rows of a table alternate their shading", () => {
   assert.equal(cells[4]?.classList.contains("is-table-stripe"), false);
 });
 
+test("data columns of a table alternate their shading", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }, { value: "单价" }], [{ value: "甲" }, { value: "10" }, { value: "2" }], [{ value: "合计" }, { value: "" }, { value: "" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 2, c2: 2, headerRow: true, totalsRow: true, colStripes: true, columns: ["品类", "数量", "单价"] }],
+    }],
+  });
+  const striped = (row: number, column: number) =>
+    host.querySelector(`td[data-row="${row}"][data-col="${column}"]`)?.classList.contains("is-table-col-stripe");
+  // Only the odd data columns shade, and the header and the totals row stay plain.
+  assert.equal(striped(1, 0), false);
+  assert.equal(striped(1, 1), true);
+  assert.equal(striped(1, 2), false);
+  assert.equal(striped(0, 1), false);
+  assert.equal(striped(2, 1), false);
+});
+
+test("the first and last column of a table stand out", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }, { value: "单价" }], [{ value: "甲" }, { value: "10" }, { value: "2" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 2, headerRow: true, firstColumn: true, lastColumn: true, columns: ["品类", "数量", "单价"] }],
+    }],
+  });
+  const mark = (row: number, column: number, name: string) =>
+    host.querySelector(`td[data-row="${row}"][data-col="${column}"]`)?.classList.contains(name);
+  // Both ends stand out, the header included, and the middle column stays plain.
+  assert.equal(mark(1, 0, "is-table-first-col"), true);
+  assert.equal(mark(0, 0, "is-table-first-col"), true);
+  assert.equal(mark(1, 2, "is-table-last-col"), true);
+  assert.equal(mark(1, 1, "is-table-first-col"), false);
+  assert.equal(mark(1, 1, "is-table-last-col"), false);
+});
+
 test("a totals row sums the numeric columns", () => {
   const dom = new JSDOM("<!doctype html><body></body>");
   globalThis.document = dom.window.document;
@@ -492,6 +536,194 @@ test("a table header shows a filter without taking the sheet's filter", () => {
   const cells = [...host.querySelectorAll("td")];
   assert.equal(cells.filter((cell) => cell.classList.contains("is-filter-header")).length, 2);
   assert.equal(cells[2]?.classList.contains("is-filter-header"), false);
+});
+
+test("a table column filters its rows", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "乙" }, { value: "5" }], [{ value: "合计" }, { value: "" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  host.querySelector("td")!.dispatchEvent(new FocusEvent("focus"));
+  // Only the rows holding 甲 stay, and the header and the totals row stay with them.
+  assert.equal(grid.tableFilter(["甲"]), true);
+  const shown = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(shown.filter((text) => text === "甲" || text === "乙"), ["甲"]);
+  assert.ok(shown.includes("合计"));
+  // Clearing the filter shows every row again.
+  assert.equal(grid.tableFilter(), true);
+  assert.equal(workbook.sheets[0]!.tables![0]!.filterColumns, undefined);
+});
+
+test("typing below a table pulls the row in", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "" }, { value: "" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  mountWorkbook(host, workbook);
+  const InputEvent = (dom.window as unknown as Record<string, new (type: string, init?: { bubbles?: boolean }) => Event>)["Event"];
+  if (!InputEvent) throw new Error("missing Event");
+  const below = host.querySelector('td[data-row="2"][data-col="0"]') as HTMLElement;
+  // The row just under the table joins it, and the typed text stays.
+  below.textContent = "乙";
+  below.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  const table = workbook.sheets[0]!.tables![0]!;
+  assert.equal(table.r2, 2);
+  assert.equal(workbook.sheets[0]!.cells[2]?.[0]?.value, "乙");
+  // A row further down does not.
+  const sheet = workbook.sheets[0]!;
+  sheet.cells[4] = [{ value: "" }];
+  mountWorkbook(host, workbook);
+  const far = host.querySelector('td[data-row="4"][data-col="0"]') as HTMLElement;
+  far.textContent = "丙";
+  far.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.equal(workbook.sheets[0]!.tables![0]!.r2, 2);
+});
+
+test("a table can be removed", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }], [{ value: "甲" }]],
+      tables: [
+        { id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 0, headerRow: true, columns: ["品类"] },
+        { id: "table2", name: "Table2", r1: 4, c1: 0, r2: 5, c2: 0, headerRow: true },
+      ],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  host.querySelector("td")!.dispatchEvent(new FocusEvent("focus"));
+  // The table under the selection goes, the other stays, and the typed cells stay too.
+  assert.equal(grid.deleteTable(), true);
+  assert.deepEqual(workbook.sheets[0]!.tables!.map((item) => item.name), ["Table2"]);
+  assert.equal(workbook.sheets[0]!.cells[1]?.[0]?.value, "甲");
+  assert.equal(host.querySelectorAll("td.is-table-header").length, 0);
+});
+
+test("a table can grow and shrink", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }, { value: "单价" }], [{ value: "甲" }, { value: "10" }, { value: "2" }], [{ value: "乙" }, { value: "5" }, { value: "4" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["品类", "数量"], formulas: ["", "[数量]*2"] }],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  host.querySelector("td")!.dispatchEvent(new FocusEvent("focus"));
+  const table = workbook.sheets[0]!.tables![0]!;
+  // A new column takes its name from the header, and the old column keeps its formula.
+  assert.equal(grid.resizeTable({ r1: 0, c1: 0, r2: 2, c2: 2 }), true);
+  assert.deepEqual([table.r2, table.c2], [2, 2]);
+  assert.deepEqual(table.columns, ["品类", "数量", "单价"]);
+  assert.equal(table.formulas?.[1], "[数量]*2");
+  // Dropping the first column drops its name, and the formula follows the column that stays.
+  assert.equal(grid.resizeTable({ r1: 0, c1: 1, r2: 2, c2: 1 }), true);
+  assert.deepEqual(table.columns, ["数量"]);
+  assert.equal(table.formulas?.[0], "[数量]*2");
+  assert.equal(table.c1, 1);
+});
+
+test("a table can be renamed", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [
+      {
+        name: "销售",
+        cells: [[{ value: "品类" }], [{ value: "甲" }]],
+        tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 0, headerRow: true, columns: ["品类"] }],
+      },
+      { name: "库存", cells: [], tables: [{ id: "table2", name: "销量", r1: 0, c1: 0, r2: 1, c2: 0, headerRow: true }] },
+    ],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  host.querySelector("td")!.dispatchEvent(new FocusEvent("focus"));
+  const table = workbook.sheets[0]!.tables![0]!;
+  // A blank name changes nothing, and a free name lands as typed.
+  assert.equal(grid.renameTable("  "), false);
+  assert.equal(table.name, "Table1");
+  assert.equal(grid.renameTable("订单"), true);
+  assert.equal(table.name, "订单");
+  // A name another sheet's table already holds gains a suffix, so both stay distinct.
+  assert.equal(grid.renameTable("销量"), true);
+  assert.equal(table.name, "销量_");
+});
+
+test("a table can drop its header row", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  host.querySelector("td")!.dispatchEvent(new FocusEvent("focus"));
+  // The header row stops being one, and the range keeps the same rows.
+  assert.equal(grid.toggleHeader(), false);
+  const table = workbook.sheets[0]!.tables![0]!;
+  assert.equal(table.headerRow, false);
+  assert.equal(table.r2, 1);
+  assert.equal(host.querySelectorAll("td.is-table-header").length, 0);
+  // Switching it back paints the header again.
+  assert.equal(grid.toggleHeader(), true);
+  assert.equal(host.querySelectorAll("td.is-table-header").length, 2);
+});
+
+test("a table can hide its filter buttons", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, filter: false, columns: ["品类", "数量"] }],
+    }],
+  });
+  // The header stays a header, but no cell carries the filter marker.
+  const cells = [...host.querySelectorAll("td")];
+  assert.equal(cells.filter((cell) => cell.classList.contains("is-table-header")).length, 2);
+  assert.equal(cells.filter((cell) => cell.classList.contains("is-filter-header")).length, 0);
 });
 
 test("a table column keeps its width and can hide", () => {

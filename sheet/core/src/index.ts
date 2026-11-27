@@ -88,6 +88,16 @@ export interface SheetTable {
   style?: string;
   /** Data rows alternate their shading. Defaults to on. */
   rowStripes?: boolean;
+  /** Data columns alternate their shading. Defaults to off. */
+  colStripes?: boolean;
+  /** The first column stands out from the rest. Defaults to off. */
+  firstColumn?: boolean;
+  /** The last column stands out from the rest. Defaults to off. */
+  lastColumn?: boolean;
+  /** The header shows filter buttons. Defaults to on. */
+  filter?: boolean;
+  /** Values a column still shows. `col` counts from the table's first column. Absent means every value shows. */
+  filterColumns?: { col: number; values: string[] }[];
   /** Header text of each column, in order. Empty when the table has no header row. */
   columns?: string[];
   /** The formula shared by every data cell of a column, one per column. Empty entries have none. */

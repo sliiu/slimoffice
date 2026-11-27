@@ -225,6 +225,15 @@
   background: #eef2ff;
 }
 
+.sheet-grid td.is-table-col-stripe {
+  background: #f5f3ff;
+}
+
+.sheet-grid td.is-table-first-col,
+.sheet-grid td.is-table-last-col {
+  font-weight: 600;
+}
+
 .sheet-grid td[data-consolidation] {
   background: #ecfdf5;
 }
