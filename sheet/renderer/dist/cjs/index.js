@@ -132,6 +132,7 @@ function mountWorkbook(host, workbook, options = {}) {
             finish();
         },
         filterOn: () => !!currentSheet().filter,
+        filterBy,
         hideRow: () => {
             remember();
             const sheet = currentSheet();
@@ -275,6 +276,8 @@ function mountWorkbook(host, workbook, options = {}) {
         for (let row = 0; row < rows; row += 1) {
             if (sheet.hiddenRows?.includes(row))
                 continue;
+            if (filteredOut(sheet, row))
+                continue;
             const line = document.createElement("tr");
             if (sheet.rowHeights?.[row])
                 line.style.height = `${sheet.rowHeights[row]}pt`;
@@ -289,6 +292,16 @@ function mountWorkbook(host, workbook, options = {}) {
             table.append(line);
         }
         return table;
+    }
+    /** A row drops out when any filtered column holds a value that column does not list. The header row always stays. */
+    function filteredOut(sheet, row) {
+        const filter = sheet.filter;
+        if (!filter?.columns?.length || row === filter.r1 || row < filter.r1 || row > filter.r2)
+            return false;
+        return filter.columns.some((column) => {
+            const value = sheet.cells[row]?.[filter.c1 + column.col]?.value ?? "";
+            return !column.values.includes(value);
+        });
     }
     function coveredByMerge(sheet, row, column) {
         return (sheet.merges ?? []).some((m) => row >= m.r1 && row <= m.r2 && column >= m.c1 && column <= m.c2 && !(row === m.r1 && column === m.c1));
@@ -853,6 +866,18 @@ function mountWorkbook(host, workbook, options = {}) {
             range: range ?? auto,
         });
         sheet.charts = charts;
+        finish();
+    }
+    /** Narrow the current column to the given values, or drop that column's filter when none are given. */
+    function filterBy(values) {
+        remember();
+        const sheet = currentSheet();
+        const filter = sheet.filter ?? { r1: 0, c1: 0, r2: Math.max(0, sheet.cells.length - 1), c2: Math.max(0, (sheet.cells[0]?.length ?? 1) - 1) };
+        const col = selected.col - filter.c1;
+        const columns = (filter.columns ?? []).filter((column) => column.col !== col);
+        if (values?.length && col >= 0)
+            columns.push({ col, values });
+        sheet.filter = { ...filter, columns: columns.length ? columns : undefined };
         finish();
     }
     function addSparkline(kind = "line", data) {

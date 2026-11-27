@@ -141,7 +141,10 @@ export function autoFilterXml(sheet) {
     if (!sheet.filter)
         return "";
     const { r1, c1, r2, c2 } = sheet.filter;
-    return `<autoFilter ref="${colName(c1)}${r1 + 1}:${colName(c2)}${r2 + 1}"/>`;
+    const columns = (sheet.filter.columns ?? [])
+        .map((column) => `<filterColumn colId="${column.col}"><filters>${column.values.map((value) => `<filter val="${escapeXml(value)}"/>`).join("")}</filters></filterColumn>`)
+        .join("");
+    return `<autoFilter ref="${colName(c1)}${r1 + 1}:${colName(c2)}${r2 + 1}">${columns}</autoFilter>`;
 }
 export function pageSetupXml(sheet) {
     const setup = sheet.pageSetup;

@@ -74,6 +74,8 @@ export interface SheetGrid {
     protectedOn(): boolean;
     filter(): void;
     filterOn(): boolean;
+    /** Keep only the rows whose cell in the current column is one of these values. Omit to clear that column. */
+    filterBy(values?: string[]): void;
     hideRow(): void;
     hideColumn(): void;
     unhide(): void;

@@ -210,7 +210,14 @@ export interface Worksheet {
   hiddenCols?: number[];
   hiddenRows?: number[];
   freeze?: { row: number; col: number };
-  filter?: { r1: number; c1: number; r2: number; c2: number } | null;
+  filter?: {
+    r1: number;
+    c1: number;
+    r2: number;
+    c2: number;
+    /** Values a column still shows. `col` counts from the filter's first column. Absent means every value shows. */
+    columns?: { col: number; values: string[] }[];
+  } | null;
   showGrid?: boolean;
   showHeaders?: boolean;
   protected?: boolean;

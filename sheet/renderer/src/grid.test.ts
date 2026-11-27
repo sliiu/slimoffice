@@ -91,6 +91,26 @@ test("shows a data validation list and an outline level", () => {
   assert.equal(workbook.sheets[0]?.cells[0]?.[0]?.value, "乙");
 });
 
+test("hides the rows a column filter leaves out", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const grid = mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }], [{ value: "甲" }], [{ value: "乙" }]],
+      filter: { r1: 0, c1: 0, r2: 2, c2: 0, columns: [{ col: 0, values: ["甲"] }] },
+    }],
+  });
+  const shown = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(shown, ["品类", "甲"]);
+  // Clearing the column brings the hidden row back.
+  grid.filterBy();
+  const again = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(again, ["品类", "甲", "乙"]);
+});
+
 test("finds comments and validated cells", () => {
   const dom = new JSDOM("<!doctype html><body></body>");
   globalThis.document = dom.window.document;

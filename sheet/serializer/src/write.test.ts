@@ -36,7 +36,7 @@ test("round trip keeps the part bytes", () => {
 test("writes autoFilter and conditional formatting", () => {
   const made = blankWorkbook("销售", [[{ value: "12" }, { value: "8" }]]);
   const sheet = made.workbook.sheets[0]!;
-  sheet.filter = { r1: 0, c1: 0, r2: 0, c2: 1 };
+  sheet.filter = { r1: 0, c1: 0, r2: 0, c2: 1, columns: [{ col: 0, values: ["甲"] }] };
   sheet.conditionalFormats = [
     {
       id: "cf1",
@@ -49,7 +49,7 @@ test("writes autoFilter and conditional formatting", () => {
   ];
   made.workbook.edited = true;
   const xml = new TextDecoder().decode(unzipSync(writeXlsx(made.workbook))["xl/worksheets/sheet1.xml"]);
-  assert.match(xml, /<autoFilter ref="A1:B1"\/>/);
+  assert.match(xml, /<autoFilter ref="A1:B1"><filterColumn colId="0"><filters><filter val="甲"\/><\/filters><\/filterColumn><\/autoFilter>/);
   assert.match(xml, /<conditionalFormatting sqref="A1:A1">/);
   assert.match(xml, /operator="greaterThan"/);
 });

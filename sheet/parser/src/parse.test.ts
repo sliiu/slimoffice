@@ -75,7 +75,7 @@ test("reads styles, merges, sizes, freeze, filter, and page setup", async () => 
   const body = `<sheetViews><sheetView workbookViewId="0"><pane xSplit="1" ySplit="1" state="frozen" topLeftCell="B2"/></sheetView></sheetViews>` +
     `<cols><col min="2" max="2" width="18" customWidth="1"/><col min="3" max="3" hidden="1"/></cols>` +
     `<sheetData><row r="1" ht="24" customHeight="1"><c r="A1" s="1" t="s"><v>0</v></c></row><row r="2" hidden="1"><c r="A2"><v>1</v></c></row></sheetData>` +
-    `<autoFilter ref="A1:B2"/><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>` +
+    `<autoFilter ref="A1:B2"><filterColumn colId="0"><filters><filter val="甲"/></filters></filterColumn></autoFilter><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>` +
     `<pageMargins left="0.5" right="0.5" top="0.75" bottom="0.75"/>` +
     `<pageSetup orientation="landscape" paperSize="9" fitToWidth="1" scale="80"/>` +
     `<printOptions gridLines="1" headings="0"/>`;
@@ -107,7 +107,7 @@ test("reads styles, merges, sizes, freeze, filter, and page setup", async () => 
   assert.equal(opened?.rowHeights?.[0], 24);
   assert.deepEqual(opened?.hiddenRows, [1]);
   assert.deepEqual(opened?.freeze, { row: 1, col: 1 });
-  assert.deepEqual(opened?.filter, { r1: 0, c1: 0, r2: 1, c2: 1 });
+  assert.deepEqual(opened?.filter, { r1: 0, c1: 0, r2: 1, c2: 1, columns: [{ col: 0, values: ["甲"] }] });
   assert.equal(opened?.pageSetup?.orientation, "landscape");
   assert.equal(opened?.pageSetup?.paperSize, "A4");
   assert.equal(opened?.pageSetup?.fitToWidth, 1);

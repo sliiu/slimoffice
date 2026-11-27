@@ -194,9 +194,9 @@ function sheetShape(root, archive, path, dxfs) {
     const frozenCol = Number((0, xml_1.attr)(pane, "xSplit"));
     if (frozenRow > 0 || frozenCol > 0)
         shape.freeze = { row: frozenRow > 0 ? frozenRow : 0, col: frozenCol > 0 ? frozenCol : 0 };
-    const filter = rangeOf((0, xml_1.attr)((0, xml_1.child)(root, "autoFilter"), "ref") ?? "");
+    const filter = filterOf(root);
     if (filter)
-        shape.filter = { r1: filter.r1, c1: filter.c1, r2: filter.r2, c2: filter.c2 };
+        shape.filter = filter;
     const page = pageSetup(root);
     if (page)
         shape.pageSetup = page;
@@ -776,6 +776,21 @@ function pageSetup(root) {
         page.headings = (0, xml_1.attr)(options, "headings") === "1";
     }
     return page;
+}
+/** A column filter lists the values that stay visible. A column without one shows everything. */
+function filterOf(root) {
+    const node = (0, xml_1.child)(root, "autoFilter");
+    const range = rangeOf((0, xml_1.attr)(node, "ref") ?? "");
+    if (!range)
+        return undefined;
+    const columns = (0, xml_1.children)(node, "filterColumn").flatMap((column) => {
+        const col = Number((0, xml_1.attr)(column, "colId"));
+        const values = (0, xml_1.children)((0, xml_1.child)(column, "filters"), "filter").map((item) => (0, xml_1.attr)(item, "val")).filter((value) => value != null);
+        if (!Number.isInteger(col) || col < 0 || !values.length)
+            return [];
+        return [{ col, values }];
+    });
+    return { ...range, ...(columns.length ? { columns } : {}) };
 }
 function rangeOf(ref) {
     const parts = ref.split(":");

@@ -165,8 +165,8 @@ function sheetShape(root: XmlNode, archive: OfficeArchive, path: string, dxfs: D
   const frozenRow = Number(attr(pane, "ySplit"));
   const frozenCol = Number(attr(pane, "xSplit"));
   if (frozenRow > 0 || frozenCol > 0) shape.freeze = { row: frozenRow > 0 ? frozenRow : 0, col: frozenCol > 0 ? frozenCol : 0 };
-  const filter = rangeOf(attr(child(root, "autoFilter"), "ref") ?? "");
-  if (filter) shape.filter = { r1: filter.r1, c1: filter.c1, r2: filter.r2, c2: filter.c2 };
+  const filter = filterOf(root);
+  if (filter) shape.filter = filter;
   const page = pageSetup(root);
   if (page) shape.pageSetup = page;
   const heads = headerFooterOf(root);
@@ -713,6 +713,20 @@ function pageSetup(root: XmlNode): SheetPageSetup | undefined {
     page.headings = attr(options, "headings") === "1";
   }
   return page;
+}
+
+/** A column filter lists the values that stay visible. A column without one shows everything. */
+function filterOf(root: XmlNode): NonNullable<Worksheet["filter"]> | undefined {
+  const node = child(root, "autoFilter");
+  const range = rangeOf(attr(node, "ref") ?? "");
+  if (!range) return undefined;
+  const columns = children(node, "filterColumn").flatMap((column) => {
+    const col = Number(attr(column, "colId"));
+    const values = children(child(column, "filters"), "filter").map((item) => attr(item, "val")).filter((value): value is string => value != null);
+    if (!Number.isInteger(col) || col < 0 || !values.length) return [];
+    return [{ col, values }];
+  });
+  return { ...range, ...(columns.length ? { columns } : {}) };
 }
 
 function rangeOf(ref: string): { r1: number; c1: number; r2: number; c2: number } | undefined {
