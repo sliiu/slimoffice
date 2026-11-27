@@ -174,6 +174,7 @@ function mountWorkbook(host, workbook, options = {}) {
         resizeTable,
         deleteTable,
         tableFilter,
+        tableFilterRule,
         totalsFunction,
         addPivot,
         pageSetup: (patch) => {
@@ -325,16 +326,35 @@ function mountWorkbook(host, workbook, options = {}) {
     /** A table column with no filter shows everything. The header and the totals row always stay. */
     function tableHides(sheet, table, row) {
         const columns = table.filterColumns;
-        if (!columns?.length || row < table.r1 || row > table.r2)
+        if ((!columns?.length && !table.filterRules?.length) || row < table.r1 || row > table.r2)
             return false;
         if (table.headerRow !== false && row === table.r1)
             return false;
         if (table.totalsRow && row === table.r2)
             return false;
-        return columns.some((column) => {
+        const listed = (columns ?? []).some((column) => {
             const value = sheet.cells[row]?.[table.c1 + column.col]?.value ?? "";
             return !column.values.includes(value);
         });
+        const compared = (table.filterRules ?? []).some((rule) => !passesRule(rule, sheet.cells[row]?.[table.c1 + rule.col]?.value ?? ""));
+        return listed || compared;
+    }
+    /** A number compares as a number. Text compares as text, and only equality applies to it. */
+    function passesRule(rule, cell) {
+        const left = Number(cell);
+        const right = Number(rule.value);
+        if (Number.isFinite(left) && Number.isFinite(right)) {
+            if (rule.op === "gt")
+                return left > right;
+            if (rule.op === "gte")
+                return left >= right;
+            if (rule.op === "lt")
+                return left < right;
+            if (rule.op === "lte")
+                return left <= right;
+            return rule.op === "ne" ? left !== right : left === right;
+        }
+        return rule.op === "ne" ? cell !== rule.value : rule.op === "eq" ? cell === rule.value : false;
     }
     /** A slicer with no selection shows everything. Otherwise the row must hold one of the values it keeps. */
     function slicerHides(sheet, slicer, row) {
@@ -1311,6 +1331,21 @@ function mountWorkbook(host, workbook, options = {}) {
         if (values)
             columns.push({ col: at, values });
         table.filterColumns = columns.length ? columns : undefined;
+        finish();
+        return true;
+    }
+    /** The column under the selection keeps the rows that pass this comparison. Omit it to stop comparing. */
+    function tableFilterRule(rule) {
+        const sheet = currentSheet();
+        const table = tableRangeAt(sheet, selected.row, selected.col);
+        if (!table || table.filter === false)
+            return false;
+        remember();
+        const at = selected.col - table.c1;
+        const rules = (table.filterRules ?? []).filter((item) => item.col !== at);
+        if (rule)
+            rules.push({ col: at, ...rule });
+        table.filterRules = rules.length ? rules : undefined;
         finish();
         return true;
     }

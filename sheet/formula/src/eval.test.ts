@@ -513,6 +513,13 @@ test("wildcard lookups, date units, hidden rows, and finance", () => {
   assert.equal(evaluate("=SUBTOTAL(9,B1:B3)", ctx(workbook)), 10);
   assert.equal(evaluate("=SUBTOTAL(109,B1:B3)", ctx(workbook)), 10);
   assert.equal(evaluate("=SUM(B1:B3)", ctx(workbook)), 60);
+  // Above 25 the data row 20 fails and drops out of both subtotals. The header is not filtered,
+  // and code 9 still counts the manually hidden 30, so a plain sum keeps every row.
+  workbook.sheets[0]!.tables![0]!.filterColumns = undefined;
+  workbook.sheets[0]!.tables![0]!.filterRules = [{ col: 1, op: "gt", value: "25" }];
+  assert.equal(evaluate("=SUBTOTAL(9,B1:B3)", ctx(workbook)), 40);
+  assert.equal(evaluate("=SUBTOTAL(109,B1:B3)", ctx(workbook)), 10);
+  assert.equal(evaluate("=SUM(B1:B3)", ctx(workbook)), 60);
   assert.equal(Math.round(evaluate("=PMT(0.05,2,100)", ctx(workbook)) as number), -54);
   assert.equal(Math.round(evaluate("=NPV(0.1,110)", ctx(workbook)) as number), 100);
   assert.equal(evaluate("=STDEV.P(2,4,4,4,5,5,7,9)", ctx(workbook)), 2);

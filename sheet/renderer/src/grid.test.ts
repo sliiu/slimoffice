@@ -594,6 +594,14 @@ test("a table column filters its rows", () => {
   // Clearing the filter shows every row again.
   assert.equal(grid.tableFilter(), true);
   assert.equal(workbook.sheets[0]!.tables![0]!.filterColumns, undefined);
+  // A comparison keeps the rows that pass it, and the header and the totals row stay.
+  host.querySelector('td[data-row="1"][data-col="1"]')!.dispatchEvent(new FocusEvent("focus"));
+  assert.equal(grid.tableFilterRule({ op: "gt", value: "6" }), true);
+  const kept = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(kept.filter((text) => text === "10" || text === "5"), ["10"]);
+  assert.ok(kept.includes("合计"));
+  assert.equal(grid.tableFilterRule(), true);
+  assert.equal(workbook.sheets[0]!.tables![0]!.filterRules, undefined);
 });
 
 test("typing below a table pulls the row in", () => {

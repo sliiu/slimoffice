@@ -1306,13 +1306,17 @@ function readRange(workbook, sheetIndex, start, end) {
     const subtotals = [];
     const hiddenRows = new Set(sheet.hiddenRows ?? []);
     for (let r = r1; r <= r2; r += 1) {
-        const filteredRow = rowFiltered(sheet, r);
         for (let c = c1; c <= c2; c += 1) {
             out.push(cellPrimitive(sheet, r, c, workbook, sheetIndex));
             hidden.push(hiddenRows.has(r));
-            filtered.push(filteredRow);
             subtotals.push(/^(SUBTOTAL|AGGREGATE)\s*\(/i.test(sheet.cells[r]?.[c]?.formula ?? ""));
         }
+    }
+    // The filter is read after the cells, so a formula inside the range is not re-entered while it is decided.
+    for (let r = r1; r <= r2; r += 1) {
+        const filteredRow = rowFiltered(sheet, r);
+        for (let c = c1; c <= c2; c += 1)
+            filtered.push(filteredRow);
     }
     return tagRange(out, c2 - c1 + 1, hidden, subtotals, { sheetIndex, r1, c1, r2, c2 }, filtered);
 }
@@ -1328,19 +1332,40 @@ function rowFiltered(sheet, row) {
         return !column.values.includes(value);
     });
 }
-/** One table column keeps only the values it lists. A table with no such column hides nothing. */
+/** One table column keeps only the values it lists, or the rows that pass its comparison. */
 function tableFiltersRow(sheet, table, row) {
     const columns = table.filterColumns;
-    if (!columns?.length || row < table.r1 || row > table.r2)
+    if ((!columns?.length && !table.filterRules?.length) || row < table.r1 || row > table.r2)
         return false;
     if (table.headerRow !== false && row === table.r1)
         return false;
     if (table.totalsRow && row === table.r2)
         return false;
-    return columns.some((column) => {
-        const value = sheet.cells[row]?.[table.c1 + column.col]?.value ?? "";
-        return !column.values.includes(value);
-    });
+    const listed = columns?.length
+        ? columns.some((column) => {
+            const value = sheet.cells[row]?.[table.c1 + column.col]?.value ?? "";
+            return !column.values.includes(value);
+        })
+        : false;
+    const compared = (table.filterRules ?? []).some((rule) => !ruleMatches(rule, sheet.cells[row]?.[table.c1 + rule.col]?.value ?? ""));
+    return listed || compared;
+}
+/** A number compares as a number. Text compares as text, and only equality applies to it. */
+function ruleMatches(rule, cell) {
+    const left = Number(cell);
+    const right = Number(rule.value);
+    if (Number.isFinite(left) && Number.isFinite(right)) {
+        if (rule.op === "gt")
+            return left > right;
+        if (rule.op === "gte")
+            return left >= right;
+        if (rule.op === "lt")
+            return left < right;
+        if (rule.op === "lte")
+            return left <= right;
+        return rule.op === "ne" ? left !== right : left === right;
+    }
+    return rule.op === "ne" ? cell !== rule.value : rule.op === "eq" ? cell === rule.value : false;
 }
 function cellPrimitive(sheet, row, col, workbook, sheetIndex) {
     const cell = sheet.cells[row]?.[col];

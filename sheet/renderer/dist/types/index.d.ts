@@ -104,6 +104,11 @@ export interface SheetGrid {
     deleteTable(): boolean;
     /** Keep the rows whose cell in the selected column is one of these values. Omit to show them all. */
     tableFilter(values?: string[]): boolean;
+    /** Keep the rows whose cell in the selected column passes this comparison. Omit to drop it. */
+    tableFilterRule(rule?: {
+        op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte";
+        value: string;
+    }): boolean;
     /** How the totals row reduces the column under the selection. A sum is the default. */
     totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean;
     addPivot(name?: string): void;

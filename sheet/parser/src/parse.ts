@@ -547,6 +547,7 @@ function tables(root: XmlNode, archive: OfficeArchive, path: string, dxfs: DxfLo
       ...(attr(style, "showLastColumn") === "1" ? { lastColumn: true } : {}),
       filter: child(table, "autoFilter") !== undefined,
       ...tableFilterColumns(child(table, "autoFilter")),
+      ...tableFilterRules(child(table, "autoFilter")),
       ...tableSort(child(table, "sortState"), range),
       ...(columns.length ? { columns } : {}),
       ...(formulas.some((formula) => formula) ? { formulas } : {}),
@@ -798,6 +799,20 @@ function tableSort(node: XmlNode | undefined, range: { c1: number; c2: number })
     return [{ col: column - range.c1, ...(attr(condition, "descending") === "1" ? { descending: true } : {}) }];
   });
   return keys.length ? { sort: keys } : undefined;
+}
+
+/** A comparison a table column keeps. Nothing when no column compares. */
+function tableFilterRules(node: XmlNode | undefined): { filterRules: { col: number; op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte"; value: string }[] } | undefined {
+  const ops: Record<string, "eq" | "ne" | "gt" | "gte" | "lt" | "lte"> = { equal: "eq", notEqual: "ne", greaterThan: "gt", greaterThanOrEqual: "gte", lessThan: "lt", lessThanOrEqual: "lte" };
+  const rules = children(node, "filterColumn").flatMap((column) => {
+    const col = Number(attr(column, "colId"));
+    const rule = child(child(column, "customFilters"), "customFilter");
+    const op = ops[attr(rule, "operator") ?? "equal"];
+    const value = attr(rule, "val");
+    if (!Number.isInteger(col) || col < 0 || !op || value == null) return [];
+    return [{ col, op, value }];
+  });
+  return rules.length ? { filterRules: rules } : undefined;
 }
 
 /** The values a table column still shows. Nothing when every column shows everything. */

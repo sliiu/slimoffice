@@ -120,7 +120,7 @@ test("writes a cell comment back", () => {
 test("writes table drawing and validation parts", () => {
   const made = blankWorkbook("销售", [[{ value: "a" }, { value: "1" }], [{ value: "b" }, { value: "2" }]]);
   const sheet = made.workbook.sheets[0]!;
-  sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: false, totalsRow: true, colStripes: true, firstColumn: true, lastColumn: true, filterColumns: [{ col: 0, values: ["甲"] }], sort: [{ col: 1, descending: true }], columns: ["品类", "数量"], formulas: ["", "SUM([数量])"], totals: ["sum", "average"], totalsFormulas: ["", "SUBTOTAL(101,[数量])"], widths: [18, 0], hidden: [true, false], formats: ["", "0.00"] }];
+  sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: false, totalsRow: true, colStripes: true, firstColumn: true, lastColumn: true, filterColumns: [{ col: 0, values: ["甲"] }], filterRules: [{ col: 1, op: "gt", value: "5" }], sort: [{ col: 1, descending: true }], columns: ["品类", "数量"], formulas: ["", "SUM([数量])"], totals: ["sum", "average"], totalsFormulas: ["", "SUBTOTAL(101,[数量])"], widths: [18, 0], hidden: [true, false], formats: ["", "0.00"] }];
   sheet.charts = [{ id: "chart1", kind: "column", title: "销量", range: "B1:B2" }];
   sheet.validations = [{ id: "dv1", r1: 0, c1: 0, r2: 1, c2: 0, type: "list", op: "eq", formula1: "a,b" }];
   made.workbook.theme = { name: "Office", colors: ["#4472C4"], fonts: { major: "Calibri", minor: "Calibri" } };
@@ -135,8 +135,8 @@ test("writes table drawing and validation parts", () => {
   // Column stripes and the emphasized columns are off unless the table asks for them.
   assert.match(tableXml, /showColumnStripes="1"/);
   assert.match(tableXml, /showFirstColumn="1" showLastColumn="1"/);
-  // A column keeps the values it still shows inside the table's own autoFilter.
-  assert.match(tableXml, /<autoFilter ref="A1:B2"><filterColumn colId="0"><filters><filter val="甲"\/><\/filters><\/filterColumn><\/autoFilter>/);
+  // A column keeps the values it still shows, and a comparison, inside the table's own autoFilter.
+  assert.match(tableXml, /<autoFilter ref="A1:B2"><filterColumn colId="0"><filters><filter val="甲"\/><\/filters><\/filterColumn><filterColumn colId="1"><customFilters><customFilter operator="greaterThan" val="5"\/><\/customFilters><\/filterColumn><\/autoFilter>/);
   // The sort covers the data rows only. This table has no header and ends on a totals row, so that is the first row.
   assert.match(tableXml, /<sortState ref="A1:B1"><sortCondition descending="1" ref="B1:B1"\/><\/sortState>/);
   // The number format lands in the styles, and the column points at that entry.

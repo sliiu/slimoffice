@@ -135,6 +135,12 @@ export interface SheetTable {
         col: number;
         values: string[];
     }[];
+    /** A comparison a column keeps. A row that fails it is hidden. `col` counts from the table's first column. */
+    filterRules?: {
+        col: number;
+        op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte";
+        value: string;
+    }[];
     /** The columns the data rows were last sorted by, first key first. `col` counts from the table's first column. */
     sort?: {
         col: number;

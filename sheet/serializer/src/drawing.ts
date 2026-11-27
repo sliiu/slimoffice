@@ -113,10 +113,14 @@ function tableXml(table: SheetTable, dxfForFormat?: (format: string) => number):
       }).join("")}</tableColumns>`
     : "";
   // A table without filter buttons writes no autoFilter. The default keeps them, and a column keeps the values it still shows.
+  const ops: Record<string, string> = { eq: "equal", ne: "notEqual", gt: "greaterThan", gte: "greaterThanOrEqual", lt: "lessThan", lte: "lessThanOrEqual" };
+  const compared = (table.filterRules ?? [])
+    .map((rule) => `<filterColumn colId="${rule.col}"><customFilters><customFilter operator="${ops[rule.op] ?? "equal"}" val="${escapeXml(rule.value)}"/></customFilters></filterColumn>`)
+    .join("");
   const kept = (table.filterColumns ?? [])
     .map((column) => `<filterColumn colId="${column.col}"><filters>${column.values.map((value) => `<filter val="${escapeXml(value)}"/>`).join("")}</filters></filterColumn>`)
     .join("");
-  const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}</autoFilter>`;
+  const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}${compared}</autoFilter>`;
   // The sort covers the data rows only, so the header and the totals row stay out of it.
   const dataTop = (table.headerRow === false ? table.r1 : table.r1 + 1) + 1;
   const dataBottom = (table.totalsRow ? table.r2 - 1 : table.r2) + 1;
