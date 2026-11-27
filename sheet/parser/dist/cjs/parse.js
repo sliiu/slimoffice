@@ -608,6 +608,7 @@ function tables(root, archive, path, dxfs) {
                 ...((0, xml_1.attr)(style, "showLastColumn") === "1" ? { lastColumn: true } : {}),
                 filter: (0, xml_1.child)(table, "autoFilter") !== undefined,
                 ...tableFilterColumns((0, xml_1.child)(table, "autoFilter")),
+                ...tableSort((0, xml_1.child)(table, "sortState"), range),
                 ...(columns.length ? { columns } : {}),
                 ...(formulas.some((formula) => formula) ? { formulas } : {}),
                 ...(totals.some((fn) => fn !== "sum") ? { totals } : {}),
@@ -853,6 +854,16 @@ function pageSetup(root) {
         page.headings = (0, xml_1.attr)(options, "headings") === "1";
     }
     return page;
+}
+/** The columns a table was last sorted by. Nothing when the table has no sort. */
+function tableSort(node, range) {
+    const keys = (0, xml_1.children)(node, "sortCondition").flatMap((condition) => {
+        const column = cellRef((0, xml_1.attr)(condition, "ref")?.split(":")[0] ?? "")?.column;
+        if (column == null || column < range.c1 || column > range.c2)
+            return [];
+        return [{ col: column - range.c1, ...((0, xml_1.attr)(condition, "descending") === "1" ? { descending: true } : {}) }];
+    });
+    return keys.length ? { sort: keys } : undefined;
 }
 /** The values a table column still shows. Nothing when every column shows everything. */
 function tableFilterColumns(node) {

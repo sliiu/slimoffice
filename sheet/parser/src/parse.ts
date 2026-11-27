@@ -547,6 +547,7 @@ function tables(root: XmlNode, archive: OfficeArchive, path: string, dxfs: DxfLo
       ...(attr(style, "showLastColumn") === "1" ? { lastColumn: true } : {}),
       filter: child(table, "autoFilter") !== undefined,
       ...tableFilterColumns(child(table, "autoFilter")),
+      ...tableSort(child(table, "sortState"), range),
       ...(columns.length ? { columns } : {}),
       ...(formulas.some((formula) => formula) ? { formulas } : {}),
       ...(totals.some((fn) => fn !== "sum") ? { totals } : {}),
@@ -787,6 +788,16 @@ function pageSetup(root: XmlNode): SheetPageSetup | undefined {
     page.headings = attr(options, "headings") === "1";
   }
   return page;
+}
+
+/** The columns a table was last sorted by. Nothing when the table has no sort. */
+function tableSort(node: XmlNode | undefined, range: { c1: number; c2: number }): { sort: { col: number; descending?: boolean }[] } | undefined {
+  const keys = children(node, "sortCondition").flatMap((condition) => {
+    const column = cellRef(attr(condition, "ref")?.split(":")[0] ?? "")?.column;
+    if (column == null || column < range.c1 || column > range.c2) return [];
+    return [{ col: column - range.c1, ...(attr(condition, "descending") === "1" ? { descending: true } : {}) }];
+  });
+  return keys.length ? { sort: keys } : undefined;
 }
 
 /** The values a table column still shows. Nothing when every column shows everything. */

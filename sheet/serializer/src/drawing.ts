@@ -117,8 +117,19 @@ function tableXml(table: SheetTable, dxfForFormat?: (format: string) => number):
     .map((column) => `<filterColumn colId="${column.col}"><filters>${column.values.map((value) => `<filter val="${escapeXml(value)}"/>`).join("")}</filters></filterColumn>`)
     .join("");
   const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}</autoFilter>`;
+  // The sort covers the data rows only, so the header and the totals row stay out of it.
+  const dataTop = (table.headerRow === false ? table.r1 : table.r1 + 1) + 1;
+  const dataBottom = (table.totalsRow ? table.r2 - 1 : table.r2) + 1;
+  const sort = (table.sort ?? [])
+    .filter((key) => key.col >= 0 && key.col < table.c2 - table.c1 + 1)
+    .map((key) => {
+      const column = colName(table.c1 + key.col);
+      return `<sortCondition ${key.descending ? 'descending="1" ' : ""}ref="${column}${dataTop}:${column}${dataBottom}"/>`;
+    })
+    .join("");
+  const sortState = sort ? `<sortState ref="${colName(table.c1)}${dataTop}:${colName(table.c2)}${dataBottom}">${sort}</sortState>` : "";
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow === false ? 'headerRowCount="0"' : 'headerRowCount="1"'}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}${filter}<tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="${table.firstColumn ? "1" : "0"}" showLastColumn="${table.lastColumn ? "1" : "0"}" showRowStripes="${table.rowStripes === false ? "0" : "1"}" showColumnStripes="${table.colStripes ? "1" : "0"}"/></table>`;
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow === false ? 'headerRowCount="0"' : 'headerRowCount="1"'}${table.totalsRow ? ' totalsRowCount="1"' : ""}>${cols}${filter}${sortState}<tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="${table.firstColumn ? "1" : "0"}" showLastColumn="${table.lastColumn ? "1" : "0"}" showRowStripes="${table.rowStripes === false ? "0" : "1"}" showColumnStripes="${table.colStripes ? "1" : "0"}"/></table>`;
 }
 
 function chartAnchor(chart: SheetChart, index: number): string {

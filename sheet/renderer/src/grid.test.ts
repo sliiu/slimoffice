@@ -506,12 +506,16 @@ test("a totals column can count, average, or stop", () => {
   const sheet = workbook.sheets[0]!;
   assert.equal(sheet.tables![0]!.totals?.[1], "average");
   assert.equal(sheet.cells[3]?.[1]?.formula, "SUBTOTAL(101,B2:B3)");
+  // The first column says what the totals row does, so an average reads as an average.
+  assert.equal(sheet.cells[3]?.[0]?.value, "Average");
   // The formula is kept on the column, so saving can write it back.
   assert.equal(sheet.tables![0]!.totalsFormulas?.[1], "SUBTOTAL(101,B2:B3)");
   // None clears the cell, and a table without a totals row has nothing to change.
   assert.equal(grid.totalsFunction("none"), true);
   assert.equal(sheet.cells[3]?.[1]?.formula, undefined);
   assert.equal(sheet.cells[3]?.[1]?.value, "");
+  // With nothing left to total, the label falls back to a plain total.
+  assert.equal(sheet.cells[3]?.[0]?.value, "Total");
   sheet.tables![0]!.totalsRow = false;
   assert.equal(grid.totalsFunction("count"), false);
 });
@@ -536,6 +540,34 @@ test("a table header shows a filter without taking the sheet's filter", () => {
   const cells = [...host.querySelectorAll("td")];
   assert.equal(cells.filter((cell) => cell.classList.contains("is-filter-header")).length, 2);
   assert.equal(cells[2]?.classList.contains("is-filter-header"), false);
+});
+
+test("sorting a table moves only its data rows", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const workbook: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "乙" }, { value: "5" }], [{ value: "合计" }, { value: "15" }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }],
+    }],
+  };
+  const grid = mountWorkbook(host, workbook);
+  const FocusEvent = (dom.window as unknown as Record<string, new (type: string) => Event>)["Event"];
+  if (!FocusEvent) throw new Error("missing Event");
+  host.querySelector('td[data-row="1"][data-col="1"]')!.dispatchEvent(new FocusEvent("focus"));
+  grid.sort(true);
+  const column = workbook.sheets[0]!.cells.map((row) => row?.[1]?.value);
+  // The data rows swap, and the header and the totals row stay put.
+  assert.deepEqual(column, ["数量", "5", "10", "15"]);
+  // The sort is kept on the table, counted from its first column.
+  assert.deepEqual(workbook.sheets[0]!.tables![0]!.sort, [{ col: 1 }]);
+  // Sorting again reverses it and records the direction.
+  grid.sort(false);
+  assert.deepEqual(workbook.sheets[0]!.cells.map((row) => row?.[1]?.value), ["数量", "10", "5", "15"]);
+  assert.deepEqual(workbook.sheets[0]!.tables![0]!.sort, [{ col: 1, descending: true }]);
 });
 
 test("a table column filters its rows", () => {
@@ -573,7 +605,7 @@ test("typing below a table pulls the row in", () => {
     sheets: [{
       name: "销售",
       cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "" }, { value: "" }]],
-      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["品类", "数量"] }],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["品类", "数量"], formulas: ["", "[数量]*2"] }],
     }],
   };
   mountWorkbook(host, workbook);
@@ -586,6 +618,8 @@ test("typing below a table pulls the row in", () => {
   const table = workbook.sheets[0]!.tables![0]!;
   assert.equal(table.r2, 2);
   assert.equal(workbook.sheets[0]!.cells[2]?.[0]?.value, "乙");
+  // The new row picks up the formula the other column already carries.
+  assert.equal(workbook.sheets[0]!.cells[2]?.[1]?.formula, "[数量]*2");
   // A row further down does not.
   const sheet = workbook.sheets[0]!;
   sheet.cells[4] = [{ value: "" }];
@@ -594,6 +628,26 @@ test("typing below a table pulls the row in", () => {
   far.textContent = "丙";
   far.dispatchEvent(new InputEvent("input", { bubbles: true }));
   assert.equal(workbook.sheets[0]!.tables![0]!.r2, 2);
+
+  // A totals row stays last, and the typed cell moves up onto the new data row above it.
+  const summed: Workbook = {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "合计" }, { value: "10" }], [{ value: " " }]],
+      tables: [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 2, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"], formulas: ["", "[数量]*2"] }],
+    }],
+  };
+  host.replaceChildren();
+  mountWorkbook(host, summed);
+  const under = host.querySelector('td[data-row="3"][data-col="0"]') as HTMLElement;
+  under.textContent = "丙";
+  under.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  const grown = summed.sheets[0]!;
+  assert.equal(grown.tables![0]!.r2, 3);
+  assert.equal(grown.cells[2]?.[0]?.value, "丙");
+  assert.equal(grown.cells[2]?.[1]?.formula, "[数量]*2");
+  assert.equal(grown.cells[3]?.[0]?.value, "合计");
 });
 
 test("a table can be removed", () => {
@@ -827,8 +881,8 @@ test("inserting and deleting a row keeps the table over the same cells", () => {
     calcMode: "manual" as const,
     sheets: [{
       name: "销售",
-      cells: [[{ value: "品类" }], [{ value: "甲" }], [{ value: "乙" }]],
-      tables: [{ id: "table1", name: "Table1", r1: 1, c1: 0, r2: 2, c2: 1, headerRow: true, columns: ["品类", "数量"] }],
+      cells: [[{ value: "品类" }], [{ value: "甲" }, { value: "" }], [{ value: "乙" }]] as { value: string; formula?: string }[][],
+      tables: [{ id: "table1", name: "Table1", r1: 1, c1: 0, r2: 2, c2: 1, headerRow: true, columns: ["品类", "数量"], formulas: [""] }],
       merges: [{ r1: 1, c1: 0, r2: 1, c2: 1 }],
     }],
   };
@@ -846,6 +900,11 @@ test("inserting and deleting a row keeps the table over the same cells", () => {
   grid.insertRow();
   // 甲 is the table's first row, so the table grows downward and its header stays put.
   assert.deepEqual([table().r1, table().r2], [2, 4]);
+  // The inserted row takes the formula the column already shares.
+  table().formulas![1] = "[数量]*2";
+  grid.insertRow();
+  assert.equal(workbook.sheets[0]!.cells[3]?.[1]?.formula, "[数量]*2");
+  grid.deleteRow();
   // Deleting that row shrinks it back.
   grid.deleteRow();
   assert.deepEqual([table().r1, table().r2], [2, 3]);

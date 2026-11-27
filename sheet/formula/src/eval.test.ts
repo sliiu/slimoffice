@@ -178,6 +178,43 @@ test("a space between two table references keeps their overlap", () => {
   assert.equal(evaluate("=Table1[[#Headers],[数量]] Table1[[#Totals],[数量]]", ctx(workbook)) instanceof FormulaError, true);
 });
 
+test("a comma joins two parts of one table column", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "数量" }],
+    [{ value: "甲" }, { value: "10" }],
+    [{ value: "乙" }, { value: "5" }],
+    [{ value: "合计" }, { value: "15" }],
+  ]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }];
+  // The header is text, so the sum still counts only the data, and the count sees the header too.
+  assert.equal(evaluate("=SUM(Table1[[#Headers],[#Data],[数量]])", ctx(workbook)), 15);
+  assert.equal(evaluate("=COUNTA(Table1[[#Headers],[#Data],[数量]])", ctx(workbook)), 3);
+  // The order of the parts does not matter, and the totals row joins the same way.
+  assert.equal(evaluate("=SUM(Table1[[#Data],[#Totals],[数量]])", ctx(workbook)), 30);
+  // A part the table does not have is a reference error. A sum would swallow it into zero.
+  workbook.sheets[0]!.tables![0]!.totalsRow = false;
+  assert.equal(evaluate("=Table1[[#Data],[#Totals],[数量]]", ctx(workbook)) instanceof FormulaError, true);
+});
+
+test("an @ in front of a reference keeps the cell on the formula's row", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "数量" }],
+    [{ value: "甲" }, { value: "10" }],
+    [{ value: "乙" }, { value: "5" }],
+    [{ value: "合计" }, { value: "15" }],
+  ]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }];
+  // The whole column narrows to the formula's own row, for a table column and for a plain range.
+  assert.equal(evaluate("=@Table1[数量]", ctx(workbook, 2, 0)), 5);
+  assert.equal(evaluate("=@B1:B4", ctx(workbook, 1, 0)), 10);
+  // A row narrows to the formula's own column instead.
+  assert.equal(evaluate("=@A2:B2", ctx(workbook, 0, 1)), 10);
+  // A range that misses both the row and the column is a value error. A sum would swallow it into zero.
+  assert.equal(evaluate("=@A2:A3", ctx(workbook, 0, 1)) instanceof FormulaError, true);
+  // A single cell has nothing to narrow.
+  assert.equal(evaluate("=@B3", ctx(workbook, 0, 0)), 5);
+});
+
 test("a bare table name and a bare specifier cover the whole table", () => {
   const workbook = book([
     [{ value: "品类" }, { value: "数量" }],
@@ -471,6 +508,11 @@ test("wildcard lookups, date units, hidden rows, and finance", () => {
   assert.equal(evaluate("=DATEDIF(DATE(2025,12,31),DATE(2026,3,1),\"YD\")", ctx(workbook)), 60);
   assert.equal(evaluate("=SUBTOTAL(109,B1:B3)", ctx(workbook)), 30);
   assert.equal(evaluate("=SUBTOTAL(9,B1:B3)", ctx(workbook)), 60);
+  // A table filter drops the row it hides from either subtotal, while a plain sum still counts it.
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 2, c2: 1, headerRow: true, filterColumns: [{ col: 0, values: ["Apple"] }], columns: ["品类", "数量"] }];
+  assert.equal(evaluate("=SUBTOTAL(9,B1:B3)", ctx(workbook)), 10);
+  assert.equal(evaluate("=SUBTOTAL(109,B1:B3)", ctx(workbook)), 10);
+  assert.equal(evaluate("=SUM(B1:B3)", ctx(workbook)), 60);
   assert.equal(Math.round(evaluate("=PMT(0.05,2,100)", ctx(workbook)) as number), -54);
   assert.equal(Math.round(evaluate("=NPV(0.1,110)", ctx(workbook)) as number), 100);
   assert.equal(evaluate("=STDEV.P(2,4,4,4,5,5,7,9)", ctx(workbook)), 2);

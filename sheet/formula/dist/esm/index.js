@@ -470,14 +470,21 @@ function tokenize(text) {
             i = j + 1;
             continue;
         }
-        // The # or @ of a table specifier, as in [#This Row] or [@数量]. Elsewhere both stay errors.
-        if ((ch === "#" || ch === "@") && out.at(-1)?.kind === "lsb") {
+        // The # or @ of a table specifier, as in [#This Row], [@数量], or [[#Headers],[#Data]].
+        // The brackets may already be nested, so the mark before this one is ] rather than [.
+        if ((ch === "#" || ch === "@") && (out.at(-1)?.kind === "lsb" || out.at(-1)?.kind === "rsb")) {
             let j = i + 1;
             while (j < text.length && /[A-Za-z0-9_$一-鿿. ]/.test(text[j]))
                 j += 1;
             const rest = text.slice(i + 1, j).trim();
             out.push({ kind: "id", value: (ch === "@" && rest ? `@${rest}` : `${ch}${rest}`).toUpperCase() });
             i = j;
+            continue;
+        }
+        // @ in front of a reference keeps the one cell on the formula's own row or column.
+        if (ch === "@") {
+            out.push({ kind: "op", value: "@" });
+            i += 1;
             continue;
         }
         if (ch === "<" || ch === ">" || ch === "=") {
@@ -588,6 +595,11 @@ class Parser {
         return left;
     }
     parseUnary() {
+        // @A1:A3 keeps the cell on the formula's own row. A single cell is unchanged, and a miss is a value error.
+        if (this.peek()?.kind === "op" && this.peek().value === "@") {
+            this.take();
+            return this.implicit(this.parseUnary());
+        }
         if (this.peek()?.kind === "op" && this.peek().value === "+") {
             this.take();
             return this.parseUnary();
@@ -907,6 +919,7 @@ class Parser {
      * `Table1[[#This Row],[列]]` (also written `Table1[@列]`) is one cell on the formula's own row. `Table1[[列1]:[列2]]`
      * runs from one column to the other, and `Table1[@[列1]:[列2]]` does the same on the formula's own row.
      * A space between two references of the same table is their overlap, as in `Table1[[#All],[数量]] Table1[[#Data],[数量]]`.
+     * A comma joins parts of one column, as in `Table1[[#Headers],[#Data],[数量]]`, so the header and the data count together.
      */
     tableRef(name) {
         const spec = this.tableSpec();
@@ -920,6 +933,19 @@ class Parser {
         this.take();
         const rest = this.tableRef(name);
         return this.tableOverlap(first, rest);
+    }
+    /** The one cell of a range that shares the formula's row or column. Nothing on that line is a value error. */
+    implicit(value) {
+        if (value instanceof FormulaError || !Array.isArray(value))
+            return value;
+        const origin = rangeOrigin(value);
+        if (!origin)
+            return value;
+        const row = this.ctx.row >= origin.r1 && this.ctx.row <= origin.r2 ? this.ctx.row : origin.r1 === origin.r2 ? origin.r1 : -1;
+        const col = this.ctx.col >= origin.c1 && this.ctx.col <= origin.c2 ? this.ctx.col : origin.c1 === origin.c2 ? origin.c1 : -1;
+        if (row < 0 || col < 0)
+            return E.VALUE();
+        return readRange(this.ctx.workbook, origin.sheetIndex, { row, col }, { row, col });
     }
     /** The cells two references of one table share. The overlap is read from the table, so a part without a cell origin still counts. */
     tableOverlap(left, right) {
@@ -956,26 +982,37 @@ class Parser {
             const dataTop = table.headerRow === false ? table.r1 : table.r1 + 1;
             const dataBottom = table.totalsRow ? table.r2 - 1 : table.r2;
             const span = (row, end = row) => readRange(this.ctx.workbook, sheetIndex, { row, col }, { row: end, col: lastCol });
-            if (spec.part === "this") {
-                if (this.ctx.row < dataTop || this.ctx.row > dataBottom)
-                    return E.VALUE();
-                return span(this.ctx.row);
-            }
-            if (spec.part === "headers") {
-                if (table.headerRow === false)
-                    return E.REF();
-                return span(table.r1);
-            }
-            if (spec.part === "totals") {
-                if (!table.totalsRow)
-                    return E.REF();
-                return span(table.r2);
-            }
-            if (spec.part === "all")
-                return span(table.r1, table.r2);
-            if (dataBottom < dataTop)
-                return [];
-            return span(dataTop, dataBottom);
+            const one = (part) => {
+                if (part === "this") {
+                    if (this.ctx.row < dataTop || this.ctx.row > dataBottom)
+                        return E.VALUE();
+                    return span(this.ctx.row);
+                }
+                if (part === "headers") {
+                    if (table.headerRow === false)
+                        return E.REF();
+                    return span(table.r1);
+                }
+                if (part === "totals") {
+                    if (!table.totalsRow)
+                        return E.REF();
+                    return span(table.r2);
+                }
+                if (part === "all")
+                    return span(table.r1, table.r2);
+                if (dataBottom < dataTop)
+                    return [];
+                return span(dataTop, dataBottom);
+            };
+            // One part is the range itself. Several parts of one column stack, header first and totals last.
+            if (spec.parts.length === 1)
+                return one(spec.parts[0]);
+            const order = ["headers", "data", "this", "totals", "all"];
+            const ranges = [...spec.parts].sort((a, b) => order.indexOf(a) - order.indexOf(b)).map(one);
+            const bad = ranges.find((range) => range instanceof FormulaError);
+            if (bad instanceof FormulaError)
+                return bad;
+            return unionRanges(ranges);
         }
         return E.NAME();
     }
@@ -999,6 +1036,24 @@ class Parser {
         const item = this.tableItem();
         if (item instanceof FormulaError)
             return item;
+        // [[#Headers],[#Data],[数量]] joins the named parts of one column. A column still comes last.
+        const parts = [item.part];
+        while (!item.column && this.peek()?.kind === "comma") {
+            const ahead = this.tokens[this.i + 1];
+            const after = this.tokens[this.i + 2];
+            if (ahead?.kind !== "lsb" || after?.kind !== "id" || !tablePart(after.value))
+                break;
+            this.take();
+            const more = this.tableItem();
+            if (more instanceof FormulaError)
+                return more;
+            // #Data is the data rows, and it ends the list. A column name here is not a part.
+            if (more.column)
+                return E.REF();
+            parts.push(more.part);
+            if (more.part === "data")
+                break;
+        }
         const next = this.peek()?.kind;
         // [[列1]:[列2]] covers the data rows from the first named column through the second.
         if (next === "colon") {
@@ -1010,7 +1065,7 @@ class Parser {
             if (this.peek()?.kind !== "rsb")
                 return E.REF();
             this.take();
-            return { part: "data", column: item.column, column2 };
+            return { parts, column: item.column, column2 };
         }
         // [@[列]] and [@[列1]:[列2]] name the current row after a bare @.
         if (item.part === "this" && !item.column && next === "lsb") {
@@ -1025,14 +1080,14 @@ class Parser {
             if (this.peek()?.kind !== "rsb")
                 return E.REF();
             this.take();
-            return { part: "this", column: column.column, ...(spanned ? { column2: spanned } : {}) };
+            return { parts, column: column.column, ...(spanned ? { column2: spanned } : {}) };
         }
         if (next !== "comma") {
             if (next !== "rsb")
                 return E.REF();
             this.take();
             // A column, or a specifier on its own: [#Headers], [#Totals], [#This Row] and @ cover every column of that row.
-            return item;
+            return { parts, column: item.column };
         }
         this.take();
         const column = this.tableItem();
@@ -1047,7 +1102,7 @@ class Parser {
         if (this.peek()?.kind !== "rsb")
             return E.REF();
         this.take();
-        return { part: item.part, column: column.column, ...(spanned ? { column2: spanned } : {}) };
+        return { parts, column: column.column, ...(spanned ? { column2: spanned } : {}) };
     }
     /** The column after `:`, when one is there. Empty when the reference names a single column. */
     optionalColumnSpan() {
@@ -1238,16 +1293,45 @@ function readRange(workbook, sheetIndex, start, end) {
     }
     const out = [];
     const hidden = [];
+    const filtered = [];
     const subtotals = [];
     const hiddenRows = new Set(sheet.hiddenRows ?? []);
     for (let r = r1; r <= r2; r += 1) {
+        const filteredRow = rowFiltered(sheet, r);
         for (let c = c1; c <= c2; c += 1) {
             out.push(cellPrimitive(sheet, r, c, workbook, sheetIndex));
             hidden.push(hiddenRows.has(r));
+            filtered.push(filteredRow);
             subtotals.push(/^(SUBTOTAL|AGGREGATE)\s*\(/i.test(sheet.cells[r]?.[c]?.formula ?? ""));
         }
     }
-    return tagRange(out, c2 - c1 + 1, hidden, subtotals, { sheetIndex, r1, c1, r2, c2 });
+    return tagRange(out, c2 - c1 + 1, hidden, subtotals, { sheetIndex, r1, c1, r2, c2 }, filtered);
+}
+/** A row a table filter or the sheet filter leaves out. The header and a totals row stay. */
+function rowFiltered(sheet, row) {
+    if ((sheet.tables ?? []).some((table) => tableFiltersRow(sheet, table, row)))
+        return true;
+    const filter = sheet.filter;
+    if (!filter?.columns?.length || row === filter.r1 || row < filter.r1 || row > filter.r2)
+        return false;
+    return filter.columns.some((column) => {
+        const value = sheet.cells[row]?.[filter.c1 + column.col]?.value ?? "";
+        return !column.values.includes(value);
+    });
+}
+/** One table column keeps only the values it lists. A table with no such column hides nothing. */
+function tableFiltersRow(sheet, table, row) {
+    const columns = table.filterColumns;
+    if (!columns?.length || row < table.r1 || row > table.r2)
+        return false;
+    if (table.headerRow !== false && row === table.r1)
+        return false;
+    if (table.totalsRow && row === table.r2)
+        return false;
+    return columns.some((column) => {
+        const value = sheet.cells[row]?.[table.c1 + column.col]?.value ?? "";
+        return !column.values.includes(value);
+    });
 }
 function cellPrimitive(sheet, row, col, workbook, sheetIndex) {
     const cell = sheet.cells[row]?.[col];
@@ -5912,10 +5996,12 @@ function wildcardPattern(text) {
     }
     return pattern;
 }
-function tagRange(values, width, hidden, subtotals, origin) {
+function tagRange(values, width, hidden, subtotals, origin, filtered) {
     Object.defineProperty(values, "width", { value: Math.max(1, width), enumerable: false });
     Object.defineProperty(values, "hidden", { value: hidden, enumerable: false });
     Object.defineProperty(values, "subtotals", { value: subtotals, enumerable: false });
+    if (filtered)
+        Object.defineProperty(values, "filtered", { value: filtered, enumerable: false });
     if (origin)
         Object.defineProperty(values, "origin", { value: origin, enumerable: false });
     return values;
@@ -5936,6 +6022,7 @@ function unionRanges(parts) {
     });
     const out = [];
     const hidden = [];
+    const filtered = [];
     const subtotals = [];
     const seen = new Set();
     for (const area of areas) {
@@ -5953,6 +6040,7 @@ function unionRanges(parts) {
                 }
                 out.push(item);
                 hidden.push(flags.hidden?.[index] ?? false);
+                filtered.push(flags.filtered?.[index] ?? false);
                 subtotals.push(flags.subtotals?.[index] ?? false);
             });
         }
@@ -5965,7 +6053,7 @@ function unionRanges(parts) {
         else
             out.push(area);
     }
-    const joined = tagRange(out, 1, hidden, subtotals);
+    const joined = tagRange(out, 1, hidden, subtotals, undefined, filtered);
     Object.defineProperty(joined, "areas", { value: areas, enumerable: false });
     return joined;
 }
@@ -5976,13 +6064,13 @@ function rangeWidth(table) {
     const width = table.width;
     return typeof width === "number" && width > 0 ? width : 1;
 }
-/** SUBTOTAL drops nested SUBTOTAL cells, and codes 101+ also drop filtered rows. */
+/** SUBTOTAL drops nested SUBTOTAL cells and rows a filter leaves out. Codes 101+ also drop hidden rows. */
 function visibleArgs(args, skipHidden) {
     return args.map((arg) => {
         if (!Array.isArray(arg))
             return arg;
         const flags = arg;
-        const kept = arg.filter((_item, index) => !(flags.subtotals?.[index] ?? false) && !(skipHidden && (flags.hidden?.[index] ?? false)));
+        const kept = arg.filter((_item, index) => !(flags.subtotals?.[index] ?? false) && !(flags.filtered?.[index] ?? false) && !(skipHidden && (flags.hidden?.[index] ?? false)));
         return tagRange(kept, rangeWidth(arg), [], []);
     });
 }

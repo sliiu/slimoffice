@@ -513,14 +513,46 @@ function mountWorkbook(host, workbook, options = {}) {
         const table = (sheet.tables ?? []).find((item) => row === item.r2 + 1 && column >= item.c1 && column <= item.c2);
         if (!table)
             return false;
+        const typed = sheet.cells[row]?.[column];
+        // With a totals row the new data row opens above it, and the cell just typed moves up with it.
+        const dataRow = table.totalsRow ? table.r2 : row;
         if (table.totalsRow) {
             const totals = sheet.cells[table.r2];
             sheet.cells.splice(table.r2, 0, []);
             if (totals)
                 sheet.cells[table.r2 + 1] = totals;
+            const slid = sheet.cells[row + 1];
+            if (slid)
+                slid[column] = undefined;
         }
         table.r2 += 1;
+        if (typed) {
+            const line = sheet.cells[dataRow] ?? [];
+            line[column] = typed;
+            sheet.cells[dataRow] = line;
+        }
+        // The new row picks up each column's formula. The cell just typed keeps what the user entered.
+        fillRowFormulas(sheet, table, dataRow, column);
         return true;
+    }
+    /** The formulas a table's columns already share, written into one data row. `skip` keeps what was just typed. */
+    function fillRowFormulas(sheet, table, row, skip = -1) {
+        (table.formulas ?? []).forEach((formula, index) => {
+            if (!formula)
+                return;
+            const column = table.c1 + index;
+            if (column === skip)
+                return;
+            const line = sheet.cells[row] ?? [];
+            const cell = line[column];
+            if (cell?.formula || cell?.value)
+                return;
+            const item = cell ?? { value: "" };
+            item.formula = formula;
+            item.value = `=${formula}`;
+            line[column] = item;
+            sheet.cells[row] = line;
+        });
     }
     function tableRangeAt(sheet, row, column) {
         return sheet.tables?.find((item) => row >= item.r1 && row <= item.r2 && column >= item.c1 && column <= item.c2);
@@ -822,7 +854,15 @@ function mountWorkbook(host, workbook, options = {}) {
             if (colDelta < 0 && table.columns && selected.col >= table.c1 && selected.col <= table.c2) {
                 table.columns.splice(selected.col - table.c1, 1);
             }
-            return move(table);
+            const kept = move(table);
+            // A row inserted among the data rows takes each column's formula. The header and the totals row do not.
+            if (kept && rowDelta > 0) {
+                const dataTop = table.headerRow === false ? table.r1 : table.r1 + 1;
+                const dataBottom = table.totalsRow ? table.r2 - 1 : table.r2;
+                if (selected.row >= dataTop && selected.row <= dataBottom)
+                    fillRowFormulas(sheet, table, selected.row);
+            }
+            return kept;
         });
         sheet.conditionalFormats = (sheet.conditionalFormats ?? []).filter(move);
         sheet.validations = (sheet.validations ?? []).filter(move);
@@ -954,7 +994,11 @@ function mountWorkbook(host, workbook, options = {}) {
         remember();
         const sheet = currentSheet();
         const col = selected.col;
-        const body = sheet.cells.slice();
+        const table = tableRangeAt(sheet, selected.row, col);
+        // Inside a table only the data rows move. The header and the totals row stay where they are.
+        const dataTop = table ? (table.headerRow === false ? table.r1 : table.r1 + 1) : 0;
+        const dataBottom = table ? (table.totalsRow ? table.r2 - 1 : table.r2) : sheet.cells.length - 1;
+        const body = sheet.cells.slice(dataTop, dataBottom + 1);
         body.sort((a, b) => {
             const av = a?.[col]?.value ?? "";
             const bv = b?.[col]?.value ?? "";
@@ -964,7 +1008,11 @@ function mountWorkbook(host, workbook, options = {}) {
                 return ascending ? an - bn : bn - an;
             return ascending ? av.localeCompare(bv) : bv.localeCompare(av);
         });
-        sheet.cells = body;
+        sheet.cells.splice(dataTop, body.length, ...body);
+        if (table) {
+            const key = { col: col - table.c1, ...(ascending ? {} : { descending: true }) };
+            table.sort = [key, ...(table.sort ?? []).filter((item) => item.col !== key.col)];
+        }
         finish();
     }
     function freeze() {
@@ -1293,7 +1341,7 @@ function mountWorkbook(host, workbook, options = {}) {
         table.totalsRow = true;
         const corner = ensure(table.r2, table.c1);
         if (!corner.value)
-            corner.value = zh ? "汇总" : "Total";
+            corner.value = totalsLabel(table);
         // Each column that holds a number sums itself. SUBTOTAL skips the header and this totals row.
         const top = (table.headerRow === false ? table.r1 : table.r1 + 1) + 1;
         const bottom = table.r2;
@@ -1335,8 +1383,25 @@ function mountWorkbook(host, workbook, options = {}) {
             cell.value = `=${cell.formula}`;
             totalsFormulas[at] = cell.formula;
         }
+        // The first column says what the totals row does, unless it holds a total of its own.
+        labelTotals(table);
         finish();
         return true;
+    }
+    /** The word the totals row shows in its first column, taken from the first column that totals something. */
+    function totalsLabel(table) {
+        const fn = (table.totals ?? []).find((item, index) => index > 0 && item && item !== "none");
+        const labels = zh
+            ? { sum: "汇总", count: "计数", average: "平均值", max: "最大值", min: "最小值" }
+            : { sum: "Total", count: "Count", average: "Average", max: "Max", min: "Min" };
+        return labels[fn && fn !== "none" ? fn : "sum"];
+    }
+    /** Puts that word in the first column. A column that totals on its own keeps its formula. */
+    function labelTotals(table) {
+        const corner = ensure(table.r2, table.c1);
+        if (corner.formula || (table.totals?.[0] && table.totals[0] !== "none"))
+            return;
+        corner.value = totalsLabel(table);
     }
     /** The SUBTOTAL call for one totals function. The range stops above the totals row. */
     function totalsFormula(fn, column, top, bottom) {

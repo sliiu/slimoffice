@@ -98,6 +98,8 @@ export interface SheetTable {
   filter?: boolean;
   /** Values a column still shows. `col` counts from the table's first column. Absent means every value shows. */
   filterColumns?: { col: number; values: string[] }[];
+  /** The columns the data rows were last sorted by, first key first. `col` counts from the table's first column. */
+  sort?: { col: number; descending?: boolean }[];
   /** Header text of each column, in order. Empty when the table has no header row. */
   columns?: string[];
   /** The formula shared by every data cell of a column, one per column. Empty entries have none. */
