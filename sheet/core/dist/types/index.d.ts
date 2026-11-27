@@ -149,6 +149,8 @@ export interface SheetValidation {
     r2: number;
     c2: number;
     type: "list" | "whole" | "decimal" | "textLength" | "custom";
+    /** How formula1 and formula2 bound the value. Absent means the type alone decides. */
+    op?: "gt" | "gte" | "lt" | "lte" | "eq" | "neq" | "between";
     formula1?: string;
     formula2?: string;
     allowBlank?: boolean;

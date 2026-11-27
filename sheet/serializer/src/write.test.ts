@@ -118,13 +118,14 @@ test("writes table drawing and validation parts", () => {
   const sheet = made.workbook.sheets[0]!;
   sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true }];
   sheet.charts = [{ id: "chart1", kind: "column", title: "销量", range: "B1:B2" }];
-  sheet.validations = [{ id: "dv1", r1: 0, c1: 0, r2: 1, c2: 0, type: "list", formula1: "a,b" }];
+  sheet.validations = [{ id: "dv1", r1: 0, c1: 0, r2: 1, c2: 0, type: "list", op: "eq", formula1: "a,b" }];
   made.workbook.theme = { name: "Office", colors: ["#4472C4"], fonts: { major: "Calibri", minor: "Calibri" } };
   made.workbook.edited = true;
   const out = unzipSync(writeXlsx(made.workbook));
   const sheetXml = new TextDecoder().decode(out["xl/worksheets/sheet1.xml"]);
   assert.match(sheetXml, /<drawing r:id="rIdDrawing1"\/>/);
   assert.match(sheetXml, /<dataValidations count="1">/);
+  assert.match(sheetXml, /<dataValidation type="list" allowBlank="1" operator="equal" sqref="A1:A2"><formula1>a,b<\/formula1><\/dataValidation>/);
   assert.ok(out["xl/tables/table1_1.xml"]);
   assert.ok(out["xl/drawings/drawing1.xml"]);
   assert.ok(out["xl/theme/theme1.xml"]);

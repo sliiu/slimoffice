@@ -116,7 +116,10 @@ function dataValidationsXml(sheet) {
     const body = items
         .map((item) => {
         const sqref = `${colName(item.c1)}${item.r1 + 1}:${colName(item.c2)}${item.r2 + 1}`;
-        return `<dataValidation type="${item.type}" allowBlank="${item.allowBlank === false ? 0 : 1}" sqref="${sqref}">${item.formula1 ? `<formula1>${escapeXml(item.formula1)}</formula1>` : ""}${item.formula2 ? `<formula2>${escapeXml(item.formula2)}</formula2>` : ""}</dataValidation>`;
+        const op = item.op
+            ? ` operator="${item.op === "gt" ? "greaterThan" : item.op === "gte" ? "greaterThanOrEqual" : item.op === "lt" ? "lessThan" : item.op === "lte" ? "lessThanOrEqual" : item.op === "neq" ? "notEqual" : item.op === "between" ? "between" : "equal"}"`
+            : "";
+        return `<dataValidation type="${item.type}" allowBlank="${item.allowBlank === false ? 0 : 1}"${op} sqref="${sqref}">${item.formula1 ? `<formula1>${escapeXml(item.formula1)}</formula1>` : ""}${item.formula2 ? `<formula2>${escapeXml(item.formula2)}</formula2>` : ""}</dataValidation>`;
     })
         .join("");
     return `<dataValidations count="${items.length}">${body}</dataValidations>`;

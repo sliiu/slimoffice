@@ -519,10 +519,12 @@ function validations(root) {
             return [];
         const formula1 = (0, xml_1.child)(item, "formula1")?.text.trim();
         const formula2 = (0, xml_1.child)(item, "formula2")?.text.trim();
+        const op = cellOp((0, xml_1.attr)(item, "operator") ?? "");
         return [{
                 id: `dv${index + 1}`,
                 ...range,
                 type,
+                ...(op ? { op } : {}),
                 ...(formula1 ? { formula1 } : {}),
                 ...(formula2 ? { formula2 } : {}),
                 allowBlank: (0, xml_1.attr)(item, "allowBlank") !== "0",

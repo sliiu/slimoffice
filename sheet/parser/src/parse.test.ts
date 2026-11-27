@@ -140,7 +140,8 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
       `<sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1" t="s"><v>0</v></c></row><row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>20</v></c></row></sheetData>` +
       `<hyperlinks><hyperlink ref="B1" location="Sheet2!A1" display="明细"/></hyperlinks>` +
       `<conditionalFormatting sqref="A1:A2"><cfRule type="cellIs" operator="greaterThan"><formula>10</formula></cfRule></conditionalFormatting>` +
-      `<dataValidations count="1"><dataValidation type="list" sqref="B1:B2" allowBlank="1"><formula1>"甲,乙"</formula1></dataValidation></dataValidations>` +
+      `<dataValidations count="2"><dataValidation type="list" sqref="B1:B2" allowBlank="1"><formula1>"甲,乙"</formula1></dataValidation>` +
+      `<dataValidation type="whole" operator="between" sqref="A1:A2"><formula1>1</formula1><formula2>9</formula2></dataValidation></dataValidations>` +
       `<tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts>` +
       `<drawing r:id="rIdDrawing1"/>` +
       `<extLst><ext uri="{05C60535-1F16-4fd2-B107-1C6BDA2B7F3E}"><sparklineGroups><sparklineGroup type="column"><sparklines><sparkline><f>A1:A2</f><sqref>C1</sqref></sparkline></sparklines></sparklineGroup></sparklineGroups></ext></extLst>` +
@@ -163,6 +164,8 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
   assert.deepEqual(opened?.conditionalFormats?.[0]?.rule, { type: "cellValue", op: "gt", formula1: "10" });
   assert.equal(opened?.validations?.[0]?.type, "list");
   assert.equal(opened?.validations?.[0]?.formula1, '"甲,乙"');
+  assert.equal(opened?.validations?.[1]?.op, "between");
+  assert.equal(opened?.validations?.[1]?.formula2, "9");
   assert.equal(opened?.tables?.[0]?.name, "Table1");
   assert.deepEqual(opened?.charts?.[0], { id: "chart1", kind: "column", range: "$B$1:$B$2" });
   assert.deepEqual(opened?.sparklines?.[0], { id: "spark1", kind: "column", data: "A1:A2", location: "C1" });

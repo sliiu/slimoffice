@@ -14,7 +14,7 @@ import type {
   Workbook,
   Worksheet,
 } from "@sliiu/sheet-core";
-import { consolidateRanges, formatNumber, recalculate } from "@sliiu/sheet-formula";
+import { consolidateRanges, evaluate, formatNumber, recalculate } from "@sliiu/sheet-formula";
 import { renderCharts } from "./charts";
 import { cfLook } from "./cf";
 
@@ -506,7 +506,7 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     td.addEventListener("input", () => {
       const next = td.textContent ?? "";
       const rule = validationAt(sheet, row, column);
-      if (rule && !acceptsValidation(rule, next)) {
+      if (rule && !acceptsValidation(rule, next, row, column)) {
         td.classList.add("is-invalid");
         td.title = rule.error || (zh ? "输入不符合数据验证" : "The value breaks the data validation.");
         return;
@@ -579,20 +579,45 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
   }
 
   /** A typed value passes the rule, or the cell is left untouched and marked invalid. */
-  function acceptsValidation(rule: SheetValidation, text: string): boolean {
+  function acceptsValidation(rule: SheetValidation, text: string, row: number, column: number): boolean {
     if (text === "") return rule.allowBlank !== false;
     if (rule.type === "list") {
       const options = (rule.formula1 ?? "").split(",").map((item) => item.trim());
       return options.includes(text);
     }
-    const value = Number(text);
-    if (rule.type === "whole") return Number.isInteger(value);
-    if (rule.type === "decimal") return Number.isFinite(value);
-    if (rule.type === "textLength") {
-      const limit = Number(rule.formula1 ?? "");
-      return Number.isFinite(limit) && text.length <= limit;
-    }
-    return true;
+    if (rule.type === "custom") return customValidation(rule, text, row, column);
+    const value = rule.type === "textLength" ? text.length : Number(text);
+    if (rule.type === "whole" && !Number.isInteger(value)) return false;
+    if (rule.type === "decimal" && !Number.isFinite(value)) return false;
+    return within(rule, value);
+  }
+
+  /** A custom rule passes when its formula comes back true. The typed text stands in for the cell. */
+  function customValidation(rule: SheetValidation, text: string, row: number, column: number): boolean {
+    const formula = rule.formula1?.trim();
+    if (!formula) return true;
+    const sheet = currentSheet();
+    const probe: Worksheet = { ...sheet, cells: sheet.cells.map((line) => line?.slice()) };
+    const line = probe.cells[row]?.slice() ?? [];
+    line[column] = { ...(line[column] ?? { value: "" }), value: text };
+    probe.cells[row] = line;
+    const result = evaluate(formula, { workbook: { sheets: [probe] }, sheetIndex: 0, row, col: column });
+    return result === true;
+  }
+
+  /** Compare against the two bounds. No operator means the type check above is the whole rule. */
+  function within(rule: SheetValidation, value: number): boolean {
+    const low = Number(rule.formula1 ?? "");
+    const high = Number(rule.formula2 ?? "");
+    if (!rule.op) return true;
+    if (!Number.isFinite(low)) return false;
+    if (rule.op === "gt") return value > low;
+    if (rule.op === "gte") return value >= low;
+    if (rule.op === "lt") return value < low;
+    if (rule.op === "lte") return value <= low;
+    if (rule.op === "eq") return value === low;
+    if (rule.op === "neq") return value !== low;
+    return Number.isFinite(high) && value >= Math.min(low, high) && value <= Math.max(low, high);
   }
 
   function validationHint(sheet: Worksheet, row: number, column: number): string {
