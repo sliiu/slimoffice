@@ -8,7 +8,11 @@ export type SheetCfRule =
   | { type: "expression"; formula: string; fill?: string; color?: string }
   | { type: "colorScale"; colors: [string, string] | [string, string, string] }
   | { type: "dataBar"; color: string }
-  | { type: "iconSet"; set: "3TrafficLights" | "3Arrows" | "3Symbols" };
+  | { type: "iconSet"; set: "3TrafficLights" | "3Arrows" | "3Symbols" }
+  | { type: "duplicate" | "unique"; fill?: string; color?: string }
+  | { type: "top10"; rank: number; percent?: boolean; bottom?: boolean; fill?: string; color?: string }
+  | { type: "aboveAverage"; above?: boolean; equal?: boolean; fill?: string; color?: string }
+  | { type: "containsText"; op: "contains" | "notContains" | "beginsWith" | "endsWith"; text: string; fill?: string; color?: string };
 
 export interface SheetBorder {
   color?: string;
@@ -56,6 +60,8 @@ export interface SheetChart {
   /** Data range as A1:B10 style relative to this sheet. */
   range: string;
   categories?: string;
+  /** One range per series, when the chart has more than one. The first is `range`. */
+  series?: string[];
 }
 
 export interface SheetSparkline {
@@ -74,6 +80,8 @@ export interface SheetTable {
   c2: number;
   headerRow?: boolean;
   style?: string;
+  /** Header text of each column, in order. Empty when the table has no header row. */
+  columns?: string[];
 }
 
 export interface SheetPivot {
@@ -155,6 +163,8 @@ export interface SheetSlicer {
   name: string;
   source: string;
   field: string;
+  /** Values the slicer still shows. Absent means every value shows. */
+  values?: string[];
 }
 
 export interface SheetOutline {

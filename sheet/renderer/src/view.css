@@ -51,6 +51,15 @@
   height: 22px;
   text-align: left;
   white-space: nowrap;
+  position: relative;
+}
+
+.sheet-data-bar {
+  position: absolute;
+  left: 0;
+  bottom: 1px;
+  height: 4px;
+  opacity: 0.7;
 }
 
 .sheet-grid th {
@@ -152,6 +161,31 @@
   border-radius: 8px;
   background: #fff;
   padding: 8px;
+}
+
+.sheet-slicer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 96px;
+}
+
+.sheet-slicer-title {
+  font-weight: 600;
+}
+
+.sheet-slicer-item {
+  text-align: left;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  padding: 2px 6px;
+  color: #a1a1aa;
+}
+
+.sheet-slicer-item.is-on {
+  background: #eef2ff;
+  color: #1e1b4b;
 }
 
 .sheet-shape {

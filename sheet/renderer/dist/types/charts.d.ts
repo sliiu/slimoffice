@@ -1,5 +1,9 @@
 import type { SheetPivot, Worksheet } from "@sliiu/sheet-core";
 export declare function renderCharts(sheet: Worksheet): HTMLElement;
+/** The distinct values of the column the slicer's field names, in the order they appear. */
+export declare function slicerValues(sheet: Worksheet, slicer: {
+    field: string;
+}): string[];
 export interface PivotSummary {
     /** Column-field values. Empty when the pivot has no column field. */
     columns: string[];

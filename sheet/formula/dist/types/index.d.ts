@@ -59,6 +59,7 @@ export declare class FormulaError {
 }
 export declare const E: {
     DIV0: () => FormulaError;
+    NULL: () => FormulaError;
     VALUE: () => FormulaError;
     REF: () => FormulaError;
     NA: () => FormulaError;

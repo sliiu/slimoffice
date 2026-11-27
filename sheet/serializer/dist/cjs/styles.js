@@ -206,11 +206,28 @@ function ruleXml(cf, index) {
     if (rule.type === "dataBar") {
         return `<cfRule type="dataBar" priority="${index + 1}"><dataBar><cfvo type="min"/><cfvo type="max"/><color rgb="${rgb(rule.color)}"/></dataBar></cfRule>`;
     }
-    return `<cfRule type="iconSet" priority="${index + 1}"><iconSet iconSet="${rule.set === "3Arrows" ? "3Arrows" : rule.set === "3Symbols" ? "3Symbols" : "3TrafficLights1"}"/></cfRule>`;
+    if (rule.type === "duplicate" || rule.type === "unique") {
+        return `<cfRule type="${rule.type === "duplicate" ? "duplicateValues" : "uniqueValues"}" dxfId="${index}" priority="${index + 1}"/>`;
+    }
+    if (rule.type === "top10") {
+        return `<cfRule type="top10" dxfId="${index}" priority="${index + 1}" rank="${rule.rank}"${rule.percent ? " percent=\"1\"" : ""}${rule.bottom ? " bottom=\"1\"" : ""}/>`;
+    }
+    if (rule.type === "aboveAverage") {
+        return `<cfRule type="aboveAverage" dxfId="${index}" priority="${index + 1}"${rule.above === false ? " aboveAverage=\"0\"" : ""}${rule.equal ? " equalAverage=\"1\"" : ""}/>`;
+    }
+    if (rule.type === "containsText") {
+        const kind = rule.op === "notContains" ? "notContainsText" : rule.op === "beginsWith" ? "beginsWith" : rule.op === "endsWith" ? "endsWith" : "containsText";
+        return `<cfRule type="${kind}" dxfId="${index}" priority="${index + 1}" operator="${kind}" text="${escapeXml(rule.text)}"/>`;
+    }
+    if (rule.type === "iconSet") {
+        const set = rule.set === "3Arrows" ? "3Arrows" : rule.set === "3Symbols" ? "3Symbols" : "3TrafficLights1";
+        return `<cfRule type="iconSet" priority="${index + 1}"><iconSet iconSet="${set}"/></cfRule>`;
+    }
+    return "";
 }
 function ensureDxf(cf, dxfs) {
     const rule = cf.rule;
-    if (rule.type !== "cellValue" && rule.type !== "expression")
+    if (rule.type !== "cellValue" && rule.type !== "expression" && rule.type !== "duplicate" && rule.type !== "unique" && rule.type !== "top10" && rule.type !== "aboveAverage" && rule.type !== "containsText")
         return;
     const fill = rule.fill ? `<fill><patternFill patternType="solid"><fgColor rgb="${rgb(rule.fill)}"/></patternFill></fill>` : "";
     const font = rule.color ? `<font><color rgb="${rgb(rule.color)}"/></font>` : "";

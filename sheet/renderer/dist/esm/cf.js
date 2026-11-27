@@ -66,7 +66,78 @@ function matchRule(cf, sheet, row, column, cell, value) {
         const icons = rule.set === "3Arrows" ? ["↓", "→", "↑"] : rule.set === "3Symbols" ? ["✗", "•", "✓"] : ["🔴", "🟡", "🟢"];
         return { icon: icons[t < 1 / 3 ? 0 : t < 2 / 3 ? 1 : 2] };
     }
+    if (rule.type === "duplicate" || rule.type === "unique" || rule.type === "containsText") {
+        return textRule(rule, sheet, cf, cell) ? { fill: rule.fill, color: rule.color } : null;
+    }
+    if (rule.type === "top10")
+        return topRule(rule, sheet, cf, value) ? { fill: rule.fill, color: rule.color } : null;
+    if (rule.type === "aboveAverage")
+        return averageRule(rule, sheet, cf, value) ? { fill: rule.fill, color: rule.color } : null;
     return null;
+}
+/** A blank is neither a duplicate nor unique. Text compares without case. */
+function textRule(rule, sheet, cf, cell) {
+    const text = cell?.value ?? "";
+    if (rule.type === "containsText") {
+        const hay = text.toLowerCase();
+        const needle = rule.text.toLowerCase();
+        if (rule.op === "notContains")
+            return !hay.includes(needle);
+        if (!needle)
+            return false;
+        if (rule.op === "beginsWith")
+            return hay.startsWith(needle);
+        if (rule.op === "endsWith")
+            return hay.endsWith(needle);
+        return hay.includes(needle);
+    }
+    if (text === "")
+        return false;
+    let count = 0;
+    eachCell(sheet, cf, (item) => {
+        if (item?.value === text)
+            count += 1;
+    });
+    return rule.type === "duplicate" ? count > 1 : count === 1;
+}
+/** Top or bottom N, or a percent of the range. Ties at the cutoff stay in. */
+function topRule(rule, sheet, cf, value) {
+    if (!Number.isFinite(value))
+        return false;
+    const nums = rangeNumbers(sheet, cf);
+    if (!nums.length)
+        return false;
+    const sorted = [...nums].sort((a, b) => (rule.bottom ? a - b : b - a));
+    const count = rule.percent ? Math.max(1, Math.round((nums.length * rule.rank) / 100)) : rule.rank;
+    const cutoff = sorted[Math.min(count, sorted.length) - 1];
+    if (cutoff == null)
+        return false;
+    return rule.bottom ? value <= cutoff : value >= cutoff;
+}
+/** Above or below the mean of the range. Equal to the mean only counts when the rule says so. */
+function averageRule(rule, sheet, cf, value) {
+    const nums = rangeNumbers(sheet, cf);
+    if (!Number.isFinite(value) || !nums.length)
+        return false;
+    const mean = nums.reduce((sum, item) => sum + item, 0) / nums.length;
+    if (value === mean)
+        return rule.equal === true;
+    return rule.above === false ? value < mean : value > mean;
+}
+function rangeNumbers(sheet, cf) {
+    const nums = [];
+    eachCell(sheet, cf, (cell) => {
+        const n = Number(cell?.value ?? "");
+        if (Number.isFinite(n))
+            nums.push(n);
+    });
+    return nums;
+}
+function eachCell(sheet, cf, visit) {
+    for (let r = cf.r1; r <= cf.r2; r += 1) {
+        for (let c = cf.c1; c <= cf.c2; c += 1)
+            visit(sheet.cells[r]?.[c]);
+    }
 }
 function rangeStats(sheet, cf) {
     let min = Number.POSITIVE_INFINITY;

@@ -287,6 +287,7 @@ function slicerList(archive, path) {
                 name,
                 source: cached?.source ?? "",
                 field: cached?.field ?? (0, xml_1.attr)(item, "caption") ?? "",
+                ...(cached?.values ? { values: cached.values } : {}),
             };
         });
     });
@@ -300,7 +301,14 @@ function slicerCache(archive, slicerPath) {
         const name = (0, xml_1.attr)(def, "name");
         if (!name)
             continue;
-        caches.set(name, { source: (0, xml_1.attr)(def, "sourceName") ?? "", field: (0, xml_1.attr)((0, xml_1.child)(def, "data"), "name") ?? "" });
+        // A value with no `nd` flag is one the slicer still shows. None at all means every value shows.
+        const items = (0, xml_1.children)((0, xml_1.child)(def, "data"), "i");
+        const kept = items.filter((item) => (0, xml_1.attr)(item, "nd") !== "1").map((item) => (0, xml_1.attr)(item, "v") ?? "").filter((value) => value !== "");
+        caches.set(name, {
+            source: (0, xml_1.attr)(def, "sourceName") ?? "",
+            field: (0, xml_1.attr)((0, xml_1.child)(def, "data"), "name") ?? "",
+            ...(items.length && kept.length < items.length ? { values: kept } : {}),
+        });
     }
     return caches;
 }
@@ -485,6 +493,30 @@ function cfRule(rule, dxfs) {
         if (set === "3TrafficLights" || set === "3Arrows" || set === "3Symbols")
             return { type: "iconSet", set };
     }
+    if (type === "duplicateValues" || type === "uniqueValues")
+        return { type: type === "duplicateValues" ? "duplicate" : "unique", ...dxfLook(rule, dxfs) };
+    if (type === "top10") {
+        const rank = Number((0, xml_1.attr)(rule, "rank"));
+        return {
+            type: "top10",
+            rank: Number.isFinite(rank) && rank > 0 ? rank : 10,
+            ...((0, xml_1.attr)(rule, "percent") === "1" ? { percent: true } : {}),
+            ...((0, xml_1.attr)(rule, "bottom") === "1" ? { bottom: true } : {}),
+            ...dxfLook(rule, dxfs),
+        };
+    }
+    if (type === "aboveAverage") {
+        return {
+            type: "aboveAverage",
+            ...((0, xml_1.attr)(rule, "aboveAverage") === "0" ? { above: false } : {}),
+            ...((0, xml_1.attr)(rule, "equalAverage") === "1" ? { equal: true } : {}),
+            ...dxfLook(rule, dxfs),
+        };
+    }
+    if (type === "containsText" || type === "notContainsText" || type === "beginsWith" || type === "endsWith") {
+        const op = type === "notContainsText" ? "notContains" : type === "beginsWith" ? "beginsWith" : type === "endsWith" ? "endsWith" : "contains";
+        return { type: "containsText", op, text: (0, xml_1.attr)(rule, "text") ?? "", ...dxfLook(rule, dxfs) };
+    }
     return undefined;
 }
 function cellOp(name) {
@@ -542,11 +574,13 @@ function tables(root, archive, path) {
         const range = rangeOf((0, xml_1.attr)(table, "ref") ?? "");
         if (!table || !range)
             return [];
+        const columns = (0, xml_1.children)((0, xml_1.child)(table, "tableColumns"), "tableColumn").map((column) => (0, xml_1.attr)(column, "name") ?? "");
         return [{
                 id: (0, xml_1.attr)(table, "id") ?? `table${index + 1}`,
                 name: (0, xml_1.attr)(table, "displayName") ?? (0, xml_1.attr)(table, "name") ?? `Table${index + 1}`,
                 ...range,
                 headerRow: (0, xml_1.attr)(table, "headerRowCount") !== "0",
+                ...(columns.length ? { columns } : {}),
             }];
     });
 }
@@ -562,13 +596,20 @@ function chartList(archive, path) {
         const node = plot?.children.find((item) => item.name in kinds);
         if (!node)
             return [];
-        const range = chartRange(node) ?? "";
-        return [{ id: `chart${index + 1}`, kind: kinds[node.name] ?? "column", range }];
+        const series = chartSeries(node);
+        return [{ id: `chart${index + 1}`, kind: kinds[node.name] ?? "column", range: series[0] ?? "", ...(series.length > 1 ? { series } : {}) }];
     });
 }
-function chartRange(node) {
-    const ref = findNamed(node, "f");
-    return ref?.text.trim().replace(/^[^!]*!/, "");
+/** Each series keeps its own range, so two columns stay two series instead of one mixed list. */
+function chartSeries(node) {
+    return node.children
+        .filter((item) => item.name === "ser")
+        .flatMap((ser) => {
+        const values = (0, xml_1.child)(ser, "val") ?? (0, xml_1.child)(ser, "yVal");
+        const ref = values ? findNamed(values, "f") : undefined;
+        const range = ref?.text.trim().replace(/^[^!]*!/, "");
+        return range ? [range] : [];
+    });
 }
 function findNamed(node, name) {
     if (node.name === name)

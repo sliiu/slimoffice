@@ -133,6 +133,7 @@ function mountWorkbook(host, workbook, options = {}) {
         },
         filterOn: () => !!currentSheet().filter,
         filterBy,
+        slicerBy,
         hideRow: () => {
             remember();
             const sheet = currentSheet();
@@ -236,7 +237,11 @@ function mountWorkbook(host, workbook, options = {}) {
         if (workbook.calcMode !== "manual")
             (0, sheet_formula_1.recalculate)(workbook);
         const sheet = currentSheet();
-        frame.replaceChildren(grid(sheet), (0, charts_1.renderCharts)(sheet));
+        const charts = (0, charts_1.renderCharts)(sheet);
+        for (const button of charts.querySelectorAll(".sheet-slicer-item")) {
+            button.addEventListener("click", () => toggleSlicer(button));
+        }
+        frame.replaceChildren(grid(sheet), charts);
         frame.style.zoom = String(zoomFactor);
         frame.dataset.zoom = String(zoomFactor);
         frame.classList.toggle("is-print-preview", !!sheet.pageSetup?.orientation);
@@ -293,8 +298,12 @@ function mountWorkbook(host, workbook, options = {}) {
         }
         return table;
     }
-    /** A row drops out when any filtered column holds a value that column does not list. The header row always stays. */
+    /** A row drops out when any filtered column, or any slicer, holds a value it does not list. The header row always stays. */
     function filteredOut(sheet, row) {
+        if (row === 0)
+            return false;
+        if ((sheet.slicers ?? []).some((slicer) => slicerHides(sheet, slicer, row)))
+            return true;
         const filter = sheet.filter;
         if (!filter?.columns?.length || row === filter.r1 || row < filter.r1 || row > filter.r2)
             return false;
@@ -302,6 +311,15 @@ function mountWorkbook(host, workbook, options = {}) {
             const value = sheet.cells[row]?.[filter.c1 + column.col]?.value ?? "";
             return !column.values.includes(value);
         });
+    }
+    /** A slicer with no selection shows everything. Otherwise the row must hold one of the values it keeps. */
+    function slicerHides(sheet, slicer, row) {
+        if (!slicer.values)
+            return false;
+        const column = (sheet.cells[0] ?? []).findIndex((cell) => cell?.value === slicer.field);
+        if (column < 0)
+            return false;
+        return !slicer.values.includes(sheet.cells[row]?.[column]?.value ?? "");
     }
     function coveredByMerge(sheet, row, column) {
         return (sheet.merges ?? []).some((m) => row >= m.r1 && row <= m.r2 && column >= m.c1 && column <= m.c2 && !(row === m.r1 && column === m.c1));
@@ -317,8 +335,19 @@ function mountWorkbook(host, workbook, options = {}) {
         td.dataset.col = String(column);
         applyLook(td, item, row, column);
         const look = (0, cf_1.cfLook)(sheet, row, column, item);
+        if (look.fill)
+            td.style.background = look.fill;
+        if (look.color)
+            td.style.color = look.color;
         if (look.icon)
             td.textContent = `${look.icon} ${td.textContent}`;
+        if (look.bar != null) {
+            const bar = document.createElement("span");
+            bar.className = "sheet-data-bar";
+            bar.style.width = `${Math.round(look.bar * 100)}%`;
+            bar.style.background = look.fill ?? "#638ec6";
+            td.append(bar);
+        }
         const span = mergeSpan(sheet, row, column);
         if (span) {
             td.colSpan = span.c2 - span.c1 + 1;
@@ -899,6 +928,25 @@ function mountWorkbook(host, workbook, options = {}) {
             range: range ?? auto,
         });
         sheet.charts = charts;
+        finish();
+    }
+    /** A click flips one value. The slicer then keeps whichever buttons stay pressed. */
+    function toggleSlicer(button) {
+        const box = button.closest(".sheet-slicer");
+        const name = box?.querySelector(".sheet-slicer-title")?.textContent ?? "";
+        button.classList.toggle("is-on");
+        const values = [...(box?.querySelectorAll(".sheet-slicer-item.is-on") ?? [])].map((item) => item.dataset.value ?? "");
+        slicerBy(name, values);
+    }
+    /** Keep the rows a slicer shows. No values, or every value, clears it so the whole column shows again. */
+    function slicerBy(name, values) {
+        const sheet = currentSheet();
+        const slicer = (sheet.slicers ?? []).find((item) => item.name === name);
+        if (!slicer)
+            return;
+        remember();
+        const all = (0, charts_1.slicerValues)(sheet, slicer);
+        slicer.values = values?.length && values.length < all.length ? values : undefined;
         finish();
     }
     /** Narrow the current column to the given values, or drop that column's filter when none are given. */

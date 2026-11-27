@@ -240,19 +240,27 @@ function slicerList(archive: OfficeArchive, path: string): NonNullable<Worksheet
         name,
         source: cached?.source ?? "",
         field: cached?.field ?? attr(item, "caption") ?? "",
+        ...(cached?.values ? { values: cached.values } : {}),
       };
     });
   });
 }
 
-function slicerCache(archive: OfficeArchive, slicerPath: string): Map<string, { source: string; field: string }> {
-  const caches = new Map<string, { source: string; field: string }>();
+function slicerCache(archive: OfficeArchive, slicerPath: string): Map<string, { source: string; field: string; values?: string[] }> {
+  const caches = new Map<string, { source: string; field: string; values?: string[] }>();
   for (const target of relTargets(archive, slicerPath).values()) {
     if (!/slicerCache/i.test(target)) continue;
     const def = child(parseXml(archive.getText(target) ?? ""), "slicerCacheDefinition");
     const name = attr(def, "name");
     if (!name) continue;
-    caches.set(name, { source: attr(def, "sourceName") ?? "", field: attr(child(def, "data"), "name") ?? "" });
+    // A value with no `nd` flag is one the slicer still shows. None at all means every value shows.
+    const items = children(child(def, "data"), "i");
+    const kept = items.filter((item) => attr(item, "nd") !== "1").map((item) => attr(item, "v") ?? "").filter((value) => value !== "");
+    caches.set(name, {
+      source: attr(def, "sourceName") ?? "",
+      field: attr(child(def, "data"), "name") ?? "",
+      ...(items.length && kept.length < items.length ? { values: kept } : {}),
+    });
   }
   return caches;
 }
@@ -434,6 +442,29 @@ function cfRule(rule: XmlNode, dxfs: DxfLook[]): SheetCfRule | undefined {
     const set = attr(child(rule, "iconSet"), "iconSet");
     if (set === "3TrafficLights" || set === "3Arrows" || set === "3Symbols") return { type: "iconSet", set };
   }
+  if (type === "duplicateValues" || type === "uniqueValues") return { type: type === "duplicateValues" ? "duplicate" : "unique", ...dxfLook(rule, dxfs) };
+  if (type === "top10") {
+    const rank = Number(attr(rule, "rank"));
+    return {
+      type: "top10",
+      rank: Number.isFinite(rank) && rank > 0 ? rank : 10,
+      ...(attr(rule, "percent") === "1" ? { percent: true } : {}),
+      ...(attr(rule, "bottom") === "1" ? { bottom: true } : {}),
+      ...dxfLook(rule, dxfs),
+    };
+  }
+  if (type === "aboveAverage") {
+    return {
+      type: "aboveAverage",
+      ...(attr(rule, "aboveAverage") === "0" ? { above: false } : {}),
+      ...(attr(rule, "equalAverage") === "1" ? { equal: true } : {}),
+      ...dxfLook(rule, dxfs),
+    };
+  }
+  if (type === "containsText" || type === "notContainsText" || type === "beginsWith" || type === "endsWith") {
+    const op = type === "notContainsText" ? "notContains" : type === "beginsWith" ? "beginsWith" : type === "endsWith" ? "endsWith" : "contains";
+    return { type: "containsText", op, text: attr(rule, "text") ?? "", ...dxfLook(rule, dxfs) };
+  }
   return undefined;
 }
 
@@ -484,11 +515,13 @@ function tables(root: XmlNode, archive: OfficeArchive, path: string): SheetTable
     const table = child(parseXml(xml), "table");
     const range = rangeOf(attr(table, "ref") ?? "");
     if (!table || !range) return [];
+    const columns = children(child(table, "tableColumns"), "tableColumn").map((column) => attr(column, "name") ?? "");
     return [{
       id: attr(table, "id") ?? `table${index + 1}`,
       name: attr(table, "displayName") ?? attr(table, "name") ?? `Table${index + 1}`,
       ...range,
       headerRow: attr(table, "headerRowCount") !== "0",
+      ...(columns.length ? { columns } : {}),
     }];
   });
 }
@@ -504,14 +537,21 @@ function chartList(archive: OfficeArchive, path: string): SheetChart[] {
       const plot = child(child(chart, "chart"), "plotArea");
       const node = plot?.children.find((item) => item.name in kinds);
       if (!node) return [];
-      const range = chartRange(node) ?? "";
-      return [{ id: `chart${index + 1}`, kind: kinds[node.name] ?? "column", range }];
+      const series = chartSeries(node);
+      return [{ id: `chart${index + 1}`, kind: kinds[node.name] ?? "column", range: series[0] ?? "", ...(series.length > 1 ? { series } : {}) }];
     });
 }
 
-function chartRange(node: XmlNode): string | undefined {
-  const ref = findNamed(node, "f");
-  return ref?.text.trim().replace(/^[^!]*!/, "");
+/** Each series keeps its own range, so two columns stay two series instead of one mixed list. */
+function chartSeries(node: XmlNode): string[] {
+  return node.children
+    .filter((item) => item.name === "ser")
+    .flatMap((ser) => {
+      const values = child(ser, "val") ?? child(ser, "yVal");
+      const ref = values ? findNamed(values, "f") : undefined;
+      const range = ref?.text.trim().replace(/^[^!]*!/, "");
+      return range ? [range] : [];
+    });
 }
 
 function findNamed(node: XmlNode, name: string): XmlNode | undefined {

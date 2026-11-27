@@ -10,6 +10,7 @@ export class FormulaError {
 }
 export const E = {
     DIV0: () => new FormulaError("#DIV/0!"),
+    NULL: () => new FormulaError("#NULL!"),
     VALUE: () => new FormulaError("#VALUE!"),
     REF: () => new FormulaError("#REF!"),
     NA: () => new FormulaError("#N/A"),
@@ -324,10 +325,15 @@ function tokenize(text) {
             let j = i + 1;
             while (j < text.length && /[A-Za-z0-9_$一-鿿.]/.test(text[j]))
                 j += 1;
+            // An R1C1 address keeps its brackets, as in R[-1]C[2]. A name stops before them.
+            if (/^[Rr]$/.test(text.slice(i, j)) && text[j] === "[") {
+                while (j < text.length && /[RrCc0-9\[\]+\-]/.test(text[j]))
+                    j += 1;
+            }
             const raw = text.slice(i, j);
             const upper = raw.toUpperCase();
-            // A cell reference is one to three column letters and a row number. Anything longer is a name.
-            if (/^\$?[A-Z]{1,3}\$?\d+$/.test(upper))
+            // A cell reference is one to three column letters and a row number, or an R1C1 address. Anything else is a name.
+            if (/^\$?[A-Z]{1,3}\$?\d+$/.test(upper) || isR1C1(upper))
                 out.push({ kind: "ref", value: upper });
             else
                 out.push({ kind: "id", value: upper });
@@ -449,7 +455,14 @@ class Parser {
                 return left;
             if (right instanceof FormulaError)
                 return right;
-            left = `${asText(left)}${asText(right)}`;
+            const lifted = lift(left, right, (a, b) => {
+                if (a instanceof FormulaError)
+                    return a;
+                if (b instanceof FormulaError)
+                    return b;
+                return `${asText(a)}${asText(b)}`;
+            });
+            left = lifted ?? `${asText(left)}${asText(right)}`;
         }
         return left;
     }
@@ -503,6 +516,12 @@ class Parser {
             throw E.VALUE();
         if (token.kind === "num") {
             this.take();
+            // `1:1` is every column of those rows, not two numbers.
+            if (this.peek()?.kind === "colon" && this.tokens[this.i + 1]?.kind === "num") {
+                this.take();
+                const end = this.take().value;
+                return this.rowRange(undefined, token.value, end);
+            }
             return token.value;
         }
         if (token.kind === "str") {
@@ -668,6 +687,18 @@ class Parser {
         return args;
     }
     parseRefOrCall() {
+        let value = this.parseOneRef();
+        // A space between two ranges is their intersection, as in `A1:C3 B2:B4`.
+        while (value instanceof FormulaError === false && this.startsRef()) {
+            value = intersectRanges(this.ctx.workbook, value, this.parseOneRef());
+        }
+        return value;
+    }
+    startsRef() {
+        const token = this.peek();
+        return token?.kind === "ref" || (token?.kind === "id" && this.tokens[this.i + 1]?.kind !== "lp");
+    }
+    parseOneRef() {
         const first = this.take();
         if (first.kind !== "ref" && first.kind !== "id")
             throw E.VALUE();
@@ -675,13 +706,27 @@ class Parser {
         if (this.peek()?.kind === "bang") {
             this.take();
             const sheetName = first.value;
-            const next = this.take();
-            if (next.kind !== "ref" && next.kind !== "id")
+            const next = this.peek();
+            if (next?.kind === "num") {
+                this.take();
+                if (this.peek()?.kind !== "colon")
+                    throw E.REF();
+                this.take();
+                const end = this.take();
+                if (end.kind !== "num")
+                    throw E.REF();
+                return this.rowRange(sheetName, next.value, end.value);
+            }
+            if (!next || (next.kind !== "ref" && next.kind !== "id"))
                 throw E.REF();
+            this.take();
             return this.parseRangeTail(sheetName, next.value);
         }
         if (first.kind === "id" && this.peek()?.kind === "lp")
             return this.parseCall(first.value);
+        // Table1[列] reads that column of the named table, below its header.
+        if (first.kind === "id" && this.peek()?.kind === "lsb")
+            return this.tableColumn(first.value);
         if (first.kind === "id" && (first.value === "TRUE" || first.value === "FALSE")) {
             return first.value === "TRUE";
         }
@@ -691,24 +736,29 @@ class Parser {
     }
     parseRangeTail(sheetName, startRef) {
         let endRef = startRef;
+        let ranged = false;
         if (this.peek()?.kind === "colon") {
             this.take();
             const next = this.take();
             if (next.kind !== "ref" && next.kind !== "id")
                 throw E.REF();
             endRef = next.value;
+            ranged = true;
         }
-        const start = parseA1(startRef);
-        const end = parseA1(endRef);
-        if (!start || !end) {
-            // bare identifier used as name
+        // A colon between column letters, as in A:A, covers those columns. A bare letter stays a name.
+        const start = locateRef(startRef, ranged, this.ctx);
+        const end = locateRef(endRef, ranged, this.ctx);
+        // A relative R1C1 address that leaves the sheet is a reference error, not a name.
+        if ((start && start.row < 0) || (end && end.row < 0))
+            return E.REF();
+        if (!start || !end || start.whole !== end.whole) {
             if (!sheetName && startRef === endRef) {
                 const named = this.ctx.workbook.names?.find((item) => item.name.toUpperCase() === startRef);
                 if (named)
                     return evaluate(named.refersTo.startsWith("=") ? named.refersTo : `=${named.refersTo}`, this.ctx);
                 return { name: startRef };
             }
-            throw E.NAME();
+            throw start || end ? E.REF() : E.NAME();
         }
         const sheetIndex = sheetName ? findSheet(this.ctx.workbook, sheetName) : this.ctx.sheetIndex;
         if (sheetIndex < 0)
@@ -718,15 +768,82 @@ class Parser {
             return values;
         return values;
     }
+    /** The data rows of one column of a table. The name has to be a table, and the column one of its headers. */
+    tableColumn(name) {
+        this.take();
+        if (this.peek()?.kind !== "id" && this.peek()?.kind !== "str")
+            return E.REF();
+        const column = this.take().value;
+        if (this.peek()?.kind !== "rsb")
+            return E.REF();
+        this.take();
+        for (const [sheetIndex, sheet] of this.ctx.workbook.sheets.entries()) {
+            const table = (sheet.tables ?? []).find((item) => item.name.toUpperCase() === name);
+            if (!table)
+                continue;
+            const at = (table.columns ?? []).findIndex((item) => item.toUpperCase() === column);
+            if (at < 0)
+                return E.REF();
+            const top = table.headerRow === false ? table.r1 : table.r1 + 1;
+            return readRange(this.ctx.workbook, sheetIndex, { row: top, col: table.c1 + at }, { row: table.r2, col: table.c1 + at });
+        }
+        return E.NAME();
+    }
+    /** `1:3` covers every column of those rows, bounded by the columns the sheet actually holds. */
+    rowRange(sheetName, start, end) {
+        if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < 1 || start > 1048576 || end > 1048576)
+            return E.REF();
+        const sheetIndex = sheetName ? findSheet(this.ctx.workbook, sheetName) : this.ctx.sheetIndex;
+        if (sheetIndex < 0)
+            return E.REF();
+        return readRange(this.ctx.workbook, sheetIndex, { row: start - 1, col: 0, whole: "row" }, { row: end - 1, col: 0, whole: "row" });
+    }
 }
-function parseA1(ref) {
+function parseA1(ref, ctx) {
     const match = /^\$?([A-Z]+)\$?(\d+)$/.exec(ref.toUpperCase());
+    if (match) {
+        const col = columnNumber(match[1] ?? "");
+        if (col == null)
+            return undefined;
+        return { row: Number(match[2]) - 1, col };
+    }
+    return ctx ? parseR1C1(ref, ctx) : undefined;
+}
+/** `R2C3` is absolute, `R[1]C[-2]` counts from the cell holding the formula. */
+function isR1C1(ref) {
+    return /^R(\[-?\d+\]|\d+)?C(\[-?\d+\]|\d+)?$/.test(ref);
+}
+function parseR1C1(ref, ctx) {
+    const match = /^R(\[(-?\d+)\]|(\d+))?C(\[(-?\d+)\]|(\d+))?$/.exec(ref.toUpperCase());
     if (!match)
         return undefined;
+    const row = match[3] ? Number(match[3]) - 1 : ctx.row + (match[2] ? Number(match[2]) : 0);
+    const col = match[6] ? Number(match[6]) - 1 : ctx.col + (match[5] ? Number(match[5]) : 0);
+    if (row < 0 || col < 0 || row > 1048575 || col > 16383)
+        return { row: -1, col: -1 };
+    return { row, col };
+}
+/** A column letter on its own, so `A:C` can mean every row of those columns. Only after a colon, so a bare name stays a name. */
+function locateRef(ref, allowColumn, ctx) {
+    const cell = parseA1(ref, ctx);
+    if (cell)
+        return cell;
+    if (!allowColumn)
+        return undefined;
+    const col = columnNumber(ref.replace(/^\$/, ""));
+    if (col == null || !/^\$?[A-Z]{1,3}$/.test(ref.toUpperCase()))
+        return undefined;
+    return { row: 0, col, whole: "col" };
+}
+function columnNumber(letters) {
+    if (!/^[A-Z]{1,3}$/.test(letters))
+        return undefined;
     let col = 0;
-    for (const letter of match[1] ?? "")
+    for (const letter of letters)
         col = col * 26 + letter.charCodeAt(0) - 64;
-    return { row: Number(match[2]) - 1, col: col - 1 };
+    if (col < 1 || col > 16384)
+        return undefined;
+    return col - 1;
 }
 function findSheet(workbook, name) {
     const needle = name.replace(/^'|'$/g, "").toUpperCase();
@@ -736,10 +853,19 @@ function readRange(workbook, sheetIndex, start, end) {
     const sheet = workbook.sheets[sheetIndex];
     if (!sheet)
         return [];
-    const r1 = Math.min(start.row, end.row);
-    const r2 = Math.max(start.row, end.row);
-    const c1 = Math.min(start.col, end.col);
-    const c2 = Math.max(start.col, end.col);
+    let r1 = Math.min(start.row, end.row);
+    let r2 = Math.max(start.row, end.row);
+    let c1 = Math.min(start.col, end.col);
+    let c2 = Math.max(start.col, end.col);
+    // A whole column or row stops at the cells the sheet holds, not Excel's empty million.
+    if (start.whole === "col" && end.whole === "col") {
+        r1 = 0;
+        r2 = Math.max(0, sheet.cells.length - 1);
+    }
+    if (start.whole === "row" && end.whole === "row") {
+        c1 = 0;
+        c2 = Math.max(0, sheet.cells.reduce((widest, row) => Math.max(widest, row?.length ?? 0), 1) - 1);
+    }
     const out = [];
     const hidden = [];
     const subtotals = [];
@@ -924,6 +1050,21 @@ function asBool(value) {
     return E.VALUE();
 }
 function binaryNum(left, right, op) {
+    const lifted = lift(left, right, (a, b) => {
+        if (a instanceof FormulaError)
+            return a;
+        if (b instanceof FormulaError)
+            return b;
+        const x = asNumber(a);
+        if (x instanceof FormulaError)
+            return x;
+        const y = asNumber(b);
+        if (y instanceof FormulaError)
+            return y;
+        return op(x, y);
+    });
+    if (lifted)
+        return lifted;
     const a = asNumber(left);
     if (a instanceof FormulaError)
         return a;
@@ -932,7 +1073,71 @@ function binaryNum(left, right, op) {
         return b;
     return op(a, b);
 }
+const ERROR_CODES = new Set(["#DIV/0!", "#N/A", "#NAME?", "#NULL!", "#NUM!", "#VALUE!", "#REF!", "#SPILL!", "#CALC!"]);
+function isMulti(value) {
+    return Array.isArray(value) && value.length > 1;
+}
+/**
+ * An operator between two ranges runs once per cell. A single value spreads across the
+ * other side, and a single row against a single column fills the block. A side that is
+ * shorter, and not a single row or column, leaves #N/A in the cells it does not cover.
+ * Returns undefined when both sides are single values, so the scalar path stays as it was.
+ */
+function lift(left, right, op) {
+    if (!isMulti(left) && !isMulti(right))
+        return undefined;
+    if (left instanceof FormulaError)
+        return left;
+    if (right instanceof FormulaError)
+        return right;
+    if (isPending(left) || isPending(right))
+        return E.NAME();
+    if (isLambda(left) || isLambda(right))
+        return E.VALUE();
+    const a = gridOf(left);
+    const b = gridOf(right);
+    const rows = Math.max(a.rows, b.rows);
+    const cols = Math.max(a.cols, b.cols);
+    const out = [];
+    for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+            const cell = op(a.at(r, c), b.at(r, c));
+            out.push(cell instanceof FormulaError ? cell.code : cell);
+        }
+    }
+    return withWidth(out, cols);
+}
+function gridOf(value) {
+    if (!isMulti(value)) {
+        const cell = Array.isArray(value) ? (value[0] ?? "") : value instanceof FormulaError || isPending(value) || isLambda(value) || isOmitted(value) ? "" : value;
+        return { rows: 1, cols: 1, at: () => cell };
+    }
+    const cols = rangeWidth(value);
+    const rows = Math.ceil(value.length / cols);
+    return {
+        rows,
+        cols,
+        at: (row, col) => {
+            const r = rows === 1 ? 0 : row;
+            const c = cols === 1 ? 0 : col;
+            if (r >= rows || c >= cols)
+                return E.NA();
+            const item = value[r * cols + c] ?? "";
+            return typeof item === "string" && ERROR_CODES.has(item) ? new FormulaError(item) : item;
+        },
+    };
+}
 function compare(left, right, op) {
+    const lifted = lift(left, right, (a, b) => {
+        if (a instanceof FormulaError)
+            return a;
+        if (b instanceof FormulaError)
+            return b;
+        const result = compare(a, b, op);
+        return result instanceof FormulaError ? result : result === true;
+    });
+    if (lifted)
+        return lifted;
     if (isPending(left) || isPending(right))
         return E.NAME();
     if (isLambda(left) || isLambda(right))
@@ -5207,6 +5412,24 @@ function columnsOf(value) {
     if (origin)
         return origin.c2 - origin.c1 + 1;
     return Array.isArray(value) ? rangeWidth(value) : 1;
+}
+/** The cells two ranges share. Nothing in common is a null error. */
+function intersectRanges(workbook, left, right) {
+    if (left instanceof FormulaError)
+        return left;
+    if (right instanceof FormulaError)
+        return right;
+    const a = rangeOrigin(left);
+    const b = rangeOrigin(right);
+    if (!a || !b || a.sheetIndex !== b.sheetIndex)
+        return E.VALUE();
+    const r1 = Math.max(a.r1, b.r1);
+    const r2 = Math.min(a.r2, b.r2);
+    const c1 = Math.max(a.c1, b.c1);
+    const c2 = Math.min(a.c2, b.c2);
+    if (r1 > r2 || c1 > c2)
+        return E.NULL();
+    return readRange(workbook, a.sheetIndex, { row: r1, col: c1 }, { row: r2, col: c2 });
 }
 function rangeOrigin(value) {
     if (!Array.isArray(value))

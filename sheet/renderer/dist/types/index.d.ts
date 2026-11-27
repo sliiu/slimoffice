@@ -76,6 +76,8 @@ export interface SheetGrid {
     filterOn(): boolean;
     /** Keep only the rows whose cell in the current column is one of these values. Omit to clear that column. */
     filterBy(values?: string[]): void;
+    /** Keep the rows whose cell in the slicer's field is one of these values. Omit to show them all. */
+    slicerBy(name: string, values?: string[]): void;
     hideRow(): void;
     hideColumn(): void;
     unhide(): void;

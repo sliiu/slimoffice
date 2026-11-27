@@ -135,16 +135,29 @@ test("draws an area chart filled and a scatter chart as dots", () => {
   const dom = new JSDOM("<!doctype html><body></body>");
   globalThis.document = dom.window.document;
   const host = document.createElement("div");
-  const cells = [[{ value: "1" }], [{ value: "4" }], [{ value: "2" }]];
+  const cells = [[{ value: "1" }, { value: "3" }], [{ value: "4" }, { value: "6" }], [{ value: "2" }, { value: "5" }]];
   mountWorkbook(host, {
     calcMode: "manual",
-    sheets: [{ name: "销售", cells, charts: [{ id: "c1", kind: "area", range: "A1:A3" }, { id: "c2", kind: "scatter", range: "A1:A3" }] }],
+    sheets: [{
+      name: "销售",
+      cells,
+      charts: [
+        { id: "c1", kind: "area", range: "A1:A3" },
+        { id: "c2", kind: "scatter", range: "A1:A3" },
+        { id: "c3", kind: "column", range: "A1:A3", series: ["A1:A3", "B1:B3"] },
+      ],
+    }],
   });
   const charts = host.querySelectorAll(".sheet-chart");
   // The area chart fills down to the baseline; the scatter chart marks points and draws no line.
   assert.equal(charts[0]?.querySelector("polygon")?.getAttribute("fill"), "#4f46e5");
   assert.equal(charts[1]?.querySelectorAll("circle").length, 3);
   assert.equal(charts[1]?.querySelector("polyline"), null);
+  // Two series share the scale, so the second is drawn in its own color.
+  const column = charts[2]?.querySelectorAll("rect") ?? [];
+  assert.equal(column.length, 6);
+  assert.equal(column[0]?.getAttribute("fill"), "#4f46e5");
+  assert.equal(column[3]?.getAttribute("fill"), "#22c55e");
 });
 
 test("hides the rows a column filter leaves out", () => {
@@ -167,6 +180,52 @@ test("hides the rows a column filter leaves out", () => {
   assert.deepEqual(again, ["品类", "甲", "乙"]);
 });
 
+test("a slicer hides the rows it leaves out", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const grid = mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "品类" }], [{ value: "甲" }], [{ value: "乙" }], [{ value: "甲" }]],
+      slicers: [{ id: "s1", name: "品类切片", source: "Table1", field: "品类", values: ["甲"] }],
+    }],
+  });
+  const shown = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(shown, ["品类", "甲", "甲"]);
+  // Both values stay listed, and only 甲 starts pressed.
+  const items = [...host.querySelectorAll(".sheet-slicer-item")].map((button) => button.textContent);
+  assert.deepEqual(items, ["甲", "乙"]);
+  assert.equal(host.querySelector(".sheet-slicer-item.is-on")?.textContent, "甲");
+  // Pressing 乙 brings its row back.
+  (host.querySelectorAll(".sheet-slicer-item")[1] as HTMLButtonElement).click();
+  const again = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(again, ["品类", "甲", "乙", "甲"]);
+  // Clearing the slicer shows every row too.
+  grid.slicerBy("品类切片");
+  assert.equal(host.querySelectorAll("td").length, 4);
+});
+
+test("draws a win/loss sparkline the same height either side of the middle", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "10" }], [{ value: "-2" }], [{ value: "0" }]],
+      sparklines: [{ id: "s1", kind: "winLoss", data: "A1:A3", location: "B1" }],
+    }],
+  });
+  const bars = [...host.querySelectorAll(".sheet-sparkline rect")];
+  // Zero draws nothing, and the loss is no taller than the win even though 10 dwarfs 2.
+  assert.equal(bars.length, 2);
+  assert.equal(bars[0]?.getAttribute("height"), bars[1]?.getAttribute("height"));
+  assert.equal(Number(bars[0]?.getAttribute("y")) < Number(bars[1]?.getAttribute("y")), true);
+});
+
 test("finds comments and validated cells", () => {
   const dom = new JSDOM("<!doctype html><body></body>");
   globalThis.document = dom.window.document;
@@ -182,6 +241,53 @@ test("finds comments and validated cells", () => {
   assert.equal(grid.goToSpecial("comments"), 1);
   assert.equal(grid.goToSpecial("validation"), 1);
   assert.equal(grid.goToSpecial("conditional"), 0);
+});
+
+test("paints a color scale and a data bar on the cell", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "0" }, { value: "0" }], [{ value: "10" }, { value: "10" }]],
+      conditionalFormats: [
+        { id: "cf1", r1: 0, c1: 0, r2: 1, c2: 0, rule: { type: "colorScale", colors: ["#ffffff", "#ff0000"] } },
+        { id: "cf2", r1: 0, c1: 1, r2: 1, c2: 1, rule: { type: "dataBar", color: "#638ec6" } },
+      ],
+    }],
+  });
+  const cells = host.querySelectorAll<HTMLElement>("td");
+  // The low end of the scale stays white; the high end turns red.
+  assert.equal(cells[0]?.style.background, "rgb(255, 255, 255)");
+  assert.equal(cells[2]?.style.background, "rgb(255, 0, 0)");
+  // The bar grows with the value, so 10 fills the cell and 0 fills none of it.
+  const bar = (cell: HTMLElement | undefined) => cell?.querySelector<HTMLElement>(".sheet-data-bar")?.style.width;
+  assert.equal(bar(cells[1]), "0%");
+  assert.equal(bar(cells[3]), "100%");
+});
+
+test("highlights duplicates, the top values, and text", () => {
+  const sheet = {
+    name: "销售",
+    cells: [[{ value: "2" }, { value: "甲乙" }, { value: "1" }], [{ value: "9" }, { value: "乙" }, { value: "5" }], [{ value: "2" }, { value: "丙" }, { value: "3" }]],
+    conditionalFormats: [
+      { id: "cf1", r1: 0, c1: 0, r2: 2, c2: 0, rule: { type: "duplicate" as const, fill: "#fdd" } },
+      { id: "cf2", r1: 0, c1: 0, r2: 2, c2: 0, rule: { type: "top10" as const, rank: 1, fill: "#dfd" } },
+      { id: "cf3", r1: 0, c1: 1, r2: 2, c2: 1, rule: { type: "containsText" as const, op: "contains" as const, text: "甲", fill: "#ddf" } },
+      { id: "cf4", r1: 0, c1: 2, r2: 2, c2: 2, rule: { type: "aboveAverage" as const, fill: "#ffd" } },
+    ],
+  };
+  // 2 appears twice, so both cells fill; 9 is the single top value and overrides the duplicate color.
+  assert.equal(cfLook(sheet, 0, 0, sheet.cells[0]?.[0])?.fill, "#fdd");
+  assert.equal(cfLook(sheet, 1, 0, sheet.cells[1]?.[0])?.fill, "#dfd");
+  assert.equal(cfLook(sheet, 2, 0, sheet.cells[2]?.[0])?.fill, "#fdd");
+  // Only the cell holding 甲 matches the text rule. 5 is the only value above the mean of 1, 5 and 3.
+  assert.equal(cfLook(sheet, 0, 1, sheet.cells[0]?.[1])?.fill, "#ddf");
+  assert.equal(cfLook(sheet, 1, 1, sheet.cells[1]?.[1])?.fill, undefined);
+  assert.equal(cfLook(sheet, 1, 2, sheet.cells[1]?.[2])?.fill, "#ffd");
+  assert.equal(cfLook(sheet, 2, 2, sheet.cells[2]?.[2])?.fill, undefined);
 });
 
 test("evaluates a conditional format formula", () => {

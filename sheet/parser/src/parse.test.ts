@@ -150,10 +150,10 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
       `<Relationship Id="rIdTable1" Type="table" Target="../tables/table1.xml"/>` +
       `<Relationship Id="rIdDrawing1" Type="drawing" Target="../drawings/drawing1.xml"/>` +
       `</Relationships>`,
-    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B2" headerRowCount="1"/>`,
+    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B2" headerRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类"/><tableColumn id="2" name="数量"/></tableColumns></table>`,
     "xl/drawings/drawing1.xml": `<wsDr><graphicFrame><cNvPr id="1" name="Chart 1"/></graphicFrame></wsDr>`,
     "xl/drawings/_rels/drawing1.xml.rels": `<Relationships><Relationship Id="rIdChart1" Type="chart" Target="../charts/chart1.xml"/></Relationships>`,
-    "xl/charts/chart1.xml": `<chartSpace><chart><plotArea><barChart><ser><val><numRef><f>Sheet1!$B$1:$B$2</f></numRef></val></ser></barChart></plotArea></chart></chartSpace>`,
+    "xl/charts/chart1.xml": `<chartSpace><chart><plotArea><barChart><ser><val><numRef><f>Sheet1!$B$1:$B$2</f></numRef></val></ser><ser><val><numRef><f>Sheet1!$C$1:$C$2</f></numRef></val></ser></barChart></plotArea></chart></chartSpace>`,
     "xl/sharedStrings.xml": `<sst><si><t>甲</t></si></sst>`,
   });
   const workbook = await parseXlsx(bytes);
@@ -167,7 +167,8 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
   assert.equal(opened?.validations?.[1]?.op, "between");
   assert.equal(opened?.validations?.[1]?.formula2, "9");
   assert.equal(opened?.tables?.[0]?.name, "Table1");
-  assert.deepEqual(opened?.charts?.[0], { id: "chart1", kind: "column", range: "$B$1:$B$2" });
+  assert.deepEqual(opened?.tables?.[0]?.columns, ["品类", "数量"]);
+  assert.deepEqual(opened?.charts?.[0], { id: "chart1", kind: "column", range: "$B$1:$B$2", series: ["$B$1:$B$2", "$C$1:$C$2"] });
   assert.deepEqual(opened?.sparklines?.[0], { id: "spark1", kind: "column", data: "A1:A2", location: "C1" });
 });
 
@@ -183,6 +184,27 @@ test("reads the fill and font color a conditional format points at", async () =>
   });
   const workbook = await parseXlsx(bytes);
   assert.deepEqual(workbook.sheets[0]?.conditionalFormats?.[0]?.rule, { type: "cellValue", op: "gt", formula1: "10", fill: "#ffff00", color: "#ff0000" });
+});
+
+test("reads duplicate, top, average, and text conditional formats", async () => {
+  const bytes = book({
+    "xl/workbook.xml": WORKBOOK,
+    "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet>` +
+      `<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>` +
+      `<conditionalFormatting sqref="A1:A3">` +
+      `<cfRule type="duplicateValues" priority="1"/>` +
+      `<cfRule type="top10" priority="2" rank="2" bottom="1"/>` +
+      `<cfRule type="aboveAverage" priority="3" aboveAverage="0" equalAverage="1"/>` +
+      `<cfRule type="containsText" priority="4" operator="containsText" text="甲"/>` +
+      `</conditionalFormatting></worksheet>`,
+  });
+  const rules = (await parseXlsx(bytes)).sheets[0]?.conditionalFormats?.map((item) => item.rule);
+  assert.deepEqual(rules, [
+    { type: "duplicate" },
+    { type: "top10", rank: 2, bottom: true },
+    { type: "aboveAverage", above: false, equal: true },
+    { type: "containsText", op: "contains", text: "甲" },
+  ]);
 });
 
 test("reads theme colors, comments, and the pivot cache", async () => {
@@ -270,11 +292,11 @@ test("reads page breaks, slicers, and what-if data tables", async () => {
     "xl/worksheets/_rels/sheet1.xml.rels": '<Relationships><Relationship Id="rIdSlicer1" Type="slicer" Target="../slicers/slicer1.xml"/></Relationships>',
     "xl/slicers/slicer1.xml": '<slicers><slicer name="品类切片" cache="SlicerCache1" caption="品类"/></slicers>',
     "xl/slicers/_rels/slicer1.xml.rels": '<Relationships><Relationship Id="rIdCache1" Type="slicerCache" Target="../slicerCaches/slicerCache1.xml"/></Relationships>',
-    "xl/slicerCaches/slicerCache1.xml": '<slicerCacheDefinition name="SlicerCache1" sourceName="Table1"><data name="品类"/></slicerCacheDefinition>',
+    "xl/slicerCaches/slicerCache1.xml": '<slicerCacheDefinition name="SlicerCache1" sourceName="Table1"><data name="品类"><i v="甲"/><i v="乙" nd="1"/></data></slicerCacheDefinition>',
   });
   const opened = (await parseXlsx(bytes)).sheets[0];
   assert.deepEqual(opened?.pageBreaks, { rows: [5], cols: [3] });
-  assert.deepEqual(opened?.slicers, [{ id: "品类切片", name: "品类切片", source: "Table1", field: "品类" }]);
+  assert.deepEqual(opened?.slicers, [{ id: "品类切片", name: "品类切片", source: "Table1", field: "品类", values: ["甲"] }]);
   assert.deepEqual(opened?.dataTables, [{ ref: "B2:C3", rowInput: "A1", colInput: "A2" }]);
   assert.equal(opened?.cells[1]?.[1]?.array, true);
 });

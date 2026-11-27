@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Workbook } from "@sliiu/sheet-core";
-import { consolidateRanges, evaluate, formatResult, recalculate } from "./index";
+import { FormulaError, consolidateRanges, evaluate, formatResult, recalculate } from "./index";
 
 function book(cells: { value: string; formula?: string }[][]): Workbook {
   return { sheets: [{ name: "Sheet1", cells }] };
@@ -28,6 +28,71 @@ test("cell refs and SUM", () => {
   assert.equal(workbook.sheets[0]?.cells[0]?.[2]?.value, "3");
   assert.equal(evaluate("=SUM(A1:B1)", ctx(workbook)), 3);
   assert.equal(evaluate("=AVERAGE(A1:B1)", ctx(workbook)), 1.5);
+});
+
+test("whole columns and whole rows", () => {
+  const workbook = book([[{ value: "1" }, { value: "4" }], [{ value: "2" }, { value: "5" }], [{ value: "3" }, { value: "6" }]]);
+  // A column reference adds every number the column holds, and the order of the ends does not matter.
+  assert.equal(evaluate("=SUM(A:A)", ctx(workbook)), 6);
+  assert.equal(evaluate("=SUM(B:A)", ctx(workbook)), 21);
+  // A row reference covers the columns the sheet holds.
+  assert.equal(evaluate("=SUM(2:2)", ctx(workbook)), 7);
+  assert.equal(evaluate("=SUM(Sheet1!1:1)", ctx(workbook)), 5);
+  // A column letter on its own is still a name, not a column.
+  assert.equal(formatResult(evaluate("=A", ctx(workbook))), "#NAME?");
+});
+
+test("R1C1 addresses count from the cell", () => {
+  const workbook = book([[{ value: "1" }, { value: "2" }], [{ value: "3" }, { value: "4" }]]);
+  // R1C1 is the top-left cell, wherever the formula sits.
+  assert.equal(evaluate("=R1C1", ctx(workbook, 1, 1)), 1);
+  // Brackets count from the cell holding the formula, here B2.
+  assert.equal(evaluate("=R[-1]C[-1]", ctx(workbook, 1, 1)), 1);
+  assert.equal(evaluate("=SUM(R1C1:R2C2)", ctx(workbook)), 10);
+  // A relative address that leaves the sheet is a reference error.
+  assert.equal(formatResult(evaluate("=R[-1]C", ctx(workbook, 0, 0))), "#REF!");
+});
+
+test("a space between ranges is their overlap", () => {
+  const workbook = book([[{ value: "1" }, { value: "2" }, { value: "3" }], [{ value: "4" }, { value: "5" }, { value: "6" }], [{ value: "7" }, { value: "8" }, { value: "9" }]]);
+  // The two ranges share the middle column of the first two rows.
+  assert.equal(evaluate("=SUM(A1:C2 B1:B3)", ctx(workbook)), 7);
+  // The shared block is the middle column of the first two rows, in order.
+  assert.deepEqual(evaluate("=A1:C2 B1:B3", ctx(workbook)), [2, 5]);
+  // No shared cell is a null error.
+  assert.equal(formatResult(evaluate("=A1:A2 C2:C3", ctx(workbook))), "#NULL!");
+});
+
+test("operators run on every cell of a range", () => {
+  const workbook = book([
+    [{ value: "1" }, { value: "10" }, { value: "甲" }],
+    [{ value: "2" }, { value: "0" }, { value: "乙" }],
+    [{ value: "3" }, { value: "30" }, { value: "" }],
+  ]);
+  // A single number reaches every cell, and the result keeps the column shape.
+  assert.deepEqual(evaluate("=A1:A3+1", ctx(workbook)), [2, 3, 4]);
+  assert.equal(formatResult(evaluate("=-A1:A2", ctx(workbook))), "-1,-2");
+  assert.equal(formatResult(evaluate("=A1:A2%", ctx(workbook))), "0.01,0.02");
+  // A column against a row fills the block, one pair of cells at a time.
+  workbook.sheets[0]!.cells[0]![2] = { value: "100" };
+  assert.equal(formatResult(evaluate("=A1:A2+B1:C1", ctx(workbook))), "11,101,12,102");
+  // A side that is neither one row nor one column leaves #N/A where it runs out.
+  assert.equal(formatResult(evaluate("={1,2}+{10,20,30}", ctx(workbook))), "11,22,#N/A");
+  // A zero in one cell does not sink the rest.
+  assert.equal(formatResult(evaluate("=A1:A2/B1:B2", ctx(workbook))), "0.1,#DIV/0!");
+  // Comparisons and joining lift the same way, so a sum can count the cells that pass.
+  assert.deepEqual(evaluate("=A1:A3>2", ctx(workbook)), [false, false, true]);
+  assert.equal(evaluate("=SUM(A1:A3>2)", ctx(workbook)), 1);
+  assert.equal(formatResult(evaluate("=C2:C3&\"!\"", ctx(workbook))), "乙!,!");
+});
+
+test("a table column reference skips the header", () => {
+  const workbook = book([[{ value: "品类" }, { value: "数量" }], [{ value: "甲" }, { value: "10" }], [{ value: "乙" }, { value: "5" }]]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 2, c2: 1, headerRow: true, columns: ["品类", "数量"] }];
+  assert.equal(evaluate("=SUM(Table1[数量])", ctx(workbook)), 15);
+  // The header is text, so it never enters the sum.
+  assert.equal(evaluate("=COUNTA(Table1[品类])", ctx(workbook)), 2);
+  assert.equal(evaluate("=Table1[没有]", ctx(workbook)) instanceof FormulaError, true);
 });
 
 test("IF and text functions", () => {

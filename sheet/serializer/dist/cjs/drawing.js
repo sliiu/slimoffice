@@ -21,9 +21,7 @@ function drawingFragments(sheet, sheetIndex) {
     (sheet.charts ?? []).forEach((chart, index) => {
         drawings.push(chartAnchor(chart, index));
     });
-    (sheet.sparklines ?? []).forEach((spark) => {
-        extras.push(sparklineXml(spark));
-    });
+    // 迷你图是 x14 扩展，不在 ECMA-376 里，不写。
     (sheet.shapes ?? []).forEach((shape, index) => {
         drawings.push(shapeAnchor(shape, index));
     });
@@ -62,11 +60,7 @@ function drawingFragments(sheet, sheetIndex) {
         workbookRels.push(`<Relationship Id="rIdPivotCache${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition" Target="pivotCache/pivotCacheDefinition${id}.xml"/>`);
         pivotCacheRefs.push(`<pivotCache cacheId="${id}" r:id="rIdPivotCache${id}"/>`);
     });
-    if (sheet.formControls?.length) {
-        const path = `xl/ctrlProps/ctrlProp${sheetIndex + 1}.xml`;
-        parts.set(path, formControlsXml(sheet));
-        contentTypes.push(`<Override PartName="/${path}" ContentType="application/vnd.ms-excel.controlproperties+xml"/>`);
-    }
+    // 表单控件属性是 x14 扩展，不在 ECMA-376 里，不写。
     if (sheet.consolidation) {
         const path = `xl/consolidation/consolidation${sheetIndex + 1}.xml`;
         parts.set(path, consolidationXml(sheet.consolidation));
@@ -78,27 +72,17 @@ function drawingFragments(sheet, sheetIndex) {
         parts.set(path, xmlMapsXml(sheet));
         contentTypes.push(`<Override PartName="/${path}" ContentType="application/xml"/>`);
     }
-    if (sheet.slicers?.length) {
-        const slicerPath = `xl/slicers/slicer${sheetIndex + 1}.xml`;
-        parts.set(slicerPath, slicersXml(sheet));
-        parts.set(`xl/slicers/_rels/slicer${sheetIndex + 1}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheet.slicers.map((_item, at) => `<Relationship Id="rIdCache${at + 1}" Type="http://schemas.microsoft.com/office/2007/relationships/slicerCache" Target="../slicerCaches/slicerCache${sheetIndex + 1}_${at + 1}.xml"/>`).join("")}</Relationships>`);
-        contentTypes.push(`<Override PartName="/${slicerPath}" ContentType="application/vnd.ms-excel.slicer+xml"/>`);
-        sheet.slicers.forEach((slicer, index) => {
-            const cachePath = `xl/slicerCaches/slicerCache${sheetIndex + 1}_${index + 1}.xml`;
-            parts.set(cachePath, slicerCacheXml(slicer, index));
-            contentTypes.push(`<Override PartName="/${cachePath}" ContentType="application/vnd.ms-excel.slicerCache+xml"/>`);
-        });
-        rels.push(`<Relationship Id="rIdSlicer1" Type="http://schemas.microsoft.com/office/2007/relationships/slicer" Target="../slicers/slicer${sheetIndex + 1}.xml"/>`);
-    }
+    // 切片器是 x14 扩展，不在 ECMA-376 里，不写。
     return { sheetExtras: extras.join(""), parts, contentTypes, rels, workbookRels, pivotCacheRefs };
 }
 function tableXml(table) {
     const ref = `${colName(table.c1)}${table.r1 + 1}:${colName(table.c2)}${table.r2 + 1}`;
+    const columns = table.columns ?? [];
+    const cols = columns.length
+        ? `<tableColumns count="${columns.length}">${columns.map((name, index) => `<tableColumn id="${index + 1}" name="${escapeXml(name)}"/>`).join("")}</tableColumns>`
+        : "";
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow ? 'headerRowCount="1"' : ""}><autoFilter ref="${ref}"/><tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`;
-}
-function sparklineXml(spark) {
-    return `<extLst><ext uri="{05C60535-1F16-4fd2-B107-1C6BDA2B7F3E}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:sparklineGroups xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"><x14:sparklineGroup type="${spark.kind === "column" ? "column" : spark.kind === "winLoss" ? "stacked" : "line"}"><x14:sparklines><x14:sparkline><xm:f>${escapeXml(spark.data)}</xm:f><xm:sqref>${escapeXml(spark.location)}</xm:sqref></x14:sparkline></x14:sparklines></x14:sparklineGroup></x14:sparklineGroups></ext></extLst>`;
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${escapeXml(table.name)}" displayName="${escapeXml(table.name)}" ref="${ref}" ${table.headerRow ? 'headerRowCount="1"' : ""}>${cols}<autoFilter ref="${ref}"/><tableStyleInfo name="${escapeXml(table.style ?? "TableStyleMedium2")}" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`;
 }
 function chartAnchor(chart, index) {
     return `<xdr:twoCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${index * 12}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>6</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${index * 12 + 10}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:graphicFrame><xdr:nvGraphicFramePr><xdr:cNvPr id="${index + 1}" name="${escapeXml(chart.title ?? chart.id)}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rIdChart${index + 1}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor><!-- range ${escapeXml(chart.range)} kind ${chart.kind} -->`;
@@ -152,26 +136,11 @@ function consolidationXml(consolidation) {
     ].join("");
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<consolidation func="${consolidation.func}" dest="${escapeXml(consolidation.dest)}"${flags}>${sources}</consolidation>`;
 }
-function formControlsXml(sheet) {
-    const body = (sheet.formControls ?? [])
-        .map((control) => `<control id="${escapeXml(control.id)}" objectType="${control.kind}"${control.label ? ` name="${escapeXml(control.label)}"` : ""}${control.linked ? ` fmlaLink="${escapeXml(control.linked)}"` : ""}${control.checked ? ' checked="1"' : ""}/>`)
-        .join("");
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<formControlPr xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">${body}</formControlPr>`;
-}
 function xmlMapsXml(sheet) {
     const body = (sheet.xmlMaps ?? [])
         .map((map) => `<Map ID="${escapeXml(map.id)}" Name="${escapeXml(map.name)}"${map.root ? ` RootElement="${escapeXml(map.root)}"` : ""}/>`)
         .join("");
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<MapInfo xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${body}</MapInfo>`;
-}
-function slicersXml(sheet) {
-    const body = (sheet.slicers ?? [])
-        .map((slicer, index) => `<slicer name="${escapeXml(slicer.name)}" cache="SlicerCache${index + 1}" caption="${escapeXml(slicer.field)}"/>`)
-        .join("");
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<slicers xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">${body}</slicers>`;
-}
-function slicerCacheXml(slicer, index) {
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<slicerCacheDefinition xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" name="SlicerCache${index + 1}" sourceName="${escapeXml(slicer.source)}"><data name="${escapeXml(slicer.field)}"/></slicerCacheDefinition>`;
 }
 function pivotTableXml(pivot, cacheId) {
     const fields = pivot.fields ?? [...new Set([...(pivot.rows ?? []), ...(pivot.columns ?? []), ...(pivot.values ?? [])])];
