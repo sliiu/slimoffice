@@ -1,4 +1,4 @@
-const SLIMPPT_MODIFY_VERIFIER_ALG = "SlimPPT-Protection-v1";
+const PAVERA_MODIFY_VERIFIER_ALGS = new Set(["Pavera-Protection-v1", "SlimPPT-Protection-v1"]);
 /** MS-OFFCRYPTO / Office 2010+ `cryptAlgorithmSid` → Web Crypto digest name. */
 const CRYPT_SID_TO_DIGEST = {
     2: "MD2",
@@ -52,11 +52,11 @@ export function officeModifyVerifierSpinCount(mv) {
     const n = mv.spinCount ?? mv.spinValue;
     return typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 }
-/** True when `modifyVerifier` carries an Office-native password hash (not SlimPPT JSON). */
+/** True when `modifyVerifier` carries an Office-native password hash (not Pavera JSON). */
 export function isOfficePasswordVerifier(mv) {
     if (!mv)
         return false;
-    if (mv.algorithmName === SLIMPPT_MODIFY_VERIFIER_ALG)
+    if (mv.algorithmName && PAVERA_MODIFY_VERIFIER_ALGS.has(mv.algorithmName))
         return false;
     const hash = officeModifyVerifierHashB64(mv);
     const salt = officeModifyVerifierSaltB64(mv);

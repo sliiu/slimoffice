@@ -1,5 +1,5 @@
 {
-  "name": "slim-office-desktop",
+  "name": "pavera-desktop",
   "version": "0.1.0",
   "private": true,
   "description": "Pavera desktop. Presentations open from files on this computer.",
@@ -30,7 +30,7 @@
     "vite": "^8.3.1"
   },
   "build": {
-    "appId": "com.sliiu.slimppt",
+    "appId": "com.sliiu.pavera",
     "productName": "Pavera",
     "executableName": "Pavera",
     "copyright": "Copyright © Sliiu Inc",

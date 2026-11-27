@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PROOFING_LANG_META_TAG = exports.PROOFING_LANG_META_KEY = void 0;
+exports.PROOFING_LANG_META_TAG_LEGACY = exports.PROOFING_LANG_META_TAG = exports.PROOFING_LANG_META_KEY = void 0;
 exports.normalizeProofingLangId = normalizeProofingLangId;
 exports.ooxmlLangFromProofingId = ooxmlLangFromProofingId;
 exports.proofingIdFromOoxmlLang = proofingIdFromOoxmlLang;
@@ -9,15 +9,16 @@ exports.setProofingLanguageMeta = setProofingLanguageMeta;
 exports.buildProofingLangMeta = buildProofingLangMeta;
 exports.applyProofingLangMeta = applyProofingLangMeta;
 exports.PROOFING_LANG_META_KEY = "proofingLang";
-/** presentation tags part 中 SlimPPT 校对语言元数据键名。 */
-exports.PROOFING_LANG_META_TAG = "SlimPPT.ProofingLang.v1";
+/** presentation tags part 中 Pavera 校对语言元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
+exports.PROOFING_LANG_META_TAG = "Pavera.ProofingLang.v1";
+exports.PROOFING_LANG_META_TAG_LEGACY = "SlimPPT.ProofingLang.v1";
 const DEFAULT_PROOFING_LANG = "en";
 function normalizeProofingLangId(lang) {
     if (typeof lang !== "string" || !lang.trim())
         return undefined;
     return lang.trim();
 }
-/** SlimPPT 校对语言 id → OOXML `a:defRPr@lang`（Office 拼写检查认这个）。 */
+/** Pavera 校对语言 id → OOXML `a:defRPr@lang`（Office 拼写检查认这个）。 */
 function ooxmlLangFromProofingId(id) {
     switch (id) {
         case "zh":
@@ -38,7 +39,7 @@ function ooxmlLangFromProofingId(id) {
             return "en-US";
     }
 }
-/** OOXML `lang` / BCP-47 → SlimPPT 校对语言 id。无法识别时返回 undefined。 */
+/** OOXML `lang` / BCP-47 → Pavera 校对语言 id。无法识别时返回 undefined。 */
 function proofingIdFromOoxmlLang(lang) {
     if (!lang?.trim())
         return undefined;

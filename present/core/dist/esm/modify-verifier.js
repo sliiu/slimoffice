@@ -1,11 +1,12 @@
-import { getPresentationProtection, setPresentationProtectionMeta } from "./protection.js";
-import { isOfficePasswordVerifier } from "./office-password.js";
-/** SlimPPT-encoded protection payload in `modifyVerifier/@algorithmName`. */
-export const SLIMPPT_MODIFY_VERIFIER_ALG = "SlimPPT-Protection-v1";
+import { getPresentationProtection, setPresentationProtectionMeta } from "./protection";
+import { isOfficePasswordVerifier } from "./office-password";
+/** Pavera-encoded protection payload in `modifyVerifier/@algorithmName`. 新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT。 */
+export const SLIMPPT_MODIFY_VERIFIER_ALG = "Pavera-Protection-v1";
+export const SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY = "SlimPPT-Protection-v1";
 function deepCloneModifyVerifier(mv) {
     return mv ? { ...mv } : undefined;
 }
-/** Encode SlimPPT protection into OOXML `modifyVerifier` for presentation.xml round-trip. */
+/** Encode Pavera protection into OOXML `modifyVerifier` for presentation.xml round-trip. */
 export function encodeProtectionInModifyVerifier(p) {
     const payload = { v: 1, kind: p.kind, setAt: p.setAt };
     if (p.passwordHash)
@@ -16,11 +17,13 @@ export function encodeProtectionInModifyVerifier(p) {
         spinValue: 0,
     };
 }
-/** Decode SlimPPT or infer Office-native protection from `modifyVerifier`. */
+/** Decode Pavera or infer Office-native protection from `modifyVerifier`. */
 export function decodeProtectionFromModifyVerifier(mv) {
     if (!mv)
         return undefined;
-    if (mv.algorithmName === SLIMPPT_MODIFY_VERIFIER_ALG && mv.hashValue) {
+    if ((mv.algorithmName === SLIMPPT_MODIFY_VERIFIER_ALG ||
+        mv.algorithmName === SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY) &&
+        mv.hashValue) {
         try {
             const o = JSON.parse(mv.hashValue);
             if (o.v !== 1)

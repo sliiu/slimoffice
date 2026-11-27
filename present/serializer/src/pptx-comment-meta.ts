@@ -7,11 +7,17 @@ import {
   buildDeckSectionsMeta,
   buildProofingLangMeta,
   COMMENT_META_TAG,
+  COMMENT_META_TAG_LEGACY,
   EDITOR_PLUGINS_META_TAG,
+  EDITOR_PLUGINS_META_TAG_LEGACY,
   PLAYBACK_PLUGINS_META_TAG,
+  PLAYBACK_PLUGINS_META_TAG_LEGACY,
   PROTECTION_META_TAG,
+  PROTECTION_META_TAG_LEGACY,
   PROOFING_LANG_META_TAG,
+  PROOFING_LANG_META_TAG_LEGACY,
   SECTIONS_META_TAG,
+  SECTIONS_META_TAG_LEGACY,
 } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
 import { esc } from "./xml-util";
@@ -80,11 +86,17 @@ function allocRelId(relsXml: string): string {
 
 const SLIMPPT_TAG_KEYS = new Set([
   COMMENT_META_TAG,
+  COMMENT_META_TAG_LEGACY,
   EDITOR_PLUGINS_META_TAG,
+  EDITOR_PLUGINS_META_TAG_LEGACY,
   PLAYBACK_PLUGINS_META_TAG,
+  PLAYBACK_PLUGINS_META_TAG_LEGACY,
   PROTECTION_META_TAG,
+  PROTECTION_META_TAG_LEGACY,
   PROOFING_LANG_META_TAG,
+  PROOFING_LANG_META_TAG_LEGACY,
   SECTIONS_META_TAG,
+  SECTIONS_META_TAG_LEGACY,
 ]);
 
 function isSlimPptTag(name: string): boolean {
@@ -117,6 +129,12 @@ function applySlimPptKeys(tags: Record<string, string>, pres: Presentation): {
   const nextPlaybackPlugins = buildPlaybackPluginsMeta(pres) ?? "";
   const nextSections = buildDeckSectionsMeta(pres) ?? "";
   const nextProofingLang = buildProofingLangMeta(pres) ?? "";
+  delete tags[COMMENT_META_TAG_LEGACY];
+  delete tags[PROTECTION_META_TAG_LEGACY];
+  delete tags[EDITOR_PLUGINS_META_TAG_LEGACY];
+  delete tags[PLAYBACK_PLUGINS_META_TAG_LEGACY];
+  delete tags[SECTIONS_META_TAG_LEGACY];
+  delete tags[PROOFING_LANG_META_TAG_LEGACY];
   if (nextComment) tags[COMMENT_META_TAG] = nextComment;
   else delete tags[COMMENT_META_TAG];
   if (nextProtection) tags[PROTECTION_META_TAG] = nextProtection;
@@ -223,16 +241,22 @@ export function patchSlimPptSidecarTags(
   const slimUnchanged =
     slim.nextComment === (presSrc?.commentMetaSnapshot ?? "") &&
     slim.nextComment === (inArchive[COMMENT_META_TAG] ?? "") &&
+    !(COMMENT_META_TAG_LEGACY in inArchive) &&
     slim.nextProtection === (presSrc?.protectionMetaSnapshot ?? "") &&
     slim.nextProtection === (inArchive[PROTECTION_META_TAG] ?? "") &&
+    !(PROTECTION_META_TAG_LEGACY in inArchive) &&
     slim.nextEditorPlugins === (presSrc?.editorPluginsMetaSnapshot ?? "") &&
     slim.nextEditorPlugins === (inArchive[EDITOR_PLUGINS_META_TAG] ?? "") &&
+    !(EDITOR_PLUGINS_META_TAG_LEGACY in inArchive) &&
     slim.nextPlaybackPlugins === (presSrc?.playbackPluginsMetaSnapshot ?? "") &&
     slim.nextPlaybackPlugins === (inArchive[PLAYBACK_PLUGINS_META_TAG] ?? "") &&
+    !(PLAYBACK_PLUGINS_META_TAG_LEGACY in inArchive) &&
     slim.nextSections === (presSrc?.sectionsMetaSnapshot ?? "") &&
     slim.nextSections === (inArchive[SECTIONS_META_TAG] ?? "") &&
+    !(SECTIONS_META_TAG_LEGACY in inArchive) &&
     slim.nextProofingLang === (presSrc?.proofingLangMetaSnapshot ?? "") &&
-    slim.nextProofingLang === (inArchive[PROOFING_LANG_META_TAG] ?? "");
+    slim.nextProofingLang === (inArchive[PROOFING_LANG_META_TAG] ?? "") &&
+    !(PROOFING_LANG_META_TAG_LEGACY in inArchive);
   if (slimUnchanged && !userChanged) return;
 
   const tags = { ...inArchive };

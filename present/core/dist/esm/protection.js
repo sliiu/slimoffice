@@ -1,7 +1,8 @@
-import { isOfficePasswordVerifier, verifyOfficeModifyVerifierPassword, } from "./office-password.js";
+import { isOfficePasswordVerifier, verifyOfficeModifyVerifierPassword, } from "./office-password";
 export const PROTECTION_META_KEY = "protection";
-/** presentation tags part 中 SlimPPT 保护元数据键名。 */
-export const PROTECTION_META_TAG = "SlimPPT.Protection.v1";
+/** presentation tags part 中 Pavera 保护元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
+export const PROTECTION_META_TAG = "Pavera.Protection.v1";
+export const PROTECTION_META_TAG_LEGACY = "SlimPPT.Protection.v1";
 export function getPresentationProtection(pres) {
     const raw = pres.meta?.[PROTECTION_META_KEY];
     if (!raw || typeof raw !== "object")

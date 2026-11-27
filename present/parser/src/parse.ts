@@ -70,12 +70,18 @@ import {
   buildProofingLangMeta,
   buildProtectionMeta,
   COMMENT_META_TAG,
+  COMMENT_META_TAG_LEGACY,
   EDITOR_PLUGINS_META_TAG,
+  EDITOR_PLUGINS_META_TAG_LEGACY,
   PLAYBACK_PLUGINS_META_TAG,
+  PLAYBACK_PLUGINS_META_TAG_LEGACY,
   PROTECTION_META_TAG,
+  PROTECTION_META_TAG_LEGACY,
   PROOFING_LANG_META_TAG,
+  PROOFING_LANG_META_TAG_LEGACY,
   PROOFING_LANG_META_KEY,
   SECTIONS_META_TAG,
+  SECTIONS_META_TAG_LEGACY,
   kinsokuSnapshot,
   viewGuidesSnapshot,
   showPropertiesSnapshot,
@@ -281,15 +287,21 @@ export function parseFromArchive(archive: PptxArchive, opts: ParseOptions = {}):
   if (showPr) pres.showPr = showPr;
   const protectionRaw =
     customData?.tags?.[PROTECTION_META_TAG] ??
-    loadMetaTagFromArchive(archive, presRels, PROTECTION_META_TAG);
+    customData?.tags?.[PROTECTION_META_TAG_LEGACY] ??
+    loadMetaTagFromArchive(archive, presRels, PROTECTION_META_TAG) ??
+    loadMetaTagFromArchive(archive, presRels, PROTECTION_META_TAG_LEGACY);
   applyProtectionMeta(pres, protectionRaw);
   const editorPluginsRaw =
     customData?.tags?.[EDITOR_PLUGINS_META_TAG] ??
-    loadMetaTagFromArchive(archive, presRels, EDITOR_PLUGINS_META_TAG);
+    customData?.tags?.[EDITOR_PLUGINS_META_TAG_LEGACY] ??
+    loadMetaTagFromArchive(archive, presRels, EDITOR_PLUGINS_META_TAG) ??
+    loadMetaTagFromArchive(archive, presRels, EDITOR_PLUGINS_META_TAG_LEGACY);
   applyEditorPluginsMeta(pres, editorPluginsRaw);
   const playbackPluginsRaw =
     customData?.tags?.[PLAYBACK_PLUGINS_META_TAG] ??
-    loadMetaTagFromArchive(archive, presRels, PLAYBACK_PLUGINS_META_TAG);
+    customData?.tags?.[PLAYBACK_PLUGINS_META_TAG_LEGACY] ??
+    loadMetaTagFromArchive(archive, presRels, PLAYBACK_PLUGINS_META_TAG) ??
+    loadMetaTagFromArchive(archive, presRels, PLAYBACK_PLUGINS_META_TAG_LEGACY);
   applyPlaybackPluginsMeta(pres, playbackPluginsRaw);
   const sectionsFromLst = parsePresentationSectionLst(presEl, slides.length);
   if (sectionsFromLst.length) {
@@ -297,12 +309,16 @@ export function parseFromArchive(archive: PptxArchive, opts: ParseOptions = {}):
   } else {
     const sectionsRaw =
       customData?.tags?.[SECTIONS_META_TAG] ??
-      loadMetaTagFromArchive(archive, presRels, SECTIONS_META_TAG);
+      customData?.tags?.[SECTIONS_META_TAG_LEGACY] ??
+      loadMetaTagFromArchive(archive, presRels, SECTIONS_META_TAG) ??
+      loadMetaTagFromArchive(archive, presRels, SECTIONS_META_TAG_LEGACY);
     applyDeckSectionsMeta(pres, sectionsRaw);
   }
   const proofingLangRaw =
     customData?.tags?.[PROOFING_LANG_META_TAG] ??
-    loadMetaTagFromArchive(archive, presRels, PROOFING_LANG_META_TAG);
+    customData?.tags?.[PROOFING_LANG_META_TAG_LEGACY] ??
+    loadMetaTagFromArchive(archive, presRels, PROOFING_LANG_META_TAG) ??
+    loadMetaTagFromArchive(archive, presRels, PROOFING_LANG_META_TAG_LEGACY);
   applyProofingLangMeta(pres, proofingLangRaw);
   if (!pres.meta?.[PROOFING_LANG_META_KEY]) {
     const ooxmlLang =
@@ -331,32 +347,43 @@ export function parseFromArchive(archive: PptxArchive, opts: ParseOptions = {}):
       commentMetaSnapshot:
         buildCommentMeta(deckComments) ??
         customData?.tags?.[COMMENT_META_TAG] ??
+        customData?.tags?.[COMMENT_META_TAG_LEGACY] ??
         loadCommentMetaFromArchive(archive, presRels) ??
         "",
       protectionMetaSnapshot:
         buildProtectionMeta(pres) ??
         customData?.tags?.[PROTECTION_META_TAG] ??
+        customData?.tags?.[PROTECTION_META_TAG_LEGACY] ??
         loadMetaTagFromArchive(archive, presRels, PROTECTION_META_TAG) ??
+        loadMetaTagFromArchive(archive, presRels, PROTECTION_META_TAG_LEGACY) ??
         "",
       editorPluginsMetaSnapshot:
         buildEditorPluginsMeta(pres) ??
         customData?.tags?.[EDITOR_PLUGINS_META_TAG] ??
+        customData?.tags?.[EDITOR_PLUGINS_META_TAG_LEGACY] ??
         loadMetaTagFromArchive(archive, presRels, EDITOR_PLUGINS_META_TAG) ??
+        loadMetaTagFromArchive(archive, presRels, EDITOR_PLUGINS_META_TAG_LEGACY) ??
         "",
       playbackPluginsMetaSnapshot:
         buildPlaybackPluginsMeta(pres) ??
         customData?.tags?.[PLAYBACK_PLUGINS_META_TAG] ??
+        customData?.tags?.[PLAYBACK_PLUGINS_META_TAG_LEGACY] ??
         loadMetaTagFromArchive(archive, presRels, PLAYBACK_PLUGINS_META_TAG) ??
+        loadMetaTagFromArchive(archive, presRels, PLAYBACK_PLUGINS_META_TAG_LEGACY) ??
         "",
       sectionsMetaSnapshot:
         buildDeckSectionsMeta(pres) ??
         customData?.tags?.[SECTIONS_META_TAG] ??
+        customData?.tags?.[SECTIONS_META_TAG_LEGACY] ??
         loadMetaTagFromArchive(archive, presRels, SECTIONS_META_TAG) ??
+        loadMetaTagFromArchive(archive, presRels, SECTIONS_META_TAG_LEGACY) ??
         "",
       proofingLangMetaSnapshot:
         buildProofingLangMeta(pres) ??
         customData?.tags?.[PROOFING_LANG_META_TAG] ??
+        customData?.tags?.[PROOFING_LANG_META_TAG_LEGACY] ??
         loadMetaTagFromArchive(archive, presRels, PROOFING_LANG_META_TAG) ??
+        loadMetaTagFromArchive(archive, presRels, PROOFING_LANG_META_TAG_LEGACY) ??
         "",
       tagsPartPath: followFirstRelByType(presRels, "/tags"),
       macroEnabled: hasVbaProject,

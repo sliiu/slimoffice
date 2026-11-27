@@ -1,5 +1,5 @@
 import type { DeckComment } from "@sliiu/present-core";
-import { COMMENT_META_TAG } from "@sliiu/present-core";
+import { COMMENT_META_TAG, COMMENT_META_TAG_LEGACY } from "@sliiu/present-core";
 import type { PptxArchive } from "./zip";
 import { strFromU8 } from "fflate";
 import { loadXmlPart, type RelMap } from "./parts";
@@ -44,7 +44,10 @@ export function loadCommentMetaFromArchive(
   archive: PptxArchive,
   presRels: RelMap,
 ): string | undefined {
-  return loadMetaTagFromArchive(archive, presRels, COMMENT_META_TAG);
+  return (
+    loadMetaTagFromArchive(archive, presRels, COMMENT_META_TAG) ??
+    loadMetaTagFromArchive(archive, presRels, COMMENT_META_TAG_LEGACY)
+  );
 }
 
 const TYPE_COMMENT_AUTHORS = "/commentAuthors";

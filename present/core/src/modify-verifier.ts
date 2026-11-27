@@ -3,8 +3,9 @@ import type { PresentationProtection } from "./protection";
 import { getPresentationProtection, setPresentationProtectionMeta } from "./protection";
 import { isOfficePasswordVerifier } from "./office-password";
 
-/** Pavera-encoded protection payload in `modifyVerifier/@algorithmName`. */
-export const SLIMPPT_MODIFY_VERIFIER_ALG = "SlimPPT-Protection-v1";
+/** Pavera-encoded protection payload in `modifyVerifier/@algorithmName`. 新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT。 */
+export const SLIMPPT_MODIFY_VERIFIER_ALG = "Pavera-Protection-v1";
+export const SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY = "SlimPPT-Protection-v1";
 
 interface SlimPptMvPayloadV1 {
   v: 1;
@@ -34,7 +35,11 @@ export function decodeProtectionFromModifyVerifier(
 ): PresentationProtection | undefined {
   if (!mv) return undefined;
 
-  if (mv.algorithmName === SLIMPPT_MODIFY_VERIFIER_ALG && mv.hashValue) {
+  if (
+    (mv.algorithmName === SLIMPPT_MODIFY_VERIFIER_ALG ||
+      mv.algorithmName === SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY) &&
+    mv.hashValue
+  ) {
     try {
       const o = JSON.parse(mv.hashValue) as SlimPptMvPayloadV1;
       if (o.v !== 1) return undefined;

@@ -1,7 +1,8 @@
-import { migratePluginIds } from "./plugin-ids.js";
+import { migratePluginIds } from "./plugin-ids";
 export const EDITOR_PLUGINS_META_KEY = "editorPlugins";
-/** presentation tags part 中 SlimPPT 编辑插件元数据键名。 */
-export const EDITOR_PLUGINS_META_TAG = "SlimPPT.EditorPlugins.v1";
+/** presentation tags part 中 Pavera 编辑插件元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
+export const EDITOR_PLUGINS_META_TAG = "Pavera.EditorPlugins.v1";
+export const EDITOR_PLUGINS_META_TAG_LEGACY = "SlimPPT.EditorPlugins.v1";
 export function getEditorPluginsMeta(pres) {
     const raw = pres.meta?.[EDITOR_PLUGINS_META_KEY];
     if (!Array.isArray(raw))

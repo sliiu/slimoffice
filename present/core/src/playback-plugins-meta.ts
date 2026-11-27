@@ -3,8 +3,9 @@ import type { Presentation } from "./slide";
 
 export const PLAYBACK_PLUGINS_META_KEY = "playbackPlugins";
 
-/** presentation tags part 中 Pavera 放映插件元数据键名。 */
-export const PLAYBACK_PLUGINS_META_TAG = "SlimPPT.PlaybackPlugins.v1";
+/** presentation tags part 中 Pavera 放映插件元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
+export const PLAYBACK_PLUGINS_META_TAG = "Pavera.PlaybackPlugins.v1";
+export const PLAYBACK_PLUGINS_META_TAG_LEGACY = "SlimPPT.PlaybackPlugins.v1";
 
 interface PlaybackPluginsMetaV1 {
   v: 1;
