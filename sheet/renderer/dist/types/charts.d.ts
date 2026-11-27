@@ -7,6 +7,8 @@ export interface PivotSummary {
         label: string;
         values: number[];
     }[];
+    /** One total per column, taken over every row. Empty when there is nothing to add up. */
+    totals: number[];
 }
 /** Reduces the first value field by row field, and by column field when one is set. */
 export declare function summarizePivot(pivot: SheetPivot): PivotSummary;

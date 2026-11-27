@@ -34,6 +34,8 @@ export interface PivotSummary {
   /** Column-field values. Empty when the pivot has no column field. */
   columns: string[];
   rows: { label: string; values: number[] }[];
+  /** One total per column, taken over every row. Empty when there is nothing to add up. */
+  totals: number[];
 }
 
 /** Reduces the first value field by row field, and by column field when one is set. */
@@ -43,7 +45,7 @@ export function summarizePivot(pivot: SheetPivot): PivotSummary {
   const colAt = fields.indexOf(pivot.columns?.[0] ?? "");
   const valueAt = fields.indexOf(pivot.values?.[0] ?? "");
   const agg = pivot.agg ?? "sum";
-  if (rowAt < 0 || valueAt < 0) return { columns: [], rows: [] };
+  if (rowAt < 0 || valueAt < 0) return { columns: [], rows: [], totals: [] };
   const columns: string[] = [];
   const buckets = new Map<string, Map<string, number[]>>();
   for (const row of pivot.cache ?? []) {
@@ -58,13 +60,30 @@ export function summarizePivot(pivot: SheetPivot): PivotSummary {
     buckets.set(label, cells);
   }
   const heads = colAt < 0 ? [""] : columns;
+  const rows = [...buckets].map(([label, cells]) => ({
+    label,
+    values: heads.map((column) => reducePivot(cells.get(column) ?? [], agg)),
+  }));
+  // A row total folds the row's own cells back together, so an average stays an average instead of a sum of averages.
+  const withTotals = rows.map((row) => ({
+    ...row,
+    values: [...row.values, grandTotal(heads.map((column) => buckets.get(row.label)?.get(column) ?? []), agg)],
+  }));
+  const totals = heads.map((column) => grandTotal([...buckets.values()].map((cells) => cells.get(column) ?? []), agg));
+  const grand = grandTotal([...buckets.values()].flatMap((cells) => [...cells.values()]), agg);
   return {
     columns: colAt < 0 ? [] : columns,
-    rows: [...buckets].map(([label, cells]) => ({
-      label,
-      values: heads.map((column) => reducePivot(cells.get(column) ?? [], agg)),
-    })),
+    rows: withTotals,
+    totals: [...totals, grand],
   };
+}
+
+/** The total across groups. Sum, count, and product add the group results; max and min fold them. */
+function grandTotal(groups: number[][], agg: NonNullable<SheetPivot["agg"]>): number {
+  const flat = groups.flat();
+  if (agg === "max" || agg === "min" || agg === "product") return reducePivot(flat, agg);
+  const total = groups.reduce((sum, group) => sum + reducePivot(group, "sum"), 0);
+  return agg === "average" ? total / (flat.length || 1) : total;
 }
 
 function reducePivot(values: number[], agg: NonNullable<SheetPivot["agg"]>): number {
@@ -83,16 +102,17 @@ function pivotNode(pivot: SheetPivot): HTMLElement {
   const caption = document.createElement("caption");
   caption.textContent = pivot.name;
   node.append(caption);
-  if (summary.columns.length) {
-    const head = document.createElement("tr");
-    head.append(document.createElement("td"));
-    for (const column of summary.columns) {
-      const cell = document.createElement("td");
-      cell.textContent = column;
-      head.append(cell);
-    }
-    node.append(head);
+  const head = document.createElement("tr");
+  head.append(document.createElement("td"));
+  for (const column of summary.columns) {
+    const cell = document.createElement("td");
+    cell.textContent = column;
+    head.append(cell);
   }
+  const corner = document.createElement("td");
+  corner.textContent = "总计";
+  head.append(corner);
+  node.append(head);
   for (const item of summary.rows) {
     const line = document.createElement("tr");
     const label = document.createElement("td");
@@ -104,6 +124,18 @@ function pivotNode(pivot: SheetPivot): HTMLElement {
       line.append(total);
     }
     node.append(line);
+  }
+  if (summary.totals.length) {
+    const foot = document.createElement("tr");
+    const label = document.createElement("td");
+    label.textContent = "总计";
+    foot.append(label);
+    for (const value of summary.totals) {
+      const cell = document.createElement("td");
+      cell.textContent = String(value);
+      foot.append(cell);
+    }
+    node.append(foot);
   }
   return node;
 }
@@ -118,7 +150,9 @@ function chartNode(sheet: Worksheet, chart: SheetChart): HTMLElement {
   title.textContent = chart.title ?? chart.kind;
   wrap.append(title);
   if (chart.kind === "pie") wrap.append(pie(values));
-  else if (chart.kind === "line" || chart.kind === "area" || chart.kind === "scatter") wrap.append(line(values, false));
+  else if (chart.kind === "line") wrap.append(line(values, false));
+  else if (chart.kind === "area") wrap.append(line(values, false, "area"));
+  else if (chart.kind === "scatter") wrap.append(line(values, false, "scatter"));
   else wrap.append(bars(values, chart.kind === "bar"));
   return wrap;
 }
@@ -184,7 +218,7 @@ function bars(values: number[], horizontal: boolean, compact = false): SVGSVGEle
   return svg;
 }
 
-function line(values: number[], compact: boolean): SVGSVGElement {
+function line(values: number[], compact: boolean, mode: "line" | "area" | "scatter" = "line"): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   const width = compact ? 80 : 220;
   const height = compact ? 24 : 120;
@@ -195,13 +229,34 @@ function line(values: number[], compact: boolean): SVGSVGElement {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min || 1;
-  const points = values
-    .map((value, index) => {
-      const x = values.length === 1 ? width / 2 : (index / (values.length - 1)) * (width - 4) + 2;
-      const y = height - 2 - ((value - min) / span) * (height - 4);
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const coords = values.map((value, index) => {
+    const x = values.length === 1 ? width / 2 : (index / (values.length - 1)) * (width - 4) + 2;
+    const y = height - 2 - ((value - min) / span) * (height - 4);
+    return [x, y] as const;
+  });
+  // A scatter chart marks each point on its own; a line would invent an order the data does not have.
+  if (mode === "scatter") {
+    for (const [x, y] of coords) {
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("cx", String(x));
+      dot.setAttribute("cy", String(y));
+      dot.setAttribute("r", "2.5");
+      dot.setAttribute("fill", "#4f46e5");
+      svg.append(dot);
+    }
+    return svg;
+  }
+  const points = coords.map(([x, y]) => `${x},${y}`).join(" ");
+  if (mode === "area") {
+    const [first] = coords;
+    const last = coords[coords.length - 1];
+    const fill = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    fill.setAttribute("points", `${points} ${last?.[0] ?? 0},${height - 2} ${first?.[0] ?? 0},${height - 2}`);
+    fill.setAttribute("fill", "#4f46e5");
+    fill.setAttribute("fill-opacity", "0.25");
+    fill.setAttribute("stroke", "none");
+    svg.append(fill);
+  }
   const path = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
   path.setAttribute("points", points);
   path.setAttribute("fill", "none");

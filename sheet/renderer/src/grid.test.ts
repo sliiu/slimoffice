@@ -50,13 +50,16 @@ test("sums a pivot cache by its row field", () => {
     cache: [["甲", "10"], ["乙", "5"], ["甲", "7"]],
   };
   mountWorkbook(host, { calcMode: "manual", sheets: [{ name: "销售", cells: [], pivots: [pivot] }] });
-  assert.deepEqual(summarizePivot(pivot), { columns: [], rows: [{ label: "甲", values: [17] }, { label: "乙", values: [5] }] });
+  assert.deepEqual(summarizePivot(pivot), { columns: [], rows: [{ label: "甲", values: [17, 17] }, { label: "乙", values: [5, 5] }], totals: [22, 22] });
   assert.match(host.querySelector(".sheet-pivot")?.textContent ?? "", /甲17/);
+  assert.match(host.querySelector(".sheet-pivot")?.textContent ?? "", /总计22/);
   const counted = { ...pivot, agg: "count" as const, columns: ["地区"], fields: ["品类", "数量", "地区"], cache: [["甲", "10", "东"], ["甲", "7", "西"], ["甲", "3", "东"]] };
-  assert.deepEqual(summarizePivot(counted), { columns: ["东", "西"], rows: [{ label: "甲", values: [2, 1] }] });
-  assert.deepEqual(summarizePivot({ ...pivot, agg: "max" }).rows.map((row) => row.values), [[10], [5]]);
-  assert.deepEqual(summarizePivot({ ...pivot, agg: "min" }).rows.map((row) => row.values), [[7], [5]]);
-  assert.deepEqual(summarizePivot({ ...pivot, agg: "product" }).rows.map((row) => row.values), [[70], [5]]);
+  assert.deepEqual(summarizePivot(counted), { columns: ["东", "西"], rows: [{ label: "甲", values: [2, 1, 3] }], totals: [2, 1, 3] });
+  assert.deepEqual(summarizePivot({ ...pivot, agg: "max" }).rows.map((row) => row.values), [[10, 10], [5, 5]]);
+  assert.deepEqual(summarizePivot({ ...pivot, agg: "min" }).rows.map((row) => row.values), [[7, 7], [5, 5]]);
+  assert.deepEqual(summarizePivot({ ...pivot, agg: "product" }).rows.map((row) => row.values), [[70, 70], [5, 5]]);
+  // An average total divides the whole column, not the sum of the row averages.
+  assert.deepEqual(summarizePivot({ ...pivot, agg: "average" }).totals, [22 / 3, 22 / 3]);
 });
 
 test("shows a data validation list and an outline level", () => {
@@ -89,6 +92,59 @@ test("shows a data validation list and an outline level", () => {
   cell!.dispatchEvent(new InputEvent("input", { bubbles: true }));
   assert.equal(cell?.classList.contains("is-invalid"), false);
   assert.equal(workbook.sheets[0]?.cells[0]?.[0]?.value, "乙");
+});
+
+test("checks a number against its bounds and a custom formula", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const InputEvent = (dom.window as unknown as Record<string, new (type: string, init?: { bubbles?: boolean }) => Event>)["Event"];
+  if (!InputEvent) throw new Error("missing Event");
+  const workbook = {
+    calcMode: "manual" as const,
+    sheets: [{
+      name: "销售",
+      cells: [[{ value: "5" }, { value: "甲" }]],
+      validations: [
+        { id: "dv1", r1: 0, c1: 0, r2: 0, c2: 0, type: "whole" as const, op: "between" as const, formula1: "1", formula2: "9" },
+        { id: "dv2", r1: 0, c1: 1, r2: 0, c2: 1, type: "custom" as const, formula1: "LEN(B1)<=2" },
+      ],
+    }],
+  };
+  mountWorkbook(host, workbook);
+  const cells = host.querySelectorAll("td");
+  // 12 falls outside 1 to 9, so the stored value stays 5.
+  cells[0]!.textContent = "12";
+  cells[0]!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.equal(cells[0]?.classList.contains("is-invalid"), true);
+  assert.equal(workbook.sheets[0]?.cells[0]?.[0]?.value, "5");
+  // A value inside the bounds is stored.
+  cells[0]!.textContent = "7";
+  cells[0]!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.equal(workbook.sheets[0]?.cells[0]?.[0]?.value, "7");
+  // The custom formula counts the typed text, so three characters fail and the stored value stays 甲.
+  cells[1]!.textContent = "甲乙丙";
+  cells[1]!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.equal(workbook.sheets[0]?.cells[0]?.[1]?.value, "甲");
+  cells[1]!.textContent = "乙";
+  cells[1]!.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  assert.equal(workbook.sheets[0]?.cells[0]?.[1]?.value, "乙");
+});
+
+test("draws an area chart filled and a scatter chart as dots", () => {
+  const dom = new JSDOM("<!doctype html><body></body>");
+  globalThis.document = dom.window.document;
+  const host = document.createElement("div");
+  const cells = [[{ value: "1" }], [{ value: "4" }], [{ value: "2" }]];
+  mountWorkbook(host, {
+    calcMode: "manual",
+    sheets: [{ name: "销售", cells, charts: [{ id: "c1", kind: "area", range: "A1:A3" }, { id: "c2", kind: "scatter", range: "A1:A3" }] }],
+  });
+  const charts = host.querySelectorAll(".sheet-chart");
+  // The area chart fills down to the baseline; the scatter chart marks points and draws no line.
+  assert.equal(charts[0]?.querySelector("polygon")?.getAttribute("fill"), "#4f46e5");
+  assert.equal(charts[1]?.querySelectorAll("circle").length, 3);
+  assert.equal(charts[1]?.querySelector("polyline"), null);
 });
 
 test("hides the rows a column filter leaves out", () => {
