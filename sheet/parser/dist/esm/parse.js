@@ -571,6 +571,7 @@ function tables(root, archive, path, dxfs) {
                 filter: child(table, "autoFilter") !== undefined,
                 ...tableFilterColumns(child(table, "autoFilter")),
                 ...tableFilterRules(child(table, "autoFilter")),
+                ...tableFilterTop(child(table, "autoFilter")),
                 ...tableSort(child(table, "sortState"), range),
                 ...(columns.length ? { columns } : {}),
                 ...(formulas.some((formula) => formula) ? { formulas } : {}),
@@ -828,19 +829,34 @@ function tableSort(node, range) {
     });
     return keys.length ? { sort: keys } : undefined;
 }
-/** A comparison a table column keeps. Nothing when no column compares. */
+/** The comparisons a table column keeps. Two on one column both have to pass when `and` is set. */
 function tableFilterRules(node) {
     const ops = { equal: "eq", notEqual: "ne", greaterThan: "gt", greaterThanOrEqual: "gte", lessThan: "lt", lessThanOrEqual: "lte" };
     const rules = children(node, "filterColumn").flatMap((column) => {
         const col = Number(attr(column, "colId"));
-        const rule = child(child(column, "customFilters"), "customFilter");
-        const op = ops[attr(rule, "operator") ?? "equal"];
-        const value = attr(rule, "val");
-        if (!Number.isInteger(col) || col < 0 || !op || value == null)
-            return [];
-        return [{ col, op, value }];
+        const custom = child(column, "customFilters");
+        const and = attr(custom, "and") === "1";
+        return children(custom, "customFilter").flatMap((rule) => {
+            const op = ops[attr(rule, "operator") ?? "equal"];
+            const value = attr(rule, "val");
+            if (!Number.isInteger(col) || col < 0 || !op || value == null)
+                return [];
+            return [{ col, op, value, ...(and ? { and: true } : {}) }];
+        });
     });
     return rules.length ? { filterRules: rules } : undefined;
+}
+/** The largest or smallest numbers a table column keeps. Nothing when no column ranks. */
+function tableFilterTop(node) {
+    const tops = children(node, "filterColumn").flatMap((column) => {
+        const col = Number(attr(column, "colId"));
+        const top = child(column, "top10");
+        const count = Number(attr(top, "val"));
+        if (!top || !Number.isInteger(col) || col < 0 || !Number.isFinite(count) || count <= 0)
+            return [];
+        return [{ col, count, ...(attr(top, "percent") === "1" ? { percent: true } : {}), ...(attr(top, "top") === "0" ? { bottom: true } : {}) }];
+    });
+    return tops.length ? { filterTop: tops } : undefined;
 }
 /** The values a table column still shows. Nothing when every column shows everything. */
 function tableFilterColumns(node) {

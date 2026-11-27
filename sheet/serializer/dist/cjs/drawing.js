@@ -95,13 +95,31 @@ function tableXml(table, dxfForFormat) {
         : "";
     // A table without filter buttons writes no autoFilter. The default keeps them, and a column keeps the values it still shows.
     const ops = { eq: "equal", ne: "notEqual", gt: "greaterThan", gte: "greaterThanOrEqual", lt: "lessThan", lte: "lessThanOrEqual" };
-    const compared = (table.filterRules ?? [])
-        .map((rule) => `<filterColumn colId="${rule.col}"><customFilters><customFilter operator="${ops[rule.op] ?? "equal"}" val="${escapeXml(rule.value)}"/></customFilters></filterColumn>`)
+    const groups = new Map();
+    for (const rule of table.filterRules ?? []) {
+        const list = groups.get(rule.col);
+        if (list)
+            list.push(rule);
+        else
+            groups.set(rule.col, [rule]);
+    }
+    // A column ranks its numbers, or lists values, or compares. Ranking wins when a column does more than one.
+    const ranked = new Set((table.filterTop ?? []).map((item) => item.col));
+    const top = (table.filterTop ?? [])
+        .map((item) => `<filterColumn colId="${item.col}"><top10${item.bottom ? " top=\"0\"" : ""}${item.percent ? " percent=\"1\"" : ""} val="${item.count}"/></filterColumn>`)
         .join("");
+    const compared = [...groups.entries()].flatMap(([col, rules]) => {
+        if (ranked.has(col))
+            return [];
+        const and = rules.some((rule) => rule.and) ? " and=\"1\"" : "";
+        const body = rules.map((rule) => `<customFilter operator="${ops[rule.op] ?? "equal"}" val="${escapeXml(rule.value)}"/>`).join("");
+        return [`<filterColumn colId="${col}"><customFilters${and}>${body}</customFilters></filterColumn>`];
+    }).join("");
     const kept = (table.filterColumns ?? [])
+        .filter((column) => !ranked.has(column.col))
         .map((column) => `<filterColumn colId="${column.col}"><filters>${column.values.map((value) => `<filter val="${escapeXml(value)}"/>`).join("")}</filters></filterColumn>`)
         .join("");
-    const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}${compared}</autoFilter>`;
+    const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}${compared}${top}</autoFilter>`;
     // The sort covers the data rows only, so the header and the totals row stay out of it.
     const dataTop = (table.headerRow === false ? table.r1 : table.r1 + 1) + 1;
     const dataBottom = (table.totalsRow ? table.r2 - 1 : table.r2) + 1;

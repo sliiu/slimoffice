@@ -1326,7 +1326,7 @@ function rowFiltered(sheet, row) {
 /** One table column keeps only the values it lists, or the rows that pass its comparison. */
 function tableFiltersRow(sheet, table, row) {
     const columns = table.filterColumns;
-    if ((!columns?.length && !table.filterRules?.length) || row < table.r1 || row > table.r2)
+    if ((!columns?.length && !table.filterRules?.length && !table.filterTop?.length) || row < table.r1 || row > table.r2)
         return false;
     if (table.headerRow !== false && row === table.r1)
         return false;
@@ -1338,8 +1338,50 @@ function tableFiltersRow(sheet, table, row) {
             return !column.values.includes(value);
         })
         : false;
-    const compared = (table.filterRules ?? []).some((rule) => !ruleMatches(rule, sheet.cells[row]?.[table.c1 + rule.col]?.value ?? ""));
-    return listed || compared;
+    const compared = comparisonsHide(table.filterRules ?? [], (col) => sheet.cells[row]?.[table.c1 + col]?.value ?? "");
+    const ranked = (table.filterTop ?? []).some((item) => !topKeeps(sheet, table, row, item));
+    return listed || compared || ranked;
+}
+/** A number is among the largest or smallest. Text never is, and a tie at the boundary stays. */
+function topKeeps(sheet, table, row, item) {
+    const value = Number(sheet.cells[row]?.[table.c1 + item.col]?.value);
+    if (!Number.isFinite(value))
+        return false;
+    const numbers = [];
+    for (let r = table.r1; r <= table.r2; r += 1) {
+        if (table.headerRow !== false && r === table.r1)
+            continue;
+        if (table.totalsRow && r === table.r2)
+            continue;
+        const cell = Number(sheet.cells[r]?.[table.c1 + item.col]?.value);
+        if (Number.isFinite(cell))
+            numbers.push(cell);
+    }
+    const keep = item.percent ? Math.ceil(numbers.length * item.count / 100) : Math.floor(item.count);
+    const ordered = [...numbers].sort((a, b) => item.bottom ? a - b : b - a);
+    const line = ordered[Math.max(0, keep) - 1];
+    if (line == null)
+        return false;
+    return item.bottom ? value <= line : value >= line;
+}
+/** Two comparisons on one column both have to pass when `and` is set. Otherwise either one keeps the row. */
+function comparisonsHide(rules, cellAt) {
+    const groups = new Map();
+    for (const rule of rules) {
+        const list = groups.get(rule.col);
+        if (list)
+            list.push(rule);
+        else
+            groups.set(rule.col, [rule]);
+    }
+    for (const [col, group] of groups) {
+        const cell = cellAt(col);
+        const and = group.some((rule) => rule.and);
+        const fails = and ? group.some((rule) => !ruleMatches(rule, cell)) : group.every((rule) => !ruleMatches(rule, cell));
+        if (fails)
+            return true;
+    }
+    return false;
 }
 /** A number compares as a number. Text compares as text, and only equality applies to it. */
 function ruleMatches(rule, cell) {

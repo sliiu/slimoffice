@@ -104,10 +104,20 @@ export interface SheetGrid {
     deleteTable(): boolean;
     /** Keep the rows whose cell in the selected column is one of these values. Omit to show them all. */
     tableFilter(values?: string[]): boolean;
-    /** Keep the rows whose cell in the selected column passes this comparison. Omit to drop it. */
+    /** Keep the rows whose cell in the selected column passes this comparison. A second one joins it, and `and` makes both required. Omit to drop them. */
     tableFilterRule(rule?: {
         op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte";
         value: string;
+        and?: boolean;
+    }, other?: {
+        op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte";
+        value: string;
+    }): boolean;
+    /** Keep the largest numbers in the selected column, or the smallest when `bottom` is set. Omit to stop ranking. */
+    tableFilterTop(spec?: {
+        count: number;
+        percent?: boolean;
+        bottom?: boolean;
     }): boolean;
     /** How the totals row reduces the column under the selection. A sum is the default. */
     totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean;

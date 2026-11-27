@@ -609,6 +609,7 @@ function tables(root, archive, path, dxfs) {
                 filter: (0, xml_1.child)(table, "autoFilter") !== undefined,
                 ...tableFilterColumns((0, xml_1.child)(table, "autoFilter")),
                 ...tableFilterRules((0, xml_1.child)(table, "autoFilter")),
+                ...tableFilterTop((0, xml_1.child)(table, "autoFilter")),
                 ...tableSort((0, xml_1.child)(table, "sortState"), range),
                 ...(columns.length ? { columns } : {}),
                 ...(formulas.some((formula) => formula) ? { formulas } : {}),
@@ -866,19 +867,34 @@ function tableSort(node, range) {
     });
     return keys.length ? { sort: keys } : undefined;
 }
-/** A comparison a table column keeps. Nothing when no column compares. */
+/** The comparisons a table column keeps. Two on one column both have to pass when `and` is set. */
 function tableFilterRules(node) {
     const ops = { equal: "eq", notEqual: "ne", greaterThan: "gt", greaterThanOrEqual: "gte", lessThan: "lt", lessThanOrEqual: "lte" };
     const rules = (0, xml_1.children)(node, "filterColumn").flatMap((column) => {
         const col = Number((0, xml_1.attr)(column, "colId"));
-        const rule = (0, xml_1.child)((0, xml_1.child)(column, "customFilters"), "customFilter");
-        const op = ops[(0, xml_1.attr)(rule, "operator") ?? "equal"];
-        const value = (0, xml_1.attr)(rule, "val");
-        if (!Number.isInteger(col) || col < 0 || !op || value == null)
-            return [];
-        return [{ col, op, value }];
+        const custom = (0, xml_1.child)(column, "customFilters");
+        const and = (0, xml_1.attr)(custom, "and") === "1";
+        return (0, xml_1.children)(custom, "customFilter").flatMap((rule) => {
+            const op = ops[(0, xml_1.attr)(rule, "operator") ?? "equal"];
+            const value = (0, xml_1.attr)(rule, "val");
+            if (!Number.isInteger(col) || col < 0 || !op || value == null)
+                return [];
+            return [{ col, op, value, ...(and ? { and: true } : {}) }];
+        });
     });
     return rules.length ? { filterRules: rules } : undefined;
+}
+/** The largest or smallest numbers a table column keeps. Nothing when no column ranks. */
+function tableFilterTop(node) {
+    const tops = (0, xml_1.children)(node, "filterColumn").flatMap((column) => {
+        const col = Number((0, xml_1.attr)(column, "colId"));
+        const top = (0, xml_1.child)(column, "top10");
+        const count = Number((0, xml_1.attr)(top, "val"));
+        if (!top || !Number.isInteger(col) || col < 0 || !Number.isFinite(count) || count <= 0)
+            return [];
+        return [{ col, count, ...((0, xml_1.attr)(top, "percent") === "1" ? { percent: true } : {}), ...((0, xml_1.attr)(top, "top") === "0" ? { bottom: true } : {}) }];
+    });
+    return tops.length ? { filterTop: tops } : undefined;
 }
 /** The values a table column still shows. Nothing when every column shows everything. */
 function tableFilterColumns(node) {

@@ -602,6 +602,22 @@ test("a table column filters its rows", () => {
   assert.ok(kept.includes("合计"));
   assert.equal(grid.tableFilterRule(), true);
   assert.equal(workbook.sheets[0]!.tables![0]!.filterRules, undefined);
+  // Two comparisons on one column both have to pass, so a number below 6 or above 8 drops out.
+  assert.equal(grid.tableFilterRule({ op: "gt", value: "6", and: true }, { op: "lt", value: "8" }), true);
+  const between = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(between.filter((text) => text === "10" || text === "5"), []);
+  assert.ok(between.includes("合计"));
+  assert.deepEqual(workbook.sheets[0]!.tables![0]!.filterRules, [{ col: 1, op: "gt", value: "6", and: true }, { col: 1, op: "lt", value: "8", and: true }]);
+  // The largest one stays, and the smaller number drops out. The header and the totals row stay.
+  assert.equal(grid.tableFilterTop({ count: 1 }), true);
+  const top = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(top.filter((text) => text === "10" || text === "5"), ["10"]);
+  assert.ok(top.includes("合计"));
+  assert.deepEqual(workbook.sheets[0]!.tables![0]!.filterTop, [{ col: 1, count: 1 }]);
+  // Ranking takes the column over, so the comparisons set just above are gone.
+  assert.equal(workbook.sheets[0]!.tables![0]!.filterRules, undefined);
+  assert.equal(grid.tableFilterTop(), true);
+  assert.equal(workbook.sheets[0]!.tables![0]!.filterTop, undefined);
 });
 
 test("typing below a table pulls the row in", () => {

@@ -520,6 +520,18 @@ test("wildcard lookups, date units, hidden rows, and finance", () => {
   assert.equal(evaluate("=SUBTOTAL(9,B1:B3)", ctx(workbook)), 40);
   assert.equal(evaluate("=SUBTOTAL(109,B1:B3)", ctx(workbook)), 10);
   assert.equal(evaluate("=SUM(B1:B3)", ctx(workbook)), 60);
+  // Both comparisons have to pass, so 20 is below 25 and 30 is not above 35. Only the header remains.
+  // A2:A3 holds no formula, so nothing cached under the earlier rule gets counted again.
+  workbook.sheets[0]!.tables![0]!.filterRules = [{ col: 0, op: "gt", value: "25", and: true }, { col: 0, op: "lt", value: "35", and: true }];
+  workbook.sheets[0]!.cells[1]![0] = { value: "26" };
+  workbook.sheets[0]!.cells[2]![0] = { value: "40" };
+  assert.equal(evaluate("=SUBTOTAL(9,A2:A3)", ctx(workbook)), 26);
+  assert.equal(evaluate("=SUM(A2:A3)", ctx(workbook)), 66);
+  // The largest number in the column stays. The header is not ranked, and a plain sum keeps both.
+  workbook.sheets[0]!.tables![0]!.filterRules = undefined;
+  workbook.sheets[0]!.tables![0]!.filterTop = [{ col: 0, count: 1 }];
+  assert.equal(evaluate("=SUBTOTAL(9,A2:A3)", ctx(workbook)), 40);
+  assert.equal(evaluate("=SUM(A2:A3)", ctx(workbook)), 66);
   assert.equal(Math.round(evaluate("=PMT(0.05,2,100)", ctx(workbook)) as number), -54);
   assert.equal(Math.round(evaluate("=NPV(0.1,110)", ctx(workbook)) as number), 100);
   assert.equal(evaluate("=STDEV.P(2,4,4,4,5,5,7,9)", ctx(workbook)), 2);

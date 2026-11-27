@@ -172,6 +172,7 @@ export function mountWorkbook(host, workbook, options = {}) {
         deleteTable,
         tableFilter,
         tableFilterRule,
+        tableFilterTop,
         totalsFunction,
         addPivot,
         pageSetup: (patch) => {
@@ -323,7 +324,7 @@ export function mountWorkbook(host, workbook, options = {}) {
     /** A table column with no filter shows everything. The header and the totals row always stay. */
     function tableHides(sheet, table, row) {
         const columns = table.filterColumns;
-        if ((!columns?.length && !table.filterRules?.length) || row < table.r1 || row > table.r2)
+        if ((!columns?.length && !table.filterRules?.length && !table.filterTop?.length) || row < table.r1 || row > table.r2)
             return false;
         if (table.headerRow !== false && row === table.r1)
             return false;
@@ -333,8 +334,50 @@ export function mountWorkbook(host, workbook, options = {}) {
             const value = sheet.cells[row]?.[table.c1 + column.col]?.value ?? "";
             return !column.values.includes(value);
         });
-        const compared = (table.filterRules ?? []).some((rule) => !passesRule(rule, sheet.cells[row]?.[table.c1 + rule.col]?.value ?? ""));
-        return listed || compared;
+        const compared = ruleGroupsHide(table.filterRules ?? [], (col) => sheet.cells[row]?.[table.c1 + col]?.value ?? "");
+        const ranked = (table.filterTop ?? []).some((item) => !inTop(sheet, table, row, item));
+        return listed || compared || ranked;
+    }
+    /** A number is in the largest or smallest group. Text never is, and a tie at the boundary stays. */
+    function inTop(sheet, table, row, item) {
+        const value = Number(sheet.cells[row]?.[table.c1 + item.col]?.value);
+        if (!Number.isFinite(value))
+            return false;
+        const numbers = [];
+        for (let r = table.r1; r <= table.r2; r += 1) {
+            if (table.headerRow !== false && r === table.r1)
+                continue;
+            if (table.totalsRow && r === table.r2)
+                continue;
+            const cell = Number(sheet.cells[r]?.[table.c1 + item.col]?.value);
+            if (Number.isFinite(cell))
+                numbers.push(cell);
+        }
+        const keep = item.percent ? Math.ceil(numbers.length * item.count / 100) : Math.floor(item.count);
+        const ordered = [...numbers].sort((a, b) => item.bottom ? a - b : b - a);
+        const line = ordered[Math.max(0, keep) - 1];
+        if (line == null)
+            return false;
+        return item.bottom ? value <= line : value >= line;
+    }
+    /** Two comparisons on one column both have to pass when `and` is set. Otherwise either one keeps the row. */
+    function ruleGroupsHide(rules, cellAt) {
+        const groups = new Map();
+        for (const rule of rules) {
+            const list = groups.get(rule.col);
+            if (list)
+                list.push(rule);
+            else
+                groups.set(rule.col, [rule]);
+        }
+        for (const [col, group] of groups) {
+            const cell = cellAt(col);
+            const and = group.some((rule) => rule.and);
+            const fails = and ? group.some((rule) => !passesRule(rule, cell)) : group.every((rule) => !passesRule(rule, cell));
+            if (fails)
+                return true;
+        }
+        return false;
     }
     /** A number compares as a number. Text compares as text, and only equality applies to it. */
     function passesRule(rule, cell) {
@@ -1331,8 +1374,8 @@ export function mountWorkbook(host, workbook, options = {}) {
         finish();
         return true;
     }
-    /** The column under the selection keeps the rows that pass this comparison. Omit it to stop comparing. */
-    function tableFilterRule(rule) {
+    /** The column under the selection keeps the rows that pass this comparison. A second one joins it. Omit both to stop. */
+    function tableFilterRule(rule, other) {
         const sheet = currentSheet();
         const table = tableRangeAt(sheet, selected.row, selected.col);
         if (!table || table.filter === false)
@@ -1340,9 +1383,34 @@ export function mountWorkbook(host, workbook, options = {}) {
         remember();
         const at = selected.col - table.c1;
         const rules = (table.filterRules ?? []).filter((item) => item.col !== at);
+        const and = rule?.and === true && other != null;
         if (rule)
-            rules.push({ col: at, ...rule });
+            rules.push({ col: at, op: rule.op, value: rule.value, ...(and ? { and: true } : {}) });
+        if (rule && other)
+            rules.push({ col: at, op: other.op, value: other.value, ...(and ? { and: true } : {}) });
         table.filterRules = rules.length ? rules : undefined;
+        finish();
+        return true;
+    }
+    /** The column under the selection keeps its largest numbers, or its smallest when `bottom` is set. Omit it to stop. */
+    function tableFilterTop(spec) {
+        const sheet = currentSheet();
+        const table = tableRangeAt(sheet, selected.row, selected.col);
+        if (!table || table.filter === false)
+            return false;
+        remember();
+        const at = selected.col - table.c1;
+        const tops = (table.filterTop ?? []).filter((item) => item.col !== at);
+        if (spec && spec.count > 0)
+            tops.push({ col: at, count: spec.count, ...(spec.percent ? { percent: true } : {}), ...(spec.bottom ? { bottom: true } : {}) });
+        table.filterTop = tops.length ? tops : undefined;
+        // Ranking replaces a value list or a comparison on the same column, so the column has one filter.
+        table.filterColumns = (table.filterColumns ?? []).filter((column) => column.col !== at);
+        table.filterRules = (table.filterRules ?? []).filter((rule) => rule.col !== at);
+        if (!table.filterColumns.length)
+            table.filterColumns = undefined;
+        if (!table.filterRules.length)
+            table.filterRules = undefined;
         finish();
         return true;
     }

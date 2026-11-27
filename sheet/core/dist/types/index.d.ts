@@ -135,11 +135,19 @@ export interface SheetTable {
         col: number;
         values: string[];
     }[];
-    /** A comparison a column keeps. A row that fails it is hidden. `col` counts from the table's first column. */
+    /** A comparison a column keeps. A row that fails it is hidden. `col` counts from the table's first column. Two on one column both have to pass when `and` is set, and otherwise either one is enough. */
     filterRules?: {
         col: number;
         op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte";
         value: string;
+        and?: boolean;
+    }[];
+    /** The largest or smallest numbers a column keeps. `count` is how many, or a percent of the numbers when `percent` is set. Ties stay. */
+    filterTop?: {
+        col: number;
+        count: number;
+        percent?: boolean;
+        bottom?: boolean;
     }[];
     /** The columns the data rows were last sorted by, first key first. `col` counts from the table's first column. */
     sort?: {
