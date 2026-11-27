@@ -9,4 +9,4 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm pack:mac` writes a macOS disk image. AGPL-3.0-or-later, same as the packages.
+`pnpm pack:mac` writes a macOS disk image. Apache-2.0, same as the packages.

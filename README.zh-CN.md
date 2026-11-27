@@ -40,4 +40,4 @@
 
 ## 许可证
 
-许可证是 [AGPL-3.0-or-later](LICENSE)。版权人是 Sliiu Inc，见 [COPYRIGHT](COPYRIGHT)。闭源嵌入需要商业授权，见 [COMMERCIAL.md](COMMERCIAL.md)。
+许可证是 [Apache-2.0](LICENSE)。版权人是 Sliiu Inc，见 [COPYRIGHT](COPYRIGHT)。

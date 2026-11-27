@@ -1,7 +1,7 @@
 {
   "name": "@sliiu/present-core",
   "version": "0.0.0-nightly.20261116031027",
-  "license": "AGPL-3.0-or-later",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/cjs/index.js",
   "types": "./dist/types/index.d.ts",

@@ -40,4 +40,4 @@ Name Ink Board or Folio and that look holds for the whole generation: porcelain 
 
 ## License
 
-License: [AGPL-3.0-or-later](LICENSE). Copyright holder: Sliiu Inc, see [COPYRIGHT](COPYRIGHT). A closed-source embed requires a commercial license. See [COMMERCIAL.md](COMMERCIAL.md).
+License: [Apache-2.0](LICENSE). Copyright holder: Sliiu Inc, see [COPYRIGHT](COPYRIGHT).
