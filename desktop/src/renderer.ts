@@ -115,14 +115,14 @@ function setDirty(next: boolean): void {
 
 function setTitle(): void {
   const mark = dirty ? " •" : "";
-  const title = `${fileName}${mark} — Slim Office`;
+  const title = `${fileName}${mark} — SlimPPT`;
   document.title = title;
   window.desktop.setTitle(title);
 }
 
 function setHomeTitle(): void {
-  document.title = "Slim Office";
-  window.desktop.setTitle("Slim Office");
+  document.title = "SlimPPT";
+  window.desktop.setTitle("SlimPPT");
 }
 
 function showPresent(): void {

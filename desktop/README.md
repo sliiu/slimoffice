@@ -1,4 +1,4 @@
-# Slim Office desktop
+# SlimPPT desktop
 
 The file home and the presentation editor. It reads and writes `.pptx` on this computer. Documents and spreadsheets are recognized and not opened yet.
 
