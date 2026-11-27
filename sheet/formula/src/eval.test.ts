@@ -120,6 +120,159 @@ test("sheet-qualified refs", () => {
   assert.equal(workbook.sheets[1]?.cells[0]?.[0]?.value, "18");
 });
 
+test("a date written as text works in the date functions", () => {
+  const workbook = book([[{ value: "2026-01-31" }], [{ value: "2026/3/1" }]]);
+  // The text is read as a date, so the parts come back and the two cells subtract.
+  assert.equal(evaluate("=YEAR(A1)", ctx(workbook)), 2026);
+  assert.equal(evaluate("=MONTH(A1)", ctx(workbook)), 1);
+  assert.equal(evaluate("=DAY(A2)", ctx(workbook)), 1);
+  assert.equal(evaluate("=A2-A1", ctx(workbook)), 29);
+  assert.equal(evaluate("=DATEVALUE(\"2026/1/31\")", ctx(workbook)), evaluate("=DATE(2026,1,31)", ctx(workbook)));
+  // A day the calendar does not have is rejected.
+  assert.equal(formatResult(evaluate("=DATEVALUE(\"2026-02-31\")", ctx(workbook))), "#VALUE!");
+});
+
+test("a grouped, percent, or parenthesized number adds as a number", () => {
+  const workbook = book([[{ value: "1,000" }], [{ value: "12%" }], [{ value: "(500)" }], [{ value: "甲" }]]);
+  // The comma is a thousands separator, the percent scales down, and the parentheses mark a negative.
+  assert.equal(evaluate("=SUM(A1:A4)", ctx(workbook)), 500.12);
+  assert.equal(evaluate("=A1+1", ctx(workbook)), 1001);
+  assert.equal(evaluate("=A2*100", ctx(workbook)), 12);
+  // Text that only looks grouped stays text, so it never enters the sum.
+  assert.equal(evaluate("=SUM(A4)", ctx(workbook)), 0);
+  assert.equal(formatResult(evaluate("=VALUE(\"1,000\")", ctx(workbook))), "#VALUE!");
+});
+
+test("INDIRECT reads a column, a row, and an R1C1 address", () => {
+  const workbook = book([
+    [{ value: "1" }, { value: "10" }],
+    [{ value: "2" }, { value: "20" }],
+    [{ value: "3" }, { value: "30" }],
+  ]);
+  // A column letter covers the rows the sheet holds, and a row number covers its columns.
+  assert.equal(evaluate("=SUM(INDIRECT(\"A:A\"))", ctx(workbook)), 6);
+  assert.equal(evaluate("=SUM(INDIRECT(\"2:2\"))", ctx(workbook)), 22);
+  // FALSE switches the text to R1C1, counted from the cell holding the formula.
+  assert.equal(evaluate("=INDIRECT(\"R1C2\",FALSE)", ctx(workbook, 2, 2)), 10);
+  assert.equal(evaluate("=INDIRECT(\"R[-1]C[-1]\",FALSE)", ctx(workbook, 2, 2)), 20);
+  assert.equal(evaluate("=SUM(INDIRECT(\"R1C1:R2C2\",FALSE))", ctx(workbook)), 33);
+  // Text that names nothing is a reference error.
+  assert.equal(formatResult(evaluate("=INDIRECT(\"Nope\")", ctx(workbook))), "#REF!");
+});
+
+test("a comma joins ranges into one union", () => {
+  const workbook = book([
+    [{ value: "1" }, { value: "10" }],
+    [{ value: "2" }, { value: "20" }],
+    [{ value: "3" }, { value: "30" }],
+  ]);
+  // The comma adds both ranges, and a cell that sits in both is counted once.
+  assert.equal(evaluate("=SUM((A1:A2,B1))", ctx(workbook)), 13);
+  assert.equal(evaluate("=SUM((A1:A2,A2:A3))", ctx(workbook)), 6);
+  // AREAS counts the ranges, and INDEX picks one of them by its fourth argument.
+  assert.equal(evaluate("=AREAS((A1:A2,B1,A1:B3))", ctx(workbook)), 3);
+  assert.equal(evaluate("=INDEX((A1:A2,B1),1,1,2)", ctx(workbook)), 10);
+  assert.equal(evaluate("=SUM(INDEX((A1:A2,B1:B2),0,1,2))", ctx(workbook)), 30);
+  // A pick past the last range is a reference error, and a bare range is one area.
+  assert.equal(formatResult(evaluate("=INDEX((A1,B1),1,1,3)", ctx(workbook))), "#REF!");
+  assert.equal(evaluate("=AREAS(A1:B3)", ctx(workbook)), 1);
+});
+
+test("ROW and COLUMN list every row and column of a range", () => {
+  const workbook = book([[{ value: "1" }, { value: "2" }], [{ value: "3" }, { value: "4" }], [{ value: "5" }, { value: "6" }]]);
+  // A column range lists its row numbers from top to bottom, so a sum adds them.
+  assert.deepEqual(evaluate("=ROW(A2:A4)", ctx(workbook)), [2, 3, 4]);
+  assert.equal(evaluate("=SUM(ROW(A1:A3))", ctx(workbook)), 6);
+  // A row range lists its column numbers from left to right.
+  assert.deepEqual(evaluate("=COLUMN(A1:C1)", ctx(workbook)), [1, 2, 3]);
+  // A single cell is still one number, and no argument counts from the cell holding the formula.
+  assert.equal(evaluate("=ROW(B2)", ctx(workbook, 4, 4)), 2);
+  assert.equal(evaluate("=COLUMN()", ctx(workbook, 4, 3)), 4);
+});
+
+test("INDEX with a zero returns the whole row or column", () => {
+  const workbook = book([
+    [{ value: "1" }, { value: "10" }],
+    [{ value: "2" }, { value: "20" }],
+    [{ value: "3" }, { value: "30" }],
+  ]);
+  // Zero in the row slot returns every row of that column, so a sum sees all three.
+  assert.equal(evaluate("=SUM(INDEX(A1:B3,0,2))", ctx(workbook)), 60);
+  assert.deepEqual(evaluate("=INDEX(A1:B3,0,2)", ctx(workbook)), [10, 20, 30]);
+  // Zero in the column slot returns the whole row, in order.
+  assert.deepEqual(evaluate("=INDEX(A1:B3,2,0)", ctx(workbook)), [2, 20]);
+  // A plain row and column still returns the one cell.
+  assert.equal(evaluate("=INDEX(A1:B3,2,2)", ctx(workbook)), 20);
+  // A row past the range is a reference error.
+  assert.equal(formatResult(evaluate("=INDEX(A1:B3,4,1)", ctx(workbook))), "#REF!");
+});
+
+test("an array result spills into the cells beside it", () => {
+  const workbook = book([[{ value: "1" }, { value: "", formula: "{10,20;30,40}" }], [{ value: "2" }, { value: "" }]]);
+  recalculate(workbook);
+  const cells = workbook.sheets[0]!.cells;
+  // The anchor keeps the formula and the first value. The rest land in the cells below and to the right.
+  assert.equal(cells[0]?.[1]?.value, "10");
+  assert.equal(cells[0]?.[1]?.formula, "{10,20;30,40}");
+  assert.equal(cells[0]?.[1]?.spillRef, "B1:C2");
+  assert.equal(cells[0]?.[2]?.value, "20");
+  assert.equal(cells[1]?.[1]?.value, "30");
+  assert.equal(cells[1]?.[2]?.value, "40");
+  assert.equal(cells[1]?.[2]?.spill, "B1");
+  // A spilled cell points back at the formula, so a later formula can read it.
+  cells[2] = [{ value: "", formula: "B2+C2" }];
+  recalculate(workbook);
+  assert.equal(cells[2]?.[0]?.value, "70");
+  // A value already sitting in the way blocks the whole spill, and nothing else is written.
+  cells[1]![2] = { value: "占用" };
+  recalculate(workbook);
+  assert.equal(cells[0]?.[1]?.value, "#SPILL!");
+  assert.equal(cells[0]?.[2]?.value, "");
+  // Clearing the blocker lets the result spill again.
+  cells[1]![2] = { value: "" };
+  recalculate(workbook);
+  assert.equal(cells[1]?.[2]?.value, "40");
+});
+
+test("scalar functions run on every cell of a range", () => {
+  const workbook = book([
+    [{ value: "-2" }, { value: "甲" }],
+    [{ value: "5" }, { value: "乙" }],
+    [{ value: "1" }, { value: "丙" }],
+  ]);
+  // ABS and IF each return one result per cell, so SUM sees all of them.
+  assert.equal(evaluate("=SUM(ABS(A1:A3))", ctx(workbook)), 8);
+  assert.equal(evaluate("=SUM(IF(A1:A3>2,A1:A3,0))", ctx(workbook)), 5);
+  assert.equal(formatResult(evaluate("=UPPER(B1:B2)", ctx(workbook))), "甲,乙");
+  assert.equal(formatResult(evaluate("=ROUND(A1:A2,0)", ctx(workbook))), "-2,5");
+  // A digit list that is shorter than the values leaves #N/A where it runs out.
+  assert.equal(formatResult(evaluate("=ROUND({1.26,2.24,3.14},{1,2})", ctx(workbook))), "1.3,2.24,#N/A");
+  // IFERROR still catches a per-cell error instead of passing it through.
+  assert.equal(formatResult(evaluate("=IFERROR(A1:A2/A2:A3,0)", ctx(workbook))), "-0.4,5");
+  // A function that reads the whole range does not split it into cells.
+  assert.equal(evaluate("=SUM(A1:A3)", ctx(workbook)), 4);
+  assert.equal(evaluate("=MATCH(\"-2\",A1:A3,0)", ctx(workbook)), 1);
+});
+
+test("a 3D reference stacks the same cells across sheets", () => {
+  const workbook: Workbook = {
+    sheets: [
+      { name: "Q1", cells: [[{ value: "1" }, { value: "10" }]] },
+      { name: "Notes", cells: [[{ value: "100" }, { value: "1" }]] },
+      { name: "Q3", cells: [[{ value: "4" }, { value: "40" }]] },
+    ],
+  };
+  // Notes sits between the two named sheets, so its cell is included. Reversing the names does not drop it.
+  assert.equal(evaluate("=SUM(Q1:Q3!A1)", ctx(workbook)), 105);
+  assert.equal(evaluate("=SUM(Q3:Q1!A1)", ctx(workbook)), 105);
+  assert.equal(evaluate("=MIN(Q1:Q3!A1)", ctx(workbook)), 1);
+  assert.equal(evaluate("=SUM('Q1':'Q3'!A1:B1)", ctx(workbook)), 156);
+  // One sheet is just that sheet.
+  assert.equal(evaluate("=SUM(Q1:Q1!B1)", ctx(workbook)), 10);
+  // A sheet that is not in the workbook is a reference error.
+  assert.equal(evaluate("=Q1:Nope!A1", ctx(workbook)) instanceof FormulaError, true);
+});
+
 test("VLOOKUP INDEX MATCH XLOOKUP TEXT", () => {
   const workbook = book([
     [{ value: "a" }, { value: "10" }],

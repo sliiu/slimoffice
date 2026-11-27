@@ -360,6 +360,8 @@ export function mountWorkbook(host, workbook, options = {}) {
             td.classList.add("is-formula");
         if (item?.array)
             td.dataset.array = "1";
+        if (item?.spill)
+            td.dataset.spill = "1";
         const tableRange = tableRangeAt(sheet, row, column);
         if (tableRange) {
             td.dataset.table = tableRange.name;
@@ -419,6 +421,8 @@ export function mountWorkbook(host, workbook, options = {}) {
             }
             td.classList.remove("is-invalid");
             const cell = ensure(row, column);
+            // Typing into a spilled cell makes it the user's own value, which blocks the spill next time.
+            delete cell.spill;
             if (next.startsWith("=")) {
                 cell.formula = next.slice(1);
                 cell.value = next;

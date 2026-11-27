@@ -272,7 +272,7 @@ function cellXml(ref, cell, prior, shared, styles) {
     const styleAttr = style ? ` s="${style}"` : "";
     if (cell.formula) {
         const body = escapeXml(cell.formula.replace(/^\=/, ""));
-        const array = cell.array ? ' t="array"' : "";
+        const array = cell.spillRef ? ` t="array" ref="${escapeXml(cell.spillRef)}"` : cell.array ? ' t="array"' : "";
         const cached = cell.value && cell.value !== `=${cell.formula}` && cell.value.toUpperCase() !== cell.formula.toUpperCase() ? cell.value : "";
         if (cached === "TRUE" || cached === "FALSE") {
             return `<c r="${ref}"${styleAttr} t="b"><f${array}>${body}</f><v>${cached === "TRUE" ? "1" : "0"}</v></c>`;

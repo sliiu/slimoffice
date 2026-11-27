@@ -19,6 +19,9 @@ export const E = {
 };
 /** Recalculate every formula cell. Display results go into `value`; `formula` stays. */
 export function recalculate(workbook) {
+    // Drop the previous spill first, so a result that shrank does not leave stale values behind.
+    for (const sheet of workbook.sheets)
+        clearSpilled(sheet);
     for (let s = 0; s < workbook.sheets.length; s += 1) {
         const sheet = workbook.sheets[s];
         for (let r = 0; r < sheet.cells.length; r += 1) {
@@ -30,10 +33,65 @@ export function recalculate(workbook) {
                 if (!cell?.formula)
                     continue;
                 const result = evaluate(`=${cell.formula}`, { workbook, sheetIndex: s, row: r, col: c });
+                if (Array.isArray(result) && result.length > 1) {
+                    if (spillInto(sheet, r, c, result))
+                        continue;
+                    delete cell.spillRef;
+                    cell.value = "#SPILL!";
+                    continue;
+                }
+                delete cell.spillRef;
                 cell.value = formatResult(result);
             }
         }
     }
+}
+/** Clears cells a previous spill filled. A cell the user has since typed into has lost its marker, so it stays. */
+function clearSpilled(sheet) {
+    for (const line of sheet.cells) {
+        if (!line)
+            continue;
+        for (const cell of line) {
+            if (cell?.spill && !cell.formula) {
+                cell.value = "";
+                delete cell.spill;
+            }
+        }
+    }
+}
+/**
+ * Writes an array result into the cells below and to the right of the anchor.
+ * Returns false, and writes nothing, when one of those cells already holds a value or a formula.
+ */
+function spillInto(sheet, row, col, result) {
+    const cols = rangeWidth(result);
+    const rows = Math.ceil(result.length / cols);
+    for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+            if (r === 0 && c === 0)
+                continue;
+            const target = sheet.cells[row + r]?.[col + c];
+            if (target && (target.formula || target.value !== ""))
+                return false;
+        }
+    }
+    const anchor = sheet.cells[row]?.[col];
+    if (!anchor)
+        return false;
+    anchor.value = formatResult(result[0] ?? "");
+    anchor.spillRef = `${columnName(col)}${row + 1}:${columnName(col + cols - 1)}${row + rows}`;
+    const anchorRef = `${columnName(col)}${row + 1}`;
+    for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+            if (r === 0 && c === 0)
+                continue;
+            const cell = ensureCell(sheet, row + r, col + c);
+            cell.value = formatResult(result[r * cols + c] ?? "");
+            cell.spill = anchorRef;
+            delete cell.formula;
+        }
+    }
+    return true;
 }
 export function evaluate(input, ctx) {
     const text = input.startsWith("=") ? input.slice(1) : input;
@@ -417,6 +475,10 @@ class Parser {
     tokens;
     ctx;
     i = 0;
+    /** Parentheses opened by a function call. A comma inside one separates arguments, not ranges. */
+    depth = 0;
+    /** Parentheses opened on their own, where a comma joins ranges. */
+    paren = 0;
     constructor(tokens, ctx) {
         this.tokens = tokens;
         this.ctx = ctx;
@@ -530,7 +592,9 @@ class Parser {
         }
         if (token.kind === "lp") {
             this.take();
+            this.paren += 1;
             const value = this.parseExpression();
+            this.paren -= 1;
             if (this.peek()?.kind !== "rp")
                 throw E.VALUE();
             this.take();
@@ -667,7 +731,9 @@ class Parser {
     }
     parseCall(name) {
         this.take();
+        this.depth += 1;
         const args = this.parseArgList();
+        this.depth -= 1;
         if (this.peek()?.kind !== "rp")
             throw E.VALUE();
         this.take();
@@ -692,7 +758,25 @@ class Parser {
         while (value instanceof FormulaError === false && this.startsRef()) {
             value = intersectRanges(this.ctx.workbook, value, this.parseOneRef());
         }
+        // A comma inside bare parentheses joins ranges into one union, as in `(A1:A2,B1)`.
+        // Inside a function call the comma separates arguments, so SUM(A1,B1) stays two arguments.
+        if (Array.isArray(value) && this.peek()?.kind === "comma" && this.paren > 0 && this.startsUnion()) {
+            const parts = [value];
+            while (this.peek()?.kind === "comma" && this.startsUnion()) {
+                this.take();
+                const next = this.parseRefOrCall();
+                if (!Array.isArray(next))
+                    return next;
+                parts.push(next);
+            }
+            value = unionRanges(parts);
+        }
         return value;
+    }
+    /** A comma starts a union only when a range follows it. A function argument stays an argument. */
+    startsUnion() {
+        const token = this.tokens[this.i + 1];
+        return token?.kind === "ref" || token?.kind === "lp";
     }
     startsRef() {
         const token = this.peek();
@@ -721,6 +805,17 @@ class Parser {
                 throw E.REF();
             this.take();
             return this.parseRangeTail(sheetName, next.value);
+        }
+        // Sheet1:Sheet3!A1 stacks that range on every sheet from the first name to the second.
+        if (this.peek()?.kind === "colon") {
+            const sheetEnd = this.tokens[this.i + 1];
+            const mark = this.tokens[this.i + 2];
+            if (sheetEnd && (sheetEnd.kind === "id" || sheetEnd.kind === "ref") && mark?.kind === "bang") {
+                this.take();
+                this.take();
+                this.take();
+                return this.threeD(first.value, sheetEnd.value);
+            }
         }
         if (first.kind === "id" && this.peek()?.kind === "lp")
             return this.parseCall(first.value);
@@ -788,6 +883,61 @@ class Parser {
             return readRange(this.ctx.workbook, sheetIndex, { row: top, col: table.c1 + at }, { row: table.r2, col: table.c1 + at });
         }
         return E.NAME();
+    }
+    /** The same cells on every sheet between the two names, including sheets in between. */
+    threeD(startName, endName) {
+        const from = findSheet(this.ctx.workbook, startName);
+        const to = findSheet(this.ctx.workbook, endName);
+        if (from < 0 || to < 0)
+            return E.REF();
+        const span = this.takeSpan();
+        if (span instanceof FormulaError)
+            return span;
+        const out = [];
+        for (let sheetIndex = Math.min(from, to); sheetIndex <= Math.max(from, to); sheetIndex += 1) {
+            out.push(...readRange(this.ctx.workbook, sheetIndex, span.start, span.end));
+        }
+        return out;
+    }
+    /** The range after `!`, as corners. A bare name here is a reference error, not a defined name. */
+    takeSpan() {
+        const next = this.peek();
+        if (next?.kind === "num") {
+            this.take();
+            if (this.peek()?.kind !== "colon")
+                return E.REF();
+            this.take();
+            const end = this.take();
+            if (end.kind !== "num")
+                return E.REF();
+            if (!Number.isInteger(next.value) || !Number.isInteger(end.value) || next.value < 1 || end.value < 1 || next.value > 1048576 || end.value > 1048576) {
+                return E.REF();
+            }
+            return {
+                start: { row: next.value - 1, col: 0, whole: "row" },
+                end: { row: end.value - 1, col: 0, whole: "row" },
+            };
+        }
+        if (!next || (next.kind !== "ref" && next.kind !== "id"))
+            return E.REF();
+        this.take();
+        let endRef = next.value;
+        let ranged = false;
+        if (this.peek()?.kind === "colon") {
+            this.take();
+            const last = this.take();
+            if (last.kind !== "ref" && last.kind !== "id")
+                return E.REF();
+            endRef = last.value;
+            ranged = true;
+        }
+        const start = locateRef(next.value, ranged, this.ctx);
+        const end = locateRef(endRef, ranged, this.ctx);
+        if ((start && start.row < 0) || (end && end.row < 0))
+            return E.REF();
+        if (!start || !end || start.whole !== end.whole)
+            return E.REF();
+        return { start, end };
     }
     /** `1:3` covers every column of those rows, bounded by the columns the sheet actually holds. */
     rowRange(sheetName, start, end) {
@@ -906,9 +1056,22 @@ function coerceCellText(text) {
         return true;
     if (text === "FALSE")
         return false;
-    if (/^-?\d+(?:\.\d+)?$/.test(text))
-        return Number(text);
-    return text;
+    const number = numberText(text);
+    return number === undefined ? text : number;
+}
+/**
+ * A number a cell shows with grouping, a percent, or accounting parentheses.
+ * `1,000` is a thousand, `12%` is 0.12, and `(500)` is minus 500. Plain text stays text.
+ */
+function numberText(text) {
+    const body = text.trim().replace(/[￥¥$€£]\s*/g, "");
+    const negative = /^\(.*\)$/.test(body);
+    const percent = body.endsWith("%");
+    const core = body.replace(/^[()]+|[()]+$/g, "").replace(/%$/, "").replace(/,/g, "");
+    if (!/^[+-]?\d+(?:\.\d+)?$/.test(core))
+        return undefined;
+    const value = Number(core) * (negative ? -1 : 1) * (percent ? 0.01 : 1);
+    return Number.isFinite(value) ? value : undefined;
 }
 /** A one-cell range carries its position, but everywhere else it behaves as its single value. */
 function collapse(value) {
@@ -916,15 +1079,23 @@ function collapse(value) {
 }
 function flatten(args) {
     const out = [];
+    const areas = [];
     for (const arg of args) {
         const value = collapse(arg);
         if (isLambda(value) || isPending(value) || isOmitted(value) || value instanceof FormulaError)
             continue;
-        if (Array.isArray(value))
+        if (Array.isArray(value)) {
             out.push(...value);
+            const parts = rangeAreas(value);
+            if (parts.length)
+                areas.push(...parts);
+        }
         else
             out.push(value);
     }
+    // A union flattened for SUM keeps its separate ranges, so AREAS and INDEX can still see them.
+    if (areas.length)
+        Object.defineProperty(out, "areas", { value: areas, enumerable: false });
     return out;
 }
 function isPending(value) {
@@ -995,6 +1166,33 @@ function numbers(args) {
         .map((item) => (typeof item === "number" ? item : typeof item === "boolean" ? Number(item) : Number(item)))
         .filter((item) => Number.isFinite(item));
 }
+/** A number, or a date written as text such as `2026-1-31` or `2026/1/31`. */
+function asDate(value) {
+    if (typeof value === "string") {
+        const date = dateText(value);
+        if (date !== undefined)
+            return date;
+        return E.VALUE();
+    }
+    if (Array.isArray(value) && value.length === 1)
+        return asDate(value[0] ?? "");
+    return asNumber(value);
+}
+/** `2026-1-31` and `2026/1/31` as an Excel serial. A month or day past the calendar is not a date. */
+function dateText(text) {
+    const match = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(text.trim());
+    if (!match)
+        return undefined;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31)
+        return undefined;
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day)
+        return undefined;
+    return date.getTime() / 86400000 + 25569;
+}
 function asNumber(value) {
     if (isPending(value))
         return E.NAME();
@@ -1010,8 +1208,16 @@ function asNumber(value) {
         return value;
     if (typeof value === "boolean")
         return value ? 1 : 0;
+    if (typeof value !== "string")
+        return E.VALUE();
     if (value === "")
         return 0;
+    const date = dateText(value);
+    if (date !== undefined)
+        return date;
+    const shown = numberText(value);
+    if (shown !== undefined)
+        return shown;
     const num = Number(value);
     return Number.isFinite(num) ? num : E.VALUE();
 }
@@ -1172,7 +1378,63 @@ function compare(left, right, op) {
         return cmp >= 0;
     return E.VALUE();
 }
+/** Functions that read a range as a whole. Everything else runs once per cell. */
+const TAKES_RANGE = new Set([
+    "SUM", "AVERAGE", "COUNT", "COUNTA", "COUNTBLANK", "MIN", "MAX", "AND", "OR", "XOR",
+    "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS", "MAXIFS", "MINIFS",
+    "SUMPRODUCT", "PRODUCT", "SUMSQ", "GCD", "LCM", "MULTINOMIAL", "CONCAT", "CONCATENATE", "TEXTJOIN",
+    "AVERAGEA", "MAXA", "MINA", "SUBTOTAL", "AGGREGATE",
+    "STDEV", "STDEV.P", "STDEV.S", "STDEVA", "STDEVP", "STDEVPA",
+    "VAR", "VAR.P", "VAR.S", "VARA", "VARP", "VARPA",
+    "MEDIAN", "MODE", "MODE.MULT", "MODE.SNGL", "LARGE", "SMALL",
+    "PERCENTILE", "PERCENTILE.EXC", "PERCENTILE.INC", "QUARTILE", "QUARTILE.EXC", "QUARTILE.INC",
+    "PERCENTRANK", "PERCENTRANK.EXC", "PERCENTRANK.INC", "PERCENTOF",
+    "RANK", "RANK.AVG", "RANK.EQ", "CORREL", "PEARSON", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
+    "FORECAST", "FORECAST.LINEAR", "FORECAST.ETS", "FORECAST.ETS.CONFINT", "FORECAST.ETS.SEASONALITY", "FORECAST.ETS.STAT",
+    "TREND", "GROWTH", "LINEST", "LOGEST", "SLOPE", "INTERCEPT", "RSQ", "STEYX",
+    "GEOMEAN", "HARMEAN", "TRIMMEAN", "AVEDEV", "DEVSQ", "SKEW", "SKEW.P", "KURT", "FREQUENCY",
+    "CHISQ.TEST", "F.TEST", "T.TEST", "Z.TEST", "CHITEST", "FTEST", "TTEST", "ZTEST", "PROB",
+    "SUMX2MY2", "SUMX2PY2", "SUMXMY2",
+    "VLOOKUP", "HLOOKUP", "XLOOKUP", "LOOKUP", "INDEX", "MATCH", "XMATCH",
+    "OFFSET", "INDIRECT", "TRANSPOSE", "ADDRESS", "ROW", "COLUMN", "ROWS", "COLUMNS", "CHOOSE",
+    "FORMULATEXT", "HYPERLINK", "SHEET", "SHEETS", "CELL", "AREAS", "INFO", "IMAGE", "ISFORMULA", "ISREF", "PHONETIC",
+    "SEQUENCE", "UNIQUE", "SORT", "SORTBY", "FILTER", "HSTACK", "VSTACK", "MAKEARRAY", "MAP", "REDUCE", "SCAN",
+    "BYROW", "BYCOL", "TAKE", "DROP", "CHOOSECOLS", "CHOOSEROWS", "TOCOL", "TOROW", "WRAPROWS", "WRAPCOLS",
+    "EXPAND", "RANDARRAY", "GROUPBY", "PIVOTBY", "MMULT", "MDETERM", "MINVERSE", "MUNIT", "TRIMRANGE",
+    "ARRAYTOTEXT", "TEXTSPLIT", "SERIESSUM",
+    "DAVERAGE", "DCOUNT", "DCOUNTA", "DGET", "DMAX", "DMIN", "DPRODUCT", "DSTDEV", "DSTDEVP", "DSUM", "DVAR", "DVARP",
+    "NPV", "IRR", "XIRR", "XNPV", "MIRR", "FVSCHEDULE", "IMSUM", "IMPRODUCT",
+    "NETWORKDAYS", "NETWORKDAYS.INTL", "WORKDAY", "WORKDAY.INTL",
+]);
+const ERROR_TRAPS = new Set(["IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"]);
+/** Runs a scalar function on every cell. A single value spreads; a short side leaves #N/A. */
+function elementwise(name, args, ctx) {
+    const grids = args.map(gridOf);
+    const rows = Math.max(1, ...grids.map((grid) => grid.rows));
+    const cols = Math.max(1, ...grids.map((grid) => grid.cols));
+    const out = [];
+    for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+            const cellArgs = grids.map((grid) => grid.at(r, c));
+            const bad = ERROR_TRAPS.has(name) ? undefined : cellArgs.find((item) => item instanceof FormulaError);
+            if (bad instanceof FormulaError) {
+                out.push(bad.code);
+                continue;
+            }
+            const result = callFunction(name, cellArgs, ctx);
+            if (result instanceof FormulaError)
+                out.push(result.code);
+            else if (typeof result === "number" || typeof result === "string" || typeof result === "boolean")
+                out.push(result);
+            else
+                out.push(asText(result));
+        }
+    }
+    return withWidth(out, cols);
+}
 function callFunction(name, args, ctx) {
+    if (args.some(isMulti) && !TAKES_RANGE.has(name))
+        return elementwise(name, args, ctx);
     switch (name) {
         case "SUM":
             return numbers(args).reduce((a, b) => a + b, 0);
@@ -1450,9 +1712,9 @@ function callFunction(name, args, ctx) {
             return primary ?? "";
         }
         case "ROW":
-            return rowOf(args[0], ctx) + 1;
+            return rowNumbers(args[0], ctx);
         case "COLUMN":
-            return columnOf(args[0], ctx) + 1;
+            return columnNumbers(args[0], ctx);
         case "ROWS":
             return rowsOf(args[0]);
         case "COLUMNS":
@@ -1507,7 +1769,7 @@ function callFunction(name, args, ctx) {
         case "YEAR":
         case "MONTH":
         case "DAY": {
-            const serial = asNumber(args[0] ?? 0);
+            const serial = asDate(args[0] ?? 0);
             if (serial instanceof FormulaError)
                 return serial;
             const date = new Date(Math.round((serial - 25569) * 86400000));
@@ -1567,6 +1829,19 @@ function callFunction(name, args, ctx) {
             return result[at] ?? E.NA();
         }
         case "INDEX": {
+            // The fourth argument picks one area of a union, counting from one.
+            if (args[3] !== undefined) {
+                const areas = rangeAreas(args[0] ?? "");
+                if (!areas.length)
+                    return E.REF();
+                const which = asNumber(args[3]);
+                if (which instanceof FormulaError)
+                    return which;
+                const area = areas[Math.floor(which) - 1];
+                if (!area)
+                    return E.REF();
+                return callFunction("INDEX", [area, args[1] ?? 1, args[2] ?? 1], ctx);
+            }
             const table = args[0];
             const row = asNumber(args[1] ?? 1);
             const col = asNumber(args[2] ?? 1);
@@ -1576,10 +1851,30 @@ function callFunction(name, args, ctx) {
                 return row;
             if (col instanceof FormulaError)
                 return col;
-            if (args[2] === undefined)
-                return table[Math.max(0, Math.floor(row) - 1)] ?? E.REF();
             const width = rangeWidth(table);
-            return table[(Math.max(0, Math.floor(row) - 1)) * width + (Math.max(0, Math.floor(col) - 1))] ?? E.REF();
+            const height = Math.ceil(table.length / width);
+            const rowAt = Math.floor(row);
+            const colAt = Math.floor(col);
+            if (rowAt < 0 || rowAt > height || colAt < 0 || colAt > width)
+                return E.REF();
+            // A zero picks the whole row or the whole column, so SUM(INDEX(A1:B3,0,2)) adds the column.
+            if (rowAt === 0 || colAt === 0) {
+                if (args[2] === undefined)
+                    return E.REF();
+                const out = [];
+                const r1 = rowAt === 0 ? 0 : rowAt - 1;
+                const r2 = rowAt === 0 ? height - 1 : rowAt - 1;
+                const c1 = colAt === 0 ? 0 : colAt - 1;
+                const c2 = colAt === 0 ? width - 1 : colAt - 1;
+                for (let r = r1; r <= r2; r += 1) {
+                    for (let c = c1; c <= c2; c += 1)
+                        out.push(table[r * width + c] ?? "");
+                }
+                return out.length === 1 ? out[0] ?? "" : withWidth(out, c2 - c1 + 1);
+            }
+            if (args[2] === undefined)
+                return table[rowAt - 1] ?? E.REF();
+            return table[(rowAt - 1) * width + (colAt - 1)] ?? E.REF();
         }
         case "MATCH":
         case "XMATCH": {
@@ -2101,7 +2396,7 @@ function callFunction(name, args, ctx) {
         case "HOUR":
         case "MINUTE":
         case "SECOND": {
-            const serial = asNumber(args[0] ?? 0);
+            const serial = asDate(args[0] ?? 0);
             if (serial instanceof FormulaError)
                 return serial;
             const seconds = Math.round((((serial % 1) + 1) % 1) * 86400);
@@ -2111,12 +2406,8 @@ function callFunction(name, args, ctx) {
                 return Math.floor(seconds / 60) % 60;
             return seconds % 60;
         }
-        case "DATEVALUE": {
-            const match = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(asText(args[0] ?? "").trim());
-            if (!match)
-                return E.VALUE();
-            return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86400000 + 25569;
-        }
+        case "DATEVALUE":
+            return dateText(asText(args[0] ?? "")) ?? E.VALUE();
         case "WORKDAY": {
             const start = asNumber(args[0] ?? 0);
             const days = asNumber(args[1] ?? 0);
@@ -3664,7 +3955,7 @@ function catalog(name, args, ctx) {
     if (name === "FORMULATEXT")
         return formulaText(ctx, args[0]);
     if (name === "ISREF")
-        return rangeOrigin(args[0]) !== undefined;
+        return rangeOrigin(args[0]) !== undefined || rangeAreas(args[0]).length > 0;
     if (name === "SHEET")
         return sheetNumber(ctx, args[0]);
     if (name === "SHEETS")
@@ -4257,6 +4548,12 @@ function pad(line, width) {
  * complex numbers, and the Bessel functions.
  */
 function extended(name, args, ctx) {
+    if (name === "AREAS") {
+        const areas = rangeAreas(args[0] ?? "");
+        if (areas.length)
+            return areas.length;
+        return rangeOrigin(args[0]) ? 1 : E.VALUE();
+    }
     if (name === "ENCODEURL")
         return encodeURIComponent(asText(args[0] ?? ""));
     if (name === "CELL")
@@ -5370,6 +5667,55 @@ function tagRange(values, width, hidden, subtotals, origin) {
         Object.defineProperty(values, "origin", { value: origin, enumerable: false });
     return values;
 }
+function rangeAreas(value) {
+    if (!Array.isArray(value))
+        return [];
+    return value.areas ?? [];
+}
+/** Joins ranges listed with commas. Overlapping cells count once in a sum, but each range stays its own area. */
+function unionRanges(parts) {
+    const bad = parts.find((part) => part instanceof FormulaError);
+    if (bad instanceof FormulaError)
+        return bad;
+    const areas = parts.flatMap((part) => {
+        const nested = rangeAreas(part);
+        return nested.length ? nested : [part];
+    });
+    const out = [];
+    const hidden = [];
+    const subtotals = [];
+    const seen = new Set();
+    for (const area of areas) {
+        if (Array.isArray(area)) {
+            const flags = area;
+            const origin = flags.origin;
+            const width = origin ? origin.c2 - origin.c1 + 1 : rangeWidth(area);
+            area.forEach((item, index) => {
+                // A cell that sits in two of the ranges counts once, which is what SUM does with an overlap.
+                if (origin) {
+                    const key = `${origin.sheetIndex}:${origin.r1 + Math.floor(index / width)}:${origin.c1 + (index % width)}`;
+                    if (seen.has(key))
+                        return;
+                    seen.add(key);
+                }
+                out.push(item);
+                hidden.push(flags.hidden?.[index] ?? false);
+                subtotals.push(flags.subtotals?.[index] ?? false);
+            });
+        }
+        else if (isPending(area))
+            return E.NAME();
+        else if (isLambda(area) || isOmitted(area))
+            out.push("");
+        else if (area instanceof FormulaError)
+            out.push(area.code);
+        else
+            out.push(area);
+    }
+    const joined = tagRange(out, 1, hidden, subtotals);
+    Object.defineProperty(joined, "areas", { value: areas, enumerable: false });
+    return joined;
+}
 function withWidth(values, width) {
     return tagRange(values, width, values.map(() => false), values.map(() => false));
 }
@@ -5386,6 +5732,26 @@ function visibleArgs(args, skipHidden) {
         const kept = arg.filter((_item, index) => !(flags.subtotals?.[index] ?? false) && !(skipHidden && (flags.hidden?.[index] ?? false)));
         return tagRange(kept, rangeWidth(arg), [], []);
     });
+}
+/** ROW of a range lists every row number, top to bottom. A single cell stays one number. */
+function rowNumbers(value, ctx) {
+    const origin = rangeOrigin(value);
+    if (!origin || origin.r1 === origin.r2)
+        return rowOf(value, ctx) + 1;
+    const out = [];
+    for (let row = origin.r1; row <= origin.r2; row += 1)
+        out.push(row + 1);
+    return out;
+}
+/** COLUMN of a range lists every column number, left to right. A single cell stays one number. */
+function columnNumbers(value, ctx) {
+    const origin = rangeOrigin(value);
+    if (!origin || origin.c1 === origin.c2)
+        return columnOf(value, ctx) + 1;
+    const out = [];
+    for (let col = origin.c1; col <= origin.c2; col += 1)
+        out.push(col + 1);
+    return withWidth(out, out.length);
 }
 function rowOf(value, ctx) {
     const origin = rangeOrigin(value);
@@ -5476,19 +5842,57 @@ function offsetRange(ctx, args) {
 /** INDIRECT reads whatever range the text names, on the current sheet unless the text names one. */
 function indirectRange(ctx, args) {
     const text = asText(args[0] ?? "").trim();
+    // The second argument picks the address style. Anything but FALSE is A1.
+    const a1 = args[1] === undefined ? true : asBool(args[1]);
+    if (a1 instanceof FormulaError)
+        return a1;
     const bang = text.lastIndexOf("!");
     const sheetName = bang < 0 ? undefined : text.slice(0, bang).replace(/^'|'$/g, "").replace(/''/g, "'");
     const body = bang < 0 ? text : text.slice(bang + 1);
-    const [startText, endText] = body.split(":");
-    const start = parseA1(startText ?? "");
-    const end = parseA1(endText ?? startText ?? "");
-    if (!start || !end)
+    const span = a1 ? spanFromA1(body) : spanFromR1C1(body, ctx);
+    if (!span)
         return E.REF();
     const sheetIndex = sheetName === undefined ? ctx.sheetIndex : findSheet(ctx.workbook, sheetName);
     if (sheetIndex < 0)
         return E.REF();
-    const values = readRange(ctx.workbook, sheetIndex, start, end);
+    const values = readRange(ctx.workbook, sheetIndex, span.start, span.end);
     return values.length === 1 ? values[0] ?? "" : values;
+}
+/** `A1`, `A1:B2`, `A:A`, and `1:1` from a text. A bare letter is not a column here. */
+function spanFromA1(body) {
+    const [startText, endText] = body.split(":");
+    const ranged = endText !== undefined;
+    const start = cornerFromA1(startText ?? "", ranged);
+    const end = cornerFromA1((endText ?? startText) ?? "", ranged);
+    if (!start || !end || start.whole !== end.whole)
+        return undefined;
+    return { start, end };
+}
+function cornerFromA1(ref, ranged) {
+    const cell = parseA1(ref);
+    if (cell)
+        return cell;
+    if (/^\$?\d+$/.test(ref)) {
+        const row = Number(ref.replace("$", "")) - 1;
+        if (row < 0 || row > 1048575)
+            return undefined;
+        return { row, col: 0, whole: "row" };
+    }
+    if (!ranged)
+        return undefined;
+    const col = columnNumber(ref.replace(/^\$/, "").toUpperCase());
+    if (col == null || !/^\$?[A-Z]{1,3}$/.test(ref.toUpperCase()))
+        return undefined;
+    return { row: 0, col, whole: "col" };
+}
+/** `R2C3` and `R[1]C[-1]`, including a range of them, counted from the cell holding the formula. */
+function spanFromR1C1(body, ctx) {
+    const [startText, endText] = body.split(":");
+    const start = parseR1C1(startText ?? "", ctx);
+    const end = parseR1C1((endText ?? startText) ?? "", ctx);
+    if (!start || !end || start.row < 0 || end.row < 0)
+        return undefined;
+    return { start, end };
 }
 function scalar(value) {
     if (isPending(value))

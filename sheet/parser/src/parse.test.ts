@@ -264,12 +264,15 @@ test("reads array formulas, named styles, outline, and the print area", async ()
     "xl/styles.xml": styles,
     "xl/worksheets/sheet1.xml": '<worksheet><sheetPr><outlinePr summaryBelow="0"/></sheetPr>' +
       '<cols><col min="1" max="1" outlineLevel="1"/></cols>' +
-      '<sheetData><row r="1" outlineLevel="1"><c r="A1" s="1"><f t="array">SUM(B1:B2)</f><v>30</v></c></row></sheetData></worksheet>',
+      '<sheetData><row r="1" outlineLevel="1"><c r="A1" s="1"><f t="array" ref="A1:A2">SUM(B1:B2)</f><v>30</v></c></row>' +
+      '<row r="2"><c r="A2"><v>30</v></c></row></sheetData></worksheet>',
   });
   const workbook = await parseXlsx(bytes);
   const opened = workbook.sheets[0];
   assert.equal(opened?.cells[0]?.[0]?.formula, "SUM(B1:B2)");
   assert.equal(opened?.cells[0]?.[0]?.array, true);
+  assert.equal(opened?.cells[0]?.[0]?.spillRef, "A1:A2");
+  assert.equal(opened?.cells[1]?.[0]?.spill, "A1");
   assert.equal(opened?.cells[0]?.[0]?.styleName, "标题");
   assert.deepEqual(opened?.outline?.rows, [0]);
   assert.deepEqual(opened?.outline?.cols, [0]);

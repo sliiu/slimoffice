@@ -92,6 +92,7 @@ test("writes defined names, the print area, and an array formula", () => {
   if (cell) {
     cell.formula = "SUM(B1:B2)";
     cell.array = true;
+    cell.spillRef = "A1:A2";
   }
   made.workbook.names = [{ name: "税率", refersTo: "Sheet1!$B$1" }];
   made.workbook.sheets[0]!.pageSetup = { printArea: "Sheet1!$A$1:$B$2" };
@@ -101,7 +102,7 @@ test("writes defined names, the print area, and an array formula", () => {
   assert.match(workbook, /<definedName name="税率">Sheet1!\$B\$1<\/definedName>/);
   assert.match(workbook, /<definedName name="_xlnm.Print_Area" localSheetId="0">Sheet1!\$A\$1:\$B\$2<\/definedName>/);
   const sheet = new TextDecoder().decode(out["xl/worksheets/sheet1.xml"] ?? new Uint8Array());
-  assert.match(sheet, /<f t="array">SUM\(B1:B2\)<\/f>/);
+  assert.match(sheet, /<f t="array" ref="A1:A2">SUM\(B1:B2\)<\/f>/);
 });
 
 test("writes a cell comment back", () => {

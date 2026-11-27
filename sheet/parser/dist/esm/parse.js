@@ -88,6 +88,9 @@ function sheetFrom(archive, path, name, shared, styles, styleNames, dxfs) {
                 item.formula = formulaText.replace(/^\=/, "");
             if (array)
                 item.array = true;
+            // Only an array formula's ref is a spill. A data table uses ref for its result block.
+            if (attr(formulaNode, "t") === "array" && attr(formulaNode, "ref"))
+                item.spillRef = attr(formulaNode, "ref");
             if (link)
                 item.hyperlink = link;
             if (note)
@@ -99,6 +102,13 @@ function sheetFrom(archive, path, name, shared, styles, styleNames, dxfs) {
             cells[where.row] = line;
         }
     }
+    // Cells inside an array formula's ref were filled by the spill, so a recalculation may replace them.
+    cells.forEach((row, rowIndex) => {
+        row?.forEach((cell, column) => {
+            if (cell?.spillRef)
+                markSpilled(cells, rowIndex, column, cell.spillRef);
+        });
+    });
     const sheet = { name, cells, ...sheetShape(root, archive, path, dxfs) };
     if (dataTables.length)
         sheet.dataTables = dataTables;
@@ -826,6 +836,35 @@ function textOf(node) {
     if (direct)
         return direct;
     return node.children.filter((item) => item.name === "r").map((run) => child(run, "t")?.text ?? "").join("");
+}
+/** Marks the other cells of an array formula's ref as spilled from its anchor. */
+function markSpilled(cells, anchorRow, anchorColumn, ref) {
+    const [startText, endText] = ref.replace(/\$/g, "").split(":");
+    const start = cellRef(startText ?? "");
+    const end = cellRef(endText ?? startText ?? "");
+    if (!start || !end)
+        return;
+    const anchor = a1(anchorRow, anchorColumn);
+    for (let row = Math.min(start.row, end.row); row <= Math.max(start.row, end.row); row += 1) {
+        for (let column = Math.min(start.column, end.column); column <= Math.max(start.column, end.column); column += 1) {
+            if (row === anchorRow && column === anchorColumn)
+                continue;
+            const cell = cells[row]?.[column];
+            if (!cell || cell.formula)
+                continue;
+            cell.spill = anchor;
+        }
+    }
+}
+function a1(row, column) {
+    let name = "";
+    let rest = column + 1;
+    while (rest > 0) {
+        rest -= 1;
+        name = String.fromCharCode(65 + (rest % 26)) + name;
+        rest = Math.floor(rest / 26);
+    }
+    return `${name}${row + 1}`;
 }
 function cellRef(ref) {
     const match = /^([A-Z]+)(\d+)$/.exec(ref);

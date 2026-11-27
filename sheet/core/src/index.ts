@@ -26,6 +26,10 @@ export interface SheetCell {
   formula?: string;
   /** True when the formula is an array / spilled formula. */
   array?: boolean;
+  /** The range an array result spilled into, on the anchor cell, such as "B1:B3". */
+  spillRef?: string;
+  /** The anchor address when this cell was filled by a spill, such as "B1". */
+  spill?: string;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
