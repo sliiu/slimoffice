@@ -1,4 +1,7 @@
 // OoxmlTiming → XML 序列化（ECMA-376 §19.5）。
+//
+// 写盘只用 ECMA-376 第 5 版的 p 命名空间。p14 / p15 / p159（schemas.microsoft.com）不写：
+// 精确毫秒折成 spd 三档，2010/2013 切换和 Morph 退成 fade。读入侧仍保留这些扩展，再导出时降级。
 
 import { ooxml } from "@sliiu/present-animation";
 import { TRANSITION_SPEED_TO_SEC, type SlideTransition } from "@sliiu/present-core";
@@ -27,32 +30,21 @@ type BuildEntry = ooxml.BuildEntry;
 
 // ECMA-376 §19.5.50 p:transition — slide 级过渡。与 @sliiu/present-parser parseSlideTransition 对称。
 //
-// 写盘形状对齐 PowerPoint 自己的输出（[MS-PPTX] §2.3 Slide Transitions）：
-//   - ECMA 2006 的 21 种 prst 直接写 <p:KIND/>；
-//   - PowerPoint 2010 新增的（vortex / ripple / prism …）是 p14 命名空间元素，2013 新增的
-//     （airplane / origami / curtains …）是 <p15:prstTrans prst=…/>，Morph 是 <p159:morph/>；
-//   - 精确毫秒时长是 p14:dur，不是 p 命名空间的属性；
-//   - 只要用到任何 p14 / p15 / p159 内容，就必须包成 mc:AlternateContent：Choice Requires=前缀，
-//     Fallback 给 ECMA 版本（扩展类型回退 fade，ECMA 类型去掉 dur 原样写）。
-// 之前"扩展类型直接写 <p:KIND/> PowerPoint 会容忍"是错的：p 命名空间下未知元素 / 属性触发修复，
-// 整页 transition 被丢弃；schema 校验（xmllint + ISO 29500-4 XSD）能直接抓到。
+// 只写 p 命名空间：
+//   - ECMA 的 21 种 prst 直接写 <p:KIND/>；
+//   - duration 折成 spd 三档（fast=0.5 / med=0.75 / slow=1.25 的中点），duration === 0 什么都不写；
+//   - 不在这 21 种里的（vortex、airplane、morph 等）退成 <p:fade/>，不写 p14 / p15 / p159。
 export function serializeTransition(t: SlideTransition | undefined, media?: MediaRegistrar): string {
   if (!t) return "";
   const params = t.params ?? {};
   const baseAttrs: Record<string, string | number | undefined> = {};
-  let durMs: number | undefined;
 
-  // spd 与 dur：duration > 0 时写 spd（老版本回退）+ p14:dur（精确 ms）。
-  // duration === 0 时（cut / 显式 0），只写 dur="0"，spd 在此场景无意义。
   // 边界值由 ECMA-376 §19.5.50 标定的三档秒数（fast=0.5/med=0.75/slow=1.25）取中点推导。
   if (Number.isFinite(t.duration) && t.duration > 0) {
     baseAttrs.spd =
       t.duration < SPD_FAST_MED_BOUNDARY ? "fast"
       : t.duration >= SPD_MED_SLOW_BOUNDARY ? "slow"
       : "med";
-    durMs = Math.round(t.duration * 1000);
-  } else if (t.duration === 0) {
-    durMs = 0;
   }
 
   // advClick / advTm：parseSlideTransition 仅在源 XML 显式带 attr 时写入 params。
@@ -67,25 +59,9 @@ export function serializeTransition(t: SlideTransition | undefined, media?: Medi
 
   const sndAc = buildSndAc(params.sound, media);
   const elKind = ECMA_ELEMENT_BY_KIND[t.kind] ?? t.kind;
-  const family = transitionFamily(elKind);
-  const ecmaInner = family === "ecma" && ECMA_TRANSITION_KINDS.has(elKind) ? buildInnerTransition(elKind, params) : "<p:fade/>";
-
-  // 纯 ECMA 且不需要精确时长：一行 <p:transition>，与 PowerPoint 只选速度档时的输出一致。
-  if (family === "ecma" && durMs === undefined) {
-    return `<p:transition${attrs(baseAttrs)}>${ecmaInner}${sndAc}</p:transition>`;
-  }
-
-  const requires = family === "ecma" ? "p14" : family;
-  const choiceAttrs: Record<string, string | number | undefined> = { ...baseAttrs };
-  if (durMs !== undefined) choiceAttrs["p14:dur"] = durMs;
-  const choiceInner = family === "ecma" ? ecmaInner : buildExtTransition(family, elKind, params);
-  return `<mc:AlternateContent xmlns:mc="${NS_MC}" xmlns:p14="${NS_P14}"><mc:Choice Requires="${requires}"${requires === "p15" ? ` xmlns:p15="${NS_P15}"` : requires === "p159" ? ` xmlns:p159="${NS_P159}"` : ""}><p:transition${attrs(choiceAttrs)}>${choiceInner}${sndAc}</p:transition></mc:Choice><mc:Fallback><p:transition${attrs(baseAttrs)}>${ecmaInner}${sndAc}</p:transition></mc:Fallback></mc:AlternateContent>`;
+  const inner = ECMA_TRANSITION_KINDS.has(elKind) ? buildInnerTransition(elKind, params) : "<p:fade/>";
+  return `<p:transition${attrs(baseAttrs)}>${inner}${sndAc}</p:transition>`;
 }
-
-const NS_MC = "http://schemas.openxmlformats.org/markup-compatibility/2006";
-const NS_P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
-const NS_P15 = "http://schemas.microsoft.com/office/powerpoint/2012/main";
-const NS_P159 = "http://schemas.microsoft.com/office/powerpoint/2015/09/main";
 
 // ISO 29500 pml.xsd CT_SlideTransition 的 choice 成员。
 const ECMA_TRANSITION_KINDS = new Set<string>([
@@ -94,65 +70,8 @@ const ECMA_TRANSITION_KINDS = new Set<string>([
 ]);
 // 编辑器 kind 与 ECMA 元素名不同的情况：PowerPoint「揭开」写盘是 <p:pull>。
 const ECMA_ELEMENT_BY_KIND: Record<string, string> = { uncover: "pull" };
-// CT_OrientationTransition 与 p14 doors / window 用 dir="horz|vert" 写横竖；只有 split 有 orient 属性。
-const ORIENT_AS_DIR_KINDS = new Set<string>(["blinds", "checker", "comb", "randomBar", "doors", "window"]);
-// [MS-PPTX] §2.3.1：p14 命名空间下的 transition 元素（PowerPoint 2010）。
-const P14_TRANSITION_KINDS = new Set<string>([
-  "vortex", "switch", "flip", "ripple", "honeycomb", "prism", "doors", "window", "ferris", "gallery",
-  "conveyor", "pan", "glitter", "warp", "flythrough", "flash", "shred", "reveal", "wheelReverse",
-]);
-// 编辑器 / transition-fx 里的 3D 系列在 OOXML 中都是 p14:prism 的变体（isContent / isInverted 组合）。
-const P14_PRISM_VARIANTS: Record<string, { isContent?: boolean; isInverted?: boolean }> = {
-  cube: {},
-  box: { isInverted: true },
-  rotate: { isContent: true },
-  orbit: { isContent: true, isInverted: true },
-};
-// [MS-PPTX] §2.3.1.x p15:prstTrans@prst 取值（PowerPoint 2013）。
-const P15_PRST_TRANS: Record<string, string> = {
-  fall: "fallOver", fallOver: "fallOver", drape: "drape", curtains: "curtains", wind: "wind", prestige: "prestige",
-  fracture: "fracture", crush: "crush", peelOff: "peelOff", pageCurl: "pageCurlDouble",
-  pageCurlDouble: "pageCurlDouble", pageCurlSingle: "pageCurlSingle", airplane: "airplane", origami: "origami",
-};
-
-type TransitionFamily = "ecma" | "p14" | "p15" | "p159";
-
-function transitionFamily(kind: string): TransitionFamily {
-  if (ECMA_TRANSITION_KINDS.has(kind)) return "ecma";
-  if (P14_TRANSITION_KINDS.has(kind) || kind in P14_PRISM_VARIANTS) return "p14";
-  if (kind in P15_PRST_TRANS) return "p15";
-  if (kind === "morph") return "p159";
-  // 未知类型：Choice 与 Fallback 都退成 fade，比写一个 p 命名空间下的未知元素安全。
-  return "ecma";
-}
-
-function buildExtTransition(family: TransitionFamily, kind: string, params: Record<string, unknown> | undefined): string {
-  if (family === "p159") {
-    const opt = params?.option ? ` option="${escXml(String(params.option))}"` : "";
-    return `<p159:morph${opt}/>`;
-  }
-  if (family === "p15") {
-    // CT_PresetTransition 用 invX / invY 表示方向（与 parser 对称），没有 dir 属性。
-    const inv: Record<string, string | number | undefined> = {};
-    if (params?.dir === "right") inv.invX = 1;
-    else if (params?.dir === "down") inv.invY = 1;
-    return `<p15:prstTrans prst="${P15_PRST_TRANS[kind] ?? kind}"${attrs(inv)}/>`;
-  }
-  const a: Record<string, string | number | undefined> = {};
-  if (params?.dir) a.dir = normalizeDirOut(String(params.dir));
-  if (params?.orient && ORIENT_AS_DIR_KINDS.has(kind)) a.dir = String(params.orient);
-  if (params?.pattern) a.pattern = String(params.pattern);
-  if (params?.thruBlk) a.thruBlk = 1;
-  const prism = P14_PRISM_VARIANTS[kind];
-  if (prism || kind === "prism") {
-    const isContent = prism?.isContent ?? params?.isContent === true;
-    const isInverted = prism?.isInverted ?? params?.isInverted === true;
-    if (isContent) a.isContent = 1;
-    if (isInverted) a.isInverted = 1;
-    return `<p14:prism${attrs(a)}/>`;
-  }
-  return `<p14:${kind}${attrs(a)}/>`;
-}
+// CT_OrientationTransition 用 dir="horz|vert" 写横竖；只有 split 有 orient 属性。
+const ORIENT_AS_DIR_KINDS = new Set<string>(["blinds", "checker", "comb", "randomBar"]);
 
 // 与 parser/transition.ts KIND_TABLE 对称：dir/orient/pattern/thruBlk 反向序列化为 OOXML 属性名。
 //

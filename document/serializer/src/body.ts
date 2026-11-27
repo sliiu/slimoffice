@@ -311,6 +311,26 @@ function tableXml(table: DocTable, links: LinkIds, added: Relationship[]): strin
   return `<w:tbl>${grid}${body}</w:tbl>`;
 }
 
+
+/** ECMA-376 过渡 wml.xsd 的 CT_PPrBase 里、且用 CT_OnOff 表达的段落开关。名单外的不写。 */
+const PARAGRAPH_SWITCHES = new Set([
+  "keepNext", "keepLines", "pageBreakBefore", "widowControl", "suppressLineNumbers",
+  "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct",
+  "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd", "snapToGrid",
+  "contextualSpacing", "mirrorIndents", "suppressOverlap",
+]);
+
+export function switchXml(marks: string[] | undefined): string[] {
+  const written: string[] = [];
+  for (const mark of marks ?? []) {
+    const stored = mark === "noAutoSpaceDE" ? "autoSpaceDE" : mark === "noAutoSpaceDN" ? "autoSpaceDN" : mark === "noSnapToGrid" ? "snapToGrid" : "";
+    const name = stored || mark;
+    if (!PARAGRAPH_SWITCHES.has(name)) continue;
+    written.push(stored ? `<w:${stored} w:val="0"/>` : `<w:${mark}/>`);
+  }
+  return written;
+}
+
 function paragraphXml(paragraph: DocParagraph, section: string | undefined, links: LinkIds, added: Relationship[]): string {
   const props: string[] = [];
   if (paragraph.style) props.push(`<w:pStyle w:val="${attr(paragraph.style)}"/>`);
@@ -328,7 +348,7 @@ function paragraphXml(paragraph: DocParagraph, section: string | undefined, link
   if (paragraph.widowControl) props.push("<w:widowControl/>");
   if (paragraph.noLineNumbers) props.push("<w:suppressLineNumbers/>");
   if (paragraph.outline !== undefined) props.push(`<w:outlineLvl w:val="${Math.round(paragraph.outline)}"/>`);
-  for (const mark of paragraph.marks ?? []) if (/^[a-zA-Z]+$/.test(mark)) props.push(`<w:${mark}/>`);
+  props.push(...switchXml(paragraph.marks));
   if (paragraph.frame) props.push(frameXml(paragraph.frame));
   if (paragraph.direction === "tb") props.push(`<w:textDirection w:val="tbRl"/>`);
   else if (paragraph.direction === "rl") props.push(`<w:textDirection w:val="rlTb"/>`);
@@ -484,7 +504,9 @@ function runPropsXml(run: DocRun): string {
   if (run.emphasis) parts.push(`<w:em w:val="${attr(run.emphasis)}"/>`);
   if (run.lang) parts.push(`<w:lang w:val="${attr(run.lang)}"/>`);
   if (run.kern) parts.push(`<w:kern w:val="${Math.round(run.kern)}"/>`);
-  for (const mark of run.marks ?? []) if (/^[a-zA-Z]+$/.test(mark)) parts.push(`<w:${mark}/>`);
+  // ECMA-376 过渡 wml.xsd 的 EG_RPrBase 里、用 CT_OnOff 表达的文字串开关。名单外的不写。
+  const runSwitches = new Set(["outline", "shadow", "emboss", "imprint", "noProof", "snapToGrid", "rtl", "cs", "oMath"]);
+  for (const mark of run.marks ?? []) if (runSwitches.has(mark)) parts.push(`<w:${mark}/>`);
   if (run.border) parts.push(`<w:bdr>${borderSidesXml(run.border)}</w:bdr>`);
   if (run.shading) parts.push(`<w:shd w:val="clear" w:fill="${attr(run.shading.replace(/^#/, ""))}"/>`);
   if (run.fitText) parts.push(`<w:fitText w:val="${Math.round(run.fitText)}"/>`);
@@ -565,7 +587,7 @@ function attr(value: string): string {
 /** A header or footer part, rewritten from the paragraphs the model holds. */
 export function storyPartXml(root: "hdr" | "ftr", paragraphs: DocParagraph[]): string {
   const body = paragraphs.map((paragraph) => paragraphXml(paragraph, undefined, linkIds([]), [])).join("");
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:${root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${body}</w:${root}>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:${root} xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${body}</w:${root}>`;
 }
 
 export type { DocAlign, DocBlock };

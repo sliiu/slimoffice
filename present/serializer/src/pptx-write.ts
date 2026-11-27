@@ -80,12 +80,7 @@ import { injectScratchPresentationTags, injectScratchSlideTags } from "./pptx-co
 import { injectScratchViewProps } from "./pptx-view-props";
 import { injectScratchPresProps } from "./pptx-pres-props";
 import { chartExportSupported, renderChartSpaceXml } from "./pptx-chart";
-import {
-  CHART_EX_CONTENT_TYPE,
-  CHART_EX_REL_TYPE,
-  chartExExportSupported,
-  renderChartExSpaceXml,
-} from "./pptx-chart-ex";
+import { chartExExportSupported } from "./pptx-chart-ex";
 
 export { MediaTable, DeckMediaRegistry, SlideMediaTable } from "./media-table"; // 兼容旧 pptx-shapes import 路径
 
@@ -258,9 +253,7 @@ function buildFromScratchPartsInner(
     files[`ppt/slides/slide${idx + 1}.xml`] = xml;
     for (const c of charts.items) {
       allChartParts.push({ partIdx: c.partIdx, chartEx: c.chartEx });
-      files[`ppt/charts/chart${c.partIdx}.xml`] = c.chartEx
-        ? renderChartExSpaceXml(c.def)
-        : renderChartSpaceXml(c.def);
+      files[`ppt/charts/chart${c.partIdx}.xml`] = renderChartSpaceXml(c.def);
     }
     for (const d of diagrams.items) {
       allDiagramIdx.push(d.idx);
@@ -627,7 +620,7 @@ function renderSlideRels(
   const chartRels = (chartItems ?? [])
     .map(
       (c) =>
-        `<Relationship Id="${c.relId}" Type="${c.chartEx ? CHART_EX_REL_TYPE : "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"}" Target="../charts/chart${c.partIdx}.xml"/>`,
+        `<Relationship Id="${c.relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${c.partIdx}.xml"/>`,
     )
     .join("");
   const linkRels = (linkItems ?? [])
@@ -720,9 +713,7 @@ function renderContentTypes(
     }
   }
   for (const part of chartParts) {
-    const ct = part.chartEx
-      ? CHART_EX_CONTENT_TYPE
-      : "application/vnd.openxmlformats-officedocument.drawingml.chart+xml";
+    const ct = "application/vnd.openxmlformats-officedocument.drawingml.chart+xml";
     overrides.push(`<Override PartName="/ppt/charts/chart${part.partIdx}.xml" ContentType="${ct}"/>`);
   }
   for (const idx of diagramIdx) {

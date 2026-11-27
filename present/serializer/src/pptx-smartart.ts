@@ -7,7 +7,7 @@
 
 import type { Shape, SmartArtItem, SmartArtLayoutKind } from "@sliiu/present-core";
 import { SMARTART_LAYOUT_LABELS, translatePathD } from "@sliiu/present-core";
-import { esc, pxToEmu, xmlHeader } from "./xml-util";
+import { esc, xmlHeader } from "./xml-util";
 
 export const DGM_GRAPHIC_URI = "http://schemas.openxmlformats.org/drawingml/2006/diagram";
 
@@ -19,8 +19,8 @@ export const REL_DIAGRAM_STYLE =
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramQuickStyle";
 export const REL_DIAGRAM_COLORS =
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramColors";
-export const REL_DIAGRAM_DRAWING =
-  "http://schemas.microsoft.com/office/2007/relationships/diagramDrawing";
+// dsp 命名空间不在 ECMA-376 里，drawing 部件不产出，这条关系也不写。
+export const REL_DIAGRAM_DRAWING = "";
 
 export const CT_DIAGRAM_DATA =
   "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml";
@@ -32,8 +32,6 @@ export const CT_DIAGRAM_STYLE =
   "application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml";
 export const CT_DIAGRAM_DRAWING = "application/vnd.ms-office.drawingml.diagramDrawing+xml";
 
-const DSP_NS = "http://schemas.microsoft.com/office/drawing/2008/diagram";
-const DATA_MODEL_EXT_URI = "{28A0092B-C50C-407E-A947-70E740481C1C}";
 export const SLIMPPT_LAYOUT_URN = "urn:slimppt:smartart/";
 
 /** 把 slide 绝对坐标折成 graphicFrame / drawing 局部坐标。 */
@@ -134,35 +132,12 @@ function newGuid(): string {
   return `{${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}}`.toUpperCase();
 }
 
-function presentationMlToDsp(xml: string): string {
-  return xml.replace(
-    /<\/?p:(sp|pic|grpSp|cxnSp|graphicFrame|nvSpPr|nvPicPr|nvGrpSpPr|nvGraphicFramePr|cNvPr|cNvSpPr|cNvPicPr|cNvGrpSpPr|cNvGraphicFramePr|nvPr|spPr|grpSpPr|txBody|blipFill|xfrm)\b/g,
-    (m) => m.replace("p:", "dsp:"),
-  );
-}
-
+/** dsp 命名空间不在 ECMA-376 里，drawing 部件不产出。 */
 export function renderSmartArtDrawingXml(
-  bbox: { w: number; h: number },
-  childrenPmlXml: string,
+  _bbox: { w: number; h: number },
+  _childrenPmlXml: string,
 ): string {
-  const cx = pxToEmu(Math.max(1, bbox.w));
-  const cy = pxToEmu(Math.max(1, bbox.h));
-  const body = presentationMlToDsp(childrenPmlXml);
-  return `${xmlHeader()}
-<dsp:drawing xmlns:dsp="${DSP_NS}" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <dsp:spTree>
-    <dsp:nvGrpSpPr><dsp:cNvPr id="1" name=""/><dsp:cNvGrpSpPr/><dsp:nvPr/></dsp:nvGrpSpPr>
-    <dsp:grpSpPr>
-      <a:xfrm>
-        <a:off x="0" y="0"/>
-        <a:ext cx="${cx}" cy="${cy}"/>
-        <a:chOff x="0" y="0"/>
-        <a:chExt cx="${cx}" cy="${cy}"/>
-      </a:xfrm>
-    </dsp:grpSpPr>
-    ${body}
-  </dsp:spTree>
-</dsp:drawing>`;
+  return "";
 }
 
 export function renderSmartArtDataXml(items: SmartArtItem[]): string {
@@ -189,11 +164,6 @@ export function renderSmartArtDataXml(items: SmartArtItem[]): string {
   <dgm:cxnLst>${cxns.join("")}</dgm:cxnLst>
   <dgm:bg/>
   <dgm:whole/>
-  <dgm:extLst>
-    <a:ext uri="${DATA_MODEL_EXT_URI}">
-      <dsp:dataModelExt xmlns:dsp="${DSP_NS}" relId="rIdDrawing" minVer="1.0"/>
-    </a:ext>
-  </dgm:extLst>
 </dgm:dataModel>`;
 }
 
@@ -260,27 +230,16 @@ export function renderSmartArtQuickStyleXml(): string {
 </dgm:styleDef>`;
 }
 
-export function renderDiagramDataRelsXml(drawingFile: string): string {
-  return `${xmlHeader()}
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rIdDrawing" Type="${REL_DIAGRAM_DRAWING}" Target="${esc(drawingFile)}"/>
-</Relationships>`;
+/** drawing 部件不在 ECMA-376 里，不挂关系。 */
+export function renderDiagramDataRelsXml(_drawingFile: string): string {
+  return "";
 }
 
+/** drawing 部件不产出，图片关系也无处可挂。 */
 export function renderDiagramDrawingRelsXml(
-  mediaItems: Array<{ name: string; relId: string }>,
+  _mediaItems: Array<{ name: string; relId: string }>,
 ): string {
-  if (!mediaItems.length) return "";
-  const rows = mediaItems
-    .map(
-      (m) =>
-        `<Relationship Id="${m.relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${m.name}"/>`,
-    )
-    .join("");
-  return `${xmlHeader()}
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  ${rows}
-</Relationships>`;
+  return "";
 }
 
 export function buildSmartArtPartFiles(opts: {
@@ -292,17 +251,16 @@ export function buildSmartArtPartFiles(opts: {
   drawingMedia: Array<{ name: string; relId: string }>;
 }): Record<string, string> {
   const { idx, layout, items, bbox, childrenXml, drawingMedia } = opts;
-  const files: Record<string, string> = {
+  // dsp drawing 部件不在 ECMA-376 里，不产出。图片关系因此也无处可挂。
+  void bbox;
+  void childrenXml;
+  void drawingMedia;
+  return {
     [`ppt/diagrams/data${idx}.xml`]: renderSmartArtDataXml(items),
     [`ppt/diagrams/layout${idx}.xml`]: renderSmartArtLayoutXml(layout),
     [`ppt/diagrams/quickStyle${idx}.xml`]: renderSmartArtQuickStyleXml(),
     [`ppt/diagrams/colors${idx}.xml`]: renderSmartArtColorsXml(),
-    [`ppt/diagrams/drawing${idx}.xml`]: renderSmartArtDrawingXml(bbox, childrenXml),
-    [`ppt/diagrams/_rels/data${idx}.xml.rels`]: renderDiagramDataRelsXml(`drawing${idx}.xml`),
   };
-  const drawingRels = renderDiagramDrawingRelsXml(drawingMedia);
-  if (drawingRels) files[`ppt/diagrams/_rels/drawing${idx}.xml.rels`] = drawingRels;
-  return files;
 }
 
 export function diagramContentTypeRows(idx: number): Array<{ part: string; ct: string }> {
@@ -311,7 +269,6 @@ export function diagramContentTypeRows(idx: number): Array<{ part: string; ct: s
     { part: `/ppt/diagrams/layout${idx}.xml`, ct: CT_DIAGRAM_LAYOUT },
     { part: `/ppt/diagrams/quickStyle${idx}.xml`, ct: CT_DIAGRAM_STYLE },
     { part: `/ppt/diagrams/colors${idx}.xml`, ct: CT_DIAGRAM_COLORS },
-    { part: `/ppt/diagrams/drawing${idx}.xml`, ct: CT_DIAGRAM_DRAWING },
   ];
 }
 

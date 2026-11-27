@@ -23,10 +23,7 @@ export const REL_TYPE_VIDEO =
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/video";
 export const REL_TYPE_AUDIO =
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio";
-export const REL_TYPE_OFFICE_MEDIA =
-  "http://schemas.microsoft.com/office/2007/relationships/media";
-export const REL_TYPE_MODEL3D =
-  "http://schemas.microsoft.com/office/2017/relationships/model3d";
+// 音视频走 ECMA-376 的 video / audio 关系。schemas.microsoft.com 的 office media 和 model3d 关系不写。
 
 export function mediaNamePrefix(mime: string): string {
   if (mime === "model/gltf-binary" || mime === "model/gltf+json") return "model3d";

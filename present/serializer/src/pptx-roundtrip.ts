@@ -52,12 +52,7 @@ import { collectShapeEffectsForWrite, effectsToXml } from "./pptx-effects";
 import { patchSpPr3DIn, meta3DToXml } from "./pptx-3d";
 import { tableTblXml } from "./pptx-table";
 import { chartExportSupported, renderChartSpaceXml } from "./pptx-chart";
-import {
-  CHART_EX_CONTENT_TYPE,
-  CHART_EX_REL_TYPE,
-  chartExExportSupported,
-  renderChartExSpaceXml,
-} from "./pptx-chart-ex";
+import { chartExExportSupported } from "./pptx-chart-ex";
 import {
   buildCommentAuthors,
   commentsSnapshotForSlide,
@@ -71,16 +66,8 @@ import {
   slideCommentsForExport,
 } from "./pptx-comments";
 import {
-  buildModernAuthors,
-  CT_MODERN_AUTHORS,
-  CT_MODERN_COMMENTS,
   isModernCommentsPartPath,
-  parseModernAuthorsFromXml,
-  REL_MODERN_AUTHORS,
   REL_MODERN_COMMENTS,
-  renderModernAuthorsXml,
-  renderModernCommentsXml,
-  shouldUseModernComments,
 } from "./pptx-modern-comments";
 import { patchSlimPptSidecarTags, patchSlideCustomDataTags } from "./pptx-comment-meta";
 import { patchPhotoAlbum } from "./pptx-photo-album";
@@ -1209,7 +1196,7 @@ function patchChartGraphicFrame(
   const chartEx = chartExExportSupported(def);
   const classic = chartExportSupported(def);
   if (!chartEx && !classic) return;
-  const xml = chartEx ? renderChartExSpaceXml(def) : renderChartSpaceXml(def);
+  const xml = renderChartSpaceXml(def);
   archive.files.set(chartPartPath, strToU8(xml));
   if (opts.debug) console.log(`[roundtrip] ${chartPartPath} chart data patched (${def.type})`);
 }
@@ -1550,17 +1537,17 @@ class PartChartRegistry {
     if (!chartEx && !classic) return null;
     const partIdx = this.nextChartIdx++;
     const chartPartPath = `ppt/charts/chart${partIdx}.xml`;
-    const xml = chartEx ? renderChartExSpaceXml(def) : renderChartSpaceXml(def);
+    const xml = renderChartSpaceXml(def);
     this.archive.files.set(chartPartPath, strToU8(xml));
     appendContentTypesOverride(
       this.archive,
       `/${chartPartPath}`,
-      chartEx ? CHART_EX_CONTENT_TYPE : CT_CHART,
+      CT_CHART,
     );
     const relId = `rIdChart${this.items.length + 1}`;
     this.items.push({ partIdx, relId, chartEx });
     if (this.eagerRels) {
-      const relType = chartEx ? CHART_EX_REL_TYPE : REL_TYPE_CHART;
+      const relType = REL_TYPE_CHART;
       appendPartRelationship(
         this.archive,
         this.partPath,
@@ -1576,7 +1563,7 @@ class PartChartRegistry {
     return this.items
       .map(
         (c) =>
-          `<Relationship Id="${c.relId}" Type="${c.chartEx ? CHART_EX_REL_TYPE : REL_TYPE_CHART}" Target="../charts/chart${c.partIdx}.xml"/>`,
+          `<Relationship Id="${c.relId}" Type="${REL_TYPE_CHART}" Target="../charts/chart${c.partIdx}.xml"/>`,
       )
       .join("");
   }
@@ -1962,27 +1949,18 @@ function renderNotesMasterXmlMinimal(): string {
 function patchCommentParts(pres: Presentation, archive: MutableArchive, opts: RoundTripOptions): void {
   const allComments = pres.comments ?? [];
   const presSrc = pres.__source as PresentationSource | undefined;
-  const useModern = shouldUseModernComments(allComments, presSrc?.commentsModern);
+  // p188 批注不在 ECMA-376 里，写盘一律走经典 p:cm。线程和已解决状态导不出去。
+  const useModern = false;
   const globalSnap = presSrc?.commentsSnapshot;
-  const exportComments = useModern ? allComments : exportableComments(allComments);
+  const exportComments = exportableComments(allComments);
   const currentGlobal = JSON.stringify(exportComments);
   const globalChanged = globalSnap !== undefined && currentGlobal !== globalSnap;
-  const { authorIdByName: classicAuthorIdByName } = buildCommentAuthors(
-    useModern ? [] : exportComments,
-  );
-  const existingModernAuthors = loadExistingModernAuthors(archive, presSrc?.modernAuthorsPartPath);
-  const { authorIdByName: modernAuthorIdByName } = useModern
-    ? buildModernAuthors(exportComments, existingModernAuthors)
-    : { authorIdByName: new Map<string, string>() };
+  const { authorIdByName: classicAuthorIdByName } = buildCommentAuthors(exportComments);
   let authorsPatched = false;
 
   for (const slide of pres.slides) {
     const src = slide.__source;
     if (!src?.partPath) continue;
-    if (useModern) {
-      // Always drop classic stubs on modern export (even if comment text is unchanged).
-      stripCommentRelsOfType(src.partPath, REL_TYPE_COMMENTS, archive, opts);
-    }
     const snap = src.commentsSnapshot;
     if (snap === undefined && !globalChanged) continue;
     if (snap === undefined && !globalChanged) continue;
@@ -2002,16 +1980,7 @@ function patchCommentParts(pres: Presentation, archive: MutableArchive, opts: Ro
       src.commentsPartPath = undefined;
     }
 
-    if (useModern) {
-      const xml = renderModernCommentsXml(slideComments, modernAuthorIdByName, pres.size);
-      if (src.commentsPartPath && archive.files.has(src.commentsPartPath)) {
-        archive.files.set(src.commentsPartPath, strToU8(xml));
-        if (opts.debug) console.log(`[roundtrip] ${src.commentsPartPath} modern comments rewritten`);
-      } else {
-        addModernCommentsPart(slide, xml, archive, opts);
-      }
-      src.commentsModern = true;
-    } else if (src.commentsPartPath && archive.files.has(src.commentsPartPath)) {
+    if (src.commentsPartPath && archive.files.has(src.commentsPartPath)) {
       archive.files.set(
         src.commentsPartPath,
         strToU8(renderCommentsXml(slideComments, classicAuthorIdByName, pres.size)),
@@ -2024,48 +1993,8 @@ function patchCommentParts(pres: Presentation, archive: MutableArchive, opts: Ro
   }
 
   if (authorsPatched || globalChanged) {
-    if (useModern) {
-      ensureModernAuthorsPart(pres, archive, exportComments, opts);
-      if (presSrc) presSrc.commentsModern = true;
-    } else {
-      ensureCommentAuthorsPart(pres, archive, exportComments, opts);
-    }
+    ensureCommentAuthorsPart(pres, archive, exportComments, opts);
   }
-}
-
-function loadExistingModernAuthors(
-  archive: MutableArchive,
-  partPath?: string,
-): Map<string, string> | undefined {
-  if (!partPath) return undefined;
-  const bytes = archive.files.get(partPath);
-  if (!bytes) return undefined;
-  return parseModernAuthorsFromXml(strFromU8(bytes));
-}
-
-function stripCommentRelsOfType(
-  slidePartPath: string,
-  relType: string,
-  archive: MutableArchive,
-  opts: RoundTripOptions,
-): void {
-  const slideRelsPath = partRelsPath(slidePartPath);
-  const relsBytes = archive.files.get(slideRelsPath);
-  if (!relsBytes) return;
-  const xml = strFromU8(relsBytes);
-  const re = new RegExp(`<Relationship([^>]*Type="${relType}"[^>]*)/>`, "g");
-  const baseDir = slidePartPath.replace(/\/[^/]+$/, "");
-  let cleaned = xml;
-  for (const m of xml.matchAll(re)) {
-    const target = /Target="([^"]+)"/.exec(m[1] ?? "")?.[1];
-    if (!target || /^https?:/i.test(target)) continue;
-    const part = resolveRelTarget(baseDir, target);
-    archive.files.delete(part);
-    removeContentTypesOverride(archive, `/${part}`);
-    if (opts.debug) console.log(`[roundtrip] stripped leftover comments part ${part}`);
-  }
-  cleaned = xml.replace(re, "");
-  if (cleaned !== xml) archive.files.set(slideRelsPath, strToU8(cleaned));
 }
 
 function removeCommentsPart(
@@ -2130,78 +2059,6 @@ function addCommentsPart(
   if (opts.debug) console.log(`[roundtrip] added ${commentsPartPath} for ${slidePartPath}`);
 }
 
-function addModernCommentsPart(
-  slide: Slide,
-  commentsXml: string,
-  archive: MutableArchive,
-  opts: RoundTripOptions,
-): void {
-  const slidePartPath = slide.__source!.partPath;
-  const idx = nextPartIdx(archive, /^ppt\/comments\/modernComment(\d+)\.xml$/);
-  const commentsPartPath = `ppt/comments/modernComment${idx}.xml`;
-  archive.files.set(commentsPartPath, strToU8(commentsXml));
-  appendContentTypesOverride(archive, `/${commentsPartPath}`, CT_MODERN_COMMENTS);
-
-  const slideRelsPath = partRelsPath(slidePartPath);
-  const relsBytes = archive.files.get(slideRelsPath);
-  const target = `../comments/modernComment${idx}.xml`;
-  if (relsBytes) {
-    const xml = strFromU8(relsBytes);
-    if (!xml.includes(`Type="${REL_MODERN_COMMENTS}"`)) {
-      const used = new Set<string>();
-      for (const m of xml.matchAll(/Id="([^"]+)"/g)) used.add(m[1]!);
-      let n = 1;
-      while (used.has(`rId${n}`)) n++;
-      const rel = `<Relationship Id="rId${n}" Type="${REL_MODERN_COMMENTS}" Target="${target}"/>`;
-      archive.files.set(slideRelsPath, strToU8(xml.replace(/<\/Relationships>/, `${rel}</Relationships>`)));
-    }
-  } else {
-    const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="${REL_MODERN_COMMENTS}" Target="${target}"/>
-</Relationships>`;
-    archive.files.set(slideRelsPath, strToU8(xml));
-  }
-
-  const src = slide.__source as { commentsPartPath?: string; commentsModern?: boolean };
-  src.commentsPartPath = commentsPartPath;
-  src.commentsModern = true;
-  if (opts.debug) console.log(`[roundtrip] added ${commentsPartPath} (modern) for ${slidePartPath}`);
-}
-
-function ensureModernAuthorsPart(
-  pres: Presentation,
-  archive: MutableArchive,
-  comments: import("@sliiu/present-core").DeckComment[],
-  opts: RoundTripOptions,
-): void {
-  if (!comments.length) return;
-  const presSrc = pres.__source as PresentationSource | undefined;
-  const existingAuthors = loadExistingModernAuthors(archive, presSrc?.modernAuthorsPartPath);
-  const { authors } = buildModernAuthors(comments, existingAuthors);
-  const partPath =
-    presSrc?.modernAuthorsPartPath ??
-    `ppt/authors/author${nextPartIdx(archive, /^ppt\/authors\/author(\d+)\.xml$/)}.xml`;
-  archive.files.set(partPath, strToU8(renderModernAuthorsXml(authors)));
-  appendContentTypesOverride(archive, `/${partPath}`, CT_MODERN_AUTHORS);
-
-  const relsPath = "ppt/_rels/presentation.xml.rels";
-  const relsBytes = archive.files.get(relsPath);
-  const target = partPath.replace(/^ppt\//, "");
-  if (relsBytes) {
-    const xml = strFromU8(relsBytes);
-    if (!xml.includes(`Type="${REL_MODERN_AUTHORS}"`)) {
-      const used = new Set<string>();
-      for (const m of xml.matchAll(/Id="([^"]+)"/g)) used.add(m[1]!);
-      let n = 1;
-      while (used.has(`rId${n}`)) n++;
-      const rel = `<Relationship Id="rId${n}" Type="${REL_MODERN_AUTHORS}" Target="${target}"/>`;
-      archive.files.set(relsPath, strToU8(xml.replace(/<\/Relationships>/, `${rel}</Relationships>`)));
-    }
-  }
-  if (presSrc) presSrc.modernAuthorsPartPath = partPath;
-  if (opts.debug) console.log(`[roundtrip] ${partPath} modern comment authors rewritten`);
-}
 
 function ensureCommentAuthorsPart(
   pres: Presentation,

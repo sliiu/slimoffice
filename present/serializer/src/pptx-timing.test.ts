@@ -115,45 +115,31 @@ describe("serializeTiming leaf XML shapes (ECMA-376 §19.5)", () => {
   });
 });
 
-// [MS-PPTX] §2.3：p14 / p15 / p159 过渡与精确时长只能出现在 mc:Choice 里，p 命名空间下不能有
-// 未知元素 / 属性。xmllint + ISO 29500-4 XSD 对这些形状全部 0 报错。
-describe("serializeTransition MCE shapes", () => {
-  it("writes an ECMA transition without a precise duration as a bare <p:transition>", () => {
+// ECMA-376 §19.5.50：只写 p 命名空间。精确时长折成 spd 三档，标准外的切换退成 fade。
+describe("serializeTransition ECMA shapes", () => {
+  it("writes an ECMA transition without a duration as a bare <p:transition>", () => {
     assert.equal(serializeTransition({ kind: "push", duration: undefined as unknown as number, params: { dir: "up" } }), `<p:transition><p:push dir="u"/></p:transition>`);
   });
 
-  it("moves a precise duration into p14:dur inside a Requires=p14 Choice with a dur-less Fallback", () => {
+  it("folds a precise duration into the spd bucket and never writes p14:dur", () => {
     const xml = serializeTransition({ kind: "fade", duration: 1.6, params: {} });
-    assert.match(xml, /<mc:Choice Requires="p14"><p:transition spd="slow" p14:dur="1600"><p:fade\/><\/p:transition><\/mc:Choice>/);
-    assert.match(xml, /<mc:Fallback><p:transition spd="slow"><p:fade\/><\/p:transition><\/mc:Fallback>/);
-    assert.doesNotMatch(xml, / dur="/);
+    assert.equal(xml, `<p:transition spd="slow"><p:fade/></p:transition>`);
+    assert.doesNotMatch(xml, /p14:|schemas\.microsoft\.com|AlternateContent/);
   });
 
-  it("emits PowerPoint 2010 kinds as p14 elements (never <p:vortex>)", () => {
+  it("degrades a post-ECMA kind to fade instead of a p14 element", () => {
     const xml = serializeTransition({ kind: "vortex", duration: 1.25, params: { dir: "left" } });
-    assert.match(xml, /Requires="p14"><p:transition spd="slow" p14:dur="1250"><p14:vortex dir="l"\/>/);
-    assert.match(xml, /<mc:Fallback><p:transition spd="slow"><p:fade\/>/);
-    assert.doesNotMatch(xml, /<p:vortex/);
+    assert.equal(xml, `<p:transition spd="slow"><p:fade/></p:transition>`);
+    assert.doesNotMatch(xml, /vortex|prism/);
   });
 
-  it("folds the editor's cube/box/rotate/orbit onto p14:prism flags and round-trips explicit prism flags", () => {
-    assert.match(serializeTransition({ kind: "orbit", duration: 1, params: {} }), /<p14:prism isContent="1" isInverted="1"\/>/);
-    assert.match(serializeTransition({ kind: "cube", duration: 1, params: {} }), /<p14:prism\/>/);
-    assert.match(serializeTransition({ kind: "prism", duration: 1, params: { isInverted: true } }), /<p14:prism isInverted="1"\/>/);
-  });
-
-  it("emits PowerPoint 2013 kinds as <p15:prstTrans prst=…/> and Morph as <p159:morph/>", () => {
-    const air = serializeTransition({ kind: "airplane", duration: 2, params: {} });
-    assert.match(air, /<mc:Choice Requires="p15" xmlns:p15="http:\/\/schemas.microsoft.com\/office\/powerpoint\/2012\/main"><p:transition spd="slow" p14:dur="2000"><p15:prstTrans prst="airplane"\/>/);
-    assert.match(serializeTransition({ kind: "airplane", duration: 2, params: { dir: "right" } }), /<p15:prstTrans prst="airplane" invX="1"\/>/);
-    assert.match(serializeTransition({ kind: "airplane", duration: 2, params: { dir: "left" } }), /<p15:prstTrans prst="airplane"\/>/);
-    assert.match(serializeTransition({ kind: "fall", duration: 2, params: {} }), /<p15:prstTrans prst="fallOver"\/>/);
-    assert.match(serializeTransition({ kind: "wind", duration: 0.7, params: { dir: "right" } }), /<p15:prstTrans prst="wind" invX="1"\/>/);
-    assert.match(serializeTransition({ kind: "crush", duration: 0.7, params: { dir: "down" } }), /<p15:prstTrans prst="crush" invY="1"\/>/);
-    assert.match(serializeTransition({ kind: "pageCurlSingle", duration: 0.7, params: {} }), /<p15:prstTrans prst="pageCurlSingle"\/>/);
-    const morph = serializeTransition({ kind: "morph", duration: 2, params: { option: "byWord" } });
-    assert.match(morph, /<mc:Choice Requires="p159" xmlns:p159="http:\/\/schemas.microsoft.com\/office\/powerpoint\/2015\/09\/main"><p:transition spd="slow" p14:dur="2000"><p159:morph option="byWord"\/>/);
-    assert.doesNotMatch(morph, /extLst/);
+  it("degrades the 3D variants and Morph to fade", () => {
+    for (const kind of ["orbit", "cube", "prism", "airplane", "morph"]) {
+      const xml = serializeTransition({ kind, duration: 1, params: { option: "byWord" } });
+      // 1s 落在 med 与 slow 的中点之上，归 slow。
+      assert.equal(xml, `<p:transition spd="slow"><p:fade/></p:transition>`, kind);
+      assert.doesNotMatch(xml, /p15:|p159:|schemas\.microsoft\.com/);
+    }
   });
 
   it("writes schema-valid direction attributes (pull for Uncover, lu/ru/ld/rd corners, horz/vert as dir)", () => {
@@ -161,12 +147,12 @@ describe("serializeTransition MCE shapes", () => {
     assert.match(serializeTransition({ kind: "strips", duration: 0, params: { dir: "bottomLeft" } }), /<p:strips dir="ld"\/>/);
     assert.match(serializeTransition({ kind: "blinds", duration: 0, params: { orient: "vert" } }), /<p:blinds dir="vert"\/>/);
     assert.match(serializeTransition({ kind: "split", duration: 0, params: { orient: "vert", dir: "in" } }), /<p:split dir="in" orient="vert"\/>/);
-    assert.match(serializeTransition({ kind: "doors", duration: 1, params: { orient: "horz" } }), /<p14:doors dir="horz"\/>/);
+    assert.equal(serializeTransition({ kind: "doors", duration: 1, params: { orient: "horz" } }), `<p:transition spd="slow"><p:fade/></p:transition>`);
   });
 
   it("downgrades an unknown kind to fade rather than inventing a p-namespace element", () => {
     const xml = serializeTransition({ kind: "notAThing", duration: 0.5, params: {} } as never);
-    assert.match(xml, /<mc:Choice Requires="p14"><p:transition spd="fast" p14:dur="500"><p:fade\/><\/p:transition><\/mc:Choice><mc:Fallback><p:transition spd="fast"><p:fade\/><\/p:transition><\/mc:Fallback>/);
+    assert.equal(xml, `<p:transition spd="fast"><p:fade/></p:transition>`);
     assert.doesNotMatch(xml, /notAThing/);
   });
 });

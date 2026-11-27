@@ -24,7 +24,6 @@ import type { MediaRegistrar } from "./media-table";
 import {
   blipRidAttr,
   REL_TYPE_AUDIO,
-  REL_TYPE_OFFICE_MEDIA,
   REL_TYPE_VIDEO,
 } from "./media-table";
 import type { OleEmbeddingRegistrar } from "./embedding-table";
@@ -34,11 +33,8 @@ import { svgPathToDrawingML } from "./svg-path-to-drawingml";
 import { collectShapeEffectsForWrite, effectsToXml } from "./pptx-effects";
 import { meta3DToXml } from "./pptx-3d";
 import { tableGroupToXml } from "./pptx-table";
-import { CHART_EX_GRAPHIC_URI, renderChartExReferenceXml } from "./pptx-chart-ex";
-import { model3DFrameToXml } from "./pptx-model3d";
 import { oleFrameToXml } from "./pptx-ole";
 import { pickEaTypeface } from "./theme-export";
-import { latexToOMathPara } from "./omml-write";
 import { DGM_GRAPHIC_URI, type DiagramRelIds } from "./pptx-smartart";
 import { inkContentPartToXml, isInkPath, type InkRel } from "./pptx-ink";
 import type { MediaTimingHint } from "./pptx-timing";
@@ -193,7 +189,9 @@ function shapeToXmlInner(s: Shape, ctx: ShapeCtx): string {
     case "ole":
       return oleFrameToXml(s, ctx);
     case "model3d":
-      return model3DFrameToXml(s, ctx);
+      // am3d 命名空间不在 ECMA-376 里。有预览图就写成图片，没有就留一个空矩形。
+      if (s.rasterSrc) return picShapeToXml({ ...s, kind: "image", src: s.rasterSrc }, ctx);
+      return geomShapeToXml({ ...s, kind: "rect" } as Shape, ctx);
     case "webEmbed": {
       const url = s.originalUrl || s.embedUrl;
       const embed = {
@@ -240,47 +238,25 @@ function equationImageSrc(s: Shape): string | undefined {
 }
 
 /**
- * ECMA-376 §22.1 Office Math + Part 3 §13 Markup Compatibility。
- * Choice = `<a14:m>` OMML（PowerPoint / WPS 可再编辑）；Fallback = 公式栅格图。
+ * 公式。presentationml 的文本段落里没有 OMML 的位置，a14 命名空间也不在 ECMA-376 里，
+ * 所以只写栅格图。
  */
 function equationShapeToXml(s: Shape, ctx: ShapeCtx): string | null {
-  const latex = equationLatexOf(s);
   const src = equationImageSrc(s);
-  if (!latex || !src) return null;
-  const omml = latexToOMathPara(latex);
-  if (!omml) return null;
+  if (!equationLatexOf(s) || !src) return null;
   const id = allocSpId(s, ctx);
   const rid = ctx.media.registerImage(src);
   const xf = xfrm(s, false, ctx.slideSize);
   const name = esc(s.name || "Equation");
-  const nv = `<p:cNvPr id="${id}" name="${name}"/>`;
-  return `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
-  <mc:Choice xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main" Requires="a14">
-    <p:sp>
-      <p:nvSpPr>${nv}<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
-      <p:spPr>
-        ${xf}
-        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-        <a:noFill/>
-      </p:spPr>
-      <p:txBody>
-        <a:bodyPr wrap="none" rtlCol="0" anchor="ctr"><a:spAutoFit/></a:bodyPr>
-        <a:p><a:pPr algn="ctr"/><a14:m>${omml}</a14:m></a:p>
-      </p:txBody>
-    </p:sp>
-  </mc:Choice>
-  <mc:Fallback>
-    <p:sp>
-      <p:nvSpPr>${nv}<p:cNvSpPr txBox="1"><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr>
+  return `<p:sp>
+      <p:nvSpPr><p:cNvPr id="${id}" name="${name}"/><p:cNvSpPr txBox="1"><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr>
       <p:spPr>
         ${xf}
         <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
         <a:blipFill><a:blip ${blipRidAttr(src, rid)}/><a:stretch><a:fillRect/></a:stretch></a:blipFill>
       </p:spPr>
       <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr/></a:p></p:txBody>
-    </p:sp>
-  </mc:Fallback>
-</mc:AlternateContent>`;
+    </p:sp>`;
 }
 
 function smartArtFrameToXml(
@@ -314,12 +290,9 @@ function chartFrameToXml(
   ctx: ShapeCtx,
 ): string {
   const id = allocSpId(s, ctx);
-  const graphicUri = chartEx
-    ? CHART_EX_GRAPHIC_URI
-    : "http://schemas.openxmlformats.org/drawingml/2006/chart";
-  const chartRef = chartEx
-    ? renderChartExReferenceXml(relId)
-    : `<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="${relId}"/>`;
+  void chartEx;
+  const graphicUri = "http://schemas.openxmlformats.org/drawingml/2006/chart";
+  const chartRef = `<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="${relId}"/>`;
   return `<p:graphicFrame>
     <p:nvGraphicFramePr>
       ${cNvPrXml(id, s, ctx)}
@@ -709,53 +682,16 @@ function textShapeToXml(s: Extract<Shape, { kind: "text" }>, ctx: ShapeCtx): str
   </p:sp>`;
 }
 
-const SVG_BLIP_URI = "{96DAC541-7B7A-43D3-8B79-37D633B846F1}";
-const P14_MEDIA_URI = "{DAA4B4D4-6D07-4AB8-B03D-B92D7439C58A}";
-const P14_NS = "http://schemas.microsoft.com/office/powerpoint/2010/main";
 
 /** 无 poster 时的 1×1 灰 PNG，保证 a:blip 有合法图片关系。 */
 const MEDIA_POSTER_PNG =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
-
-function isSvgDataUrl(src: string | undefined): boolean {
-  if (!src) return false;
-  return /^data:image\/svg\+xml/i.test(src) || src.trimStart().startsWith("<svg");
-}
-
-function shapeSvgSrc(s: Extract<Shape, { kind: "image" | "video" | "audio" }>): string | undefined {
-  const extra = (s as { svgSrc?: string }).svgSrc;
-  if (extra && isSvgDataUrl(extra)) return extra;
-  if (s.kind === "image" && isSvgDataUrl(s.src)) return s.src;
-  return undefined;
-}
-
-function p14MediaExtXml(
-  mediaRid: string,
-  s: Extract<Shape, { kind: "video" | "audio" }>,
-): string {
-  const trimBits: string[] = [];
-  if (s.trim?.start !== undefined) trimBits.push(`st="${Math.round(s.trim.start * 1000)}"`);
-  if (s.trim?.end !== undefined) trimBits.push(`end="${Math.round(s.trim.end * 1000)}"`);
-  const fadeBits: string[] = [];
-  if (s.fadeIn !== undefined) fadeBits.push(`in="${Math.round(s.fadeIn * 1000)}"`);
-  if (s.fadeOut !== undefined) fadeBits.push(`out="${Math.round(s.fadeOut * 1000)}"`);
-  const inner =
-    (trimBits.length ? `<p14:trim ${trimBits.join(" ")}/>` : "") +
-    (fadeBits.length ? `<p14:fade ${fadeBits.join(" ")}/>` : "");
-  return `<p:extLst><p:ext uri="${P14_MEDIA_URI}"><p14:media xmlns:p14="${P14_NS}" r:embed="${mediaRid}">${inner}</p14:media></p:ext></p:extLst>`;
-}
 
 function picShapeToXml(s: Extract<Shape, { kind: "image" | "video" | "audio" }>, ctx: ShapeCtx): string {
   const id = allocSpId(s, ctx);
   const isAv = s.kind === "video" || s.kind === "audio";
   const posterSrc = isAv ? ((s as { poster?: string }).poster || MEDIA_POSTER_PNG) : s.src;
   const rid = ctx.media.registerImage(posterSrc);
-  const svg = isAv ? undefined : shapeSvgSrc(s);
-  const svgRid = svg && svg !== posterSrc ? ctx.media.registerImage(svg) : svg ? rid : undefined;
-  const svgBlip =
-    svgRid
-      ? `<a:extLst><a:ext uri="${SVG_BLIP_URI}"><asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="${svgRid}"/></a:ext></a:extLst>`
-      : "";
   let nvPrInner = phXml(s);
   let cNvPr = cNvPrXml(id, s, ctx);
   if (isAv && s.src) {
@@ -763,9 +699,9 @@ function picShapeToXml(s: Extract<Shape, { kind: "image" | "video" | "audio" }>,
       s.kind === "video"
         ? ctx.media.registerRel(s.src, REL_TYPE_VIDEO)
         : ctx.media.registerRel(s.src, REL_TYPE_AUDIO);
-    const mediaRid = ctx.media.registerRel(s.src, REL_TYPE_OFFICE_MEDIA);
+    // ECMA-376 EG_Media：a:videoFile / a:audioFile。裁切和淡入淡出是 p14，不写。
     const fileTag = s.kind === "video" ? "videoFile" : "audioFile";
-    nvPrInner = `<a:${fileTag} r:link="${fileRid}"/>${p14MediaExtXml(mediaRid, s)}`;
+    nvPrInner = `<a:${fileTag} r:link="${fileRid}"/>`;
     ctx.mediaTimings?.push({
       kind: s.kind,
       spid: id,
@@ -804,7 +740,7 @@ function picShapeToXml(s: Extract<Shape, { kind: "image" | "video" | "audio" }>,
       ${nvPrXml(s, ctx, nvPrInner)}
     </p:nvPicPr>
     <p:blipFill>
-      <a:blip ${blipRidAttr(posterSrc, rid)}>${alphaXml}${adjustXml}${svgBlip}</a:blip>
+      <a:blip ${blipRidAttr(posterSrc, rid)}>${alphaXml}${adjustXml}</a:blip>
       ${srcRectXml}<a:stretch><a:fillRect/></a:stretch>
     </p:blipFill>
     ${spPrOpenXml(s)}

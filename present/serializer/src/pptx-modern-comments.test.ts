@@ -19,11 +19,11 @@ const c = (partial: Partial<DeckComment>): DeckComment => ({
 });
 
 describe("modern comments", () => {
-  it("turns on for threads / resolved / source flag and keeps modernId", () => {
+  it("stays off, since p188 comments are not in ECMA-376, and keeps modernId", () => {
     assert.equal(shouldUseModernComments([c({})], false), false);
-    assert.equal(shouldUseModernComments([c({ parentId: "c0" })]), true);
-    assert.equal(shouldUseModernComments([c({ resolved: true })]), true);
-    assert.equal(shouldUseModernComments([c({})], true), true);
+    assert.equal(shouldUseModernComments([c({ parentId: "c0" })]), false);
+    assert.equal(shouldUseModernComments([c({ resolved: true })]), false);
+    assert.equal(shouldUseModernComments([c({})], true), false);
     const kept = c({ modernId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" });
     assert.equal(commentModernId(kept), kept.modernId);
     assert.match(commentModernId(c({ id: "x" })), /^\{[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[A-F0-9]{4}-[0-9A-F]{12}\}$/);

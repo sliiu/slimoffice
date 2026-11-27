@@ -10,8 +10,6 @@ export const CT_PRES_PROPS =
 
 const PML =
   'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
-const P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
-const SHOW_MEDIA_CTRLS_URI = "{2FDB2607-1784-4EEB-B798-7EB5836EED8A}";
 
 type MutableArchive = { files: Map<string, Uint8Array> };
 
@@ -41,24 +39,13 @@ function penClrXml(s: ShowProperties): string {
   return `<p:penClr><a:srgbClr val="${esc(hex)}"/></p:penClr>`;
 }
 
-function mediaCtrlsExt(s: ShowProperties): string {
-  const val = bool01(s.showMediaControls, true);
-  return `<p:ext uri="${SHOW_MEDIA_CTRLS_URI}"><p14:showMediaCtrls xmlns:p14="${P14}" val="${val}"/></p:ext>`;
-}
-
-function mergeExtLst(existing: string | undefined, s: ShowProperties): string {
-  let ext = existing ?? "";
-  if (/showMediaCtrls/.test(ext)) {
-    ext = ext.replace(
-      /<p14:showMediaCtrls\b[^>]*(?:\/>|>\s*<\/p14:showMediaCtrls>)/,
-      `<p14:showMediaCtrls xmlns:p14="${P14}" val="${bool01(s.showMediaControls, true)}"/>`,
-    );
-  } else if (/<\/p:extLst>/.test(ext)) {
-    ext = ext.replace("</p:extLst>", `${mediaCtrlsExt(s)}</p:extLst>`);
-  } else {
-    ext = `<p:extLst>${mediaCtrlsExt(s)}</p:extLst>`;
-  }
-  return ext;
+// p14:showMediaCtrls 不在 ECMA-376 里，不写。原件带的这一段去掉，其余 extLst 原样留着。
+function stripMediaCtrls(existing: string | undefined): string {
+  if (!existing) return "";
+  let ext = existing.replace(/<p:ext\b[^>]*uri="\{2FDB2607-1784-4EEB-B798-7EB5836EED8A\}"[^>]*(?:\/>|>[\s\S]*?<\/p:ext>)/g, "");
+  ext = ext.replace(/<p14:showMediaCtrls\b[^>]*(?:\/>|>\s*<\/p14:showMediaCtrls>)/g, "");
+  ext = ext.replace(/<p:extLst>\s*<\/p:extLst>/, "");
+  return ext.trim() ? ext : "";
 }
 
 export function renderShowPrXml(s: ShowProperties, existingExtLst?: string): string {
@@ -68,7 +55,7 @@ export function renderShowPrXml(s: ShowProperties, existingExtLst?: string): str
     `showAnimation="${bool01(s.showAnimation, true)}"`,
     `useTimings="${bool01(s.useTimings, true)}"`,
   ].join(" ");
-  return `<p:showPr ${attrs}>${showKindXml(s)}${slidesXml(s)}${penClrXml(s)}${mergeExtLst(existingExtLst, s)}</p:showPr>`;
+  return `<p:showPr ${attrs}>${showKindXml(s)}${slidesXml(s)}${penClrXml(s)}${stripMediaCtrls(existingExtLst)}</p:showPr>`;
 }
 
 export function renderPresPropsXml(s: ShowProperties): string {

@@ -131,22 +131,20 @@ test("writes table drawing and validation parts", () => {
   assert.ok(out["xl/theme/theme1.xml"]);
 });
 
-test("writes slicers and what-if data tables back", () => {
+test("keeps what-if data tables and drops slicers, which are not in ECMA-376", () => {
   const made = blankWorkbook("销售", [[{ value: "1" }], [{ value: "2" }]]);
   const sheet = made.workbook.sheets[0]!;
   sheet.slicers = [{ id: "品类切片", name: "品类切片", source: "Table1", field: "品类" }];
   sheet.dataTables = [{ ref: "A2:A2", rowInput: "B1", colInput: "B2" }];
   made.workbook.edited = true;
   const out = unzipSync(writeXlsx(made.workbook));
-  const slicer = new TextDecoder().decode(out["xl/slicers/slicer1.xml"] ?? new Uint8Array());
-  assert.match(slicer, /<slicer name="品类切片" cache="SlicerCache1" caption="品类"\/>/);
-  const cache = new TextDecoder().decode(out["xl/slicerCaches/slicerCache1_1.xml"] ?? new Uint8Array());
-  assert.match(cache, /sourceName="Table1"/);
-  assert.match(cache, /<data name="品类"\/>/);
+  assert.equal(out["xl/slicers/slicer1.xml"], undefined);
+  assert.equal(out["xl/slicerCaches/slicerCache1_1.xml"], undefined);
   const rels = new TextDecoder().decode(out["xl/worksheets/_rels/sheet1.xml.rels"] ?? new Uint8Array());
-  assert.match(rels, /Target="..\/slicers\/slicer1.xml"/);
+  assert.doesNotMatch(rels, /slicer/);
   const sheetXml = new TextDecoder().decode(out["xl/worksheets/sheet1.xml"] ?? new Uint8Array());
   assert.match(sheetXml, /<f t="dataTable" ref="A2:A2" dt2D="1" dtr="1" r1="B1" r2="B2"><\/f>/);
+  assert.doesNotMatch(sheetXml, /schemas\.microsoft\.com/);
 });
 
 test("writes the pivot cache, sheet protection, and the header", () => {
@@ -203,8 +201,8 @@ test("writes a new sheet, outline levels, and an allowed edit range", () => {
   assert.match(sheet, /<protectedRange name="可改" sqref="A1:A1"/);
   const added = new TextDecoder().decode(out["xl/worksheets/sheet2.xml"] ?? new Uint8Array());
   assert.match(added, /<c r="A1"><v>3<\/v><\/c>/);
-  const controls = new TextDecoder().decode(out["xl/ctrlProps/ctrlProp1.xml"] ?? new Uint8Array());
-  assert.match(controls, /objectType="button" name="提交"/);
+  // 表单控件属性是 x14 扩展，不写。XML 映射留在 spreadsheetml 里。
+  assert.equal(out["xl/ctrlProps/ctrlProp1.xml"], undefined);
   const maps = new TextDecoder().decode(out["xl/xmlMaps/xmlMap1.xml"] ?? new Uint8Array());
   assert.match(maps, /Name="订单" RootElement="order"/);
 });

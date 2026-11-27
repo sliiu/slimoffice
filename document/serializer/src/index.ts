@@ -1,6 +1,6 @@
 import { isDocParagraph, isDocRaw, isDocTable, type DocComment, type DocMailMerge, type DocNumberingLevel, type DocParagraph, type DocRecipient, type DocSource, type DocStyle, type Document } from "@sliiu/document-core";
 import { strFromU8, strToU8, zipSync } from "fflate";
-import { applyDocumentEdits, indentXml, spacingXml, storyPartXml, type Relationship } from "./body";
+import { applyDocumentEdits, indentXml, spacingXml, storyPartXml, switchXml, type Relationship } from "./body";
 
 export { blankDocument } from "./blank";
 
@@ -123,7 +123,7 @@ function numberingPart(document: Document, relationships: Relationship[]): { xml
   const relationship = linked ? undefined : { id: freshId(relationships), type: NUMBERING_REL, target: "numbering.xml", external: false };
   if (/<\/w:numbering>/i.test(xml)) return { xml: xml.replace(/<\/w:numbering>/i, `${built}${nums}</w:numbering>`), relationship, override: !existing };
   return {
-    xml: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${built}${nums}</w:numbering>`,
+    xml: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${built}${nums}</w:numbering>`,
     relationship,
     override: true,
   };
@@ -174,7 +174,7 @@ function styleXml(id: string, style: DocStyle | undefined): string {
   if (style.shading) paragraph.push(`<w:shd w:val="clear" w:fill="${escapeAttr(style.shading.replace(/^#/, ""))}"/>`);
   if (style.pageBreakBefore) paragraph.push("<w:pageBreakBefore/>");
   if (style.outline !== undefined) paragraph.push(`<w:outlineLvl w:val="${Math.round(style.outline)}"/>`);
-  for (const mark of style.marks ?? []) if (/^[a-zA-Z]+$/.test(mark)) paragraph.push(`<w:${mark}/>`);
+  paragraph.push(...switchXml(style.marks));
   if (style.direction === "tb") paragraph.push(`<w:textDirection w:val="tbRl"/>`);
   else if (style.direction === "rl") paragraph.push(`<w:textDirection w:val="rlTb"/>`);
   if (style.textAlign) paragraph.push(`<w:textAlignment w:val="${escapeAttr(style.textAlign)}"/>`);

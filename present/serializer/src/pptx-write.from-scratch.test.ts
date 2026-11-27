@@ -235,7 +235,7 @@ describe("writePptx from-scratch", () => {
     assert.equal(scheme.dk2, "1C1C1E");
   });
 
-  it("writes SmartArt drawing shapes with unique ids and host-relative connector geometry", () => {
+  it("writes SmartArt as diagram data without a dsp drawing part", () => {
     const bbox = { x: 64, y: 200, w: 1152, h: 280 };
     const children = buildSmartArtShapes(
       "process",
@@ -248,21 +248,11 @@ describe("writePptx from-scratch", () => {
     );
     const group: GroupShape = { ...meta("sp_6", "slot:diagram"), kind: "group", bbox, children, smartArtMeta: { layout: "process" } };
     const files = unzipXml(writePptx(buildPres([group])));
-    const drawing = files["ppt/diagrams/drawing1.xml"];
-    assert.ok(drawing, "drawing part written");
-    const ids = [...drawing.matchAll(/<dsp:cNvPr id="(\d+)"/g)].map((m) => m[1]!);
-    assert.ok(ids.length > 3, `expected several dsp shapes, got ${ids.length}`);
-    assert.equal(new Set(ids).size, ids.length, `dsp:cNvPr ids must be unique: ${ids.join(",")}`);
-
-    // 连接符 xfrm 必须已经减掉 host 原点：任何 off.y 都不能大于 group 高度。
-    const groupH = Math.round(bbox.h * 12700);
-    const offs = [...drawing.matchAll(/<a:off x="(-?\d+)" y="(-?\d+)"\/>/g)].map((m) => Number(m[2]));
-    assert.ok(offs.length > 0);
-    assert.ok(offs.every((y) => y >= 0 && y <= groupH), `dsp offsets must be host-relative: ${offs.join(",")}`);
-
-    // 换行 = 多段落：run 里不能残留 "\n"（PowerPoint 会把它当空白折叠）。
-    assert.doesNotMatch(drawing, /<a:t>[^<]*\n[^<]*<\/a:t>/);
-    assert.match(drawing, /<a:t>解析 \.pptx<\/a:t>/);
-    assert.match(drawing, /<a:t>OOXML 解析<\/a:t>/);
+    // dsp 命名空间不在 ECMA-376 里，drawing 部件不写。文本进 dgm:dataModel。
+    assert.equal(files["ppt/diagrams/drawing1.xml"], undefined);
+    const data = files["ppt/diagrams/data1.xml"];
+    assert.ok(data, "diagram data part written");
+    assert.doesNotMatch(data, /schemas\.microsoft\.com|dsp:/);
+    assert.match(data, /<a:t>解析 \.pptx\nOOXML 解析<\/a:t>/);
   });
 });

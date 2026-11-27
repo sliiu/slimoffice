@@ -1,11 +1,8 @@
-// PowerPoint 2010+ `<p14:sectionLst>`（presentation.xml extLst）。
-// URI：{521415D9-36F7-43E2-AB2F-B90AF26B5E84}
-// 每个 section 的 p14:sldId@id 对应 presentation sldIdLst 里的 sldId@id。
+// 节。ECMA-376 第 5 版的 presentationml 没有节，所以不写 `<p14:sectionLst>`。
+// 节留在内存里，编辑器照常分组；写盘时清掉原件里的 p14 节，避免和当前分组不一致。
 
 import type { DeckSection, Presentation, PresentationSource } from "@sliiu/present-core";
-import { normalizeDeckSections } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
-import { esc } from "./xml-util";
 import type { RoundTripOptions } from "./pptx-roundtrip";
 
 type MutableArchive = { files: Map<string, Uint8Array> };
@@ -33,39 +30,19 @@ export function sectionIdToGuid(id: string): string {
   return `{${raw.slice(0, 8)}-${raw.slice(8, 12)}-4${raw.slice(13, 16)}-A${raw.slice(17, 20)}-${raw.slice(20, 32)}}`.toUpperCase();
 }
 
-function sectionsForWrite(pres: Presentation): DeckSection[] {
-  return normalizeDeckSections(pres.sections, pres.slides.length);
-}
-
 /** from-scratch sldId 约定与 `renderPresentation` 一致：256 + index。 */
 export function fromScratchSldIds(slideCount: number): number[] {
   return Array.from({ length: slideCount }, (_, i) => 256 + i);
 }
 
-export function renderSectionLstXml(sections: DeckSection[], sldIds: number[]): string {
-  const ext = renderSectionExtXml(sections, sldIds);
-  return ext ? `<p:extLst>\n  ${ext}\n</p:extLst>` : "";
+/** ECMA-376 没有节，写盘不产出任何标记。参数留着，调用方不用改。 */
+export function renderSectionLstXml(_sections: DeckSection[], _sldIds: number[]): string {
+  return "";
 }
 
-export function renderSectionExtXml(sections: DeckSection[], sldIds: number[]): string {
-  const slideCount = sldIds.length;
-  const list = normalizeDeckSections(sections, slideCount);
-  if (!list.length || !slideCount) return "";
-  const rows: string[] = [];
-  if (list[0]!.startIndex > 0) {
-    rows.push(sectionXml("Default Section", sectionIdToGuid("sec_default"), sldIds.slice(0, list[0]!.startIndex)));
-  }
-  for (let i = 0; i < list.length; i++) {
-    const s = list[i]!;
-    const end = i + 1 < list.length ? list[i + 1]!.startIndex : slideCount;
-    rows.push(sectionXml(s.name, sectionIdToGuid(s.id), sldIds.slice(s.startIndex, end)));
-  }
-  return `<p:ext uri="${SECTION_LST_URI}"><p14:sectionLst xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main">${rows.join("")}</p14:sectionLst></p:ext>`;
-}
-
-function sectionXml(name: string, id: string, ids: number[]): string {
-  const sld = ids.map((n) => `<p14:sldId id="${n}"/>`).join("");
-  return `<p14:section name="${esc(name)}" id="${esc(id)}"><p14:sldIdLst>${sld}</p14:sldIdLst></p14:section>`;
+/** ECMA-376 没有节，写盘不产出任何标记。 */
+export function renderSectionExtXml(_sections: DeckSection[], _sldIds: number[]): string {
+  return "";
 }
 
 function readSldIdNumbersFromXml(xml: string): number[] {
@@ -91,23 +68,11 @@ export function patchSectionLst(
   const presBytes = archive.files.get(presPath);
   if (!presBytes) return;
 
-  let xml = strFromU8(presBytes);
-  const sldIds = readSldIdNumbersFromXml(xml);
-  const ids = sldIds.length ? sldIds : fromScratchSldIds(pres.slides.length);
-  const nextExt = renderSectionExtXml(sectionsForWrite(pres), ids);
-
-  let next = xml;
-  if (!nextExt) {
-    next = xml.replace(SECTION_EXT_RE, "");
-    next = next.replace(/<p:extLst>\s*<\/p:extLst>/, "");
-  } else if (SECTION_EXT_RE.test(xml)) {
-    next = xml.replace(SECTION_EXT_RE, nextExt);
-  } else if (/<\/p:extLst>/.test(xml)) {
-    next = xml.replace(/<\/p:extLst>/, `${nextExt}</p:extLst>`);
-  } else {
-    next = xml.replace(/<\/p:presentation>/, `<p:extLst>${nextExt}</p:extLst></p:presentation>`);
-  }
+  const xml = strFromU8(presBytes);
+  // 节不在 ECMA-376 里。原件带的 p14 节清掉，不按内存里的分组重写。
+  let next = xml.replace(SECTION_EXT_RE, "");
+  next = next.replace(/<p:extLst>\s*<\/p:extLst>/, "");
   if (next === xml) return;
   archive.files.set(presPath, strToU8(next));
-  if (opts.debug) console.log("[roundtrip] presentation.xml p14:sectionLst patched");
+  if (opts.debug) console.log("[roundtrip] presentation.xml p14:sectionLst removed (not in ECMA-376)");
 }

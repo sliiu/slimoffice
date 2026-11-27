@@ -1,28 +1,23 @@
 import type { DeckComment } from "@sliiu/present-core";
-import { esc, pxToEmu } from "./xml-util";
 
 export const P188_NS = "http://schemas.microsoft.com/office/powerpoint/2018/8/main";
 export const REL_MODERN_COMMENTS =
   "http://schemas.microsoft.com/office/2018/10/relationships/comments";
-export const REL_MODERN_AUTHORS =
-  "http://schemas.microsoft.com/office/2018/10/relationships/authors";
-export const CT_MODERN_COMMENTS = "application/vnd.ms-powerpoint.comments+xml";
-export const CT_MODERN_AUTHORS = "application/vnd.ms-powerpoint.authors+xml";
-
-const A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
 export interface ModernAuthor {
   id: string;
   name: string;
 }
 
-/** Deck uses threaded / resolved comments, or source was Office 2021+ modern format. */
+/**
+ * p188 批注不在 ECMA-376 里，写盘一律走经典 p:cm。
+ * 线程和已解决状态读得进，导出走 exportableComments 能表达的那一部分。
+ */
 export function shouldUseModernComments(
-  comments: DeckComment[] | undefined,
-  commentsModern?: boolean,
+  _comments: DeckComment[] | undefined,
+  _commentsModern?: boolean,
 ): boolean {
-  if (commentsModern) return true;
-  return (comments ?? []).some((c) => Boolean(c.parentId || c.resolved));
+  return false;
 }
 
 function stableGuid(seed: string): string {
@@ -74,90 +69,8 @@ function officeGuid(seed: string): string {
   return `{${stableGuid(seed).toUpperCase()}}`;
 }
 
-function renderTxBody(text: string): string {
-  const lines = text.split(/\r?\n/);
-  const paras = (lines.length ? lines : [""])
-    .map(
-      (line) =>
-        `<a:p><a:pPr/><a:r><a:rPr lang="en-US"/><a:t xml:space="preserve">${esc(line)}</a:t></a:r></a:p>`,
-    )
-    .join("");
-  // MS-PPTX CT_Comment: text lives in p188:txBody (not a:txBody). WPS / PowerPoint
-  // look up that qualified name; a:txBody parses as an unknown child and shows blank.
-  return `<p188:txBody><a:bodyPr/><a:lstStyle/>${paras}</p188:txBody>`;
-}
-
-function modernStatus(resolved?: boolean): string {
-  return resolved ? "resolved" : "active";
-}
-
-function renderReply(
-  c: DeckComment,
-  authorIdByName: Map<string, string>,
-): string {
-  const authorId = authorIdByName.get(c.author) ?? authorModernId(c.author);
-  const id = commentModernId(c);
-  const created = new Date(c.createdAt).toISOString();
-  const status = modernStatus(c.resolved);
-  return `<p188:reply id="${esc(id)}" authorId="${esc(authorId)}" created="${esc(created)}" status="${status}">${renderTxBody(c.text)}</p188:reply>`;
-}
-
-export function renderModernAuthorsXml(authors: ModernAuthor[]): string {
-  const rows = authors
-    .map(
-      (a) =>
-        `<p188:author id="${esc(a.id)}" name="${esc(a.name)}" userId="" providerId=""/>`,
-    )
-    .join("");
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<p188:authorLst xmlns:p188="${P188_NS}">${rows}</p188:authorLst>`;
-}
-
-/** Office 2021+ comment part: threaded replies in replyLst + status for resolved. */
-export function renderModernCommentsXml(
-  comments: DeckComment[],
-  authorIdByName: Map<string, string>,
-  slideSize: { width: number; height: number },
-): string {
-  const byId = new Map(comments.map((c) => [c.id, c]));
-  const roots = comments.filter((c) => !c.parentId);
-  const childrenOf = (rootId: string): DeckComment[] =>
-    comments
-      .filter((c) => {
-        let p = c.parentId;
-        while (p) {
-          if (p === rootId) return true;
-          p = byId.get(p)?.parentId;
-        }
-        return false;
-      })
-      .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
-
-  const anchorFor = (c: DeckComment): { x: number; y: number } => {
-    if (c.x != null && c.y != null) return { x: c.x, y: c.y };
-    if (c.parentId) {
-      const parent = byId.get(c.parentId);
-      if (parent) return anchorFor(parent);
-    }
-    return { x: slideSize.width * 0.08, y: slideSize.height * 0.12 };
-  };
-
-  const cms = roots.map((root) => {
-    const authorId = authorIdByName.get(root.author) ?? authorModernId(root.author);
-    const id = commentModernId(root);
-    const created = new Date(root.createdAt).toISOString();
-    const status = modernStatus(root.resolved);
-    const anchor = anchorFor(root);
-    const x = pxToEmu(anchor.x);
-    const y = pxToEmu(anchor.y);
-    const replies = childrenOf(root.id);
-    const replyXml = replies.length
-      ? `<p188:replyLst>${replies.map((r) => renderReply(r, authorIdByName)).join("")}</p188:replyLst>`
-      : "";
-    return `<p188:cm id="${esc(id)}" authorId="${esc(authorId)}" created="${esc(created)}" status="${status}"><p188:unknownAnchor/><p188:pos x="${x}" y="${y}"/>${replyXml}${renderTxBody(root.text)}</p188:cm>`;
-  });
-
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<p188:cmLst xmlns:p188="${P188_NS}" xmlns:a="${A_NS}">${cms.join("")}</p188:cmLst>`;
-}
+// p188 批注不在 ECMA-376 里，不生成。读入识别留在 parser，这里只判断一个部件是不是 p188，
+// 以便往返时把它换成经典 p:cm。
 
 export function isModernCommentsXml(xml: string): boolean {
   return xml.includes(P188_NS) || xml.includes("powerpoint/2018/8/main");
