@@ -1,9 +1,9 @@
 ---
 name: slimppt-local
-description: Edit a local .pptx with the same tools as Pavera's online deck MCP. Use when the user wants to read, change, or save a PowerPoint file on disk.
+description: Edit a local .pptx with the same tools as Parchon's online deck MCP. Use when the user wants to read, change, or save a PowerPoint file on disk.
 ---
 
-# Pavera local decks
+# Parchon local decks
 
 This server edits `.pptx` and `.pptm` files in one folder. The tool names match the online deck MCP. Saving writes the `.pptx` file. That file is the export.
 
@@ -38,7 +38,7 @@ Cursor MCP config. Replace both paths.
 }
 ```
 
-`render_slide` is not part of this package. It is registered only in a Pavera checkout where the player build and playwright are present.
+`render_slide` is not part of this package. It is registered only in a Parchon checkout where the player build and playwright are present.
 
 ## Order
 
@@ -51,7 +51,7 @@ One deck stays open. `close_presentation` drops unsaved edits. There is no separ
 
 ## New deck from a topic
 
-Call `generate_presentation` with `topic` and a new file name as `deckId` (for example `ai-km.pptx`). It runs Pavera's own generator: outline, per-page layout, layout gates, repair, and, when the model can see images, a visual review that re-lays the worst pages. The result opens in the session unsaved. Use it instead of building a deck with `createSlide` and shape tools. Those give a plain layout with no design system. Generation takes one to a few minutes and spends the configured model's quota.
+Call `generate_presentation` with `topic` and a new file name as `deckId` (for example `ai-km.pptx`). It runs Parchon's own generator: outline, per-page layout, layout gates, repair, and, when the model can see images, a visual review that re-lays the worst pages. The result opens in the session unsaved. Use it instead of building a deck with `createSlide` and shape tools. Those give a plain layout with no design system. Generation takes one to a few minutes and spends the configured model's quota.
 
 Pass what the user said as `notes` (tone, brand color, page numbers, must-include facts). Pass their source text as `sourceMaterial` so numbers come from it rather than from the model.
 

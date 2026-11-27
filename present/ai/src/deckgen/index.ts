@@ -1,5 +1,5 @@
 /**
- * Pavera deckgen — compile an editable Presentation.
+ * Parchon deckgen — compile an editable Presentation.
  *
  * Live (API key): canvas author → snap → emit.
  * Offline / no key: VisualSystem → Layout+Variant → fill → ColorTheme.

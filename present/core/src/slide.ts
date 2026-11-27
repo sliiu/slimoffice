@@ -415,17 +415,17 @@ export interface PresentationSource {
   commentsModern?: boolean;
   /** 解析时全 deck 批注 JSON 快照。 */
   commentsSnapshot?: string;
-  /** Pavera tags 侧车：resolved / parentId 元数据快照。 */
+  /** Parchon tags 侧车：resolved / parentId 元数据快照。 */
   commentMetaSnapshot?: string;
-  /** Pavera tags 侧车：演示文稿保护元数据快照。 */
+  /** Parchon tags 侧车：演示文稿保护元数据快照。 */
   protectionMetaSnapshot?: string;
-  /** Pavera tags 侧车：已启用编辑插件 id 列表快照。 */
+  /** Parchon tags 侧车：已启用编辑插件 id 列表快照。 */
   editorPluginsMetaSnapshot?: string;
-  /** Pavera tags 侧车：放映插件 id 列表快照。 */
+  /** Parchon tags 侧车：放映插件 id 列表快照。 */
   playbackPluginsMetaSnapshot?: string;
-  /** Pavera tags 侧车：幻灯片节列表快照。 */
+  /** Parchon tags 侧车：幻灯片节列表快照。 */
   sectionsMetaSnapshot?: string;
-  /** Pavera tags 侧车：校对语言 id 快照。 */
+  /** Parchon tags 侧车：校对语言 id 快照。 */
   proofingLangMetaSnapshot?: string;
   /** presentation tags part 路径（如 ppt/tags/tag1.xml）。 */
   tagsPartPath?: string;

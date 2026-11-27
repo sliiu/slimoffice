@@ -129,7 +129,7 @@ const TAIL_RULES = [
     [/process/, "process"],
     [/list/, "list"],
 ];
-/** Office `layoutDef@uniqueId` tail, or a SlimPPT urn, → layout kind. */
+/** Office `layoutDef@uniqueId` tail, or a Parchon urn, → layout kind. */
 function smartArtLayoutFromUniqueId(uniqueId) {
     if (!uniqueId)
         return undefined;

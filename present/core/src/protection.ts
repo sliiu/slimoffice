@@ -6,8 +6,9 @@ import {
 
 export const PROTECTION_META_KEY = "protection";
 
-/** presentation tags part 中 Pavera 保护元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-export const PROTECTION_META_TAG = "Pavera.Protection.v1";
+/** presentation tags part 中 Parchon 保护元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+export const PROTECTION_META_TAG = "Parchon.Protection.v1";
+export const PROTECTION_META_TAG_PAVERA = "Pavera.Protection.v1";
 export const PROTECTION_META_TAG_LEGACY = "SlimPPT.Protection.v1";
 
 interface ProtectionMetaV1 {

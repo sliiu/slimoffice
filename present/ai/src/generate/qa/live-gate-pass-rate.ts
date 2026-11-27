@@ -329,7 +329,7 @@ export async function runLiveGatePassRateHarness(
   const resolved = resolveLiveGateConfig(env);
   if (!resolved.ok) {
     return {
-      brief: "Pavera 16-page dark-launch wizard (cover + 14 bullets + closing) — live generate",
+      brief: "Parchon 16-page dark-launch wizard (cover + 14 bullets + closing) — live generate",
       seeds,
       skipped: true,
       skipReason: resolved.reason,
@@ -357,7 +357,7 @@ export async function runLiveGatePassRateHarness(
     (r) => r.modelCalls <= 0 || isLiveGateAuthOrProviderError(r.error),
   );
   return {
-    brief: "Pavera 16-page dark-launch wizard (cover + 14 bullets + closing) — live generate",
+    brief: "Parchon 16-page dark-launch wizard (cover + 14 bullets + closing) — live generate",
     seeds,
     skipped: false,
     live,

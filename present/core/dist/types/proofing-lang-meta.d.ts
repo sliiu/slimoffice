@@ -1,12 +1,13 @@
-import type { Presentation } from "./slide";
+import type { Presentation } from "./slide.js";
 export declare const PROOFING_LANG_META_KEY = "proofingLang";
-/** presentation tags part 中 Pavera 校对语言元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-export declare const PROOFING_LANG_META_TAG = "Pavera.ProofingLang.v1";
+/** presentation tags part 中 Parchon 校对语言元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+export declare const PROOFING_LANG_META_TAG = "Parchon.ProofingLang.v1";
+export declare const PROOFING_LANG_META_TAG_PAVERA = "Pavera.ProofingLang.v1";
 export declare const PROOFING_LANG_META_TAG_LEGACY = "SlimPPT.ProofingLang.v1";
 export declare function normalizeProofingLangId(lang: unknown): string | undefined;
-/** Pavera 校对语言 id → OOXML `a:defRPr@lang`（Office 拼写检查认这个）。 */
+/** Parchon 校对语言 id → OOXML `a:defRPr@lang`（Office 拼写检查认这个）。 */
 export declare function ooxmlLangFromProofingId(id: string): string;
-/** OOXML `lang` / BCP-47 → Pavera 校对语言 id。无法识别时返回 undefined。 */
+/** OOXML `lang` / BCP-47 → Parchon 校对语言 id。无法识别时返回 undefined。 */
 export declare function proofingIdFromOoxmlLang(lang: string | undefined): string | undefined;
 export declare function getProofingLanguage(pres: Presentation): string;
 export declare function setProofingLanguageMeta(pres: Presentation, langId: string | undefined): void;

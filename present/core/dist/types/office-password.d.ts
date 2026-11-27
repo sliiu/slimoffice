@@ -1,9 +1,9 @@
-import type { ModifyVerifier } from "./slide";
+import type { ModifyVerifier } from "./slide.js";
 export declare function resolveOfficeHashAlgorithm(mv: ModifyVerifier): string | undefined;
 export declare function officeModifyVerifierSaltB64(mv: ModifyVerifier): string | undefined;
 export declare function officeModifyVerifierHashB64(mv: ModifyVerifier): string | undefined;
 export declare function officeModifyVerifierSpinCount(mv: ModifyVerifier): number;
-/** True when `modifyVerifier` carries an Office-native password hash (not Pavera JSON). */
+/** True when `modifyVerifier` carries an Office-native password hash (not Parchon JSON). */
 export declare function isOfficePasswordVerifier(mv: ModifyVerifier | undefined): boolean;
 export interface OfficeModifyVerifierSummary {
     algorithm: string;

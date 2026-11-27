@@ -1,6 +1,10 @@
 import type { ModifyVerifier } from "./slide";
 
-const PAVERA_MODIFY_VERIFIER_ALGS = new Set(["Pavera-Protection-v1", "SlimPPT-Protection-v1"]);
+const PAVERA_MODIFY_VERIFIER_ALGS = new Set([
+  "Parchon-Protection-v1",
+  "Pavera-Protection-v1",
+  "SlimPPT-Protection-v1",
+]);
 
 /** MS-OFFCRYPTO / Office 2010+ `cryptAlgorithmSid` → Web Crypto digest name. */
 const CRYPT_SID_TO_DIGEST: Record<number, string> = {
@@ -55,7 +59,7 @@ export function officeModifyVerifierSpinCount(mv: ModifyVerifier): number {
   return typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 }
 
-/** True when `modifyVerifier` carries an Office-native password hash (not Pavera JSON). */
+/** True when `modifyVerifier` carries an Office-native password hash (not Parchon JSON). */
 export function isOfficePasswordVerifier(mv: ModifyVerifier | undefined): boolean {
   if (!mv) return false;
   if (mv.algorithmName && PAVERA_MODIFY_VERIFIER_ALGS.has(mv.algorithmName)) return false;

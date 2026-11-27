@@ -1,7 +1,8 @@
-import type { Presentation } from "./slide";
+import type { Presentation } from "./slide.js";
 export declare const PLAYBACK_PLUGINS_META_KEY = "playbackPlugins";
-/** presentation tags part 中 Pavera 放映插件元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-export declare const PLAYBACK_PLUGINS_META_TAG = "Pavera.PlaybackPlugins.v1";
+/** presentation tags part 中 Parchon 放映插件元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+export declare const PLAYBACK_PLUGINS_META_TAG = "Parchon.PlaybackPlugins.v1";
+export declare const PLAYBACK_PLUGINS_META_TAG_PAVERA = "Pavera.PlaybackPlugins.v1";
 export declare const PLAYBACK_PLUGINS_META_TAG_LEGACY = "SlimPPT.PlaybackPlugins.v1";
 export declare function getPlaybackPluginsMeta(pres: Presentation): string[] | undefined;
 export declare function setPlaybackPluginsMeta(pres: Presentation, ids: string[] | undefined): void;

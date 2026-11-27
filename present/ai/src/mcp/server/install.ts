@@ -57,7 +57,7 @@ const AGENTS: AgentTarget[] = [
 export interface InstallRequest {
   /** 用户家目录。测试传入临时目录。 */
   home: string;
-  /** Pavera 仓库根，pnpm --dir 用它找到 tsx。 */
+  /** Parchon 仓库根，pnpm --dir 用它找到 tsx。 */
   repoRoot: string;
   /** 本地 .pptx 所在目录，写入 SLIMPPT_ROOT。 */
   decksRoot: string;
@@ -80,7 +80,7 @@ export interface InstallReport {
 export function repoRootFromHere(here = fileURLToPath(new URL(".", import.meta.url))): string {
   const root = path.resolve(here, "../../../../..");
   if (!existsSync(path.join(root, "pnpm-workspace.yaml"))) {
-    throw new InstallConfigError(`Pavera repo root not found from ${here}`);
+    throw new InstallConfigError(`Parchon repo root not found from ${here}`);
   }
   return root;
 }

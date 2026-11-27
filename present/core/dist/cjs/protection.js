@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UnprotectFailedError = exports.EditingBlockedError = exports.PROTECTION_META_TAG_LEGACY = exports.PROTECTION_META_TAG = exports.PROTECTION_META_KEY = void 0;
+exports.UnprotectFailedError = exports.EditingBlockedError = exports.PROTECTION_META_TAG_LEGACY = exports.PROTECTION_META_TAG_PAVERA = exports.PROTECTION_META_TAG = exports.PROTECTION_META_KEY = void 0;
 exports.getPresentationProtection = getPresentationProtection;
 exports.setPresentationProtectionMeta = setPresentationProtectionMeta;
 exports.isPresentationEditingBlocked = isPresentationEditingBlocked;
@@ -16,8 +16,9 @@ exports.buildProtectionMeta = buildProtectionMeta;
 exports.applyProtectionMeta = applyProtectionMeta;
 const office_password_1 = require("./office-password");
 exports.PROTECTION_META_KEY = "protection";
-/** presentation tags part 中 Pavera 保护元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-exports.PROTECTION_META_TAG = "Pavera.Protection.v1";
+/** presentation tags part 中 Parchon 保护元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+exports.PROTECTION_META_TAG = "Parchon.Protection.v1";
+exports.PROTECTION_META_TAG_PAVERA = "Pavera.Protection.v1";
 exports.PROTECTION_META_TAG_LEGACY = "SlimPPT.Protection.v1";
 function getPresentationProtection(pres) {
     const raw = pres.meta?.[exports.PROTECTION_META_KEY];

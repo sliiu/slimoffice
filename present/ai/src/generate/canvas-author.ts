@@ -1,5 +1,5 @@
 /**
- * LLM authors each page as a complete Pavera canvas (ppt-master method, our IR).
+ * LLM authors each page as a complete Parchon canvas (ppt-master method, our IR).
  *
  * The model outputs semantics: system, palette hex, and per page the carriers
  * (text runs, presets, icons, diagrams, devices). Geometry expansion, type

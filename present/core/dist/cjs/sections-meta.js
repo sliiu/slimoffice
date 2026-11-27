@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SECTIONS_META_TAG_LEGACY = exports.SECTIONS_META_TAG = void 0;
+exports.SECTIONS_META_TAG_LEGACY = exports.SECTIONS_META_TAG_PAVERA = exports.SECTIONS_META_TAG = void 0;
 exports.normalizeDeckSections = normalizeDeckSections;
 exports.buildDeckSectionsMeta = buildDeckSectionsMeta;
 exports.applyDeckSectionsMeta = applyDeckSectionsMeta;
-/** presentation tags part 中 Pavera 幻灯片节元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-exports.SECTIONS_META_TAG = "Pavera.Sections.v1";
+/** presentation tags part 中 Parchon 幻灯片节元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+exports.SECTIONS_META_TAG = "Parchon.Sections.v1";
+exports.SECTIONS_META_TAG_PAVERA = "Pavera.Sections.v1";
 exports.SECTIONS_META_TAG_LEGACY = "SlimPPT.Sections.v1";
 function normalizeDeckSections(sections, slideCount) {
     if (!sections?.length)

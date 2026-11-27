@@ -83,7 +83,7 @@ function mergeProviderHeaders(
 ): Record<string, string> | undefined {
   const defaults: Record<string, string> =
     kind === "openrouter"
-      ? { "HTTP-Referer": "https://slimppt.app", "X-Title": "Pavera" }
+      ? { "HTTP-Referer": "https://slimppt.app", "X-Title": "Parchon" }
       : {};
   const merged = { ...defaults, ...user };
   return Object.keys(merged).length > 0 ? merged : undefined;

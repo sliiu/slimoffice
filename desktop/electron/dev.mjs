@@ -32,12 +32,12 @@ function waitForSlimppt(port, child) {
         return;
       }
       if (Date.now() > deadline) {
-        reject(new Error("Pavera dev server did not become ready"));
+        reject(new Error("Parchon dev server did not become ready"));
         return;
       }
       try {
         const html = await fetch(url).then((res) => res.text());
-        if (html.includes("Pavera") && html.includes('id="home"')) {
+        if (html.includes("Parchon") && html.includes('id="home"')) {
           resolve(url);
           return;
         }
@@ -71,7 +71,7 @@ try {
   vite.kill("SIGTERM");
   throw err;
 }
-console.log(`Pavera desktop ${devUrl}`);
+console.log(`Parchon desktop ${devUrl}`);
 
 const electronPath = require("electron");
 let electron = null;
@@ -112,7 +112,7 @@ watch(here, (_event, filename) => {
   if (!filename || !/\.(mjs|cjs)$/.test(filename)) return;
   clearTimeout(restartTimer);
   restartTimer = setTimeout(() => {
-    console.log(`restarting Pavera after ${filename}`);
+    console.log(`restarting Parchon after ${filename}`);
     restartElectron();
   }, 200);
 });

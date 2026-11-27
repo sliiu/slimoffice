@@ -1,8 +1,8 @@
 {
-  "name": "pavera-desktop",
+  "name": "parchon-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Pavera desktop. Presentations open from files on this computer.",
+  "description": "Parchon desktop. Presentations open from files on this computer.",
   "author": "Sliiu Inc",
   "license": "Apache-2.0",
   "type": "module",
@@ -30,9 +30,9 @@
     "vite": "^8.3.1"
   },
   "build": {
-    "appId": "com.sliiu.pavera",
-    "productName": "Pavera",
-    "executableName": "Pavera",
+    "appId": "com.sliiu.parchon",
+    "productName": "Parchon",
+    "executableName": "Parchon",
     "copyright": "Copyright © Sliiu Inc",
     "asar": true,
     "npmRebuild": false,
@@ -86,7 +86,7 @@
     },
     "linux": {
       "category": "Office",
-      "artifactName": "Pavera-${version}-linux-${arch}.${ext}",
+      "artifactName": "Parchon-${version}-linux-${arch}.${ext}",
       "target": [
         {
           "target": "AppImage",

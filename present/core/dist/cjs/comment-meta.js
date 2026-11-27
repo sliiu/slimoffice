@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.COMMENT_META_TAG_LEGACY = exports.COMMENT_META_TAG = void 0;
+exports.COMMENT_META_TAG_LEGACY = exports.COMMENT_META_TAG_PAVERA = exports.COMMENT_META_TAG = void 0;
 exports.commentMetaKey = commentMetaKey;
 exports.buildCommentMeta = buildCommentMeta;
 exports.applyCommentMeta = applyCommentMeta;
-/** presentation tags part 中 Pavera 批注元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-exports.COMMENT_META_TAG = "Pavera.Comments.v1";
+/** presentation tags part 中 Parchon 批注元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+exports.COMMENT_META_TAG = "Parchon.Comments.v1";
+exports.COMMENT_META_TAG_PAVERA = "Pavera.Comments.v1";
 exports.COMMENT_META_TAG_LEGACY = "SlimPPT.Comments.v1";
 function commentMetaKey(c) {
     return {

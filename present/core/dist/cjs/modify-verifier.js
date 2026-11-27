@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY = exports.SLIMPPT_MODIFY_VERIFIER_ALG = void 0;
+exports.SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY = exports.SLIMPPT_MODIFY_VERIFIER_ALG_PAVERA = exports.SLIMPPT_MODIFY_VERIFIER_ALG = void 0;
 exports.encodeProtectionInModifyVerifier = encodeProtectionInModifyVerifier;
 exports.decodeProtectionFromModifyVerifier = decodeProtectionFromModifyVerifier;
 exports.syncModifyVerifierWithProtection = syncModifyVerifierWithProtection;
@@ -8,13 +8,14 @@ exports.applyModifyVerifierProtection = applyModifyVerifierProtection;
 exports.cloneModifyVerifier = cloneModifyVerifier;
 const protection_1 = require("./protection");
 const office_password_1 = require("./office-password");
-/** Pavera-encoded protection payload in `modifyVerifier/@algorithmName`. 新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT。 */
-exports.SLIMPPT_MODIFY_VERIFIER_ALG = "Pavera-Protection-v1";
+/** Parchon-encoded protection payload in `modifyVerifier/@algorithmName`. 新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧值。 */
+exports.SLIMPPT_MODIFY_VERIFIER_ALG = "Parchon-Protection-v1";
+exports.SLIMPPT_MODIFY_VERIFIER_ALG_PAVERA = "Pavera-Protection-v1";
 exports.SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY = "SlimPPT-Protection-v1";
 function deepCloneModifyVerifier(mv) {
     return mv ? { ...mv } : undefined;
 }
-/** Encode Pavera protection into OOXML `modifyVerifier` for presentation.xml round-trip. */
+/** Encode Parchon protection into OOXML `modifyVerifier` for presentation.xml round-trip. */
 function encodeProtectionInModifyVerifier(p) {
     const payload = { v: 1, kind: p.kind, setAt: p.setAt };
     if (p.passwordHash)
@@ -25,11 +26,12 @@ function encodeProtectionInModifyVerifier(p) {
         spinValue: 0,
     };
 }
-/** Decode Pavera or infer Office-native protection from `modifyVerifier`. */
+/** Decode Parchon or infer Office-native protection from `modifyVerifier`. */
 function decodeProtectionFromModifyVerifier(mv) {
     if (!mv)
         return undefined;
     if ((mv.algorithmName === exports.SLIMPPT_MODIFY_VERIFIER_ALG ||
+        mv.algorithmName === exports.SLIMPPT_MODIFY_VERIFIER_ALG_PAVERA ||
         mv.algorithmName === exports.SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY) &&
         mv.hashValue) {
         try {

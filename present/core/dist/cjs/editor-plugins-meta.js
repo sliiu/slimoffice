@@ -1,14 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EDITOR_PLUGINS_META_TAG_LEGACY = exports.EDITOR_PLUGINS_META_TAG = exports.EDITOR_PLUGINS_META_KEY = void 0;
+exports.EDITOR_PLUGINS_META_TAG_LEGACY = exports.EDITOR_PLUGINS_META_TAG_PAVERA = exports.EDITOR_PLUGINS_META_TAG = exports.EDITOR_PLUGINS_META_KEY = void 0;
 exports.getEditorPluginsMeta = getEditorPluginsMeta;
 exports.setEditorPluginsMeta = setEditorPluginsMeta;
 exports.buildEditorPluginsMeta = buildEditorPluginsMeta;
 exports.applyEditorPluginsMeta = applyEditorPluginsMeta;
 const plugin_ids_1 = require("./plugin-ids");
 exports.EDITOR_PLUGINS_META_KEY = "editorPlugins";
-/** presentation tags part 中 Pavera 编辑插件元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-exports.EDITOR_PLUGINS_META_TAG = "Pavera.EditorPlugins.v1";
+/** presentation tags part 中 Parchon 编辑插件元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+exports.EDITOR_PLUGINS_META_TAG = "Parchon.EditorPlugins.v1";
+exports.EDITOR_PLUGINS_META_TAG_PAVERA = "Pavera.EditorPlugins.v1";
 exports.EDITOR_PLUGINS_META_TAG_LEGACY = "SlimPPT.EditorPlugins.v1";
 function getEditorPluginsMeta(pres) {
     const raw = pres.meta?.[exports.EDITOR_PLUGINS_META_KEY];

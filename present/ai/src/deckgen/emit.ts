@@ -1,5 +1,5 @@
 /**
- * Emit an editable Pavera Presentation IR (same object model tools mutate).
+ * Emit an editable Parchon Presentation IR (same object model tools mutate).
  */
 
 import {

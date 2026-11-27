@@ -1,11 +1,12 @@
-import type { ModifyVerifier, Presentation } from "./slide";
-import type { PresentationProtection } from "./protection";
-/** Pavera-encoded protection payload in `modifyVerifier/@algorithmName`. 新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT。 */
-export declare const SLIMPPT_MODIFY_VERIFIER_ALG = "Pavera-Protection-v1";
+import type { ModifyVerifier, Presentation } from "./slide.js";
+import type { PresentationProtection } from "./protection.js";
+/** Parchon-encoded protection payload in `modifyVerifier/@algorithmName`. 新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧值。 */
+export declare const SLIMPPT_MODIFY_VERIFIER_ALG = "Parchon-Protection-v1";
+export declare const SLIMPPT_MODIFY_VERIFIER_ALG_PAVERA = "Pavera-Protection-v1";
 export declare const SLIMPPT_MODIFY_VERIFIER_ALG_LEGACY = "SlimPPT-Protection-v1";
-/** Encode Pavera protection into OOXML `modifyVerifier` for presentation.xml round-trip. */
+/** Encode Parchon protection into OOXML `modifyVerifier` for presentation.xml round-trip. */
 export declare function encodeProtectionInModifyVerifier(p: PresentationProtection): ModifyVerifier;
-/** Decode Pavera or infer Office-native protection from `modifyVerifier`. */
+/** Decode Parchon or infer Office-native protection from `modifyVerifier`. */
 export declare function decodeProtectionFromModifyVerifier(mv: ModifyVerifier | undefined): PresentationProtection | undefined;
 export declare function syncModifyVerifierWithProtection(pres: Presentation, protection: PresentationProtection | undefined, officeModifyVerifier?: ModifyVerifier): void;
 /** Apply protection inferred from `pres.modifyVerifier` when tags sidecar is absent. */

@@ -1,5 +1,9 @@
 import type { DeckComment } from "@sliiu/present-core";
-import { COMMENT_META_TAG, COMMENT_META_TAG_LEGACY } from "@sliiu/present-core";
+import {
+  COMMENT_META_TAG,
+  COMMENT_META_TAG_PAVERA,
+  COMMENT_META_TAG_LEGACY,
+} from "@sliiu/present-core";
 import type { PptxArchive } from "./zip";
 import { strFromU8 } from "fflate";
 import { loadXmlPart, type RelMap } from "./parts";
@@ -19,7 +23,7 @@ function unescapeXmlAttr(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
-/** 从 presentation tags part 读取指定 Pavera 侧车键（绕过超大 tagLst 的常规解析限制）。 */
+/** 从 presentation tags part 读取指定 Parchon 侧车键（绕过超大 tagLst 的常规解析限制）。 */
 export function loadMetaTagFromArchive(
   archive: PptxArchive,
   presRels: RelMap,
@@ -39,13 +43,14 @@ export function loadMetaTagFromArchive(
   return unescapeXmlAttr(xml.slice(start, end));
 }
 
-/** 从 presentation tags part 读取 Pavera 批注元数据。 */
+/** 从 presentation tags part 读取 Parchon 批注元数据（仍认 Pavera 与 SlimPPT 旧键）。 */
 export function loadCommentMetaFromArchive(
   archive: PptxArchive,
   presRels: RelMap,
 ): string | undefined {
   return (
     loadMetaTagFromArchive(archive, presRels, COMMENT_META_TAG) ??
+    loadMetaTagFromArchive(archive, presRels, COMMENT_META_TAG_PAVERA) ??
     loadMetaTagFromArchive(archive, presRels, COMMENT_META_TAG_LEGACY)
   );
 }

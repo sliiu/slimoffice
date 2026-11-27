@@ -1,6 +1,7 @@
-import type { DeckComment } from "./slide";
-/** presentation tags part 中 Pavera 批注元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-export declare const COMMENT_META_TAG = "Pavera.Comments.v1";
+import type { DeckComment } from "./slide.js";
+/** presentation tags part 中 Parchon 批注元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+export declare const COMMENT_META_TAG = "Parchon.Comments.v1";
+export declare const COMMENT_META_TAG_PAVERA = "Pavera.Comments.v1";
 export declare const COMMENT_META_TAG_LEGACY = "SlimPPT.Comments.v1";
 export interface CommentMetaKey {
     slideIndex: number;

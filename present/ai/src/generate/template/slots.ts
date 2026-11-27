@@ -1,4 +1,4 @@
-// 参考模板槽位诱导 + 填内容（PPTAgent Stage I/II 的 Pavera 移植）。
+// 参考模板槽位诱导 + 填内容（PPTAgent Stage I/II 的 Parchon 移植）。
 //
 // 流程：
 //   1. induceReferenceSchemas(pres) —— 每页功能类型 + 可填 text 槽位（shapeId / role / maxChars）

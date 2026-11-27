@@ -170,7 +170,7 @@ async function createWindow() {
     height: 900,
     minWidth: 960,
     minHeight: 640,
-    title: "Pavera",
+    title: "Parchon",
     backgroundColor: "#18181a",
     webPreferences: {
       preload: path.join(here, "preload.cjs"),
@@ -210,7 +210,7 @@ app.on("open-file", (event, filePath) => {
     return;
   }
   void readOfficeFile(filePath).then((file) => win.webContents.send("open-file", file)).catch((err) => {
-    dialog.showErrorBox("Pavera", err instanceof Error ? err.message : String(err));
+    dialog.showErrorBox("Parchon", err instanceof Error ? err.message : String(err));
   });
 });
 

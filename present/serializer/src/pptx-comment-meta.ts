@@ -7,16 +7,22 @@ import {
   buildDeckSectionsMeta,
   buildProofingLangMeta,
   COMMENT_META_TAG,
+  COMMENT_META_TAG_PAVERA,
   COMMENT_META_TAG_LEGACY,
   EDITOR_PLUGINS_META_TAG,
+  EDITOR_PLUGINS_META_TAG_PAVERA,
   EDITOR_PLUGINS_META_TAG_LEGACY,
   PLAYBACK_PLUGINS_META_TAG,
+  PLAYBACK_PLUGINS_META_TAG_PAVERA,
   PLAYBACK_PLUGINS_META_TAG_LEGACY,
   PROTECTION_META_TAG,
+  PROTECTION_META_TAG_PAVERA,
   PROTECTION_META_TAG_LEGACY,
   PROOFING_LANG_META_TAG,
+  PROOFING_LANG_META_TAG_PAVERA,
   PROOFING_LANG_META_TAG_LEGACY,
   SECTIONS_META_TAG,
+  SECTIONS_META_TAG_PAVERA,
   SECTIONS_META_TAG_LEGACY,
 } from "@sliiu/present-core";
 import { strFromU8, strToU8 } from "fflate";
@@ -86,16 +92,22 @@ function allocRelId(relsXml: string): string {
 
 const SLIMPPT_TAG_KEYS = new Set([
   COMMENT_META_TAG,
+  COMMENT_META_TAG_PAVERA,
   COMMENT_META_TAG_LEGACY,
   EDITOR_PLUGINS_META_TAG,
+  EDITOR_PLUGINS_META_TAG_PAVERA,
   EDITOR_PLUGINS_META_TAG_LEGACY,
   PLAYBACK_PLUGINS_META_TAG,
+  PLAYBACK_PLUGINS_META_TAG_PAVERA,
   PLAYBACK_PLUGINS_META_TAG_LEGACY,
   PROTECTION_META_TAG,
+  PROTECTION_META_TAG_PAVERA,
   PROTECTION_META_TAG_LEGACY,
   PROOFING_LANG_META_TAG,
+  PROOFING_LANG_META_TAG_PAVERA,
   PROOFING_LANG_META_TAG_LEGACY,
   SECTIONS_META_TAG,
+  SECTIONS_META_TAG_PAVERA,
   SECTIONS_META_TAG_LEGACY,
 ]);
 
@@ -129,11 +141,17 @@ function applySlimPptKeys(tags: Record<string, string>, pres: Presentation): {
   const nextPlaybackPlugins = buildPlaybackPluginsMeta(pres) ?? "";
   const nextSections = buildDeckSectionsMeta(pres) ?? "";
   const nextProofingLang = buildProofingLangMeta(pres) ?? "";
+  delete tags[COMMENT_META_TAG_PAVERA];
   delete tags[COMMENT_META_TAG_LEGACY];
+  delete tags[PROTECTION_META_TAG_PAVERA];
   delete tags[PROTECTION_META_TAG_LEGACY];
+  delete tags[EDITOR_PLUGINS_META_TAG_PAVERA];
   delete tags[EDITOR_PLUGINS_META_TAG_LEGACY];
+  delete tags[PLAYBACK_PLUGINS_META_TAG_PAVERA];
   delete tags[PLAYBACK_PLUGINS_META_TAG_LEGACY];
+  delete tags[SECTIONS_META_TAG_PAVERA];
   delete tags[SECTIONS_META_TAG_LEGACY];
+  delete tags[PROOFING_LANG_META_TAG_PAVERA];
   delete tags[PROOFING_LANG_META_TAG_LEGACY];
   if (nextComment) tags[COMMENT_META_TAG] = nextComment;
   else delete tags[COMMENT_META_TAG];
@@ -221,7 +239,7 @@ function readSidecarTags(
   return readTagsFromPart(strFromU8(archive.files.get(tagsPath)!));
 }
 
-/** 把 Pavera 扩展元数据 + 用户 `customData.tags` 写入 presentation tags 部件。 */
+/** 把 Parchon 扩展元数据 + 用户 `customData.tags` 写入 presentation tags 部件。 */
 export function patchSlimPptSidecarTags(
   pres: Presentation,
   archive: MutableArchive,
@@ -241,21 +259,27 @@ export function patchSlimPptSidecarTags(
   const slimUnchanged =
     slim.nextComment === (presSrc?.commentMetaSnapshot ?? "") &&
     slim.nextComment === (inArchive[COMMENT_META_TAG] ?? "") &&
+    !(COMMENT_META_TAG_PAVERA in inArchive) &&
     !(COMMENT_META_TAG_LEGACY in inArchive) &&
     slim.nextProtection === (presSrc?.protectionMetaSnapshot ?? "") &&
     slim.nextProtection === (inArchive[PROTECTION_META_TAG] ?? "") &&
+    !(PROTECTION_META_TAG_PAVERA in inArchive) &&
     !(PROTECTION_META_TAG_LEGACY in inArchive) &&
     slim.nextEditorPlugins === (presSrc?.editorPluginsMetaSnapshot ?? "") &&
     slim.nextEditorPlugins === (inArchive[EDITOR_PLUGINS_META_TAG] ?? "") &&
+    !(EDITOR_PLUGINS_META_TAG_PAVERA in inArchive) &&
     !(EDITOR_PLUGINS_META_TAG_LEGACY in inArchive) &&
     slim.nextPlaybackPlugins === (presSrc?.playbackPluginsMetaSnapshot ?? "") &&
     slim.nextPlaybackPlugins === (inArchive[PLAYBACK_PLUGINS_META_TAG] ?? "") &&
+    !(PLAYBACK_PLUGINS_META_TAG_PAVERA in inArchive) &&
     !(PLAYBACK_PLUGINS_META_TAG_LEGACY in inArchive) &&
     slim.nextSections === (presSrc?.sectionsMetaSnapshot ?? "") &&
     slim.nextSections === (inArchive[SECTIONS_META_TAG] ?? "") &&
+    !(SECTIONS_META_TAG_PAVERA in inArchive) &&
     !(SECTIONS_META_TAG_LEGACY in inArchive) &&
     slim.nextProofingLang === (presSrc?.proofingLangMetaSnapshot ?? "") &&
     slim.nextProofingLang === (inArchive[PROOFING_LANG_META_TAG] ?? "") &&
+    !(PROOFING_LANG_META_TAG_PAVERA in inArchive) &&
     !(PROOFING_LANG_META_TAG_LEGACY in inArchive);
   if (slimUnchanged && !userChanged) return;
 
@@ -305,7 +329,7 @@ export function patchSlimPptSidecarTags(
 }
 
 /**
- * from-scratch：把 presentation tags（用户 tagLst + Pavera 侧车）写进文本部件表。
+ * from-scratch：把 presentation tags（用户 tagLst + Parchon 侧车）写进文本部件表。
  * 缓存恢复丢掉 `__source` 后走这条路径，否则保护 / 插件 / 批注元数据会丢。
  */
 export function injectScratchPresentationTags(pres: Presentation, files: Record<string, string>): void {

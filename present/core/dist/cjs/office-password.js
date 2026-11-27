@@ -13,7 +13,11 @@ exports.bytesToBase64 = bytesToBase64;
 exports.computeOfficePasswordHash = computeOfficePasswordHash;
 exports.verifyOfficeModifyVerifierPassword = verifyOfficeModifyVerifierPassword;
 exports.buildOfficeModifyVerifier = buildOfficeModifyVerifier;
-const PAVERA_MODIFY_VERIFIER_ALGS = new Set(["Pavera-Protection-v1", "SlimPPT-Protection-v1"]);
+const PAVERA_MODIFY_VERIFIER_ALGS = new Set([
+    "Parchon-Protection-v1",
+    "Pavera-Protection-v1",
+    "SlimPPT-Protection-v1",
+]);
 /** MS-OFFCRYPTO / Office 2010+ `cryptAlgorithmSid` → Web Crypto digest name. */
 const CRYPT_SID_TO_DIGEST = {
     2: "MD2",
@@ -67,7 +71,7 @@ function officeModifyVerifierSpinCount(mv) {
     const n = mv.spinCount ?? mv.spinValue;
     return typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 }
-/** True when `modifyVerifier` carries an Office-native password hash (not Pavera JSON). */
+/** True when `modifyVerifier` carries an Office-native password hash (not Parchon JSON). */
 function isOfficePasswordVerifier(mv) {
     if (!mv)
         return false;

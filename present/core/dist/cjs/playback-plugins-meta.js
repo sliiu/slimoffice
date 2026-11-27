@@ -1,14 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PLAYBACK_PLUGINS_META_TAG_LEGACY = exports.PLAYBACK_PLUGINS_META_TAG = exports.PLAYBACK_PLUGINS_META_KEY = void 0;
+exports.PLAYBACK_PLUGINS_META_TAG_LEGACY = exports.PLAYBACK_PLUGINS_META_TAG_PAVERA = exports.PLAYBACK_PLUGINS_META_TAG = exports.PLAYBACK_PLUGINS_META_KEY = void 0;
 exports.getPlaybackPluginsMeta = getPlaybackPluginsMeta;
 exports.setPlaybackPluginsMeta = setPlaybackPluginsMeta;
 exports.buildPlaybackPluginsMeta = buildPlaybackPluginsMeta;
 exports.applyPlaybackPluginsMeta = applyPlaybackPluginsMeta;
 const plugin_ids_1 = require("./plugin-ids");
 exports.PLAYBACK_PLUGINS_META_KEY = "playbackPlugins";
-/** presentation tags part 中 Pavera 放映插件元数据键名。新文件写 Pavera，读取仍认 2026-11-27 之前写入的 SlimPPT 键。 */
-exports.PLAYBACK_PLUGINS_META_TAG = "Pavera.PlaybackPlugins.v1";
+/** presentation tags part 中 Parchon 放映插件元数据键名。新文件写 Parchon，读取仍认 Pavera 与 SlimPPT 旧键。 */
+exports.PLAYBACK_PLUGINS_META_TAG = "Parchon.PlaybackPlugins.v1";
+exports.PLAYBACK_PLUGINS_META_TAG_PAVERA = "Pavera.PlaybackPlugins.v1";
 exports.PLAYBACK_PLUGINS_META_TAG_LEGACY = "SlimPPT.PlaybackPlugins.v1";
 function getPlaybackPluginsMeta(pres) {
     const raw = pres.meta?.[exports.PLAYBACK_PLUGINS_META_KEY];

@@ -13,7 +13,7 @@ export interface SmartArtItem {
     imageSrc?: string;
 }
 export declare const SMARTART_LAYOUT_LABELS: Record<SmartArtLayoutKind, string>;
-/** Office `layoutDef@uniqueId` tail, or a SlimPPT urn, → layout kind. */
+/** Office `layoutDef@uniqueId` tail, or a Parchon urn, → layout kind. */
 export declare function smartArtLayoutFromUniqueId(uniqueId: string | undefined): SmartArtLayoutKind | undefined;
 /** OOXML dgm cat type → layout kind。 */
 export declare function smartArtLayoutFromCat(cat: string | undefined): SmartArtLayoutKind;
