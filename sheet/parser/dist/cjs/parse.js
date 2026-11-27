@@ -610,6 +610,7 @@ function tables(root, archive, path, dxfs) {
                 ...tableFilterColumns((0, xml_1.child)(table, "autoFilter")),
                 ...tableFilterRules((0, xml_1.child)(table, "autoFilter")),
                 ...tableFilterTop((0, xml_1.child)(table, "autoFilter")),
+                ...tableFilterDynamic((0, xml_1.child)(table, "autoFilter")),
                 ...tableSort((0, xml_1.child)(table, "sortState"), range),
                 ...(columns.length ? { columns } : {}),
                 ...(formulas.some((formula) => formula) ? { formulas } : {}),
@@ -895,6 +896,18 @@ function tableFilterTop(node) {
         return [{ col, count, ...((0, xml_1.attr)(top, "percent") === "1" ? { percent: true } : {}), ...((0, xml_1.attr)(top, "top") === "0" ? { bottom: true } : {}) }];
     });
     return tops.length ? { filterTop: tops } : undefined;
+}
+/** A column that keeps numbers above or below its average. Nothing when no column does. */
+function tableFilterDynamic(node) {
+    const kinds = { aboveAverage: "aboveAverage", belowAverage: "belowAverage" };
+    const items = (0, xml_1.children)(node, "filterColumn").flatMap((column) => {
+        const col = Number((0, xml_1.attr)(column, "colId"));
+        const kind = kinds[(0, xml_1.attr)((0, xml_1.child)(column, "dynamicFilter"), "type") ?? ""];
+        if (!Number.isInteger(col) || col < 0 || !kind)
+            return [];
+        return [{ col, kind }];
+    });
+    return items.length ? { filterDynamic: items } : undefined;
 }
 /** The values a table column still shows. Nothing when every column shows everything. */
 function tableFilterColumns(node) {

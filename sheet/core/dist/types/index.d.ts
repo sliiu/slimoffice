@@ -149,6 +149,11 @@ export interface SheetTable {
         percent?: boolean;
         bottom?: boolean;
     }[];
+    /** A column keeps the numbers above or below its own average. A number equal to the average is hidden, and text is hidden. */
+    filterDynamic?: {
+        col: number;
+        kind: "aboveAverage" | "belowAverage";
+    }[];
     /** The columns the data rows were last sorted by, first key first. `col` counts from the table's first column. */
     sort?: {
         col: number;

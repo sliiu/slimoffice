@@ -176,6 +176,7 @@ function mountWorkbook(host, workbook, options = {}) {
         tableFilter,
         tableFilterRule,
         tableFilterTop,
+        tableFilterAverage,
         totalsFunction,
         addPivot,
         pageSetup: (patch) => {
@@ -327,7 +328,7 @@ function mountWorkbook(host, workbook, options = {}) {
     /** A table column with no filter shows everything. The header and the totals row always stay. */
     function tableHides(sheet, table, row) {
         const columns = table.filterColumns;
-        if ((!columns?.length && !table.filterRules?.length && !table.filterTop?.length) || row < table.r1 || row > table.r2)
+        if ((!columns?.length && !table.filterRules?.length && !table.filterTop?.length && !table.filterDynamic?.length) || row < table.r1 || row > table.r2)
             return false;
         if (table.headerRow !== false && row === table.r1)
             return false;
@@ -339,7 +340,28 @@ function mountWorkbook(host, workbook, options = {}) {
         });
         const compared = ruleGroupsHide(table.filterRules ?? [], (col) => sheet.cells[row]?.[table.c1 + col]?.value ?? "");
         const ranked = (table.filterTop ?? []).some((item) => !inTop(sheet, table, row, item));
-        return listed || compared || ranked;
+        const averaged = (table.filterDynamic ?? []).some((item) => !onAverageSide(sheet, table, row, item));
+        return listed || compared || ranked || averaged;
+    }
+    /** A number sits strictly above or below the column's average. Text never does, and the average itself does not. */
+    function onAverageSide(sheet, table, row, item) {
+        const value = Number(sheet.cells[row]?.[table.c1 + item.col]?.value);
+        if (!Number.isFinite(value))
+            return false;
+        const numbers = [];
+        for (let r = table.r1; r <= table.r2; r += 1) {
+            if (table.headerRow !== false && r === table.r1)
+                continue;
+            if (table.totalsRow && r === table.r2)
+                continue;
+            const cell = Number(sheet.cells[r]?.[table.c1 + item.col]?.value);
+            if (Number.isFinite(cell))
+                numbers.push(cell);
+        }
+        if (!numbers.length)
+            return false;
+        const mean = numbers.reduce((sum, cell) => sum + cell, 0) / numbers.length;
+        return item.kind === "belowAverage" ? value < mean : value > mean;
     }
     /** A number is in the largest or smallest group. Text never is, and a tie at the boundary stays. */
     function inTop(sheet, table, row, item) {
@@ -1410,6 +1432,31 @@ function mountWorkbook(host, workbook, options = {}) {
         // Ranking replaces a value list or a comparison on the same column, so the column has one filter.
         table.filterColumns = (table.filterColumns ?? []).filter((column) => column.col !== at);
         table.filterRules = (table.filterRules ?? []).filter((rule) => rule.col !== at);
+        if (!table.filterColumns.length)
+            table.filterColumns = undefined;
+        if (!table.filterRules.length)
+            table.filterRules = undefined;
+        finish();
+        return true;
+    }
+    /** The column under the selection keeps numbers above or below its average. Omit it to stop. */
+    function tableFilterAverage(kind) {
+        const sheet = currentSheet();
+        const table = tableRangeAt(sheet, selected.row, selected.col);
+        if (!table || table.filter === false)
+            return false;
+        remember();
+        const at = selected.col - table.c1;
+        const items = (table.filterDynamic ?? []).filter((item) => item.col !== at);
+        if (kind === "aboveAverage" || kind === "belowAverage")
+            items.push({ col: at, kind });
+        table.filterDynamic = items.length ? items : undefined;
+        // An average replaces a ranking, a value list, or a comparison on the same column.
+        table.filterTop = (table.filterTop ?? []).filter((item) => item.col !== at);
+        table.filterColumns = (table.filterColumns ?? []).filter((column) => column.col !== at);
+        table.filterRules = (table.filterRules ?? []).filter((rule) => rule.col !== at);
+        if (!table.filterTop.length)
+            table.filterTop = undefined;
         if (!table.filterColumns.length)
             table.filterColumns = undefined;
         if (!table.filterRules.length)

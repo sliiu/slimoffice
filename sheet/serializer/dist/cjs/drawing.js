@@ -103,23 +103,29 @@ function tableXml(table, dxfForFormat) {
         else
             groups.set(rule.col, [rule]);
     }
-    // A column ranks its numbers, or lists values, or compares. Ranking wins when a column does more than one.
-    const ranked = new Set((table.filterTop ?? []).map((item) => item.col));
+    // One column writes one filter. An average wins over a ranking, and a ranking wins over a list or a comparison.
+    const averaged = new Set((table.filterDynamic ?? []).map((item) => item.col));
+    const dynamic = (table.filterDynamic ?? [])
+        .filter((item) => item.kind === "aboveAverage" || item.kind === "belowAverage")
+        .map((item) => `<filterColumn colId="${item.col}"><dynamicFilter type="${item.kind}"/></filterColumn>`)
+        .join("");
+    const ranked = new Set((table.filterTop ?? []).map((item) => item.col).filter((col) => !averaged.has(col)));
     const top = (table.filterTop ?? [])
+        .filter((item) => !averaged.has(item.col))
         .map((item) => `<filterColumn colId="${item.col}"><top10${item.bottom ? " top=\"0\"" : ""}${item.percent ? " percent=\"1\"" : ""} val="${item.count}"/></filterColumn>`)
         .join("");
     const compared = [...groups.entries()].flatMap(([col, rules]) => {
-        if (ranked.has(col))
+        if (ranked.has(col) || averaged.has(col))
             return [];
         const and = rules.some((rule) => rule.and) ? " and=\"1\"" : "";
         const body = rules.map((rule) => `<customFilter operator="${ops[rule.op] ?? "equal"}" val="${escapeXml(rule.value)}"/>`).join("");
         return [`<filterColumn colId="${col}"><customFilters${and}>${body}</customFilters></filterColumn>`];
     }).join("");
     const kept = (table.filterColumns ?? [])
-        .filter((column) => !ranked.has(column.col))
+        .filter((column) => !ranked.has(column.col) && !averaged.has(column.col))
         .map((column) => `<filterColumn colId="${column.col}"><filters>${column.values.map((value) => `<filter val="${escapeXml(value)}"/>`).join("")}</filters></filterColumn>`)
         .join("");
-    const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}${compared}${top}</autoFilter>`;
+    const filter = table.filter === false ? "" : `<autoFilter ref="${ref}">${kept}${compared}${top}${dynamic}</autoFilter>`;
     // The sort covers the data rows only, so the header and the totals row stay out of it.
     const dataTop = (table.headerRow === false ? table.r1 : table.r1 + 1) + 1;
     const dataBottom = (table.totalsRow ? table.r2 - 1 : table.r2) + 1;

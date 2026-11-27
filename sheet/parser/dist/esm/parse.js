@@ -572,6 +572,7 @@ function tables(root, archive, path, dxfs) {
                 ...tableFilterColumns(child(table, "autoFilter")),
                 ...tableFilterRules(child(table, "autoFilter")),
                 ...tableFilterTop(child(table, "autoFilter")),
+                ...tableFilterDynamic(child(table, "autoFilter")),
                 ...tableSort(child(table, "sortState"), range),
                 ...(columns.length ? { columns } : {}),
                 ...(formulas.some((formula) => formula) ? { formulas } : {}),
@@ -857,6 +858,18 @@ function tableFilterTop(node) {
         return [{ col, count, ...(attr(top, "percent") === "1" ? { percent: true } : {}), ...(attr(top, "top") === "0" ? { bottom: true } : {}) }];
     });
     return tops.length ? { filterTop: tops } : undefined;
+}
+/** A column that keeps numbers above or below its average. Nothing when no column does. */
+function tableFilterDynamic(node) {
+    const kinds = { aboveAverage: "aboveAverage", belowAverage: "belowAverage" };
+    const items = children(node, "filterColumn").flatMap((column) => {
+        const col = Number(attr(column, "colId"));
+        const kind = kinds[attr(child(column, "dynamicFilter"), "type") ?? ""];
+        if (!Number.isInteger(col) || col < 0 || !kind)
+            return [];
+        return [{ col, kind }];
+    });
+    return items.length ? { filterDynamic: items } : undefined;
 }
 /** The values a table column still shows. Nothing when every column shows everything. */
 function tableFilterColumns(node) {

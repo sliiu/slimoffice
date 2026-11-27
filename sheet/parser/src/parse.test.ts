@@ -195,7 +195,7 @@ test("a calculated column fills the data cells that have no formula", async () =
       `<row r="4"><c r="A4" t="inlineStr"><is><t>合计</t></is></c></row></sheetData>` +
       `<tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts></worksheet>`,
     "xl/worksheets/_rels/sheet1.xml.rels": `<Relationships><Relationship Id="rIdTable1" Type="table" Target="../tables/table1.xml"/></Relationships>`,
-    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B4" headerRowCount="1" totalsRowCount="1"><autoFilter ref="A1:B4"><filterColumn colId="0"><filters><filter val="甲"/></filters></filterColumn><filterColumn colId="1"><top10 top="0" percent="1" val="20"/></filterColumn></autoFilter><sortState ref="B2:B3"><sortCondition descending="1" ref="B2:B3"/></sortState><tableColumns count="2"><tableColumn id="1" name="品类" width="18" hidden="1"/><tableColumn id="2" name="数量"><calculatedColumnFormula>[数量]*2</calculatedColumnFormula><totalsRowFormula>SUBTOTAL(109,[数量])</totalsRowFormula></tableColumn></tableColumns></table>`,
+    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B4" headerRowCount="1" totalsRowCount="1"><autoFilter ref="A1:B4"><filterColumn colId="0"><filters><filter val="甲"/></filters></filterColumn><filterColumn colId="1"><dynamicFilter type="aboveAverage"/></filterColumn></autoFilter><sortState ref="B2:B3"><sortCondition descending="1" ref="B2:B3"/></sortState><tableColumns count="2"><tableColumn id="1" name="品类" width="18" hidden="1"/><tableColumn id="2" name="数量"><calculatedColumnFormula>[数量]*2</calculatedColumnFormula><totalsRowFormula>SUBTOTAL(109,[数量])</totalsRowFormula></tableColumn></tableColumns></table>`,
   });
   const opened = (await parseXlsx(bytes)).sheets[0];
   // Both data rows take the column's formula, and the cached number stays visible.
@@ -206,9 +206,9 @@ test("a calculated column fills the data cells that have no formula", async () =
   assert.equal(opened?.cells[0]?.[1]?.formula, undefined);
   // A column keeps its width and whether the table hides it. One that names neither keeps none.
   assert.equal(opened?.tables?.[0]?.widths?.[0], 18);
-  // The filter lists the values the first column still shows, and the second column keeps the smallest 20 percent.
+  // The filter lists the values the first column still shows, and the second column keeps numbers above its average.
   assert.deepEqual(opened?.tables?.[0]?.filterColumns, [{ col: 0, values: ["甲"] }]);
-  assert.deepEqual(opened?.tables?.[0]?.filterTop, [{ col: 1, count: 20, percent: true, bottom: true }]);
+  assert.deepEqual(opened?.tables?.[0]?.filterDynamic, [{ col: 1, kind: "aboveAverage" }]);
   // The sort names the data rows of the second column, descending, counted from the table's first column.
   assert.deepEqual(opened?.tables?.[0]?.sort, [{ col: 1, descending: true }]);
   assert.deepEqual(opened?.tables?.[0]?.hidden, [true, false]);

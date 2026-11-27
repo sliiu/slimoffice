@@ -532,6 +532,11 @@ test("wildcard lookups, date units, hidden rows, and finance", () => {
   workbook.sheets[0]!.tables![0]!.filterTop = [{ col: 0, count: 1 }];
   assert.equal(evaluate("=SUBTOTAL(9,A2:A3)", ctx(workbook)), 40);
   assert.equal(evaluate("=SUM(A2:A3)", ctx(workbook)), 66);
+  // 26 and 40 average 33, so only the number above it stays. A plain sum keeps both.
+  workbook.sheets[0]!.tables![0]!.filterTop = undefined;
+  workbook.sheets[0]!.tables![0]!.filterDynamic = [{ col: 0, kind: "aboveAverage" }];
+  assert.equal(evaluate("=SUBTOTAL(9,A2:A3)", ctx(workbook)), 40);
+  assert.equal(evaluate("=SUM(A2:A3)", ctx(workbook)), 66);
   assert.equal(Math.round(evaluate("=PMT(0.05,2,100)", ctx(workbook)) as number), -54);
   assert.equal(Math.round(evaluate("=NPV(0.1,110)", ctx(workbook)) as number), 100);
   assert.equal(evaluate("=STDEV.P(2,4,4,4,5,5,7,9)", ctx(workbook)), 2);

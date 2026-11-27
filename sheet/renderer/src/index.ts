@@ -120,6 +120,8 @@ export interface SheetGrid {
   tableFilterRule(rule?: { op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte"; value: string; and?: boolean }, other?: { op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte"; value: string }): boolean;
   /** Keep the largest numbers in the selected column, or the smallest when `bottom` is set. Omit to stop ranking. */
   tableFilterTop(spec?: { count: number; percent?: boolean; bottom?: boolean }): boolean;
+  /** Keep the numbers above or below the selected column's average. Omit to stop. */
+  tableFilterAverage(kind?: "aboveAverage" | "belowAverage"): boolean;
   /** How the totals row reduces the column under the selection. A sum is the default. */
   totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean;
   addPivot(name?: string): void;
@@ -334,6 +336,7 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     tableFilter,
     tableFilterRule,
     tableFilterTop,
+    tableFilterAverage,
     totalsFunction,
     addPivot,
     pageSetup: (patch) => {
@@ -477,7 +480,7 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
   /** A table column with no filter shows everything. The header and the totals row always stay. */
   function tableHides(sheet: Worksheet, table: NonNullable<Worksheet["tables"]>[number], row: number): boolean {
     const columns = table.filterColumns;
-    if ((!columns?.length && !table.filterRules?.length && !table.filterTop?.length) || row < table.r1 || row > table.r2) return false;
+    if ((!columns?.length && !table.filterRules?.length && !table.filterTop?.length && !table.filterDynamic?.length) || row < table.r1 || row > table.r2) return false;
     if (table.headerRow !== false && row === table.r1) return false;
     if (table.totalsRow && row === table.r2) return false;
     const listed = (columns ?? []).some((column) => {
@@ -486,7 +489,24 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     });
     const compared = ruleGroupsHide(table.filterRules ?? [], (col) => sheet.cells[row]?.[table.c1 + col]?.value ?? "");
     const ranked = (table.filterTop ?? []).some((item) => !inTop(sheet, table, row, item));
-    return listed || compared || ranked;
+    const averaged = (table.filterDynamic ?? []).some((item) => !onAverageSide(sheet, table, row, item));
+    return listed || compared || ranked || averaged;
+  }
+
+  /** A number sits strictly above or below the column's average. Text never does, and the average itself does not. */
+  function onAverageSide(sheet: Worksheet, table: NonNullable<Worksheet["tables"]>[number], row: number, item: { col: number; kind: "aboveAverage" | "belowAverage" }): boolean {
+    const value = Number(sheet.cells[row]?.[table.c1 + item.col]?.value);
+    if (!Number.isFinite(value)) return false;
+    const numbers: number[] = [];
+    for (let r = table.r1; r <= table.r2; r += 1) {
+      if (table.headerRow !== false && r === table.r1) continue;
+      if (table.totalsRow && r === table.r2) continue;
+      const cell = Number(sheet.cells[r]?.[table.c1 + item.col]?.value);
+      if (Number.isFinite(cell)) numbers.push(cell);
+    }
+    if (!numbers.length) return false;
+    const mean = numbers.reduce((sum, cell) => sum + cell, 0) / numbers.length;
+    return item.kind === "belowAverage" ? value < mean : value > mean;
   }
 
   /** A number is in the largest or smallest group. Text never is, and a tie at the boundary stays. */
@@ -1487,6 +1507,27 @@ export function mountWorkbook(host: HTMLElement, workbook: Workbook, options: Sh
     // Ranking replaces a value list or a comparison on the same column, so the column has one filter.
     table.filterColumns = (table.filterColumns ?? []).filter((column) => column.col !== at);
     table.filterRules = (table.filterRules ?? []).filter((rule) => rule.col !== at);
+    if (!table.filterColumns.length) table.filterColumns = undefined;
+    if (!table.filterRules.length) table.filterRules = undefined;
+    finish();
+    return true;
+  }
+
+  /** The column under the selection keeps numbers above or below its average. Omit it to stop. */
+  function tableFilterAverage(kind?: "aboveAverage" | "belowAverage"): boolean {
+    const sheet = currentSheet();
+    const table = tableRangeAt(sheet, selected.row, selected.col);
+    if (!table || table.filter === false) return false;
+    remember();
+    const at = selected.col - table.c1;
+    const items = (table.filterDynamic ?? []).filter((item) => item.col !== at);
+    if (kind === "aboveAverage" || kind === "belowAverage") items.push({ col: at, kind });
+    table.filterDynamic = items.length ? items : undefined;
+    // An average replaces a ranking, a value list, or a comparison on the same column.
+    table.filterTop = (table.filterTop ?? []).filter((item) => item.col !== at);
+    table.filterColumns = (table.filterColumns ?? []).filter((column) => column.col !== at);
+    table.filterRules = (table.filterRules ?? []).filter((rule) => rule.col !== at);
+    if (!table.filterTop.length) table.filterTop = undefined;
     if (!table.filterColumns.length) table.filterColumns = undefined;
     if (!table.filterRules.length) table.filterRules = undefined;
     finish();

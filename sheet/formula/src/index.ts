@@ -1325,7 +1325,7 @@ function rowFiltered(sheet: Worksheet, row: number): boolean {
 /** One table column keeps only the values it lists, or the rows that pass its comparison. */
 function tableFiltersRow(sheet: Worksheet, table: NonNullable<Worksheet["tables"]>[number], row: number): boolean {
   const columns = table.filterColumns;
-  if ((!columns?.length && !table.filterRules?.length && !table.filterTop?.length) || row < table.r1 || row > table.r2) return false;
+  if ((!columns?.length && !table.filterRules?.length && !table.filterTop?.length && !table.filterDynamic?.length) || row < table.r1 || row > table.r2) return false;
   if (table.headerRow !== false && row === table.r1) return false;
   if (table.totalsRow && row === table.r2) return false;
   const listed = columns?.length
@@ -1336,7 +1336,24 @@ function tableFiltersRow(sheet: Worksheet, table: NonNullable<Worksheet["tables"
     : false;
   const compared = comparisonsHide(table.filterRules ?? [], (col) => sheet.cells[row]?.[table.c1 + col]?.value ?? "");
   const ranked = (table.filterTop ?? []).some((item) => !topKeeps(sheet, table, row, item));
-  return listed || compared || ranked;
+  const averaged = (table.filterDynamic ?? []).some((item) => !aboveAverageKeeps(sheet, table, row, item));
+  return listed || compared || ranked || averaged;
+}
+
+/** A number sits strictly above or below the column's average. Text never does, and the average itself does not. */
+function aboveAverageKeeps(sheet: Worksheet, table: NonNullable<Worksheet["tables"]>[number], row: number, item: { col: number; kind: "aboveAverage" | "belowAverage" }): boolean {
+  const value = Number(sheet.cells[row]?.[table.c1 + item.col]?.value);
+  if (!Number.isFinite(value)) return false;
+  const numbers: number[] = [];
+  for (let r = table.r1; r <= table.r2; r += 1) {
+    if (table.headerRow !== false && r === table.r1) continue;
+    if (table.totalsRow && r === table.r2) continue;
+    const cell = Number(sheet.cells[r]?.[table.c1 + item.col]?.value);
+    if (Number.isFinite(cell)) numbers.push(cell);
+  }
+  if (!numbers.length) return false;
+  const mean = numbers.reduce((sum, cell) => sum + cell, 0) / numbers.length;
+  return item.kind === "belowAverage" ? value < mean : value > mean;
 }
 
 /** A number is among the largest or smallest. Text never is, and a tie at the boundary stays. */

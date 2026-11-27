@@ -102,6 +102,8 @@ export interface SheetTable {
   filterRules?: { col: number; op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte"; value: string; and?: boolean }[];
   /** The largest or smallest numbers a column keeps. `count` is how many, or a percent of the numbers when `percent` is set. Ties stay. */
   filterTop?: { col: number; count: number; percent?: boolean; bottom?: boolean }[];
+  /** A column keeps the numbers above or below its own average. A number equal to the average is hidden, and text is hidden. */
+  filterDynamic?: { col: number; kind: "aboveAverage" | "belowAverage" }[];
   /** The columns the data rows were last sorted by, first key first. `col` counts from the table's first column. */
   sort?: { col: number; descending?: boolean }[];
   /** Header text of each column, in order. Empty when the table has no header row. */

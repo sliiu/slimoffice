@@ -618,6 +618,14 @@ test("a table column filters its rows", () => {
   assert.equal(workbook.sheets[0]!.tables![0]!.filterRules, undefined);
   assert.equal(grid.tableFilterTop(), true);
   assert.equal(workbook.sheets[0]!.tables![0]!.filterTop, undefined);
+  // 10 and 5 average 7.5, so only the number above it stays. The header and the totals row stay.
+  assert.equal(grid.tableFilterAverage("aboveAverage"), true);
+  const above = [...host.querySelectorAll("td")].map((cell) => cell.textContent);
+  assert.deepEqual(above.filter((text) => text === "10" || text === "5"), ["10"]);
+  assert.ok(above.includes("合计"));
+  assert.deepEqual(workbook.sheets[0]!.tables![0]!.filterDynamic, [{ col: 1, kind: "aboveAverage" }]);
+  assert.equal(grid.tableFilterAverage(), true);
+  assert.equal(workbook.sheets[0]!.tables![0]!.filterDynamic, undefined);
 });
 
 test("typing below a table pulls the row in", () => {

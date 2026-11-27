@@ -119,6 +119,8 @@ export interface SheetGrid {
         percent?: boolean;
         bottom?: boolean;
     }): boolean;
+    /** Keep the numbers above or below the selected column's average. Omit to stop. */
+    tableFilterAverage(kind?: "aboveAverage" | "belowAverage"): boolean;
     /** How the totals row reduces the column under the selection. A sum is the default. */
     totalsFunction(fn: "sum" | "count" | "average" | "max" | "min" | "none"): boolean;
     addPivot(name?: string): void;
