@@ -150,7 +150,7 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
       `<Relationship Id="rIdTable1" Type="table" Target="../tables/table1.xml"/>` +
       `<Relationship Id="rIdDrawing1" Type="drawing" Target="../drawings/drawing1.xml"/>` +
       `</Relationships>`,
-    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B2" headerRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类"/><tableColumn id="2" name="数量"/></tableColumns></table>`,
+    "xl/tables/table1.xml": `<table id="1" name="Table1" displayName="Table1" ref="A1:B2" headerRowCount="1" totalsRowCount="1"><tableColumns count="2"><tableColumn id="1" name="品类"/><tableColumn id="2" name="数量"/></tableColumns></table>`,
     "xl/drawings/drawing1.xml": `<wsDr><graphicFrame><cNvPr id="1" name="Chart 1"/></graphicFrame></wsDr>`,
     "xl/drawings/_rels/drawing1.xml.rels": `<Relationships><Relationship Id="rIdChart1" Type="chart" Target="../charts/chart1.xml"/></Relationships>`,
     "xl/charts/chart1.xml": `<chartSpace><chart><plotArea><barChart><ser><val><numRef><f>Sheet1!$B$1:$B$2</f></numRef></val></ser><ser><val><numRef><f>Sheet1!$C$1:$C$2</f></numRef></val></ser></barChart></plotArea></chart></chartSpace>`,
@@ -168,6 +168,7 @@ test("reads names, conditional formats, validation, tables, charts, and sparklin
   assert.equal(opened?.validations?.[1]?.formula2, "9");
   assert.equal(opened?.tables?.[0]?.name, "Table1");
   assert.deepEqual(opened?.tables?.[0]?.columns, ["品类", "数量"]);
+  assert.equal(opened?.tables?.[0]?.totalsRow, true);
   assert.deepEqual(opened?.charts?.[0], { id: "chart1", kind: "column", range: "$B$1:$B$2", series: ["$B$1:$B$2", "$C$1:$C$2"] });
   assert.deepEqual(opened?.sparklines?.[0], { id: "spark1", kind: "column", data: "A1:A2", location: "C1" });
 });

@@ -120,7 +120,7 @@ test("writes a cell comment back", () => {
 test("writes table drawing and validation parts", () => {
   const made = blankWorkbook("销售", [[{ value: "a" }, { value: "1" }], [{ value: "b" }, { value: "2" }]]);
   const sheet = made.workbook.sheets[0]!;
-  sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, columns: ["品类", "数量"] }];
+  sheet.tables = [{ id: "table1", name: "Table1", r1: 0, c1: 0, r2: 1, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }];
   sheet.charts = [{ id: "chart1", kind: "column", title: "销量", range: "B1:B2" }];
   sheet.validations = [{ id: "dv1", r1: 0, c1: 0, r2: 1, c2: 0, type: "list", op: "eq", formula1: "a,b" }];
   made.workbook.theme = { name: "Office", colors: ["#4472C4"], fonts: { major: "Calibri", minor: "Calibri" } };
@@ -130,7 +130,7 @@ test("writes table drawing and validation parts", () => {
   assert.match(sheetXml, /<drawing r:id="rIdDrawing1"\/>/);
   assert.match(sheetXml, /<dataValidations count="1">/);
   assert.match(sheetXml, /<dataValidation type="list" allowBlank="1" operator="equal" sqref="A1:A2"><formula1>a,b<\/formula1><\/dataValidation>/);
-  assert.match(new TextDecoder().decode(out["xl/tables/table1_1.xml"]), /<tableColumn id="1" name="品类"\/><tableColumn id="2" name="数量"\/>/);
+  assert.match(new TextDecoder().decode(out["xl/tables/table1_1.xml"]), /totalsRowCount="1".*<tableColumn id="1" name="品类"\/><tableColumn id="2" name="数量"\/>/);
   assert.ok(out["xl/drawings/drawing1.xml"]);
   assert.ok(out["xl/theme/theme1.xml"]);
 });

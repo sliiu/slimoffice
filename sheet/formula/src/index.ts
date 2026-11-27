@@ -494,6 +494,15 @@ function tokenize(text: string): Token[] {
       i += 1;
       continue;
     }
+    // The # or @ of a table specifier, as in [#This Row] or [@数量]. Elsewhere both stay errors.
+    if ((ch === "#" || ch === "@") && out.at(-1)?.kind === "lsb") {
+      let j = i + 1;
+      while (j < text.length && /[A-Za-z0-9_$一-鿿. ]/.test(text[j]!)) j += 1;
+      const rest = text.slice(i + 1, j).trim();
+      out.push({ kind: "id", value: (ch === "@" && rest ? `@${rest}` : `${ch}${rest}`).toUpperCase() });
+      i = j;
+      continue;
+    }
     if (ch === "<" || ch === ">" || ch === "=") {
       let op = ch;
       if ((ch === "<" || ch === ">") && text[i + 1] === "=") {
@@ -854,8 +863,8 @@ class Parser {
 
     if (first.kind === "id" && this.peek()?.kind === "lp") return this.parseCall(first.value);
 
-    // Table1[列] reads that column of the named table, below its header.
-    if (first.kind === "id" && this.peek()?.kind === "lsb") return this.tableColumn(first.value);
+    // Table1[列] reads that column of the named table. A specifier picks the header, the totals, or this row.
+    if (first.kind === "id" && this.peek()?.kind === "lsb") return this.tableRef(first.value);
 
     if (first.kind === "id" && (first.value === "TRUE" || first.value === "FALSE")) {
       return first.value === "TRUE";
@@ -896,22 +905,79 @@ class Parser {
     return values;
   }
 
-  /** The data rows of one column of a table. The name has to be a table, and the column one of its headers. */
-  private tableColumn(name: string): FormulaValue {
-    this.take();
-    if (this.peek()?.kind !== "id" && this.peek()?.kind !== "str") return E.REF();
-    const column = (this.take() as { value: string }).value;
-    if (this.peek()?.kind !== "rsb") return E.REF();
-    this.take();
+  /**
+   * One column of a table, or the row the formula sits on.
+   * `Table1[列]` is the data, `Table1[[#Headers],[列]]` the header, `Table1[[#Totals],[列]]` the totals row,
+   * and `Table1[[#This Row],[列]]` (also written `Table1[@列]`) the cell on the formula's own row.
+   */
+  private tableRef(name: string): FormulaValue {
+    const spec = this.tableSpec();
+    if (spec instanceof FormulaError) return spec;
     for (const [sheetIndex, sheet] of this.ctx.workbook.sheets.entries()) {
       const table = (sheet.tables ?? []).find((item) => item.name.toUpperCase() === name);
       if (!table) continue;
-      const at = (table.columns ?? []).findIndex((item) => item.toUpperCase() === column);
+      const at = (table.columns ?? []).findIndex((item) => item.toUpperCase() === spec.column);
       if (at < 0) return E.REF();
-      const top = table.headerRow === false ? table.r1 : table.r1 + 1;
-      return readRange(this.ctx.workbook, sheetIndex, { row: top, col: table.c1 + at }, { row: table.r2, col: table.c1 + at });
+      const col = table.c1 + at;
+      const dataTop = table.headerRow === false ? table.r1 : table.r1 + 1;
+      const dataBottom = table.totalsRow ? table.r2 - 1 : table.r2;
+      if (spec.part === "this") {
+        if (this.ctx.row < dataTop || this.ctx.row > dataBottom) return E.VALUE();
+        return readRange(this.ctx.workbook, sheetIndex, { row: this.ctx.row, col }, { row: this.ctx.row, col });
+      }
+      if (spec.part === "headers") {
+        if (table.headerRow === false) return E.REF();
+        return readRange(this.ctx.workbook, sheetIndex, { row: table.r1, col }, { row: table.r1, col });
+      }
+      if (spec.part === "totals") {
+        if (!table.totalsRow) return E.REF();
+        return readRange(this.ctx.workbook, sheetIndex, { row: table.r2, col }, { row: table.r2, col });
+      }
+      if (dataBottom < dataTop) return [];
+      return readRange(this.ctx.workbook, sheetIndex, { row: dataTop, col }, { row: dataBottom, col });
     }
     return E.NAME();
+  }
+
+  /** The part and the column inside the brackets. A bare column means the data rows. */
+  private tableSpec(): { part: "data" | "headers" | "totals" | "this"; column: string } | FormulaError {
+    this.take();
+    const item = this.tableItem();
+    if (item instanceof FormulaError) return item;
+    if (this.peek()?.kind !== "comma") {
+      if (this.peek()?.kind !== "rsb") return E.REF();
+      this.take();
+      // `[@列]` names the current row of that column. Any other bare specifier needs its column beside it.
+      if (item.part === "this" && item.column) return item;
+      if (item.part !== "data") return E.REF();
+      return item;
+    }
+    this.take();
+    const column = this.tableItem();
+    if (column instanceof FormulaError) return column;
+    if (this.peek()?.kind !== "rsb") return E.REF();
+    this.take();
+    if (item.part === "data" || column.part !== "data") return E.REF();
+    return { part: item.part, column: column.column };
+  }
+
+  /** One bracket item: a column name, or a specifier such as `#This Row` or `@`. */
+  private tableItem(): { part: "data" | "headers" | "totals" | "this"; column: string } | FormulaError {
+    const nested = this.peek()?.kind === "lsb";
+    if (nested) this.take();
+    const token = this.peek();
+    if (token?.kind !== "id" && token?.kind !== "str" && token?.kind !== "op") return E.REF();
+    this.take();
+    if (nested) {
+      if (this.peek()?.kind !== "rsb") return E.REF();
+      this.take();
+    }
+    const raw = (token as { value: string }).value;
+    const part = tablePart(raw);
+    if (part) return { part, column: "" };
+    // `@列` is the current row of that column, written without the #This Row specifier.
+    if (raw.startsWith("@")) return { part: "this", column: raw.slice(1) };
+    return { part: "data", column: raw };
   }
 
   /** The same cells on every sheet between the two names, including sheets in between. */
@@ -1019,6 +1085,15 @@ function columnNumber(letters: string): number | undefined {
   for (const letter of letters) col = col * 26 + letter.charCodeAt(0) - 64;
   if (col < 1 || col > 16384) return undefined;
   return col - 1;
+}
+
+/** `#Headers`, `#Totals`, `#This Row` and `@` name a part of a table. Anything else is a column. */
+function tablePart(raw: string): "headers" | "totals" | "this" | undefined {
+  if (raw === "@") return "this";
+  if (raw === "#HEADERS" || raw === "#标题") return "headers";
+  if (raw === "#TOTALS" || raw === "#汇总") return "totals";
+  if (raw === "#THIS ROW" || raw === "#此行") return "this";
+  return undefined;
 }
 
 function findSheet(workbook: Workbook, name: string): number {
@@ -1197,10 +1272,10 @@ function numbers(args: FormulaValue[]): number[] {
     .filter((item) => Number.isFinite(item));
 }
 
-/** A number, or a date written as text such as `2026-1-31` or `2026/1/31`. */
+/** A number, or a date written as text such as `2026-1-31` or `2026-1-31 13:30`. */
 function asDate(value: FormulaValue): number | FormulaError {
   if (typeof value === "string") {
-    const date = dateText(value);
+    const date = dateText(value) ?? timeText(value);
     if (date !== undefined) return date;
     return E.VALUE();
   }
@@ -1208,9 +1283,9 @@ function asDate(value: FormulaValue): number | FormulaError {
   return asNumber(value);
 }
 
-/** `2026-1-31` and `2026/1/31` as an Excel serial. A month or day past the calendar is not a date. */
+/** `2026-1-31`, `2026/1/31`, and either followed by a time, as an Excel serial. A day past the calendar is not a date. */
 function dateText(text: string): number | undefined {
-  const match = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(text.trim());
+  const match = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/.exec(text.trim());
   if (!match) return undefined;
   const year = Number(match[1]);
   const month = Number(match[2]);
@@ -1218,7 +1293,20 @@ function dateText(text: string): number | undefined {
   if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return undefined;
-  return date.getTime() / 86400000 + 25569;
+  const time = match[4] === undefined ? 0 : clock(Number(match[4]), Number(match[5]), Number(match[6] ?? 0));
+  return time === undefined ? undefined : date.getTime() / 86400000 + 25569 + time;
+}
+
+/** `13:30` and `13:30:05` as the fraction of a day. An hour past 23 is not a time. */
+function timeText(text: string): number | undefined {
+  const match = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/.exec(text.trim());
+  if (!match) return undefined;
+  return clock(Number(match[1]), Number(match[2]), Number(match[3] ?? 0));
+}
+
+function clock(hours: number, minutes: number, seconds: number): number | undefined {
+  if (hours > 23 || minutes > 59 || seconds > 59) return undefined;
+  return (hours * 3600 + minutes * 60 + seconds) / 86400;
 }
 
 function asNumber(value: FormulaValue): number | FormulaError {
@@ -1231,6 +1319,8 @@ function asNumber(value: FormulaValue): number | FormulaError {
   if (typeof value === "boolean") return value ? 1 : 0;
   if (typeof value !== "string") return E.VALUE();
   if (value === "") return 0;
+  const time = timeText(value);
+  if (time !== undefined) return time;
   const date = dateText(value);
   if (date !== undefined) return date;
   const shown = numberText(value);
@@ -1347,7 +1437,19 @@ function compare(left: FormulaValue, right: FormulaValue, op: string): FormulaVa
   if (isLambda(left) || isLambda(right)) return E.VALUE();
   if (left instanceof FormulaError) return left;
   if (right instanceof FormulaError) return right;
-  const flat = (value: FormulaValue) => (Array.isArray(value) && value.length === 1 ? value[0] ?? "" : value);
+  const flat = (value: FormulaValue): FormulaPrimitive => {
+    const cell = Array.isArray(value) && value.length === 1 ? value[0] ?? "" : value;
+    if (typeof cell === "string") return dateText(cell) ?? timeText(cell) ?? cell;
+    // A serial joined with & comes back as its date text, so a serial compares as that date too.
+    if (typeof cell === "number" && cell > 20000 && cell < 100000) {
+      const whole = Math.floor(cell);
+      const date = new Date(Math.round((whole - 25569) * 86400000));
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(date.getUTCDate()).padStart(2, "0");
+      return dateText(`${date.getUTCFullYear()}-${month}-${day}`) ?? cell;
+    }
+    return cell as FormulaPrimitive;
+  };
   const l = flat(left);
   const r = flat(right);
   if (Array.isArray(l) || Array.isArray(r)) return E.VALUE();
@@ -1355,6 +1457,7 @@ function compare(left: FormulaValue, right: FormulaValue, op: string): FormulaVa
   const rn = typeof r === "number" || (typeof r === "string" && /^-?\d+(?:\.\d+)?$/.test(r)) ? Number(r) : null;
   let cmp: number;
   if (ln !== null && rn !== null && Number.isFinite(ln) && Number.isFinite(rn)) cmp = ln - rn;
+  else if ((ln === null) !== (rn === null) && op !== "=" && op !== "<>") return false;
   else cmp = String(l).localeCompare(String(r));
   if (op === "=") return cmp === 0;
   if (op === "<>") return cmp !== 0;
@@ -3524,15 +3627,7 @@ function mathExtra(name: string, args: FormulaValue[]): FormulaValue {
     if (value instanceof FormulaError) return value;
     return value < 0 ? E.NUM() : Math.sqrt(value * Math.PI);
   }
-  if (name === "TIMEVALUE") {
-    const match = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/.exec(asText(args[0] ?? "").trim());
-    if (!match) return E.VALUE();
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    const seconds = Number(match[3] ?? 0);
-    if (hours > 23 || minutes > 59 || seconds > 59) return E.VALUE();
-    return (hours * 3600 + minutes * 60 + seconds) / 86400;
-  }
+  if (name === "TIMEVALUE") return timeText(asText(args[0] ?? "")) ?? E.VALUE();
   if (name === "MULTINOMIAL") {
     const nums = numbers(args);
     if (!nums.length || nums.some((item) => item < 0 || !Number.isInteger(item))) return E.NUM();
@@ -4980,12 +5075,22 @@ function matches(value: FormulaValue | undefined, criterion: FormulaValue | unde
   const cell = value ?? "";
   if (typeof probe === "string") {
     const op = /^(>=|<=|<>|>|<|=)(.*)$/.exec(probe);
-    if (op) return compare(cell, coerceCellText(op[2] ?? ""), op[1]!) === true;
+    if (op) return compare(cell, criterionValue(op[2] ?? ""), op[1]!) === true;
     if (probe.includes("*") || probe.includes("?")) {
       return new RegExp(`^${wildcardPattern(probe)}$`, "i").test(String(cell));
     }
   }
   return compare(cell, probe ?? "", "=") === true;
+}
+
+/** The number, date, or time a criterion names, so ">2026-01-15" compares dates rather than text. */
+function criterionValue(text: string): FormulaPrimitive {
+  const date = dateText(text) ?? timeText(text);
+  if (date !== undefined) return date;
+  const value = coerceCellText(text);
+  // A criterion built with & carries the serial as text, rounded the way a cell shows it.
+  if (typeof value === "string" && /^[+-]?\d*\.?\d+(?:e[+-]?\d+)?$/i.test(value.trim())) return Math.round(Number(value) * 1e10) / 1e10;
+  return value;
 }
 
 function sameValue(left: FormulaValue | undefined, right: FormulaValue | undefined): boolean {

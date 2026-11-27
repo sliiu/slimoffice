@@ -95,6 +95,27 @@ test("a table column reference skips the header", () => {
   assert.equal(evaluate("=Table1[没有]", ctx(workbook)) instanceof FormulaError, true);
 });
 
+test("a table reference picks the header, the totals row, or the current row", () => {
+  const workbook = book([
+    [{ value: "品类" }, { value: "数量" }],
+    [{ value: "甲" }, { value: "10" }],
+    [{ value: "乙" }, { value: "5" }],
+    [{ value: "合计" }, { value: "15" }],
+  ]);
+  workbook.sheets[0]!.tables = [{ id: "t1", name: "Table1", r1: 0, c1: 0, r2: 3, c2: 1, headerRow: true, totalsRow: true, columns: ["品类", "数量"] }];
+  // The data reference stops above the totals row, so the 15 never enters the sum.
+  assert.equal(evaluate("=SUM(Table1[数量])", ctx(workbook)), 15);
+  assert.equal(evaluate("=Table1[[#Headers],[数量]]", ctx(workbook)), "数量");
+  assert.equal(evaluate("=Table1[[#Totals],[数量]]", ctx(workbook)), 15);
+  // The current row follows the cell the formula sits in, and the short form names the same cell.
+  assert.equal(evaluate("=Table1[[#This Row],[数量]]", ctx(workbook, 1, 0)), 10);
+  assert.equal(evaluate("=Table1[@数量]", ctx(workbook, 2, 0)), 5);
+  // A formula outside the data rows has no current row, and a table without totals has no totals row.
+  assert.equal(evaluate("=Table1[[#This Row],[数量]]", ctx(workbook, 0, 0)) instanceof FormulaError, true);
+  workbook.sheets[0]!.tables![0]!.totalsRow = false;
+  assert.equal(evaluate("=Table1[[#Totals],[数量]]", ctx(workbook)) instanceof FormulaError, true);
+});
+
 test("IF and text functions", () => {
   const workbook = book([[{ value: "hello" }]]);
   assert.equal(evaluate("=IF(1=1,\"yes\",\"no\")", ctx(workbook)), "yes");
@@ -118,6 +139,26 @@ test("sheet-qualified refs", () => {
   };
   recalculate(workbook);
   assert.equal(workbook.sheets[1]?.cells[0]?.[0]?.value, "18");
+});
+
+test("COUNTIF compares dates written as text", () => {
+  const workbook = book([[{ value: "2026-01-10" }], [{ value: "2026-01-31" }], [{ value: "2026-02-01" }], [{ value: "甲" }]]);
+  // The criterion is a date, so later dates count and the text does not.
+  assert.equal(evaluate("=COUNTIF(A1:A4,\">2026-01-15\")", ctx(workbook)), 2);
+  assert.equal(evaluate("=COUNTIF(A1:A4,\">=\"&A2)", ctx(workbook)), 2);
+  assert.equal(evaluate("=SUMIF(A1:A4,\"<2026-02-01\",A1:A4)", ctx(workbook)), evaluate("=A1+A2", ctx(workbook)));
+});
+
+test("a time written as text works in the time functions", () => {
+  const workbook = book([[{ value: "2026-01-31 13:30" }], [{ value: "13:30:05" }]]);
+  // The date and the clock both come back, and a bare time is a fraction of a day.
+  assert.equal(evaluate("=YEAR(A1)", ctx(workbook)), 2026);
+  assert.equal(evaluate("=HOUR(A1)", ctx(workbook)), 13);
+  assert.equal(evaluate("=MINUTE(A1)", ctx(workbook)), 30);
+  assert.equal(evaluate("=SECOND(A2)", ctx(workbook)), 5);
+  assert.equal(evaluate("=TIMEVALUE(\"13:30\")", ctx(workbook)), evaluate("=TIME(13,30,0)", ctx(workbook)));
+  // An hour past 23 is not a time.
+  assert.equal(formatResult(evaluate("=TIMEVALUE(\"25:00\")", ctx(workbook))), "#VALUE!");
 });
 
 test("a date written as text works in the date functions", () => {

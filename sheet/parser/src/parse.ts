@@ -529,6 +529,7 @@ function tables(root: XmlNode, archive: OfficeArchive, path: string): SheetTable
       name: attr(table, "displayName") ?? attr(table, "name") ?? `Table${index + 1}`,
       ...range,
       headerRow: attr(table, "headerRowCount") !== "0",
+      ...(attr(table, "totalsRowCount") === "1" ? { totalsRow: true } : {}),
       ...(columns.length ? { columns } : {}),
     }];
   });

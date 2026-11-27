@@ -83,6 +83,8 @@ export interface SheetTable {
   r2: number;
   c2: number;
   headerRow?: boolean;
+  /** The last row holds totals, so a data reference stops above it. */
+  totalsRow?: boolean;
   style?: string;
   /** Header text of each column, in order. Empty when the table has no header row. */
   columns?: string[];

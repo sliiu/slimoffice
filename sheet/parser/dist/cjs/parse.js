@@ -590,6 +590,7 @@ function tables(root, archive, path) {
                 name: (0, xml_1.attr)(table, "displayName") ?? (0, xml_1.attr)(table, "name") ?? `Table${index + 1}`,
                 ...range,
                 headerRow: (0, xml_1.attr)(table, "headerRowCount") !== "0",
+                ...((0, xml_1.attr)(table, "totalsRowCount") === "1" ? { totalsRow: true } : {}),
                 ...(columns.length ? { columns } : {}),
             }];
     });
